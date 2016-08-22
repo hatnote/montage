@@ -111,9 +111,14 @@ if __name__ == '__main__':
 
 
 """
-* Rest of the tables (rounds, ratings, etc.)
+* Rest of the basic tables (rounds, ratings, etc.)
+* Static assignment list
 * Indexes
 * db session management, engine creation, and schema creation separation
 * prod db pw management
 * add simple_serdes for E-Z APIs
+
+
+* rank_min -> quorum
+* revision_id
 """
