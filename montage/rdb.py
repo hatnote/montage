@@ -4,6 +4,7 @@
 from sqlalchemy import (Column,
                         String,
                         Integer,
+                        Float,
                         DateTime,
                         ForeignKey)
 from sqlalchemy.sql import func
@@ -142,10 +143,8 @@ class Vote(Base):
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
     old_task_id = Column(Integer)
-    vote_updown = Column(Integer)
-    vote_rating = Column(Integer)
-    vote_ranking = Column(Integer)
-    
+    vote = Column(Float)
+
     create_date = Column(DateTime, server_default=func.now())
 
     user = relationship('User', back_populates='votes')
@@ -191,7 +190,5 @@ if __name__ == '__main__':
 * db session management, engine creation, and schema creation separation
 * prod db pw management
 * add simple_serdes for E-Z APIs
-
-
 * revision_id - verify if we must use the upload timestamp
 """
