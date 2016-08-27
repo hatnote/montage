@@ -2,9 +2,11 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import './vendor/css/bootstrap.css';
-import './vendor/css/yeti.bootstrap.css';
+import Round from './admin/round';
 
-
+function onImport() {
+    console.log('waaaa!');
+}
 const App = () => (
     <div>
       <div className="navbar navbar-inverse">
@@ -21,7 +23,7 @@ const App = () => (
       </div>
       <div className='container'>
         <div className='row'>
-          <p>waaat</p>
+            <Round onImportFromCommons={onImport}/>
         </div>
       </div>
       </div>
