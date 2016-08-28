@@ -1,4 +1,5 @@
 
+import datetime
 from json import JSONEncoder
 
 from sqlalchemy import inspect
@@ -69,5 +70,11 @@ class DictableBase(object):
             prop_names = get_entity_propnames(self)
         else:
             prop_names = get_entity_loaded_propnames(self)
-        return dict([(name, getattr(self, name)) for name in
-                     prop_names - excluded])
+
+        items = []
+        for attr_name in prop_names - excluded:
+            val = getattr(self, attr_name)
+            if isinstance(val, datetime.datetime):
+                val = val.isoformat()
+            items.append((attr_name, val))
+        return dict(items)
