@@ -19,7 +19,7 @@
   - Change a vote for an open round (?)
 """
 
-from clastic import Application
+from clastic import Application, Middleware
 from clastic.render import render_basic
 
 from sqlalchemy import create_engine
@@ -32,26 +32,36 @@ def home():
     return {'test': True}
 
 
-def list_campaigns(request, session):
-    user = request.values.get('user')  # TODO: sessions
-    campaigns = get_all_campaigns(session, user)
-    return [c.to_dict() for c in campaigns]
+def list_campaigns(request, rdb_session):
+    user = request.values.get('user')
+    campaigns = get_all_campaigns(rdb_session, user)
+    return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def get_campaign_admin(request, session, campaign):
-    user = request.values.get('user')  # TODO: sessions
-    campaign = get_campaign(session, user, id=campaign)
+def get_campaign_admin(request, rdb_session, campaign):
+    user = request.values.get('user')
+    campaign = get_campaign(rdb_session, user, id=campaign)
     return campaign.to_dict()
 
 
-def get_round_admin(request, session, round, campaign=None):
-    user = request.values.get('user')  # TODO: sessions
-    round = get_round(session, user, id=round)
+def get_round_admin(request, rdb_session, round, campaign=None):
+    user = request.values.get('user')
+    round = get_round(rdb_session, user, id=round)
     return round.to_dict()
 
 
-def preview_selection(session, round, campaign=None):
+def preview_selection(rdb_session, round, campaign=None):
     return
+
+
+class DBSessionMiddleware(Middleware):
+    provides = ('rdb_session',)
+
+    def __init__(self, session_type):
+        self.session_type = session_type
+
+    def request(self, next):
+        return next(rdb_session=self.session_type())
 
 
 def create_app():
@@ -62,13 +72,14 @@ def create_app():
               ('/admin/<campaign>/<round>/preview',
                preview_selection,
                render_basic)]
+
     engine = create_engine('sqlite:///tmp_montage.db', echo=True)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
-    session = session_type()
-    resources = {'session': session} 
 
-    app = Application(routes, resources)
+    middlewares = [DBSessionMiddleware(session_type)]
+
+    app = Application(routes, middlewares=middlewares)
     return app
 
 
