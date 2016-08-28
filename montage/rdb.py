@@ -1,10 +1,9 @@
-
 # Relational database models for Montage
-
 from sqlalchemy import (Column,
                         String,
                         Integer,
                         Float,
+                        Boolean,
                         DateTime,
                         ForeignKey)
 from sqlalchemy.sql import func
@@ -12,6 +11,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from sqlalchemy.ext.declarative import declarative_base
+
+from simple_serdes import DictableBase
 
 Base = declarative_base()
 
@@ -43,15 +44,20 @@ class User(Base):
     # update_date?
 
 
-class Campaign(Base):
+class Campaign(Base, DictableBase):
     __tablename__ = 'campaigns'
     
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    
+    open_date = Column(DateTime)
+    close_date = Column(DateTime)
+
     create_date = Column(DateTime, server_default=func.now())
 
-    admins = relationship('CampaignAdmin')
+    rounds = relationship('Round', back_populates='campaign')
+    campaign_admins = relationship('CampaignAdmin')
+    admins = association_proxy('campaign_admins', 'user',
+                               creator=lambda u: CampaignAdmin(user=u))
     entries_submitted = relationship('CampaignEntry')
     entries = association_proxy('entries_submitted', 'entry',
                                 creator=lambda e: CampaignEntry(entry=e))
@@ -64,25 +70,33 @@ class CampaignAdmin(Base):
     campaign_id = Column(Integer, ForeignKey('campaigns.id'), primary_key=True)
 
     user = relationship('User', back_populates='admined_campaigns')
-    campaign = relationship('Campaign', back_populates='admins')
+    campaign = relationship('Campaign', back_populates='campaign_admins')
 
     def __init__(self, user=None, campaign=None):
         self.user = user
         self.campaign = campaign
 
 
-class Round(Base):
+class Round(Base, DictableBase):
     __tablename__ = 'rounds'
     
     id = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
+    open_date = Column(DateTime)
+    close_date = Column(DateTime)
     status = Column(String)
     vote_method = Column(String)
     quorum = Column(Integer)
-
+    # Should we just have some settings in json?
+    show_link = Column(Boolean)
+    show_filename = Column(Boolean)
+    show_resolution = Column(Boolean)
+    
     create_date = Column(DateTime, server_default=func.now())
 
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    campaign = relationship('Campaign', back_populates='rounds')
     jurors = relationship('RoundJurors')
     votes = relationship('Vote', back_populates='round')
 
@@ -144,6 +158,7 @@ class Vote(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'))
     old_task_id = Column(Integer)
     vote = Column(Float)
+    is_canceled = Column(Boolean)
 
     create_date = Column(DateTime, server_default=func.now())
 
@@ -160,6 +175,27 @@ class Task(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
 
+def get_campaign(session, user, id=None, name=None):
+    # Should it support getting campaigns by name, for prettier URLs?
+    campaign = session.query(Campaign)\
+                      .filter(Campaign.admins.any(ca_user=user))\
+                      .filter_by(id=id)\
+                      .one()
+    return campaign
+
+
+def get_round(session, user, id):
+    
+    return
+
+
+def get_all_campaigns(session, user):
+    campaigns = session.query(Campaign)\
+                       .filter(Campaign.admins.any(ca_user=user))\
+                       .all()
+    return campaigns
+
+
 def main():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -172,9 +208,16 @@ def main():
     session_type.configure(bind=engine)
     session = session_type()
     round = Round()
-    user = User()
+    campaign = Campaign(name='Test')
+    another_campaign = Campaign(name='Another')
+    user = User(ca_user='slaporte')
     user.rounds.append(round)
+    user.campaigns.append(campaign)
+    user.campaigns.append(another_campaign)
+    another_user = User(ca_user='mahmoud')
+    another_user.campaigns.append(another_campaign)
     session.add(user)
+    session.add(another_user)
     session.commit()
     import pdb;pdb.set_trace()
 
