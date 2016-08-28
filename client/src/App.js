@@ -1,11 +1,14 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
+import React from 'react';
 import './App.css';
 import './vendor/css/bootstrap.css';
 import Round from './admin/round';
 
 function onImport() {
     console.log('waaaa!');
+}
+
+function onActivateRound() {
+    console.log('waaah');
 }
 const App = () => (
     <div>
@@ -23,7 +26,7 @@ const App = () => (
       </div>
       <div className='container'>
         <div className='row'>
-            <Round onImportFromCommons={onImport}/>
+            <Round onImportFromCommons={onImport} onActivateRound={onActivateRound}/>
         </div>
       </div>
       </div>

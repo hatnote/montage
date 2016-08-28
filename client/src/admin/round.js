@@ -10,14 +10,12 @@ const Round = React.createClass({
         return {
             round: Immutable.Map({
                 name: 'Some name',
+                description: 'Some longish description goes here maybe?',
                 type: 'bool',
-                state: 'draft', // Options are: draft, active, paused, completed
-                judgingOptions: {
-                    requiredJudgingsCount: 1
-                },
+                state: 'active', // Options are: draft, active, paused, completed
+                quorum: 1,
                 jury: ['UserA', 'UserB', 'UserC'],
                 images: {},
-                admins: ['UserX', 'UserY'],
             })
         };
     },
@@ -25,14 +23,7 @@ const Round = React.createClass({
         let round = this.state.round;
         switch (event.target.name) {
             case "jury":
-            case "admins":
-                // For these two, state should be an array, separated by newlines.
                 round = round.set(event.target.name, event.target.value.split('\n'))
-                break;
-            case 'requiredJudgingsCount':
-                round = round.set('judgingOptions', {
-                    requiredJudgingsCount: event.target.value
-                })
                 break;
             default:
                 round = round.set(event.target.name, event.target.value);
@@ -41,21 +32,46 @@ const Round = React.createClass({
     },
     render() {
         const round = this.state.round;
-        let judgingOptions = null;
+        let quorumOptions;
+        let roundStateActions;
         switch (round.get('type')) {
             case 'bool':
             case 'rating':
-                judgingOptions = <div className='form-group'>
+                quorumOptions = <div className='form-group'>
                     <label>Number of jurors who must rate each image</label>
                     <input 
                         className='form-control'
                         type='number'
-                        name='requiredJudgingsCount'
-                        value={round.get('judgingOptions').requiredJudgingsCount}
+                        name='quorum'
+                        value={round.get('quorum')}
                         onChange={this.handleChange} />
                     </div>
+                break;
+            default:
+                quorumOptions = null; // Do not display it!
         }
         
+        switch (round.get('state')) {
+            case 'draft':
+            case 'paused':
+                roundStateActions = <button
+                                        onClick={this.props.onActivateRound}
+                                        className='btn'>Activate Round</button>
+                break;
+            case 'active':
+                roundStateActions = [
+                    <button
+                        className='btn btn-warning'
+                        onClick={this.handleAction}>Pause round</button>,
+                    <button
+                        className='btn btn-success'
+                        onClick={this.handleAction}>Complete round</button>
+                ]
+                break;
+            default:
+                roundStateActions = null;
+        }
+
         let juryReadOnly = round.get('state') === 'draft' || round.get('state') === 'paused' ? undefined : true;
         return <form className="col-sm-6 col-sm-offset-3">
             <div className="form-group">
@@ -65,6 +81,14 @@ const Round = React.createClass({
                     type="text"
                     name="name"
                     value={round.get('name')}
+                    onChange={this.handleChange} />
+            </div>
+            <div className="form-group">
+                <label>Description</label>
+                <textarea
+                    className='form-control'
+                    name="jury"
+                    value={round.get('description')}
                     onChange={this.handleChange} />
             </div>
             <div className="form-group">
@@ -78,7 +102,7 @@ const Round = React.createClass({
                     <option value="ranking">Ranking</option>
                 </select>
             </div>
-            {judgingOptions}
+            {quorumOptions}
             <div className="form-group">
                 <label>Images</label>
                 <RoundImagesInfo 
@@ -95,14 +119,13 @@ const Round = React.createClass({
                     readOnly={juryReadOnly}
                     onChange={this.handleChange} />
             </div>
-            <div className="form-group">
-                <label>Admin Members</label>
-                <textarea 
-                    className='form-control'
-                    name="admins"
-                    value={round.get('admins').join('\n')}
-                    rows={round.get('admins').length}
-                    onChange={this.handleChange} />
+            <div className='form-group col-sm-8'>
+                <div className="btn-group">
+                    {roundStateActions}
+                </div>
+            </div>
+            <div className='form-group  pull-right'>
+                <button type="submit" className="btn btn-primary">Save</button>
             </div>
         </form>
     }

@@ -1,13 +1,11 @@
 import React from 'react';
-import Immutable from 'immutable';
-
 
 const RoundImagesInfo = ({type, imagesCount, roundSource, categoriesSource, onImportFromCommons}) => {
     switch (type) {
         case 'uninitialized':
             return <div>
                 <span>No images imported yet! </span>
-                <button type="button" className="btn btn-primary" name="import" onClick={onImportFromCommons}>
+                <button type="button" className="btn btn-default" name="import" onClick={onImportFromCommons}>
                     Import images from Commons
                 </button>
             </div>
@@ -21,6 +19,8 @@ const RoundImagesInfo = ({type, imagesCount, roundSource, categoriesSource, onIm
             return <div>
                 {imagesCount} images imported from Commons Categories: {categories}
             </div>
+        default:
+            return null; // This shouldn't really happen
     }
 };
 
