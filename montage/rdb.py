@@ -185,8 +185,11 @@ def get_campaign(session, user, id=None, name=None):
 
 
 def get_round(session, user, id):
-    
-    return
+    round = session.query(Round)\
+                   .filter(Round.campaign.has(Campaign.admins.any(ca_user=user)),
+                           Round.id == id)\
+                   .one()
+    return round
 
 
 def get_all_campaigns(session, user):
@@ -196,7 +199,7 @@ def get_all_campaigns(session, user):
     return campaigns
 
 
-def main():
+def make_session():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
@@ -207,11 +210,16 @@ def main():
     session_type = sessionmaker()
     session_type.configure(bind=engine)
     session = session_type()
+    return session
+
+def main():
+    session = make_session()
     round = Round()
     campaign = Campaign(name='Test')
     another_campaign = Campaign(name='Another')
     user = User(ca_user='slaporte')
     user.rounds.append(round)
+    campaign.rounds.append(round)
     user.campaigns.append(campaign)
     user.campaigns.append(another_campaign)
     another_user = User(ca_user='mahmoud')
