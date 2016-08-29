@@ -1,5 +1,4 @@
-"""
- - Logging in
+"""- Logging in
  - Health check
  - Admins
   - See a list of campaigns
@@ -17,6 +16,13 @@
   - Skip a vote
   - Expoert their own votes (?)
   - Change a vote for an open round (?)
+
+Practical design:
+
+Because we're building on react, most URLs return JSON, except for
+login and complete_login, which give back redirects, and the root
+page, which gives back the HTML basis.
+
 """
 
 import yaml
@@ -62,8 +68,6 @@ def complete_login(request, consumer_token, cookie):
 
     access_token = handshaker.complete(req_token,
                                        request.query_string)
-    cookie['access_token_key'] = access_token.key
-    cookie['access_token_secret'] = access_token.secret
     identity = handshaker.identify(access_token)
 
     # wiki_uid = identity['sub']
@@ -75,6 +79,16 @@ def complete_login(request, consumer_token, cookie):
 
     cookie['wiki_userid'] = identity['sub']
     cookie['wiki_username'] = identity['username']
+
+    # These would be useful when we have oauth beyond simple ID, but
+    # they should be stored in the database along with expiration times.
+    # ID tokens only last 100 seconds or so
+    # cookie['access_token_key'] = access_token.key
+    # cookie['access_token_secret'] = access_token.secret
+
+    # identity['confirmed_email'] = True/False might be interesting
+    # for contactability through the username. Might want to assert
+    # that it is True.
 
     return_to_url = cookie.get('return_to_url')
     del cookie['request_token_key']
@@ -129,11 +143,11 @@ def create_app():
               ('/login', login, render_basic),
               ('/complete_login', complete_login, render_basic)]
 
+    config = yaml.load(open('config.dev.yaml'))
     engine = create_engine('sqlite:///tmp_montage.db', echo=True)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
 
-    config = yaml.load(open('config.dev.yaml'))
     cookie_secret = config['cookie_secret']
     assert cookie_secret
 
