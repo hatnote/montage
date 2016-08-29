@@ -1,15 +1,15 @@
 """
  - Logging in
  - Health check
- - Admins
-  - See a list of campaigns
+ - Coordinators
+  x See a list of campaigns
   - Save edits to a campaign
-  - See a list of rounds per campaign
+  x See a list of rounds per campaign
   - Save edits to a round
   - Import photos for a round
   - Close out a round
   - Export the output from a round
-  - Send notifications to admins (?)
+  - Send notifications to coordinators & jurors (?)
  - Jurors
   - See a list of campaigns and rounds
   - See the next vote
@@ -19,13 +19,13 @@
   - Change a vote for an open round (?)
 """
 
-from clastic import Application, Middleware
+from clastic import Application, Middleware, redirect
 from clastic.render import render_basic
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from rdb import get_campaign, get_all_campaigns, get_round
+from rdb import get_campaign_config, get_all_campaigns, get_round, get_campaign_name
 
 
 def home():
@@ -38,13 +38,13 @@ def list_campaigns(request, rdb_session):
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def get_campaign_admin(request, rdb_session, campaign):
+def show_campaign_config(request, rdb_session, campaign):
     user = request.values.get('user')
-    campaign = get_campaign(rdb_session, user, id=campaign)
-    return campaign.to_dict()
+    campaign = get_campaign_config(rdb_session, user, id=campaign)
+    return campaign
 
 
-def get_round_admin(request, rdb_session, round, campaign=None):
+def show_round_config(request, rdb_session, round, campaign=None):
     user = request.values.get('user')
     round = get_round(rdb_session, user, id=round)
     return round.to_dict()
@@ -53,6 +53,15 @@ def get_round_admin(request, rdb_session, round, campaign=None):
 def preview_selection(rdb_session, round, campaign=None):
     return
 
+
+def campaign_redirect(request, rdb_session, campaign):
+    user = request.values.get('user')
+    name = get_campaign_name(rdb_session, campaign)
+    name = name.replace(' ', '-')
+    new_path = '/admin/%s/%s?user=%s' % (campaign, name, user)  
+    # TODO: remove user here once we have oauth sessions
+    return redirect(new_path)
+    
 
 class DBSessionMiddleware(Middleware):
     provides = ('rdb_session',)
@@ -67,8 +76,9 @@ class DBSessionMiddleware(Middleware):
 def create_app():
     routes = [('/', home, render_basic),
               ('/admin', list_campaigns, render_basic),
-              ('/admin/<campaign>', get_campaign_admin, render_basic),
-              ('/admin/<campaign>/<round>', get_round_admin, render_basic),
+              ('/admin/<campaign>', campaign_redirect, render_basic),
+              ('/admin/<campaign>/<name>', show_campaign_config, render_basic),
+              ('/admin/<campaign>/<name>/<round>', show_round_config, render_basic),
               ('/admin/<campaign>/<round>/preview',
                preview_selection,
                render_basic)]
