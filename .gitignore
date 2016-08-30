@@ -2,7 +2,13 @@
 *.db
 config*yaml
 .DS_Store
-*.*~
+
+# emacs
+*~
+._*
+.\#*
+\#*\#
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

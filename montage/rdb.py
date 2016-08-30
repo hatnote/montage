@@ -26,17 +26,19 @@ Column ordering and groupings:
 """
 
 
-class User(Base):
+class User(Base, DictableBase):
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True)
-    ca_user = Column(String)
+    username = Column(String)
+    last_login_date = Column(DateTime)
 
     create_date = Column(DateTime, server_default=func.now())
-    
+
     coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
                                   creator=lambda c: CampaignCoord(campaign=c))
+
     jurored_rounds = relationship('RoundJurors', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJurors(round=r))
@@ -46,7 +48,7 @@ class User(Base):
 
 class Campaign(Base, DictableBase):
     __tablename__ = 'campaigns'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     open_date = Column(DateTime)
@@ -79,7 +81,7 @@ class CampaignCoord(Base):
 
 class Round(Base, DictableBase):
     __tablename__ = 'rounds'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
@@ -92,7 +94,7 @@ class Round(Base, DictableBase):
     show_link = Column(Boolean)
     show_filename = Column(Boolean)
     show_resolution = Column(Boolean)
-    
+
     create_date = Column(DateTime, server_default=func.now())
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
@@ -117,7 +119,7 @@ class RoundJurors(Base):
 
 class Entry(Base):
     __tablename__ = 'entries'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     timestamp = Column(DateTime)
@@ -130,14 +132,14 @@ class Entry(Base):
     uploader = Column(String)
 
     create_date = Column(DateTime, server_default=func.now())
-    
+
     campaigns = relationship('CampaignEntry')
     votes = relationship('Vote', back_populates='entry')
-        
+
 
 class CampaignEntry(Base):
     __tablename__ = 'campaign_entries'
-    
+
     entry_id = Column(Integer, ForeignKey('entries.id'), primary_key=True)
     campaign_id = Column(Integer, ForeignKey('campaigns.id'), primary_key=True)
 
@@ -177,7 +179,7 @@ class Task(Base):
 
 def get_campaign_config(session, user, id=None):
     campaign = session.query(Campaign)\
-                      .filter(Campaign.coords.any(ca_user=user))\
+                      .filter(Campaign.coords.any(username=user.username))\
                       .filter_by(id=id)\
                       .one()
     ret = campaign.to_dict()
@@ -187,7 +189,7 @@ def get_campaign_config(session, user, id=None):
 
 def get_campaign_overview(session, user, id):
     campaign = session.query(Campaign)\
-                      .filter(Campaign.rounds.any(Round.jurors.any(ca_user=user))).all()
+                      .filter(Campaign.rounds.any(Round.jurors.any(username=user))).all()
     return campaign
 
 
@@ -199,7 +201,7 @@ def get_campaign_name(session, id):
 
 def get_round(session, user, id):
     round = session.query(Round)\
-                   .filter(Round.campaign.has(Campaign.coords.any(ca_user=user)),
+                   .filter(Round.campaign.has(Campaign.coords.any(username=user)),
                            Round.id == id)\
                    .one()
     return round
@@ -207,7 +209,7 @@ def get_round(session, user, id):
 
 def get_all_campaigns(session, user):
     campaigns = session.query(Campaign)\
-                       .filter(Campaign.coords.any(ca_user=user))\
+                       .filter(Campaign.coords.any(username=user.username))\
                        .all()
     return campaigns
 
@@ -228,9 +230,9 @@ def make_rdb_session():
 
 def make_fake_data():
     rdb_session = make_rdb_session()
-    first_user = User(ca_user='Stephen')
-    second_user = User(ca_user='Mahmoud')
-    juror = User(ca_user='Yuvi')
+    first_user = User(username='Slaporte')
+    second_user = User(username='Mahmoud')
+    juror = User(username='Yuvi')
     campaign = Campaign(name='test campaign')
     round = Round(name='test round')
     campaign.rounds.append(round)

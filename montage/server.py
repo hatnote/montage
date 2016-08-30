@@ -1,4 +1,5 @@
-"""- Logging in
+"""
+ - Logging in
  - Health check
  - Coordinators
   x See a list of campaigns
@@ -24,10 +25,11 @@ login and complete_login, which give back redirects, and the root
 page, which gives back the HTML basis.
 
 """
+import datetime
 
 import yaml
 
-from clastic import Application, Middleware, redirect
+from clastic import Application, redirect
 from clastic.render import render_basic
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
@@ -35,16 +37,21 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
-from rdb import get_campaign_config, get_all_campaigns, get_round, get_campaign_name
+from mw import public, UserMiddleware, DBSessionMiddleware
+from rdb import get_all_campaigns, get_campaign_config, get_round, User, get_campaign_name
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
+DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 
 
-def home(cookie):
-    return {'test': True, 'cookie': dict(cookie)}
+@public
+def home(cookie, user):
+    user_dict = user.to_dict() if user else user
+    return {'user': user_dict, 'cookie': dict(cookie)}
 
 
-def login(request, consumer_token, cookie):
+@public
+def login(request, consumer_token, cookie, root_path):
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
     redirect_url, request_token = handshaker.initiate()
@@ -53,14 +60,22 @@ def login(request, consumer_token, cookie):
     cookie['request_token_secret'] = request_token.secret
 
     # TODO: / will break on labs path right?
-    cookie['return_to_url'] = request.args.get('next', '/')
+    cookie['return_to_url'] = request.args.get('next', root_path)
     return redirect(redirect_url)
 
 
-# TODO: redirecter middleware for auth stuff
+@public
+def logout(request, cookie, root_path):
+    cookie.pop('userid', None)
+    cookie.pop('username', None)
+
+    return_to_url = request.args.get('next', root_path)
+
+    return redirect(return_to_url)
 
 
-def complete_login(request, consumer_token, cookie):
+@public
+def complete_login(request, consumer_token, cookie, rdb_session):
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
     req_token = RequestToken(cookie['request_token_key'],
@@ -70,15 +85,15 @@ def complete_login(request, consumer_token, cookie):
                                        request.query_string)
     identity = handshaker.identify(access_token)
 
-    # wiki_uid = identity['sub']
-    # user = g.conn.session.query(User).filter(User.wiki_uid == wiki_uid).first()
-    # if user is None:
-    #    user = User(username=identity['username'], wiki_uid=wiki_uid)
-    #    g.conn.session.add(user)
-    #    g.conn.session.commit()
-
-    cookie['wiki_userid'] = identity['sub']
-    cookie['wiki_username'] = identity['username']
+    userid = identity['sub']
+    username = identity['username']
+    user = rdb_session.query(User).filter(User.id == userid).first()
+    now = datetime.datetime.utcnow()
+    if user is None:
+        user = User(id=userid, username=username, last_login_date=now)
+        rdb_session.add(user)
+    else:
+        user.last_login_date = now
 
     # These would be useful when we have oauth beyond simple ID, but
     # they should be stored in the database along with expiration times.
@@ -90,26 +105,27 @@ def complete_login(request, consumer_token, cookie):
     # for contactability through the username. Might want to assert
     # that it is True.
 
+    cookie['userid'] = identity['sub']
+    cookie['username'] = identity['username']
+
     return_to_url = cookie.get('return_to_url')
     del cookie['request_token_key']
     del cookie['request_token_secret']
+    del cookie['return_to_url']
     return redirect(return_to_url)
 
 
-def admin_landing(request, rdb_session):
-    user = request.values.get('user')
+def admin_landing(rdb_session, user):
     campaigns = get_all_campaigns(rdb_session, user)
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def admin_camp_dashboard(request, rdb_session, campaign):
-    user = request.values.get('user')
+def admin_camp_dashboard(rdb_session, user, campaign):
     campaign = get_campaign_config(rdb_session, user, id=campaign)
     return campaign
 
 
-def admin_round_dashboard(request, rdb_session, round, campaign=None):
-    user = request.values.get('user')
+def admin_round_dashboard(rdb_session, user, round):
     round = get_round(rdb_session, user, id=round)
     return round.to_dict()
 
@@ -118,12 +134,10 @@ def preview_selection(rdb_session, round, campaign=None):
     return
 
 
-def admin_camp_redirect(request, rdb_session, campaign):
-    user = request.values.get('user')
+def admin_camp_redirect(rdb_session, user, campaign):
     name = get_campaign_name(rdb_session, campaign)
     name = name.replace(' ', '-')
-    new_path = '/admin/%s/%s?user=%s' % (campaign, name, user)  
-    # TODO: remove user here once we have oauth sessions
+    new_path = '/admin/%s/%s' % (campaign, name)
     return redirect(new_path)
 
 
@@ -131,12 +145,10 @@ def juror_landing():
     return True
 
 
-def juror_camp_redirect():
-    user = request.values.get('user')
+def juror_camp_redirect(rdb_session, user, campaign):
     name = get_campaign_name(rdb_session, campaign)
     name = name.replace(' ', '-')
-    new_path = '/juror/%s/%s?user=%s' % (campaign, name, user)  
-    # TODO: remove user here once we have oauth sessions
+    new_path = '/juror/%s/%s' % (campaign, name)  
     return redirect(new_path)
 
 
@@ -148,21 +160,7 @@ def juror_vote():
     return True
 
     
-class UserMiddleware(Middleware):
-    provides = ('user',)
-
-
-class DBSessionMiddleware(Middleware):
-    provides = ('rdb_session',)
-
-    def __init__(self, session_type):
-        self.session_type = session_type
-
-    def request(self, next):
-        return next(rdb_session=self.session_type())
-
-
-def create_app():
+def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', admin_landing, render_basic),
               ('/admin/<campaign>', admin_camp_redirect, render_basic),
@@ -179,28 +177,43 @@ def create_app():
               ('/juror/<campaign>/<camp_name>/<round>', juror_vote, 
                render_basic),
               ('/login', login, render_basic),
+              ('/logout', logout, render_basic),
               ('/complete_login', complete_login, render_basic)]
 
-    config = yaml.load(open('config.dev.yaml'))
-    engine = create_engine('sqlite:///tmp_montage.db', echo=True)
+    config_file_name = 'config.%s.yaml' % env_name
+    config = yaml.load(open(config_file_name))
+
+    engine = create_engine(config.get('db_url', DEFAULT_DB_URL),
+                           echo=config.get('db_echo', False))
     session_type = sessionmaker()
     session_type.configure(bind=engine)
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
 
-    middlewares = [SignedCookieMiddleware(secret_key=cookie_secret),
-                   DBSessionMiddleware(session_type)]
+    root_path = config.get('root_path', '/')
+
+    scm_secure = env_name == 'prod'  # https only in prod
+    scm_mw = SignedCookieMiddleware(secret_key=cookie_secret,
+                                    path=root_path,
+                                    http_only=True,
+                                    secure=scm_secure)
+
+    middlewares = [scm_mw,
+                   DBSessionMiddleware(session_type),
+                   UserMiddleware()]
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
 
-    resources = {'config': config, 'consumer_token': consumer_token}
+    resources = {'config': config,
+                 'consumer_token': consumer_token,
+                 'root_path': root_path}
 
     app = Application(routes, resources, middlewares=middlewares)
     return app
 
 
 if __name__ == '__main__':
-    app = create_app()
+    app = create_app(env_name="dev")
     app.serve()
