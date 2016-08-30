@@ -26,14 +26,15 @@ Column ordering and groupings:
 """
 
 
-class User(Base):
+class User(Base, DictableBase):
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True)
-    ca_user = Column(String)
+    username = Column(String)
+    last_login_date = Column(DateTime)
 
     create_date = Column(DateTime, server_default=func.now())
-    
+
     admined_campaigns = relationship('CampaignAdmin', back_populates='user')
     campaigns = association_proxy('admined_campaigns', 'campaign',
                                   creator=lambda c: CampaignAdmin(campaign=c))
@@ -46,7 +47,7 @@ class User(Base):
 
 class Campaign(Base, DictableBase):
     __tablename__ = 'campaigns'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     open_date = Column(DateTime)
@@ -79,7 +80,7 @@ class CampaignAdmin(Base):
 
 class Round(Base, DictableBase):
     __tablename__ = 'rounds'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
@@ -92,7 +93,7 @@ class Round(Base, DictableBase):
     show_link = Column(Boolean)
     show_filename = Column(Boolean)
     show_resolution = Column(Boolean)
-    
+
     create_date = Column(DateTime, server_default=func.now())
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
@@ -117,7 +118,7 @@ class RoundJurors(Base):
 
 class Entry(Base):
     __tablename__ = 'entries'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     timestamp = Column(DateTime)
@@ -130,14 +131,14 @@ class Entry(Base):
     uploader = Column(String)
 
     create_date = Column(DateTime, server_default=func.now())
-    
+
     campaigns = relationship('CampaignEntry')
     votes = relationship('Vote', back_populates='entry')
-        
+
 
 class CampaignEntry(Base):
     __tablename__ = 'campaign_entries'
-    
+
     entry_id = Column(Integer, ForeignKey('entries.id'), primary_key=True)
     campaign_id = Column(Integer, ForeignKey('campaigns.id'), primary_key=True)
 
@@ -178,7 +179,7 @@ class Task(Base):
 def get_campaign(session, user, id=None, name=None):
     # Should it support getting campaigns by name, for prettier URLs?
     campaign = session.query(Campaign)\
-                      .filter(Campaign.admins.any(ca_user=user))\
+                      .filter(Campaign.admins.any(username=user))\
                       .filter_by(id=id)\
                       .one()
     return campaign
@@ -186,7 +187,7 @@ def get_campaign(session, user, id=None, name=None):
 
 def get_round(session, user, id):
     round = session.query(Round)\
-                   .filter(Round.campaign.has(Campaign.admins.any(ca_user=user)),
+                   .filter(Round.campaign.has(Campaign.admins.any(username=user)),
                            Round.id == id)\
                    .one()
     return round
@@ -194,7 +195,7 @@ def get_round(session, user, id):
 
 def get_all_campaigns(session, user):
     campaigns = session.query(Campaign)\
-                       .filter(Campaign.admins.any(ca_user=user))\
+                       .filter(Campaign.admins.any(username=user))\
                        .all()
     return campaigns
 
@@ -217,12 +218,12 @@ def main():
     round = Round()
     campaign = Campaign(name='Test')
     another_campaign = Campaign(name='Another')
-    user = User(ca_user='slaporte')
+    user = User(username='slaporte')
     user.rounds.append(round)
     campaign.rounds.append(round)
     user.campaigns.append(campaign)
     user.campaigns.append(another_campaign)
-    another_user = User(ca_user='mahmoud')
+    another_user = User(username='mahmoud')
     another_user.campaigns.append(another_campaign)
     session.add(user)
     session.add(another_user)

@@ -1,4 +1,5 @@
-"""- Logging in
+"""
+ - Logging in
  - Health check
  - Admins
   - See a list of campaigns
@@ -23,10 +24,15 @@ Because we're building on react, most URLs return JSON, except for
 login and complete_login, which give back redirects, and the root
 page, which gives back the HTML basis.
 
+General question: Are we ok with pretty much all endpoints requiring
+logged in users?
+
+Question for Yuvi: How do we communicate errors back? logged_in: false?
+
 """
+import datetime
 
 import yaml
-
 from clastic import Application, Middleware, redirect
 from clastic.render import render_basic
 from clastic.middleware.cookie import SignedCookieMiddleware
@@ -35,15 +41,17 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
-from rdb import get_campaign, get_all_campaigns, get_round
+from rdb import get_campaign, get_all_campaigns, get_round, User
+from utils import public
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
+@public
+def home(cookie, user):
+    return {'user': user.to_dict(), 'cookie': dict(cookie)}
 
-def home(cookie):
-    return {'test': True, 'cookie': dict(cookie)}
 
-
+@public
 def login(request, consumer_token, cookie):
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
@@ -59,8 +67,8 @@ def login(request, consumer_token, cookie):
 
 # TODO: redirecter middleware for auth stuff
 
-
-def complete_login(request, consumer_token, cookie):
+@public
+def complete_login(request, consumer_token, cookie, rdb_session):
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
     req_token = RequestToken(cookie['request_token_key'],
@@ -70,15 +78,15 @@ def complete_login(request, consumer_token, cookie):
                                        request.query_string)
     identity = handshaker.identify(access_token)
 
-    # wiki_uid = identity['sub']
-    # user = g.conn.session.query(User).filter(User.wiki_uid == wiki_uid).first()
-    # if user is None:
-    #    user = User(username=identity['username'], wiki_uid=wiki_uid)
-    #    g.conn.session.add(user)
-    #    g.conn.session.commit()
-
-    cookie['wiki_userid'] = identity['sub']
-    cookie['wiki_username'] = identity['username']
+    userid = identity['sub']
+    username = identity['username']
+    user = rdb_session.query(User).filter(User.id == userid).first()
+    now = datetime.datetime.utcnow()
+    if user is None:
+        user = User(id=userid, username=username, last_login_date=now)
+        rdb_session.add(user)
+    else:
+        user.last_login_date = now
 
     # These would be useful when we have oauth beyond simple ID, but
     # they should be stored in the database along with expiration times.
@@ -90,9 +98,13 @@ def complete_login(request, consumer_token, cookie):
     # for contactability through the username. Might want to assert
     # that it is True.
 
+    cookie['userid'] = identity['sub']
+    cookie['username'] = identity['username']
+
     return_to_url = cookie.get('return_to_url')
     del cookie['request_token_key']
     del cookie['request_token_secret']
+    del cookie['return_to_url']
     return redirect(return_to_url)
 
 
@@ -119,7 +131,21 @@ def preview_selection(rdb_session, round, campaign=None):
 
 
 class UserMiddleware(Middleware):
-    provides = ('user',)
+    endpoint_provides = ('user',)
+
+    def endpoint(self, next, cookie, rdb_session, _route):
+        try:
+            userid = cookie['userid']
+        except (KeyError, TypeError):
+            if _route.endpoint.is_public:
+                return next(user=None)
+            return {'authorized': False}  # TODO: better convention
+
+        user = rdb_session.query(User).filter(User.id == userid).first()
+        if user is None and not _route.endpoint.is_public:
+            return {'authorized': False}  # user does not exist
+
+        return next(user=user)
 
 
 class DBSessionMiddleware(Middleware):
@@ -129,7 +155,15 @@ class DBSessionMiddleware(Middleware):
         self.session_type = session_type
 
     def request(self, next):
-        return next(rdb_session=self.session_type())
+        rdb_session = self.session_type()
+        try:
+            ret = next(rdb_session=rdb_session)
+        except:
+            rdb_session.rollback()
+            raise
+        else:
+            rdb_session.commit()
+        return ret
 
 
 def create_app():
@@ -152,7 +186,8 @@ def create_app():
     assert cookie_secret
 
     middlewares = [SignedCookieMiddleware(secret_key=cookie_secret),
-                   DBSessionMiddleware(session_type)]
+                   DBSessionMiddleware(session_type),
+                   UserMiddleware()]
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
