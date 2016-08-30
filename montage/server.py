@@ -1,15 +1,15 @@
 """
  - Logging in
  - Health check
- - Admins
-  - See a list of campaigns
+ - Coordinators
+  x See a list of campaigns
   - Save edits to a campaign
-  - See a list of rounds per campaign
+  x See a list of rounds per campaign
   - Save edits to a round
   - Import photos for a round
   - Close out a round
   - Export the output from a round
-  - Send notifications to admins (?)
+  - Send notifications to coordinators & jurors (?)
  - Jurors
   - See a list of campaigns and rounds
   - See the next vote
@@ -41,14 +41,15 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
-from rdb import get_campaign, get_all_campaigns, get_round, User
+from rdb import get_all_campaigns, get_round, User, get_campaign_name
 from utils import public
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
 @public
 def home(cookie, user):
-    return {'user': user.to_dict(), 'cookie': dict(cookie)}
+    user_dict = user.to_dict() if user else user
+    return {'user': user_dict, 'cookie': dict(cookie)}
 
 
 @public
@@ -114,13 +115,13 @@ def list_campaigns(request, rdb_session):
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def get_campaign_admin(request, rdb_session, campaign):
+def show_campaign_config(request, rdb_session, campaign):
     user = request.values.get('user')
-    campaign = get_campaign(rdb_session, user, id=campaign)
-    return campaign.to_dict()
+    campaign = get_campaign_config(rdb_session, user, id=campaign)
+    return campaign
 
 
-def get_round_admin(request, rdb_session, round, campaign=None):
+def show_round_config(request, rdb_session, round, campaign=None):
     user = request.values.get('user')
     round = get_round(rdb_session, user, id=round)
     return round.to_dict()
@@ -130,19 +131,31 @@ def preview_selection(rdb_session, round, campaign=None):
     return
 
 
+def campaign_redirect(request, rdb_session, campaign):
+    user = request.values.get('user')
+    name = get_campaign_name(rdb_session, campaign)
+    name = name.replace(' ', '-')
+    new_path = '/admin/%s/%s?user=%s' % (campaign, name, user)
+    # TODO: remove user here once we have oauth sessions
+    return redirect(new_path)
+
+
 class UserMiddleware(Middleware):
     endpoint_provides = ('user',)
 
     def endpoint(self, next, cookie, rdb_session, _route):
+        # endpoints are default non-public
+        ep_is_public = getattr(_route.endpoint, 'is_public', False)
+
         try:
             userid = cookie['userid']
         except (KeyError, TypeError):
-            if _route.endpoint.is_public:
+            if ep_is_public:
                 return next(user=None)
             return {'authorized': False}  # TODO: better convention
 
         user = rdb_session.query(User).filter(User.id == userid).first()
-        if user is None and not _route.endpoint.is_public:
+        if user is None and not ep_is_public:
             return {'authorized': False}  # user does not exist
 
         return next(user=user)
@@ -169,8 +182,9 @@ class DBSessionMiddleware(Middleware):
 def create_app():
     routes = [('/', home, render_basic),
               ('/admin', list_campaigns, render_basic),
-              ('/admin/<campaign>', get_campaign_admin, render_basic),
-              ('/admin/<campaign>/<round>', get_round_admin, render_basic),
+              ('/admin/<campaign>', campaign_redirect, render_basic),
+              ('/admin/<campaign>/<name>', show_campaign_config, render_basic),
+              ('/admin/<campaign>/<name>/<round>', show_round_config, render_basic),
               ('/admin/<campaign>/<round>/preview',
                preview_selection,
                render_basic),

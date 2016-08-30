@@ -35,9 +35,10 @@ class User(Base, DictableBase):
 
     create_date = Column(DateTime, server_default=func.now())
 
-    admined_campaigns = relationship('CampaignAdmin', back_populates='user')
-    campaigns = association_proxy('admined_campaigns', 'campaign',
-                                  creator=lambda c: CampaignAdmin(campaign=c))
+    coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
+    campaigns = association_proxy('coordinated_campaigns', 'campaign',
+                                  creator=lambda c: CampaignCoord(campaign=c))
+
     jurored_rounds = relationship('RoundJurors', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJurors(round=r))
@@ -56,22 +57,22 @@ class Campaign(Base, DictableBase):
     create_date = Column(DateTime, server_default=func.now())
 
     rounds = relationship('Round', back_populates='campaign')
-    campaign_admins = relationship('CampaignAdmin')
-    admins = association_proxy('campaign_admins', 'user',
-                               creator=lambda u: CampaignAdmin(user=u))
+    campaign_coords = relationship('CampaignCoord')
+    coords = association_proxy('campaign_coords', 'user',
+                               creator=lambda u: CampaignCoord(user=u))
     entries_submitted = relationship('CampaignEntry')
     entries = association_proxy('entries_submitted', 'entry',
                                 creator=lambda e: CampaignEntry(entry=e))
 
 
-class CampaignAdmin(Base):
-    __tablename__ = 'campaign_admins'
+class CampaignCoord(Base):
+    __tablename__ = 'campaign_coords'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     campaign_id = Column(Integer, ForeignKey('campaigns.id'), primary_key=True)
 
-    user = relationship('User', back_populates='admined_campaigns')
-    campaign = relationship('Campaign', back_populates='campaign_admins')
+    user = relationship('User', back_populates='coordinated_campaigns')
+    campaign = relationship('Campaign', back_populates='campaign_coords')
 
     def __init__(self, user=None, campaign=None):
         self.user = user
@@ -176,18 +177,31 @@ class Task(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
 
-def get_campaign(session, user, id=None, name=None):
-    # Should it support getting campaigns by name, for prettier URLs?
+def get_campaign_config(session, user, id=None):
     campaign = session.query(Campaign)\
-                      .filter(Campaign.admins.any(username=user))\
+                      .filter(Campaign.coords.any(username=user))\
                       .filter_by(id=id)\
                       .one()
+    ret = campaign.to_dict()
+    ret['rounds'] = [r.to_dict() for r in campaign.rounds]
+    return ret
+
+
+def get_campaign_overview(session, user, id):
+    campaign = session.query(Campaign)\
+                      .filter(Campaign.rounds.any(Round.jurors.any(username=user))).all()
     return campaign
+
+
+def get_campaign_name(session, id):
+    campaign = session.query(Campaign).filter_by(id=id).one()
+    name = campaign.name
+    return name
 
 
 def get_round(session, user, id):
     round = session.query(Round)\
-                   .filter(Round.campaign.has(Campaign.admins.any(username=user)),
+                   .filter(Round.campaign.has(Campaign.coords.any(username=user)),
                            Round.id == id)\
                    .one()
     return round
@@ -195,12 +209,12 @@ def get_round(session, user, id):
 
 def get_all_campaigns(session, user):
     campaigns = session.query(Campaign)\
-                       .filter(Campaign.admins.any(username=user))\
+                       .filter(Campaign.coords.any(username=user))\
                        .all()
     return campaigns
 
 
-def make_session():
+def make_rdb_session():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
@@ -213,21 +227,26 @@ def make_session():
     session = session_type()
     return session
 
-def main():
-    session = make_session()
-    round = Round()
-    campaign = Campaign(name='Test')
-    another_campaign = Campaign(name='Another')
-    user = User(username='slaporte')
-    user.rounds.append(round)
+
+def make_fake_data():
+    rdb_session = make_rdb_session()
+    first_user = User(username='Stephen')
+    second_user = User(username='Mahmoud')
+    juror = User(username='Yuvi')
+    campaign = Campaign(name='test campaign')
+    round = Round(name='test round')
     campaign.rounds.append(round)
-    user.campaigns.append(campaign)
-    user.campaigns.append(another_campaign)
-    another_user = User(username='mahmoud')
-    another_user.campaigns.append(another_campaign)
-    session.add(user)
-    session.add(another_user)
-    session.commit()
+    first_user.campaigns.append(campaign)
+    second_user.campaigns.append(campaign)
+    juror.rounds.append(round)
+    rdb_session.add(first_user)
+    rdb_session.add(second_user)
+    rdb_session.add(juror)
+    rdb_session.commit()
+
+
+def main():
+    make_fake_data()
     import pdb;pdb.set_trace()
 
     return
