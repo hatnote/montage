@@ -24,16 +24,12 @@ Because we're building on react, most URLs return JSON, except for
 login and complete_login, which give back redirects, and the root
 page, which gives back the HTML basis.
 
-General question: Are we ok with pretty much all endpoints requiring
-logged in users?
-
-Question for Yuvi: How do we communicate errors back? logged_in: false?
-
 """
 import datetime
 
 import yaml
-from clastic import Application, Middleware, redirect
+
+from clastic import Application, redirect
 from clastic.render import render_basic
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
@@ -41,10 +37,12 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
+from mw import public, UserMiddleware, DBSessionMiddleware
 from rdb import get_all_campaigns, get_round, User, get_campaign_name
-from utils import public
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
+DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
+
 
 @public
 def home(cookie, user):
@@ -53,7 +51,7 @@ def home(cookie, user):
 
 
 @public
-def login(request, consumer_token, cookie):
+def login(request, consumer_token, cookie, root_path):
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
     redirect_url, request_token = handshaker.initiate()
@@ -62,11 +60,19 @@ def login(request, consumer_token, cookie):
     cookie['request_token_secret'] = request_token.secret
 
     # TODO: / will break on labs path right?
-    cookie['return_to_url'] = request.args.get('next', '/')
+    cookie['return_to_url'] = request.args.get('next', root_path)
     return redirect(redirect_url)
 
 
-# TODO: redirecter middleware for auth stuff
+@public
+def logout(request, cookie, root_path):
+    cookie.pop('userid', None)
+    cookie.pop('username', None)
+
+    return_to_url = request.args.get('next', root_path)
+
+    return redirect(return_to_url)
+
 
 @public
 def complete_login(request, consumer_token, cookie, rdb_session):
@@ -109,26 +115,19 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     return redirect(return_to_url)
 
 
-def list_campaigns(request, rdb_session):
-    user = request.values.get('user')
+def list_campaigns(rdb_session, user):
     campaigns = get_all_campaigns(rdb_session, user)
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def show_campaign_config(request, rdb_session, campaign):
-    user = request.values.get('user')
+def show_campaign_config(rdb_session, user, campaign):
     campaign = get_campaign_config(rdb_session, user, id=campaign)
     return campaign
 
 
-def show_round_config(request, rdb_session, round, campaign=None):
-    user = request.values.get('user')
+def show_round_config(rdb_session, user, round):
     round = get_round(rdb_session, user, id=round)
     return round.to_dict()
-
-
-def preview_selection(rdb_session, round, campaign=None):
-    return
 
 
 def campaign_redirect(request, rdb_session, campaign):
@@ -140,78 +139,50 @@ def campaign_redirect(request, rdb_session, campaign):
     return redirect(new_path)
 
 
-class UserMiddleware(Middleware):
-    endpoint_provides = ('user',)
-
-    def endpoint(self, next, cookie, rdb_session, _route):
-        # endpoints are default non-public
-        ep_is_public = getattr(_route.endpoint, 'is_public', False)
-
-        try:
-            userid = cookie['userid']
-        except (KeyError, TypeError):
-            if ep_is_public:
-                return next(user=None)
-            return {'authorized': False}  # TODO: better convention
-
-        user = rdb_session.query(User).filter(User.id == userid).first()
-        if user is None and not ep_is_public:
-            return {'authorized': False}  # user does not exist
-
-        return next(user=user)
-
-
-class DBSessionMiddleware(Middleware):
-    provides = ('rdb_session',)
-
-    def __init__(self, session_type):
-        self.session_type = session_type
-
-    def request(self, next):
-        rdb_session = self.session_type()
-        try:
-            ret = next(rdb_session=rdb_session)
-        except:
-            rdb_session.rollback()
-            raise
-        else:
-            rdb_session.commit()
-        return ret
-
-
-def create_app():
+def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', list_campaigns, render_basic),
               ('/admin/<campaign>', campaign_redirect, render_basic),
               ('/admin/<campaign>/<name>', show_campaign_config, render_basic),
               ('/admin/<campaign>/<name>/<round>', show_round_config, render_basic),
-              ('/admin/<campaign>/<round>/preview',
-               preview_selection,
-               render_basic),
               ('/login', login, render_basic),
+              ('/logout', logout, render_basic),
               ('/complete_login', complete_login, render_basic)]
 
-    config = yaml.load(open('config.dev.yaml'))
-    engine = create_engine('sqlite:///tmp_montage.db', echo=True)
+    config_file_name = 'config.%s.yaml' % env_name
+    config = yaml.load(open(config_file_name))
+
+    engine = create_engine(config.get('db_url', DEFAULT_DB_URL),
+                           echo=config.get('db_echo', False))
     session_type = sessionmaker()
     session_type.configure(bind=engine)
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
 
-    middlewares = [SignedCookieMiddleware(secret_key=cookie_secret),
+    root_path = config.get('root_path', '/')
+
+    scm_secure = env_name == 'prod'  # https only in prod
+    scm_mw = SignedCookieMiddleware(secret_key=cookie_secret,
+                                    path=root_path,
+                                    http_only=True,
+                                    secure=scm_secure)
+
+    middlewares = [scm_mw,
                    DBSessionMiddleware(session_type),
                    UserMiddleware()]
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
 
-    resources = {'config': config, 'consumer_token': consumer_token}
+    resources = {'config': config,
+                 'consumer_token': consumer_token,
+                 'root_path': root_path}
 
     app = Application(routes, resources, middlewares=middlewares)
     return app
 
 
 if __name__ == '__main__':
-    app = create_app()
+    app = create_app(env_name="dev")
     app.serve()
