@@ -80,11 +80,16 @@ class CampaignCoord(Base):
 
 
 class Round(Base, DictableBase):
+    """The "directions" field is for coordinators to communicate
+    localized directions to jurors, whereas the "description" field is
+    for coordinator comments (and not shown to jurors).
+    """
     __tablename__ = 'rounds'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
+    directions = Column(String)
     open_date = Column(DateTime)
     close_date = Column(DateTime)
     status = Column(String)
@@ -101,11 +106,11 @@ class Round(Base, DictableBase):
     campaign = relationship('Campaign', back_populates='rounds')
     round_jurors = relationship('RoundJurors')
     jurors = association_proxy('round_jurors', 'user',
-                              creator=lambda u: RoundJuror(user=u))
+                               creator=lambda u: RoundJuror(user=u))
     votes = relationship('Vote', back_populates='round')
 
 
-class RoundJurors(Base):
+class RoundJuror(Base):
     __tablename__ = 'round_jurors'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
