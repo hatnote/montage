@@ -34,11 +34,11 @@ from clastic.render import render_basic
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
+from boltons.strutils import slugify
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
 from mw import public, UserMiddleware, DBSessionMiddleware
-from rdb import get_all_campaigns, get_campaign_config, get_round, User, get_campaign_name, get_campaign_overview
+from rdb import User
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -59,7 +59,6 @@ def login(request, consumer_token, cookie, root_path):
     cookie['request_token_key'] = request_token.key
     cookie['request_token_secret'] = request_token.secret
 
-    # TODO: / will break on labs path right?
     cookie['return_to_url'] = request.args.get('next', root_path)
     return redirect(redirect_url)
 
@@ -115,18 +114,18 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     return redirect(return_to_url)
 
 
-def admin_landing(rdb_session, user):
-    campaigns = get_all_campaigns(rdb_session, user)
+def admin_landing(user_dao):
+    campaigns = user_dao.get_all_campaigns()
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def admin_camp_dashboard(rdb_session, user, campaign):
-    campaign = get_campaign_config(rdb_session, user, id=campaign)
+def admin_camp_dashboard(user_dao, campaign_id):
+    campaign = user_dao.get_campaign_config(campaign_id)
     return campaign
 
 
-def admin_round_dashboard(rdb_session, user, round):
-    round = get_round(rdb_session, user, id=round)
+def admin_round_dashboard(rdb_session, user, round_id):
+    round = user_dao.get_round(round_id)
     return round.to_dict()
 
 
@@ -134,22 +133,25 @@ def preview_selection(rdb_session, round, campaign=None):
     return
 
 
-def admin_camp_redirect(rdb_session, user, campaign):
-    name = get_campaign_name(rdb_session, campaign)
+def admin_camp_redirect(user_dao, campaign_id):
+    # TODO: this should happen anytime the campaign name in the path
+    # does not match the actual campaign name
+    name = user_dao.get_campaign_name(campaign_id)
     name = name.replace(' ', '-')
-    new_path = '/admin/%s/%s' % (campaign, name)
+    new_path = '/admin/%s/%s' % (campaign_id, name)
     return redirect(new_path)
 
 
-def juror_landing(rdb_session, user):
-    rounds = get_campaign_overview(rdb_session, user)
+def juror_landing(user_dao):
+    rounds = user_dao.get_all_rounds()
     return rounds
 
 
-def juror_camp_redirect(rdb_session, user, campaign):
-    name = get_campaign_name(rdb_session, campaign)
+def juror_camp_redirect(user_dao, campaign_id):
+    # TODO: See above for campaign_redirect()
+    name = user_dao.get_campaign_name(campaign_id)
     name = name.replace(' ', '-')
-    new_path = '/juror/%s/%s' % (campaign, name)  
+    new_path = '/juror/%s/%s' % (campaign_id, name)  
     return redirect(new_path)
 
 
@@ -164,18 +166,18 @@ def juror_vote():
 def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', admin_landing, render_basic),
-              ('/admin/<campaign>', admin_camp_redirect, render_basic),
-              ('/admin/<campaign>/<camp_name>', admin_camp_dashboard,
+              ('/admin/<campaign_id>', admin_camp_redirect, render_basic),
+              ('/admin/<campaign_id>/<camp_name>', admin_camp_dashboard,
                render_basic),
-              ('/admin/<campaign>/<camp_name>/<round>', admin_round_dashboard, 
+              ('/admin/<campaign_id>/<camp_name>/<round_id>', admin_round_dashboard, 
                render_basic),
-              ('/admin/<campaign>/<round>/preview', preview_selection,
+              ('/admin/<campaign_id>/<round>/preview', preview_selection,
                render_basic),
               ('/juror', juror_landing, render_basic),
-              ('/juror/<campaign>', juror_camp_redirect, render_basic),
-              ('/juror/<campaign>/<camp_name>', juror_camp_dashboard, 
+              ('/juror/<campaign_id>', juror_camp_redirect, render_basic),
+              ('/juror/<campaign_id>/<camp_name>', juror_camp_dashboard, 
                render_basic),
-              ('/juror/<campaign>/<camp_name>/<round>', juror_vote, 
+              ('/juror/<campaign_id>/<camp_name>/<round_id>', juror_vote, 
                render_basic),
               ('/login', login, render_basic),
               ('/logout', logout, render_basic),
