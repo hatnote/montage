@@ -124,12 +124,12 @@ def admin_camp_dashboard(user_dao, campaign_id):
     return campaign
 
 
-def admin_round_dashboard(rdb_session, user, round_id):
+def admin_round_dashboard(user_dao, user, round_id):
     round = user_dao.get_round(round_id)
     return round.to_dict()
 
 
-def preview_selection(rdb_session, round, campaign=None):
+def preview_selection(user_dao, round, campaign=None):
     return
 
 

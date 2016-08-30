@@ -204,7 +204,7 @@ class UserDAO(object):
 
     def get_campaign_config(self, campaign_id=None):
         campaign = self.query(Campaign)\
-                       .filter(Campaign.coords.any(id=self.user.id))\
+                       .filter(Campaign.coords.any(username=self.user.username))\
                        .filter_by(id=campaign_id)\
                        .one()
         ret = campaign.to_dict()
@@ -215,7 +215,7 @@ class UserDAO(object):
     def get_campaign_overview(self, campaign_id):
         # TODO: campaign_id wasn't referenced?
         campaign = self.query(Campaign)\
-                       .filter(Campaign.rounds.any(Round.jurors.any(id=self.user.id))).all()
+                       .filter(Campaign.rounds.any(Round.jurors.any(username=self.user.username))).all()
         return campaign
 
     def get_campaign_name(self, campaign_id):
@@ -224,7 +224,7 @@ class UserDAO(object):
 
     def get_round(self, round_id):
         round = self.query(Round)\
-                    .filter(Round.campaign.has(Campaign.coords.any(id=self.user.id)),
+                    .filter(Round.campaign.has(Campaign.coords.any(username=self.user.username)),
                             Round.id == round_id)\
                     .one()
         return round
