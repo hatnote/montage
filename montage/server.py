@@ -1,5 +1,5 @@
 """
- - Logging in
+ x Logging in
  - Health check
  - Coordinators
   x See a list of campaigns
@@ -38,7 +38,7 @@ from sqlalchemy.orm import sessionmaker
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
 from mw import public, UserMiddleware, DBSessionMiddleware
-from rdb import get_all_campaigns, get_campaign_config, get_round, User, get_campaign_name
+from rdb import get_all_campaigns, get_campaign_config, get_round, User, get_campaign_name, get_campaign_overview
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -141,8 +141,9 @@ def admin_camp_redirect(rdb_session, user, campaign):
     return redirect(new_path)
 
 
-def juror_landing():
-    return True
+def juror_landing(rdb_session, user):
+    rounds = get_campaign_overview(rdb_session, user)
+    return rounds
 
 
 def juror_camp_redirect(rdb_session, user, campaign):

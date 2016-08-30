@@ -99,7 +99,9 @@ class Round(Base, DictableBase):
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     campaign = relationship('Campaign', back_populates='rounds')
-    jurors = relationship('RoundJurors')
+    round_jurors = relationship('RoundJurors')
+    jurors = association_proxy('round_jurors', 'user',
+                              creator=lambda u: RoundJuror(user=u))
     votes = relationship('Vote', back_populates='round')
 
 
@@ -110,7 +112,7 @@ class RoundJurors(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
 
     user = relationship('User', back_populates='jurored_rounds')
-    round = relationship('Round', back_populates='jurors')
+    round = relationship('Round', back_populates='round_jurors')
 
     def __init__(self, user=None, round=None):
         self.user = user
@@ -187,10 +189,13 @@ def get_campaign_config(session, user, id=None):
     return ret
 
 
-def get_campaign_overview(session, user, id):
-    campaign = session.query(Campaign)\
-                      .filter(Campaign.rounds.any(Round.jurors.any(username=user))).all()
-    return campaign
+def get_campaign_overview(session, user):
+    rounds = session.query(Round)\
+                    .filter(Round.jurors.any(username=user.username))\
+                    .group_by(Round.campaign_id)\
+                    .all()
+    ret = [r.to_dict() for r in rounds]
+    return ret
 
 
 def get_campaign_name(session, id):
@@ -201,7 +206,7 @@ def get_campaign_name(session, id):
 
 def get_round(session, user, id):
     round = session.query(Round)\
-                   .filter(Round.campaign.has(Campaign.coords.any(username=user)),
+                   .filter(Round.campaign.has(Campaign.coords.any(username=user.username)),
                            Round.id == id)\
                    .one()
     return round
@@ -232,7 +237,7 @@ def make_fake_data():
     rdb_session = make_rdb_session()
     first_user = User(username='Slaporte')
     second_user = User(username='Mahmoud')
-    juror = User(username='Yuvi')
+    juror = User(username='Slaporte')
     campaign = Campaign(name='test campaign')
     round = Round(name='test round')
     campaign.rounds.append(round)
