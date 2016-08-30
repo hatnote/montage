@@ -177,41 +177,62 @@ class Task(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
 
-def get_campaign_config(session, user, id=None):
-    campaign = session.query(Campaign)\
-                      .filter(Campaign.coords.any(username=user))\
-                      .filter_by(id=id)\
-                      .one()
-    ret = campaign.to_dict()
-    ret['rounds'] = [r.to_dict() for r in campaign.rounds]
-    return ret
+class UserDAO(object):
+    """The Data Acccess Object wraps the rdb_session and active user
+    model, providing a layer for model manipulation through
+    expressively-named methods.
 
+    As the DAO expands, it will likely break up into multiple DAOs for
+    different areas of the schema.
 
-def get_campaign_overview(session, user, id):
-    campaign = session.query(Campaign)\
-                      .filter(Campaign.rounds.any(Round.jurors.any(username=user))).all()
-    return campaign
+    # TODO: name? true that user is bound in, but UserDAO doesn't ring
+    totally true.
+    # TODO: will blow up a bit if user is None
 
+    # TODO: rather than query(Model), this should do user.models and
+    filter from there, I'm thinking.
+    """
+    def __init__(self, rdb_session, user):
+        self.rdb_session = rdb_session
+        self.user = user
 
-def get_campaign_name(session, id):
-    campaign = session.query(Campaign).filter_by(id=id).one()
-    name = campaign.name
-    return name
+    def query(self, *a, **kw):
+        "a call-through to the underlying session.query"
+        return self.rdb_session.query(*a, **kw)
 
+    def get_campaign_config(self, campaign_id=None):
+        campaign = self.query(Campaign)\
+                       .filter(Campaign.coords.any(id=self.user.id))\
+                       .filter_by(id=campaign_id)\
+                       .one()
+        ret = campaign.to_dict()
+        ret['rounds'] = [r.to_dict() for r in campaign.rounds]
 
-def get_round(session, user, id):
-    round = session.query(Round)\
-                   .filter(Round.campaign.has(Campaign.coords.any(username=user)),
-                           Round.id == id)\
-                   .one()
-    return round
+        return ret
 
+    def get_campaign_overview(self, campaign_id):
+        # TODO: campaign_id wasn't referenced?
+        campaign = self.query(Campaign)\
+                       .filter(Campaign.rounds.any(Round.jurors.any(id=self.user.id))).all()
+        return campaign
 
-def get_all_campaigns(session, user):
-    campaigns = session.query(Campaign)\
-                       .filter(Campaign.coords.any(username=user))\
-                       .all()
-    return campaigns
+    def get_campaign_name(self, campaign_id):
+        campaign = self.query(Campaign).filter_by(id=campaign_id).one()
+
+        return campaign.name
+
+    def get_round(self, round_id):
+        round = self.query(Round)\
+                    .filter(Round.campaign.has(Campaign.coords.any(id=self.user.id)),
+                            Round.id == round_id)\
+                    .one()
+        return round
+
+    def get_all_campaigns(self, user):
+        campaigns = self.query(Campaign)\
+                        .filter(Campaign.coords.any(username=user))\
+                        .all()
+        return campaigns
 
 
 def make_rdb_session():

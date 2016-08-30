@@ -1,7 +1,7 @@
 
 from clastic import Middleware
 
-from rdb import User
+from rdb import User, UserDAO
 
 
 def public(endpoint_func):
@@ -14,7 +14,7 @@ def public(endpoint_func):
 
 
 class UserMiddleware(Middleware):
-    endpoint_provides = ('user',)
+    endpoint_provides = ('user', 'user_dao')
 
     def endpoint(self, next, cookie, rdb_session, _route):
         # endpoints are default non-public
@@ -24,14 +24,16 @@ class UserMiddleware(Middleware):
             userid = cookie['userid']
         except (KeyError, TypeError):
             if ep_is_public:
-                return next(user=None)
+                return next(user=None, user_dao=None)
             return {'authorized': False}  # TODO: better convention
 
         user = rdb_session.query(User).filter(User.id == userid).first()
         if user is None and not ep_is_public:
             return {'authorized': False}  # user does not exist
 
-        return next(user=user)
+        user_dao = UserDAO(rdb_session=rdb_session, user=user)
+
+        return next(user=user, user_dao=user_dao)
 
 
 class DBSessionMiddleware(Middleware):

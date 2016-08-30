@@ -34,11 +34,11 @@ from clastic.render import render_basic
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
+from boltons.strutils import slugify
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
 from mw import public, UserMiddleware, DBSessionMiddleware
-from rdb import get_all_campaigns, get_round, User, get_campaign_name
+from rdb import User
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -59,7 +59,6 @@ def login(request, consumer_token, cookie, root_path):
     cookie['request_token_key'] = request_token.key
     cookie['request_token_secret'] = request_token.secret
 
-    # TODO: / will break on labs path right?
     cookie['return_to_url'] = request.args.get('next', root_path)
     return redirect(redirect_url)
 
@@ -115,36 +114,37 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     return redirect(return_to_url)
 
 
-def list_campaigns(rdb_session, user):
-    campaigns = get_all_campaigns(rdb_session, user)
+def list_campaigns(user_dao):
+    campaigns = user_dao.get_all_campaigns()
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def show_campaign_config(rdb_session, user, campaign):
-    campaign = get_campaign_config(rdb_session, user, id=campaign)
+def show_campaign_config(user_dao, campaign_id):
+    campaign = user_dao.get_campaign_config(campaign_id)
     return campaign
 
 
-def show_round_config(rdb_session, user, round):
-    round = get_round(rdb_session, user, id=round)
+def show_round_config(user_dao, round_id):
+    round = user_dao.get_round(round_id)
     return round.to_dict()
 
 
-def campaign_redirect(request, rdb_session, campaign):
-    user = request.values.get('user')
-    name = get_campaign_name(rdb_session, campaign)
-    name = name.replace(' ', '-')
-    new_path = '/admin/%s/%s?user=%s' % (campaign, name, user)
-    # TODO: remove user here once we have oauth sessions
+def campaign_redirect(user_dao, campaign_id):
+    # TODO: this should happen anytime the campaign name in the path
+    # does not match the actual campaign name
+    name = user_dao.get_campaign_name(campaign_id)
+    slug = slugify(name, '-')
+    new_path = '/admin/%s/%s' % (campaign_id, slug)
+
     return redirect(new_path)
 
 
 def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', list_campaigns, render_basic),
-              ('/admin/<campaign>', campaign_redirect, render_basic),
-              ('/admin/<campaign>/<name>', show_campaign_config, render_basic),
-              ('/admin/<campaign>/<name>/<round>', show_round_config, render_basic),
+              ('/admin/<campaign_id>', campaign_redirect, render_basic),
+              ('/admin/<campaign_id>/<campaign_name>', show_campaign_config, render_basic),
+              ('/admin/<campaign_id>/<campaign_name>/<round_id>', show_round_config, render_basic),
               ('/login', login, render_basic),
               ('/logout', logout, render_basic),
               ('/complete_login', complete_login, render_basic)]
