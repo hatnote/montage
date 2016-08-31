@@ -39,9 +39,9 @@ class User(Base, DictableBase):
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
                                   creator=lambda c: CampaignCoord(campaign=c))
 
-    jurored_rounds = relationship('RoundJurors', back_populates='user')
+    jurored_rounds = relationship('RoundJuror', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
-                               creator=lambda r: RoundJurors(round=r))
+                               creator=lambda r: RoundJuror(round=r))
     votes = relationship('Vote', back_populates='user')
     # update_date?
 
@@ -104,7 +104,7 @@ class Round(Base, DictableBase):
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     campaign = relationship('Campaign', back_populates='rounds')
-    round_jurors = relationship('RoundJurors')
+    round_jurors = relationship('RoundJuror')
     jurors = association_proxy('round_jurors', 'user',
                                creator=lambda u: RoundJuror(user=u))
     votes = relationship('Vote', back_populates='round')
@@ -213,9 +213,7 @@ class UserDAO(object):
                            Campaign.coords.any(username=self.user.username))\
                        .filter_by(id=campaign_id)\
                        .one()
-        ret = campaign.to_dict()
-        ret['rounds'] = [r.to_dict() for r in campaign.rounds]
-        return ret
+        return campaign
 
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\

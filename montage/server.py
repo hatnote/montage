@@ -114,9 +114,12 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     return redirect(return_to_url)
 
 
-def admin_landing(user_dao):
-    campaigns = user_dao.get_all_campaigns()
-    return {'campaigns': [c.to_dict() for c in campaigns]}
+def admin_camp_redirect(user_dao, campaign_id, correct_name=None):
+    if not correct_name:
+        correct_name = user_dao.get_campaign_name(campaign_id)
+    correct_name = correct_name.replace(' ', '-')
+    new_path = '/admin/campaign/%s/%s' % (campaign_id, correct_name)
+    return redirect(new_path)
 
 
 def admin_round_redirect(user_dao, round_id, correct_name=None):
@@ -127,37 +130,61 @@ def admin_round_redirect(user_dao, round_id, correct_name=None):
     return redirect(new_path)
 
 
+def admin_landing(user_dao):
+    campaigns = user_dao.get_all_campaigns()
+    data = []
+    for campaign in campaigns:
+        campaign_info = get_campaign_admin_info(user_dao, campaign.id)
+        data.append(campaign_info)
+    return {'data': data}
+
+
+def get_campaign_admin_info(user_dao, campaign_id):
+    campaign = user_dao.get_campaign_config(campaign_id)
+    info = {'id': campaign.id,
+            'name': campaign.name,
+            'rounds': [],
+            'coords': [u.username for u in campaign.coords]}
+    for round in campaign.rounds:
+        info['rounds'].append(get_round_admin_info(user_dao, round.id))
+    return info
+
+
+def get_round_admin_info(user_dao, round_id):
+    round = user_dao.get_round_config(round_id)
+    #entries_info = user_dao.get_entry_info(round_id) # TODO
+    info = {'id': round.id,
+            'name': round.name,
+            'voteMethod': round.vote_method,
+            'status': round.status,
+            'jury': [u.username for u in round.jurors],
+            'quorum': round.quorum,
+            'sourceInfo': {
+                'entryCount': None,
+                'uploadersCount': None,
+                'roundSource': 'round',
+                'roundSource': {'id': None,
+                                'title': None}},
+            'endDate': round.close_date, # TODO: use clse_date or endDate?
+            'campaign': round.campaign_id
+    }
+    return info
+
+
 def admin_camp_dashboard(user_dao, campaign_id, camp_name):
     correct_name = user_dao.get_campaign_name(campaign_id)
     if camp_name != correct_name.replace(' ', '-'):
         return admin_camp_redirect(user_dao, campaign_id, correct_name)
-    campaign = user_dao.get_campaign_config(campaign_id)
-    return campaign
+    data = get_campaign_admin_info(user_dao, campaign_id)
+    return {'data': data}
 
 
 def admin_round_dashboard(user_dao, round_id, round_name):
     correct_name = user_dao.get_round_name(round_id)
     if round_name != correct_name.replace(' ', '-'):
         return admin_round_redirect(user_dao, round_id, correct_name)
-    round = user_dao.get_round_config(round_id)
-    return round.to_dict()
-
-
-def preview_selection(user_dao, round_id, campaign_id=None):
-    return
-
-
-def admin_camp_redirect(user_dao, campaign_id, correct_name=None):
-    if not correct_name:
-        correct_name = user_dao.get_campaign_name(campaign_id)
-    correct_name = correct_name.replace(' ', '-')
-    new_path = '/admin/campaign/%s/%s' % (campaign_id, correct_name)
-    return redirect(new_path)
-
-
-def juror_landing(user_dao):
-    rounds = user_dao.get_all_rounds()
-    return rounds
+    data = get_round_admin_info(user_dao, round_id)
+    return {'data': data}
 
 
 def juror_camp_redirect(user_dao, campaign_id, correct_name=None):
@@ -176,7 +203,14 @@ def juror_round_redirect(user_dao, round_id, correct_name=None):
     return redirect(new_path)
 
 
+def juror_landing(user_dao):
+    # TODO: add top-level wrapper
+    rounds = user_dao.get_all_rounds()
+    return rounds
+
+
 def juror_camp_dashboard(user_dao, campaign_id, camp_name):
+    # TODO: add top-level wrapper
     correct_name = user_dao.get_campaign_name(campaign_id)
     if camp_name != correct_name.replace(' ', '-'):
         return juror_camp_redirect(user_dao, campaign_id, correct_name)
@@ -185,6 +219,7 @@ def juror_camp_dashboard(user_dao, campaign_id, camp_name):
 
 
 def juror_round_dashboard(user_dao, round_id, round_name):
+    # TODO: add top-level wrapper
     correct_name = user_dao.get_round_name(round_id)
     if round_name != correct_name.replace(' ', '-'):
         return juror_round_redirect(user_dao, round_id, correct_name)
@@ -204,8 +239,6 @@ def create_app(env_name='prod'):
               ('/admin/round/<round_id>', admin_round_redirect, 
                render_basic),
               ('/admin/round/<round_id>/<round_name>', admin_round_dashboard, 
-               render_basic),
-              ('/admin/<campaign_id>/<round_id>/preview', preview_selection,
                render_basic),
               ('/campaign', juror_landing, render_basic),
               ('/campaign/<campaign_id>', juror_camp_redirect, render_basic),
