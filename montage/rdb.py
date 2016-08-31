@@ -307,7 +307,6 @@ def make_fake_data():
 def main():
     make_fake_data()
     import pdb;pdb.set_trace()
-
     return
 
 
@@ -320,5 +319,4 @@ if __name__ == '__main__':
 * db session management, engine creation, and schema creation separation
 * prod db pw management
 * add simple_serdes for E-Z APIs
-* revision_id - verify if we must use the upload timestamp
 """

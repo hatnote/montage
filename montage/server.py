@@ -30,7 +30,7 @@ import datetime
 import yaml
 
 from clastic import Application, redirect
-from clastic.render import render_basic
+from clastic.render import render_basic, render_json
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -229,17 +229,17 @@ def juror_round_dashboard(user_dao, round_id, round_name):
     
 def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
-              ('/admin', admin_landing, render_basic),
-              ('/admin/campaign', admin_landing, render_basic),
+              ('/admin', admin_landing, render_json),
+              ('/admin/campaign', admin_landing, render_json),
               ('/admin/campaign/<campaign_id>', admin_camp_redirect, 
-               render_basic),
+               render_json),
               ('/admin/campaign/<campaign_id>/<camp_name>', 
-               admin_camp_dashboard, render_basic),
-              ('/admin/round', admin_landing, render_basic),
+               admin_camp_dashboard, render_json),
+              ('/admin/round', admin_landing, render_json),
               ('/admin/round/<round_id>', admin_round_redirect, 
-               render_basic),
+               render_json),
               ('/admin/round/<round_id>/<round_name>', admin_round_dashboard, 
-               render_basic),
+               render_json),
               ('/campaign', juror_landing, render_basic),
               ('/campaign/<campaign_id>', juror_camp_redirect, render_basic),
               ('/campaign/<campaign_id>/<camp_name>', juror_camp_dashboard, 
