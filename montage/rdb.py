@@ -204,34 +204,59 @@ class UserDAO(object):
 
     def get_campaign_config(self, campaign_id=None):
         campaign = self.query(Campaign)\
-                       .filter(Campaign.coords.any(username=self.user.username))\
+                       .filter(
+                           Campaign.coords.any(username=self.user.username))\
                        .filter_by(id=campaign_id)\
                        .one()
         ret = campaign.to_dict()
         ret['rounds'] = [r.to_dict() for r in campaign.rounds]
-
         return ret
 
-    def get_campaign_overview(self, campaign_id):
-        # TODO: campaign_id wasn't referenced?
+    def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
-                       .filter(Campaign.rounds.any(Round.jurors.any(username=self.user.username))).all()
-        return campaign
+                       .filter(Campaign.rounds.any(
+                           Round.jurors.any(username=self.user.username)))\
+                       .filter_by(id=campaign_id)\
+                       .one()
+        rounds = self.query(Round)\
+                     .filter(Round.jurors.any(username=self.user.username),
+                             Round.campaign_id == campaign_id)\
+                     .all()
+        ret = campaign.to_dict()
+        ret['rounds'] = [r.to_dict() for r in rounds]
+        return ret
 
     def get_campaign_name(self, campaign_id):
+        # TODO: check user permissions?
         campaign = self.query(Campaign).filter_by(id=campaign_id).one()
         return campaign.name
 
+    def get_round_name(self, round_id):
+        # TODO: check user permissions?
+        round = self.query(Round).filter_by(id=round_id).one()
+        return round.name
+
+    def get_round_config(self, round_id):
+        round = self.query(Round)\
+                    .filter(
+                        Round.campaign.has(
+                            Campaign.coords.any(username=self.user.username)),
+                         Round.id == round_id)\
+                    .one()
+        return round
+
     def get_round(self, round_id):
         round = self.query(Round)\
-                    .filter(Round.campaign.has(Campaign.coords.any(username=self.user.username)),
-                            Round.id == round_id)\
+                    .filter(
+                        Round.jurors.any(username=self.user.username),
+                        Round.id == round_id)\
                     .one()
         return round
 
     def get_all_campaigns(self):
         campaigns = self.query(Campaign)\
-                        .filter(Campaign.coords.any(username=self.user.username))\
+                        .filter(
+                            Campaign.coords.any(username=self.user.username))\
                         .all()
         return campaigns
 

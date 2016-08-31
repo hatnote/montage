@@ -11,7 +11,7 @@
   - Export the output from a round
   - Send notifications to coordinators & jurors (?)
  - Jurors
-  - See a list of campaigns and rounds
+  x See a list of campaigns and rounds
   - See the next vote
   - Submit a vote
   - Skip a vote
@@ -119,26 +119,39 @@ def admin_landing(user_dao):
     return {'campaigns': [c.to_dict() for c in campaigns]}
 
 
-def admin_camp_dashboard(user_dao, campaign_id):
+def admin_round_redirect(user_dao, round_id, correct_name=None):
+    if not correct_name:
+        correct_name = user_dao.get_round_name(round_id)
+    correct_name = correct_name.replace(' ', '-')
+    new_path = '/admin/round/%s/%s' % (round_id, correct_name)
+    return redirect(new_path)
+
+
+def admin_camp_dashboard(user_dao, campaign_id, camp_name):
+    correct_name = user_dao.get_campaign_name(campaign_id)
+    if camp_name != correct_name.replace(' ', '-'):
+        return admin_camp_redirect(user_dao, campaign_id, correct_name)
     campaign = user_dao.get_campaign_config(campaign_id)
     return campaign
 
 
-def admin_round_dashboard(user_dao, user, round_id):
-    round = user_dao.get_round(round_id)
+def admin_round_dashboard(user_dao, round_id, round_name):
+    correct_name = user_dao.get_round_name(round_id)
+    if round_name != correct_name.replace(' ', '-'):
+        return admin_round_redirect(user_dao, round_id, correct_name)
+    round = user_dao.get_round_config(round_id)
     return round.to_dict()
 
 
-def preview_selection(user_dao, round, campaign=None):
+def preview_selection(user_dao, round_id, campaign_id=None):
     return
 
 
-def admin_camp_redirect(user_dao, campaign_id):
-    # TODO: this should happen anytime the campaign name in the path
-    # does not match the actual campaign name
-    name = user_dao.get_campaign_name(campaign_id)
-    name = name.replace(' ', '-')
-    new_path = '/admin/%s/%s' % (campaign_id, name)
+def admin_camp_redirect(user_dao, campaign_id, correct_name=None):
+    if not correct_name:
+        correct_name = user_dao.get_campaign_name(campaign_id)
+    correct_name = correct_name.replace(' ', '-')
+    new_path = '/admin/campaign/%s/%s' % (campaign_id, correct_name)
     return redirect(new_path)
 
 
@@ -147,37 +160,60 @@ def juror_landing(user_dao):
     return rounds
 
 
-def juror_camp_redirect(user_dao, campaign_id):
-    # TODO: See above for campaign_redirect()
-    name = user_dao.get_campaign_name(campaign_id)
-    name = name.replace(' ', '-')
-    new_path = '/juror/%s/%s' % (campaign_id, name)  
+def juror_camp_redirect(user_dao, campaign_id, correct_name=None):
+    if not correct_name:
+        correct_name = user_dao.get_campaign_name(campaign_id)
+    correct_name = correct_name.replace(' ', '-')
+    new_path = '/campaign/%s/%s' % (campaign_id, correct_name)  
     return redirect(new_path)
 
 
-def juror_camp_dashboard():
-    return True
+def juror_round_redirect(user_dao, round_id, correct_name=None):
+    if not correct_name:
+        correct_name = user_dao.get_round_name(round_id)
+    correct_name = correct_name.replace(' ', '-')
+    new_path = '/round/%s/%s' % (round_id, correct_name)
+    return redirect(new_path)
 
 
-def juror_vote():
-    return True
+def juror_camp_dashboard(user_dao, campaign_id, camp_name):
+    correct_name = user_dao.get_campaign_name(campaign_id)
+    if camp_name != correct_name.replace(' ', '-'):
+        return juror_camp_redirect(user_dao, campaign_id, correct_name)
+    campaign = user_dao.get_campaign(campaign_id)
+    return campaign
+
+
+def juror_round_dashboard(user_dao, round_id, round_name):
+    correct_name = user_dao.get_round_name(round_id)
+    if round_name != correct_name.replace(' ', '-'):
+        return juror_round_redirect(user_dao, round_id, correct_name)
+    round = user_dao.get_round(round_id)
+    return round.to_dict()
 
     
 def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', admin_landing, render_basic),
-              ('/admin/<campaign_id>', admin_camp_redirect, render_basic),
-              ('/admin/<campaign_id>/<camp_name>', admin_camp_dashboard,
+              ('/admin/campaign', admin_landing, render_basic),
+              ('/admin/campaign/<campaign_id>', admin_camp_redirect, 
                render_basic),
-              ('/admin/<campaign_id>/<camp_name>/<round_id>', admin_round_dashboard, 
+              ('/admin/campaign/<campaign_id>/<camp_name>', 
+               admin_camp_dashboard, render_basic),
+              ('/admin/round', admin_landing, render_basic),
+              ('/admin/round/<round_id>', admin_round_redirect, 
                render_basic),
-              ('/admin/<campaign_id>/<round>/preview', preview_selection,
+              ('/admin/round/<round_id>/<round_name>', admin_round_dashboard, 
                render_basic),
-              ('/juror', juror_landing, render_basic),
-              ('/juror/<campaign_id>', juror_camp_redirect, render_basic),
-              ('/juror/<campaign_id>/<camp_name>', juror_camp_dashboard, 
+              ('/admin/<campaign_id>/<round_id>/preview', preview_selection,
                render_basic),
-              ('/juror/<campaign_id>/<camp_name>/<round_id>', juror_vote, 
+              ('/campaign', juror_landing, render_basic),
+              ('/campaign/<campaign_id>', juror_camp_redirect, render_basic),
+              ('/campaign/<campaign_id>/<camp_name>', juror_camp_dashboard, 
+               render_basic),
+              ('/round', juror_landing, render_basic),
+              ('/round/<round_id>', juror_round_redirect, render_basic),
+              ('/round/<round_id>/<round_name>', juror_round_dashboard, 
                render_basic),
               ('/login', login, render_basic),
               ('/logout', logout, render_basic),
