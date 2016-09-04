@@ -1,4 +1,7 @@
 # Relational database models for Montage
+import random
+import itertools
+
 from sqlalchemy import (Column,
                         String,
                         Integer,
@@ -107,13 +110,17 @@ class Round(Base, DictableBase):
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     # increments for higher rounds within the same campaign
     campaign_seq = Column(Integer, default=1)
-
     campaign = relationship('Campaign', back_populates='rounds')
+
     round_jurors = relationship('RoundJuror')
     jurors = association_proxy('round_jurors', 'user',
                                creator=lambda u: RoundJuror(user=u))
+
     votes = relationship('Vote', back_populates='round')
-    entries = relationship('RoundEntry')
+
+    round_entries = relationship('RoundEntry')
+    entries = association_proxy('round_entries', 'entry',
+                                creator=lambda e: RoundEntry(entry=e))
 
 
 class RoundJuror(Base, DictableBase):
@@ -127,10 +134,11 @@ class RoundJuror(Base, DictableBase):
 
     def __init__(self, round=None, user=None):
         if round is not None:
-            # lesson setting round to None would give an error about
+            # lesson: setting round to None would give an error about
             # trying to "blank-out primary key column"
             self.round = round
-        self.user = user
+        if user is not None:
+            self.user = user
 
 
 class Entry(Base, DictableBase):
@@ -157,15 +165,9 @@ class Entry(Base, DictableBase):
 
     create_date = Column(DateTime, server_default=func.now())
 
-    rounds = relationship('RoundEntry')
-    """
-    # I don't think we want these
-
-    campaigns = relationship('CampaignEntry')
-    votes = relationship('Vote', back_populates='entry')  # don't think we want this
-    license = Column(String)
-    author = Column(String)
-    """
+    entered_rounds = relationship('RoundEntry')
+    rounds = association_proxy('entered_rounds', 'round',
+                               creator=lambda r: RoundEntry(round=r))
 
 
 class RoundEntry(Base, DictableBase):
@@ -174,13 +176,16 @@ class RoundEntry(Base, DictableBase):
     entry_id = Column(Integer, ForeignKey('entries.id'), primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
 
-    entry = relationship('Entry', back_populates='rounds')
-    round = relationship('Round', back_populates='entries')
+    entry = relationship(Entry, back_populates='entered_rounds')
+    round = relationship(Round, back_populates='round_entries')
     # TODO: votes?
 
     def __init__(self, entry=None, round=None):
-        self.entry = entry
-        self.round = round
+        if entry is not None:
+            self.entry = entry
+        if round is not None:
+            self.round = round
+        return
 
 
 class Vote(Base, DictableBase):
@@ -207,6 +212,10 @@ class Task(Base, DictableBase):
     user_id = Column(Integer, ForeignKey('users.id'))
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
+
+    user = relationship('User')
+    round = relationship('Round')  # , back_populates='tasks')
+    entry = relationship('Entry')
 
 
 class UserDAO(object):
@@ -317,6 +326,50 @@ def make_rdb_session(db_url='sqlite:///tmp_montage.db'):
     return session
 
 
+def create_initial_tasks(rdb_session, round):
+    """this creates the initial tasks.
+
+    there may well be a separate function for reassignment which reads
+    from the incomplete Tasks table (that will have to ensure not to
+    assign a rating which has already been completed by the same
+    juror)
+    """
+    # TODO: deny quorum > number of jurors
+    ret = []
+
+    quorum = round.quorum
+    jurors = list(round.jurors)
+    random.shuffle(jurors)
+
+    rdb_type = rdb_session.bind.dialect.name
+
+    if rdb_type == 'mysql':
+        rand_func = func.rand()
+    else:
+        rand_func = func.random()
+
+    # this does the shuffling in the database
+    shuffled_entries = rdb_session.query(RoundEntry)\
+                                  .filter(RoundEntry.round_id == round.id)\
+                                  .order_by(rand_func).all()
+
+    to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)
+    per_juror_count = len(shuffled_entries) * (float(quorum) / len(jurors))
+
+    juror_iters = [itertools.repeat(j, per_juror_count) for j in jurors]
+
+    for entry, juror in itertools.izip_longest(to_process, juror_iters, None):
+        if juror is None:
+            raise RuntimeError('should never run out of jurors first')
+        if entry is None:
+            break
+
+        task = Task(user=juror, entry=entry, round=round)
+        ret.append(task)
+
+    return ret
+
+
 def make_fake_data(debug=True):
     from loaders import load_full_csv
 
@@ -328,7 +381,7 @@ def make_fake_data(debug=True):
     rdb_session.add(campaign)
 
     campaign.coords.append(coord)
-    round = Round(name='Test Round 1')
+    round = Round(name='Test Round 1', quorum=1)
     campaign.rounds.append(round)
     round.jurors.append(juror)
 
@@ -338,7 +391,9 @@ def make_fake_data(debug=True):
         entries = load_full_csv(f)
 
     for entry in entries:
-        rdb_session.add(entry)
+        round.entries.append(entry)
+
+    create_initial_tasks(rdb_session, round)
 
     rdb_session.commit()
     if debug:
