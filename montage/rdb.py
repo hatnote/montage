@@ -51,6 +51,9 @@ class Campaign(Base, DictableBase):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
+
+    # open/close can be used to select/verify that images were
+    # actually uploaded during the contest window
     open_date = Column(DateTime)
     close_date = Column(DateTime)
 
@@ -59,13 +62,11 @@ class Campaign(Base, DictableBase):
     rounds = relationship('Round', back_populates='campaign')
     campaign_coords = relationship('CampaignCoord')
     coords = association_proxy('campaign_coords', 'user',
-                               creator=lambda u: CampaignCoord(user=u))
-    entries_submitted = relationship('CampaignEntry')
-    entries = association_proxy('entries_submitted', 'entry',
-                                creator=lambda e: CampaignEntry(entry=e))
+                               creator=lambda user: CampaignCoord(coord=user))
+    # round_names = association_proxy('rounds', 'name') "simplifying scalar stuff"
 
 
-class CampaignCoord(Base):
+class CampaignCoord(Base, DictableBase):  # Coordinator, not Coordinate
     __tablename__ = 'campaign_coords'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -74,9 +75,10 @@ class CampaignCoord(Base):
     user = relationship('User', back_populates='coordinated_campaigns')
     campaign = relationship('Campaign', back_populates='campaign_coords')
 
-    def __init__(self, user=None, campaign=None):
-        self.user = user
-        self.campaign = campaign
+    def __init__(self, campaign=None, coord=None):
+        if campaign is not None:
+            self.campaign = campaign
+        self.user = coord
 
 
 class Round(Base, DictableBase):
@@ -103,14 +105,18 @@ class Round(Base, DictableBase):
     create_date = Column(DateTime, server_default=func.now())
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    # increments for higher rounds within the same campaign
+    campaign_seq = Column(Integer, default=1)
+
     campaign = relationship('Campaign', back_populates='rounds')
     round_jurors = relationship('RoundJuror')
     jurors = association_proxy('round_jurors', 'user',
                                creator=lambda u: RoundJuror(user=u))
     votes = relationship('Vote', back_populates='round')
+    entries = relationship('RoundEntry')
 
 
-class RoundJuror(Base):
+class RoundJuror(Base, DictableBase):
     __tablename__ = 'round_jurors'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -119,46 +125,65 @@ class RoundJuror(Base):
     user = relationship('User', back_populates='jurored_rounds')
     round = relationship('Round', back_populates='round_jurors')
 
-    def __init__(self, user=None, round=None):
+    def __init__(self, round=None, user=None):
+        if round is not None:
+            # lesson setting round to None would give an error about
+            # trying to "blank-out primary key column"
+            self.round = round
         self.user = user
-        self.round = round
 
 
-class Entry(Base):
+class Entry(Base, DictableBase):
+    # if this is being kept generic for other types of media judging,
+    # then I think a "duration" attribute makes sense -mh
     __tablename__ = 'entries'
 
     id = Column(Integer, primary_key=True)
+
+    # page_id?
     name = Column(String)
-    timestamp = Column(DateTime)
-    url = Column(String)
-    description_url = Column(String)
+    mime_major = Column(String)
+    mime_minor = Column(String)
     width = Column(Integer)
     height = Column(Integer)
-    license = Column(String)
-    author = Column(String)
-    uploader = Column(String)
+    resolution = Column(Integer)
+    # if we ever figure out how to get the monument ID
+    subject_id = Column(String)
+    upload_user_id = Column(Integer)
+    upload_user_text = Column(String)
+    upload_date = Column(DateTime)
+
+    # TODO: img_sha1/page_touched for updates?
 
     create_date = Column(DateTime, server_default=func.now())
 
+    rounds = relationship('RoundEntry')
+    """
+    # I don't think we want these
+
     campaigns = relationship('CampaignEntry')
-    votes = relationship('Vote', back_populates='entry')
+    votes = relationship('Vote', back_populates='entry')  # don't think we want this
+    license = Column(String)
+    author = Column(String)
+    """
 
 
-class CampaignEntry(Base):
-    __tablename__ = 'campaign_entries'
+class RoundEntry(Base, DictableBase):
+    __tablename__ = 'round_entries'
 
     entry_id = Column(Integer, ForeignKey('entries.id'), primary_key=True)
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'), primary_key=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
 
-    entry = relationship('Entry', back_populates='campaigns')
-    campaign = relationship('Campaign', back_populates='entries_submitted')
+    entry = relationship('Entry', back_populates='rounds')
+    round = relationship('Round', back_populates='entries')
+    # TODO: votes?
 
-    def __init__(self, entry=None, campaign=None):
+    def __init__(self, entry=None, round=None):
         self.entry = entry
-        self.campaign = campaign
+        self.round = round
 
 
-class Vote(Base):
+class Vote(Base, DictableBase):
     __tablename__ = 'votes'
 
     id = Column(Integer, primary_key=True)
@@ -173,10 +198,10 @@ class Vote(Base):
 
     user = relationship('User', back_populates='votes')
     round = relationship('Round', back_populates='votes')
-    entry = relationship('Entry', back_populates='votes')
+    # entry = relationship('Entry', back_populates='votes')
 
 
-class Task(Base):
+class Task(Base, DictableBase):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -244,7 +269,7 @@ class UserDAO(object):
                     .filter(
                         Round.campaign.has(
                             Campaign.coords.any(username=self.user.username)),
-                         Round.id == round_id)\
+                        Round.id == round_id)\
                     .one()
         return round
 
@@ -272,13 +297,18 @@ class UserDAO(object):
         return ret
 
 
+import os.path
 
-def make_rdb_session():
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(os.path.dirname(CUR_PATH), 'test_data')
+
+
+def make_rdb_session(db_url='sqlite:///tmp_montage.db'):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     # echo="debug" also prints results of selects, etc.
-    engine = create_engine('sqlite:///tmp_montage.db', echo=True)
+    engine = create_engine(db_url, echo=True)
     Base.metadata.create_all(engine)
 
     session_type = sessionmaker()
@@ -287,26 +317,37 @@ def make_rdb_session():
     return session
 
 
-def make_fake_data():
+def make_fake_data(debug=True):
+    from loaders import load_full_csv
+
     rdb_session = make_rdb_session()
-    first_user = User(username='Slaporte')
-    second_user = User(username='Mahmoud')
-    juror = User(username='Slaporte')
-    campaign = Campaign(name='test campaign')
-    round = Round(name='test round')
+    coord = User(username='Slaporte')
+    juror = User(username='MahmoudHashemi')
+
+    campaign = Campaign(name='Test Campaign 2016')
+    rdb_session.add(campaign)
+
+    campaign.coords.append(coord)
+    round = Round(name='Test Round 1')
     campaign.rounds.append(round)
-    first_user.campaigns.append(campaign)
-    second_user.campaigns.append(campaign)
-    juror.rounds.append(round)
-    rdb_session.add(first_user)
-    rdb_session.add(second_user)
-    rdb_session.add(juror)
+    round.jurors.append(juror)
+
+    CSV_PATH = DATA_PATH + '/wlm2015_ir_5.csv'
+
+    with open(CSV_PATH) as f:
+        entries = load_full_csv(f)
+
+    for entry in entries:
+        rdb_session.add(entry)
+
     rdb_session.commit()
+    if debug:
+        import pdb;pdb.set_trace()
+    return
 
 
 def main():
     make_fake_data()
-    import pdb;pdb.set_trace()
     return
 
 
