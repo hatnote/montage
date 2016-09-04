@@ -215,7 +215,7 @@ class Task(Base, DictableBase):
     entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User')
-    round_entry = relationship('RoundEntry')  # , back_populates='tasks')
+    round_entry = relationship('RoundEntry')
 
 
 class UserDAO(object):
@@ -334,6 +334,8 @@ def create_initial_tasks(rdb_session, round):
                                   .order_by(rand_func).all()
 
     to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)
+    # some pictures may get more than quorum votes
+    # it's either that or some get less
     per_juror = int(ceil(len(shuffled_entries) * (float(quorum) / len(jurors))))
 
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
@@ -352,9 +354,13 @@ def create_initial_tasks(rdb_session, round):
     return ret
 
 
-"""
-* Indexes
+"""* Indexes
 * db session management, engine creation, and schema creation separation
 * prod db pw management
 * add simple_serdes for E-Z APIs
+
+TODO: what should the tallying for ratings look like? Get all the
+ratings that form the quorum and average them? or median? (sum is the
+same as average) what about when images have more than quorum ratings?
+
 """

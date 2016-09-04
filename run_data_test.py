@@ -24,18 +24,22 @@ def make_rdb_session(db_url='sqlite:///tmp_montage.db', echo=True):
 
 def make_fake_data(debug=True, echo=True):
     rdb_session = make_rdb_session(echo=echo)
-    coord = User(username='Slaporte')
-    juror = User(username='MahmoudHashemi')
+    coord = User(username='Leila')
+    juror1 = User(username='Slaporte')
+    juror2 = User(username='MahmoudHashemi')
+    juror3 = User(username='Yuvi')
 
     campaign = Campaign(name='Test Campaign 2016')
     rdb_session.add(campaign)
 
     campaign.coords.append(coord)
-    round = Round(name='Test Round 1', quorum=1)
+    round = Round(name='Test Round 1', quorum=2)
     campaign.rounds.append(round)
-    round.jurors.append(juror)
+    round.jurors.append(juror1)
+    round.jurors.append(juror2)
+    round.jurors.append(juror3)
 
-    CSV_PATH = DATA_PATH + '/wlm2015_fr_11k.csv'
+    CSV_PATH = DATA_PATH + '/wlm2015_fr_12k.csv'
 
     with open(CSV_PATH) as f:
         entries = load_full_csv(f)
@@ -54,7 +58,7 @@ def make_fake_data(debug=True, echo=True):
 
 
 def main():
-    make_fake_data(False, False)
+    make_fake_data(True, False)
     return
 
 
