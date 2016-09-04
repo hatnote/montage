@@ -78,3 +78,19 @@ class DictableBase(object):
                 val = val.isoformat()
             items.append((attr_name, val))
         return dict(items)
+
+    def __repr__(self):
+        prop_names = [col.name for col in self.__table__.c]
+
+        parts = []
+        for name in prop_names[:2]:  # TODO: configurable
+            val = repr(getattr(self, name))
+            if len(val) > 40:
+                val = val[:37] + '...'
+            parts.append('%s=%s' % (name, val))
+
+        if not parts:
+            return object.__repr__(self)
+
+        cn = self.__class__.__name__
+        return '<%s %s>' % (cn, ' '.join(parts))
