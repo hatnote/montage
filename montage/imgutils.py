@@ -11,6 +11,7 @@ BASE = u'https://upload.wikimedia.org/wikipedia/commons'
 
 
 def make_mw_img_url(title, size=None):
+    "returns a unicode object URL"
     if isinstance(title, unicode):
         thash = hashlib.md5(title.encode('utf8')).hexdigest()
     elif isinstance(title, bytes):
