@@ -1,6 +1,7 @@
 # Relational database models for Montage
 import random
 import itertools
+from math import ceil
 
 from sqlalchemy import (Column,
                         String,
@@ -173,8 +174,9 @@ class Entry(Base, DictableBase):
 class RoundEntry(Base, DictableBase):
     __tablename__ = 'round_entries'
 
-    entry_id = Column(Integer, ForeignKey('entries.id'), primary_key=True)
-    round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
+    id = Column(Integer, primary_key=True)
+    entry_id = Column(Integer, ForeignKey('entries.id'))
+    round_id = Column(Integer, ForeignKey('rounds.id'))
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
@@ -210,12 +212,10 @@ class Task(Base, DictableBase):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    entry_id = Column(Integer, ForeignKey('entries.id'))
-    round_id = Column(Integer, ForeignKey('rounds.id'))
+    entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User')
-    round = relationship('Round')  # , back_populates='tasks')
-    entry = relationship('Entry')
+    round_entry = relationship('RoundEntry')  # , back_populates='tasks')
 
 
 class UserDAO(object):
@@ -306,26 +306,6 @@ class UserDAO(object):
         return ret
 
 
-import os.path
-
-CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(os.path.dirname(CUR_PATH), 'test_data')
-
-
-def make_rdb_session(db_url='sqlite:///tmp_montage.db'):
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    # echo="debug" also prints results of selects, etc.
-    engine = create_engine(db_url, echo=True)
-    Base.metadata.create_all(engine)
-
-    session_type = sessionmaker()
-    session_type.configure(bind=engine)
-    session = session_type()
-    return session
-
-
 def create_initial_tasks(rdb_session, round):
     """this creates the initial tasks.
 
@@ -354,60 +334,22 @@ def create_initial_tasks(rdb_session, round):
                                   .order_by(rand_func).all()
 
     to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)
-    per_juror_count = len(shuffled_entries) * (float(quorum) / len(jurors))
+    per_juror = int(ceil(len(shuffled_entries) * (float(quorum) / len(jurors))))
 
-    juror_iters = [itertools.repeat(j, per_juror_count) for j in jurors]
+    juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
+                                                 for j in jurors])
 
-    for entry, juror in itertools.izip_longest(to_process, juror_iters, None):
+    pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
+    for entry, juror in pairs:
         if juror is None:
             raise RuntimeError('should never run out of jurors first')
         if entry is None:
             break
 
-        task = Task(user=juror, entry=entry, round=round)
+        task = Task(user=juror, round_entry=entry)
         ret.append(task)
 
     return ret
-
-
-def make_fake_data(debug=True):
-    from loaders import load_full_csv
-
-    rdb_session = make_rdb_session()
-    coord = User(username='Slaporte')
-    juror = User(username='MahmoudHashemi')
-
-    campaign = Campaign(name='Test Campaign 2016')
-    rdb_session.add(campaign)
-
-    campaign.coords.append(coord)
-    round = Round(name='Test Round 1', quorum=1)
-    campaign.rounds.append(round)
-    round.jurors.append(juror)
-
-    CSV_PATH = DATA_PATH + '/wlm2015_ir_5.csv'
-
-    with open(CSV_PATH) as f:
-        entries = load_full_csv(f)
-
-    for entry in entries:
-        round.entries.append(entry)
-
-    create_initial_tasks(rdb_session, round)
-
-    rdb_session.commit()
-    if debug:
-        import pdb;pdb.set_trace()
-    return
-
-
-def main():
-    make_fake_data()
-    return
-
-
-if __name__ == '__main__':
-    main()
 
 
 """
