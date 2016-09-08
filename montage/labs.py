@@ -5,7 +5,7 @@ import oursql
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
 
 
-def get_images(category_name):
+def get_files(category_name):
     db_title = 'commonswiki_p'
     db_host = 'commonswiki.labsdb'
     connection = oursql.connect(db=db_title,
@@ -30,5 +30,5 @@ def get_images(category_name):
 
 
 if __name__ == '__main__':
-    imgs = get_images('Images_from_Wiki_Loves_Monuments_2015_in_France')
+    imgs = get_files('Images_from_Wiki_Loves_Monuments_2015_in_France')
     import pdb; pdb.set_trace()

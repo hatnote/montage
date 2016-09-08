@@ -4,6 +4,7 @@ import datetime
 from unicodecsv import DictReader
 
 from rdb import Entry
+from labs import get_files
 
 CSV_FULL_COLS = ['img_name',
                  'img_major_mime',
@@ -16,7 +17,23 @@ CSV_FULL_COLS = ['img_name',
 
 
 def wpts2dt(timestamp):
-    return datetime.datetime.now()
+    wpts_format = '%Y%m%d%H%M%S'
+    return datetime.datetime.strptime(timestamp, wpts_format)
+
+
+def make_entry(edict):
+    width = int(edict['img_width'])
+    height = int(edict['img_height']) 
+    raw_entry = {'name': edict['img_name'],
+           'mime_major': edict['img_major_mime'],
+           'mime_minor': edict['img_minor_mime'],
+           'width': width,
+           'height': height,
+           'upload_user_id': edict['img_user'],
+           'upload_user_text': edict['img_user_text']}
+    raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
+    raw_entry['resolution'] = width * height
+    return Entry(**raw_entry)
 
 
 def load_full_csv(csv_file_obj):
@@ -30,17 +47,7 @@ def load_full_csv(csv_file_obj):
             raise ValueError('missing required column "%s" in csv file' % key)
 
     for edict in dr:
-        kw = {'name': edict['img_name'],
-              'mime_major': edict['img_major_mime'],
-              'mime_minor': edict['img_minor_mime'],
-              'upload_user_id': edict['img_user'],
-              'upload_user_text': edict['img_user_text']}
-        kw['upload_date'] = wpts2dt(edict['img_timestamp'])
-        kw['height'] = int(edict['img_height'])
-        kw['width'] = int(edict['img_width'])
-        kw['resolution'] = kw['height'] * kw['width']
-
-        entry = Entry(**kw)
+        entry = make_entry(edict)
         ret.append(entry)
 
     return ret
@@ -52,7 +59,14 @@ def load_brief_csv(csv_file_obj):
 
 
 def load_category(category_name):
-    return
+    ret = []
+    files = get_files(category_name)
+
+    for edict in files:
+        entry = make_entry(edict)
+        ret.append(entry)
+
+    return ret
 
 
 """
@@ -65,3 +79,7 @@ TODO:
 * What to do when an image fails verification?
 
 """
+
+if __name__ == '__main__':
+    imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
+    import pdb; pdb.set_trace()
