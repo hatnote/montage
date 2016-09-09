@@ -62,6 +62,7 @@ TODO:
 * Verify:
     * Images were all uploaded within the campaign window
     * No images uploaded by jurors?
+    * Duplicate entry
 * What to do when an image fails verification?
 
 """

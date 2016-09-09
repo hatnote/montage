@@ -348,6 +348,7 @@ def create_initial_tasks(rdb_session, round):
         if entry is None:
             break
 
+        # TODO: bulk_save_objects
         task = Task(user=juror, round_entry=entry)
         ret.append(task)
 
