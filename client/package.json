@@ -22,6 +22,7 @@
     "babel-preset-stage-2": "^6.0.0",
     "css-loader": "^0.23.1",
     "file-loader": "^0.8.1",
+    "html-webpack-plugin": "^2.22.0",
     "jshint": "^2.6.3",
     "jshint-loader": "^0.8.3",
     "ng-annotate-loader": "^0.1.0",

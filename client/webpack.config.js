@@ -1,5 +1,6 @@
 var path = require('path');
 var webpack = require('webpack');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 var config = {
   context: path.join(__dirname, 'app'),
@@ -8,7 +9,10 @@ var config = {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
     filename: 'bundle.js'
   },
-  plugins: [],
+  plugins: [new HtmlWebpackPlugin({
+      template: 'index.ejs',
+      filename: path.join('..', 'index.html')
+    })],
   module: {
     loaders: [
       {
