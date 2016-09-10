@@ -1,0 +1,17 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto:400,500,300&subset=latin,latin-ext);
+
+body {
+    background-color: #eee;
+    color: rgba(0,0,0,.87);
+    font: 14px Roboto, Arial, sans-serif; 
+}
+
+.container {
+    margin: 0 78px;
+}
+
+@media (max-width: 960px) {
+    .container {
+        margin: 0 10px;
+    }
+}
