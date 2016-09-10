@@ -23,14 +23,14 @@ def wpts2dt(timestamp):
 
 def make_entry(edict):
     width = int(edict['img_width'])
-    height = int(edict['img_height']) 
+    height = int(edict['img_height'])
     raw_entry = {'name': edict['img_name'],
-           'mime_major': edict['img_major_mime'],
-           'mime_minor': edict['img_minor_mime'],
-           'width': width,
-           'height': height,
-           'upload_user_id': edict['img_user'],
-           'upload_user_text': edict['img_user_text']}
+                 'mime_major': edict['img_major_mime'],
+                 'mime_minor': edict['img_minor_mime'],
+                 'width': width,
+                 'height': height,
+                 'upload_user_id': edict['img_user'],
+                 'upload_user_text': edict['img_user_text']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
     return Entry(**raw_entry)

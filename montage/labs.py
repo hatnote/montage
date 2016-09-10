@@ -1,11 +1,22 @@
 import os
-import oursql
+
+try:
+    import oursql
+except ImportError:
+    oursql = None
 
 
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
 
 
+class MissingMySQLClient(RuntimeError):
+    pass
+
+
 def get_files(category_name):
+    if oursql is None:
+        raise MissingMySQLClient('could not import oursql, check your'
+                                 ' environment and restart the service')
     db_title = 'commonswiki_p'
     db_host = 'commonswiki.labsdb'
     connection = oursql.connect(db=db_title,
