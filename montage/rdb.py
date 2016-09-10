@@ -46,7 +46,6 @@ class User(Base, DictableBase):
     jurored_rounds = relationship('RoundJuror', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJuror(round=r))
-    votes = relationship('Vote', back_populates='user')
     # update_date?
 
 
@@ -117,8 +116,6 @@ class Round(Base, DictableBase):
     jurors = association_proxy('round_jurors', 'user',
                                creator=lambda u: RoundJuror(user=u))
 
-    votes = relationship('Vote', back_populates='round')
-
     round_entries = relationship('RoundEntry')
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
@@ -180,7 +177,6 @@ class RoundEntry(Base, DictableBase):
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
-    # TODO: votes?
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -190,32 +186,39 @@ class RoundEntry(Base, DictableBase):
         return
 
 
-class Vote(Base, DictableBase):
+class Rating(Base, DictableBase):
     __tablename__ = 'votes'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
-    old_task_id = Column(Integer)
-    vote = Column(Float)
-    is_canceled = Column(Boolean)
+    task_id = Column(Integer, ForeignKey('tasks.id'))
+
+    value = Column(Float)
 
     create_date = Column(DateTime, server_default=func.now())
 
-    user = relationship('User', back_populates='votes')
-    round = relationship('Round', back_populates='votes')
-    # entry = relationship('Entry', back_populates='votes')
+
+class Ranking(Base, DictableBase):
+    __tablename__ = 'rankings'
+
+    id = Column(Integer, primary_key=True)
 
 
 class Task(Base, DictableBase):
     __tablename__ = 'tasks'
+
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    entry_id = Column(Integer, ForeignKey('round_entries.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User')
     round_entry = relationship('RoundEntry')
+
+    create_date = Column(DateTime, server_default=func.now())
+    complete_date = Column(DateTime)
+    cancel_date = Column(DateTime)
 
 
 class UserDAO(object):
