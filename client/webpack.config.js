@@ -2,10 +2,10 @@ var path = require('path');
 var webpack = require('webpack');
 
 var config = {
-  context: path.join(__dirname, "app"),
+  context: path.join(__dirname, 'app'),
   entry: './index.js',
   output: {
-    path: path.join(__dirname, "app", "assets"),
+    path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
     filename: 'bundle.js'
   },
   plugins: [],
