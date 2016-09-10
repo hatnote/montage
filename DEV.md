@@ -16,6 +16,10 @@ montage`. Then, with the virtualenv activated:
 2. Some initial data can be loaded by running `python run_data_test.py`
 3. The application can be started with `python montage/server.py`
 
+Almost all endpoints (except for OAuth and `/static/`) return JSON as
+long as the proper Accept header is set (done by most libraries) or
+`format=json` is passed in the query string.
+
 # TODO
 
 A bit of space for dev bookkeeping.

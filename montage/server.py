@@ -25,11 +25,13 @@ login and complete_login, which give back redirects, and the root
 page, which gives back the HTML basis.
 
 """
+import os.path
 import datetime
 
 import yaml
 
-from clastic import Application, redirect
+from clastic import Application, SubApplication, redirect
+from clastic.static import StaticApplication
 from clastic.render import render_basic, render_json
 from clastic.middleware.cookie import SignedCookieMiddleware
 from sqlalchemy import create_engine
@@ -40,8 +42,11 @@ from mwoauth import ConsumerToken, Handshaker, RequestToken
 from mw import public, UserMiddleware, DBSessionMiddleware
 from rdb import User
 
+
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
 
 @public
@@ -191,7 +196,7 @@ def juror_camp_redirect(user_dao, campaign_id, correct_name=None):
     if not correct_name:
         correct_name = user_dao.get_campaign_name(campaign_id)
     correct_name = correct_name.replace(' ', '-')
-    new_path = '/campaign/%s/%s' % (campaign_id, correct_name)  
+    new_path = '/campaign/%s/%s' % (campaign_id, correct_name)
     return redirect(new_path)
 
 
@@ -226,27 +231,27 @@ def juror_round_dashboard(user_dao, round_id, round_name):
     round = user_dao.get_round(round_id)
     return round.to_dict()
 
-    
+
 def create_app(env_name='prod'):
     routes = [('/', home, render_basic),
               ('/admin', admin_landing, render_json),
               ('/admin/campaign', admin_landing, render_json),
-              ('/admin/campaign/<campaign_id>', admin_camp_redirect, 
+              ('/admin/campaign/<campaign_id>', admin_camp_redirect,
                render_json),
-              ('/admin/campaign/<campaign_id>/<camp_name>', 
+              ('/admin/campaign/<campaign_id>/<camp_name>',
                admin_camp_dashboard, render_json),
               ('/admin/round', admin_landing, render_json),
-              ('/admin/round/<round_id>', admin_round_redirect, 
+              ('/admin/round/<round_id>', admin_round_redirect,
                render_json),
-              ('/admin/round/<round_id>/<round_name>', admin_round_dashboard, 
+              ('/admin/round/<round_id>/<round_name>', admin_round_dashboard,
                render_json),
               ('/campaign', juror_landing, render_basic),
               ('/campaign/<campaign_id>', juror_camp_redirect, render_basic),
-              ('/campaign/<campaign_id>/<camp_name>', juror_camp_dashboard, 
+              ('/campaign/<campaign_id>/<camp_name>', juror_camp_dashboard,
                render_basic),
               ('/round', juror_landing, render_basic),
               ('/round/<round_id>', juror_round_redirect, render_basic),
-              ('/round/<round_id>/<round_name>', juror_round_dashboard, 
+              ('/round/<round_id>/<round_name>', juror_round_dashboard,
                render_basic),
               ('/login', login, render_basic),
               ('/logout', logout, render_basic),
@@ -283,9 +288,13 @@ def create_app(env_name='prod'):
                  'root_path': root_path}
 
     app = Application(routes, resources, middlewares=middlewares)
+
+    static_app = StaticApplication(STATIC_PATH)
+    app.add(('/static/', static_app))
+
     return app
 
 
 if __name__ == '__main__':
     app = create_app(env_name="dev")
-    app.serve()
+    app.serve(use_meta=False)

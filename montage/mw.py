@@ -1,5 +1,6 @@
 
 from clastic import Middleware
+from clastic.route import NullRoute
 
 from rdb import User, UserDAO
 
@@ -18,7 +19,9 @@ class UserMiddleware(Middleware):
 
     def endpoint(self, next, cookie, rdb_session, _route):
         # endpoints are default non-public
-        ep_is_public = getattr(_route.endpoint, 'is_public', False)
+        ep_is_public = (getattr(_route.endpoint, 'is_public', False)
+                        or '/static/' in _route.pattern
+                        or isinstance(_route, NullRoute))
 
         try:
             userid = cookie['userid']
