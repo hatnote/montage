@@ -1,5 +1,5 @@
 import hello from './hello';
-import login from './login';
+import login from './login/login';
 
 export default () => {
   hello();
