@@ -12,6 +12,6 @@ const HelloComponent = {
 
 export default () => {
   angular
-    .module('app')
+    .module('montage')
     .component('hello', HelloComponent);
 };

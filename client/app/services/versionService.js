@@ -31,6 +31,6 @@ const VersionService = function($timeout, $mdTheming, themeProvider) {
 
 export default () => {
   angular
-    .module('app')
+    .module('montage')
     .factory('versionService', VersionService);
 };

@@ -37,8 +37,8 @@ const MainComponent = {
 };
 
 angular
-  .module('app')
-  .component('appMain', MainComponent);
+  .module('montage')
+  .component('montMain', MainComponent);
 
 components();
 services();
