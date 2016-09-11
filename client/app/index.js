@@ -21,6 +21,11 @@ angular.module('montage', ['ngMaterial', 'ui.router'])
         name: 'hello',
         url: '/hello',
         template: '<hello name="\'Edward\'"></hello>'
+      },
+      {
+        name: 'login',
+        url: '/login',
+        template: '<mont-login layout="column" layout-align="center center"></mont-login>'
       }
     ].forEach(function (state) {
       $stateProvider.state(state);
@@ -43,6 +48,8 @@ const MainComponent = {
         <span flex></span>
         <span>
           <a ui-sref="hello" ui-sref-active="active">Hello</a>
+          <span>&bull;</span>
+          <a ui-sref="login" ui-sref-active="active">Login</a>
          </span>
       </div>
     </md-toolbar>

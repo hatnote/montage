@@ -1,5 +1,10 @@
 @import url(https://fonts.googleapis.com/css?family=Roboto:400,500,300&subset=latin,latin-ext);
 
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
 body {
     background-color: #eee;
     color: rgba(0,0,0,.87);
@@ -8,6 +13,12 @@ body {
 
 .container {
     margin: 0 78px;
+    height: calc(100vh - 64px);
+
+    ui-view, ui-view > * {
+        height: 100%;
+        width: 100%;
+    }
 }
 
 @media (max-width: 960px) {
