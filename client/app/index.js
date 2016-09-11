@@ -18,6 +18,14 @@ angular.module('montage', ['ngMaterial', 'ui.router'])
     // states
     [
       {
+        name: 'dashboard',
+        url: '/dashboard',
+        template: '<mont-dashboard layout="column" layout-align="start start" data="$resolve.campaigns"></mont-dashboard>',
+        resolve: {
+          campaigns: (userService) => userService.getCampaigns()
+        }
+      },
+      {
         name: 'hello',
         url: '/hello',
         template: '<hello name="\'Edward\'"></hello>'
@@ -34,7 +42,7 @@ angular.module('montage', ['ngMaterial', 'ui.router'])
 
 const MainComponent = {
   bindings: {},
-  controller: function ($scope, $mdTheming, dataService, versionService) {
+  controller: function ($state, dataService, versionService) {
     let vm = this;
 
     versionService.setVersion('gray');
@@ -46,11 +54,6 @@ const MainComponent = {
         </md-button>
         <h2>montage</h2>
         <span flex></span>
-        <span>
-          <a ui-sref="hello" ui-sref-active="active">Hello</a>
-          <span>&bull;</span>
-          <a ui-sref="login" ui-sref-active="active">Login</a>
-         </span>
       </div>
     </md-toolbar>
     <div class="container" layout="row" flex>

@@ -1,0 +1,23 @@
+.campaign {
+    width: 100%;
+
+    .campaign__title {
+        margin-bottom: 5px;
+    }
+
+    .campaign__rounds-description {
+        padding: 6px 16px;
+        color: rgba(0,0,0,0.54);
+    }
+
+    .campaign__rounds {
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
+.round {
+    padding: 6px 6px 6px 16px;
+    outline: none;
+    border-bottom: 1px solid rgba(0,0,0,0.12);
+}

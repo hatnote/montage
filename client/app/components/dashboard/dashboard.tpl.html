@@ -1,0 +1,22 @@
+<div class="campaign" ng-repeat="campaign in $ctrl.campaigns">
+    <h2 class="campaign__title md-display-1">
+        {{campaign.name}}
+        <md-icon>edit</md-icon>
+    </h2>
+
+    <div class="campaign__rounds-description" layout="row" layout-align="space-between center">
+        <span class="md-body-1" flex="20">Round Name</span>
+        <span class="md-body-1" flex="20">No. of Jurors</span>
+        <span flex></span>
+    </div>
+    <md-card class="campaign__rounds">
+        <div class="round" layout="row" layout-align="space-between center" ng-repeat="round in campaign.rounds">
+            <span class="md-body-2" flex="20">{{round.name}}</span>
+            <span class="md-body-1" flex="20">{{round.jury.length}} jurors</span>
+            <span flex></span>
+            <md-button class="md-icon-button" aria-label="Edit">
+                <md-icon>more_vert</md-icon>
+            </md-button>
+        </div>
+    </md-card>
+</div>
