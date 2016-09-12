@@ -45,7 +45,7 @@ const MainComponent = {
   controller: function ($state, dataService, versionService) {
     let vm = this;
 
-    versionService.setVersion('gray');
+    versionService.setVersion('blue');
   },
   template: `<md-toolbar class="md-hue-2">
       <div class="md-toolbar-tools">
