@@ -1,9 +1,9 @@
 import dashboard from './dashboard/dashboard';
-import hello from './hello';
+import round from './round/round';
 import login from './login/login';
 
 export default () => {
   dashboard();
-  hello();
+  round();
   login();
 };
