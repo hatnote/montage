@@ -30,7 +30,7 @@ import datetime
 
 import yaml
 
-from clastic import Application, SubApplication, redirect
+from clastic import Application, redirect
 from clastic.static import StaticApplication
 from clastic.render import render_basic, render_json
 from clastic.middleware.cookie import SignedCookieMiddleware
@@ -39,7 +39,10 @@ from sqlalchemy.orm import sessionmaker
 from boltons.strutils import slugify
 from mwoauth import ConsumerToken, Handshaker, RequestToken
 
-from mw import public, UserMiddleware, DBSessionMiddleware
+from mw import (public,
+                UserMiddleware,
+                DBSessionMiddleware,
+                ResponseDictMiddleware)
 from rdb import User
 
 
@@ -50,9 +53,8 @@ STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
 
 @public
-def home(cookie, user):
-    user_dict = user.to_dict() if user else user
-    return {'user': user_dict, 'cookie': dict(cookie)}
+def home(cookie):
+    return {'cookie': dict(cookie)}
 
 
 @public
@@ -157,7 +159,7 @@ def get_campaign_admin_info(user_dao, campaign_id):
 
 def get_round_admin_info(user_dao, round_id):
     round = user_dao.get_round_config(round_id)
-    #entries_info = user_dao.get_entry_info(round_id) # TODO
+    # entries_info = user_dao.get_entry_info(round_id) # TODO
     info = {'id': round.id,
             'name': round.name,
             'voteMethod': round.vote_method,
@@ -170,7 +172,7 @@ def get_round_admin_info(user_dao, round_id):
                 'roundSource': 'round',
                 'roundSource': {'id': None,
                                 'title': None}},
-            'endDate': round.close_date, # TODO: use clse_date or endDate?
+            'endDate': round.close_date,
             'campaign': round.campaign_id
     }
     return info
@@ -209,9 +211,8 @@ def juror_round_redirect(user_dao, round_id, correct_name=None):
 
 
 def juror_landing(user_dao):
-    # TODO: add top-level wrapper
     rounds = user_dao.get_all_rounds()
-    return rounds
+    return {'rounds': rounds}
 
 
 def juror_camp_dashboard(user_dao, campaign_id, camp_name):
@@ -220,42 +221,38 @@ def juror_camp_dashboard(user_dao, campaign_id, camp_name):
     if camp_name != correct_name.replace(' ', '-'):
         return juror_camp_redirect(user_dao, campaign_id, correct_name)
     campaign = user_dao.get_campaign(campaign_id)
-    return campaign
+    return {'campaign': campaign}
 
 
 def juror_round_dashboard(user_dao, round_id, round_name):
-    # TODO: add top-level wrapper
-    correct_name = user_dao.get_round_name(round_id)
-    if round_name != correct_name.replace(' ', '-'):
-        return juror_round_redirect(user_dao, round_id, correct_name)
+    # in a SPA, this redirecting/URL correcting behavior is done by the client.
+    # correct_name = user_dao.get_round_name(round_id)
+    # if round_name != correct_name.replace(' ', '-'):
+    #     return juror_round_redirect(user_dao, round_id, correct_name)
     round = user_dao.get_round(round_id)
-    return round.to_dict()
+    return {'round': round.to_dict()}
 
 
 def create_app(env_name='prod'):
-    routes = [('/', home, render_basic),
-              ('/admin', admin_landing, render_json),
+    # render functions have been removed, as this is now managed by
+    # the ResponesDictMiddleware
+    routes = [('/', home),
+              ('/admin', admin_landing),
               ('/admin/campaign', admin_landing, render_json),
-              ('/admin/campaign/<campaign_id>', admin_camp_redirect,
-               render_json),
-              ('/admin/campaign/<campaign_id>/<camp_name>',
-               admin_camp_dashboard, render_json),
-              ('/admin/round', admin_landing, render_json),
-              ('/admin/round/<round_id>', admin_round_redirect,
-               render_json),
-              ('/admin/round/<round_id>/<round_name>', admin_round_dashboard,
-               render_json),
-              ('/campaign', juror_landing, render_basic),
-              ('/campaign/<campaign_id>', juror_camp_redirect, render_basic),
-              ('/campaign/<campaign_id>/<camp_name>', juror_camp_dashboard,
-               render_basic),
-              ('/round', juror_landing, render_basic),
-              ('/round/<round_id>', juror_round_redirect, render_basic),
-              ('/round/<round_id>/<round_name>', juror_round_dashboard,
-               render_basic),
-              ('/login', login, render_basic),
-              ('/logout', logout, render_basic),
-              ('/complete_login', complete_login, render_basic)]
+              ('/admin/campaign/<campaign_id:int>', admin_camp_redirect),
+              ('/admin/campaign/<campaign_id:int>/<camp_name>', admin_camp_dashboard),
+              ('/admin/round', admin_landing),
+              ('/admin/round/<round_id:int>', admin_round_redirect),
+              ('/admin/round/<round_id:int>/<round_name>', admin_round_dashboard),
+              ('/campaign', juror_landing),
+              ('/campaign/<campaign_id:int>', juror_camp_redirect),
+              ('/campaign/<campaign_id:int>/<camp_name>', juror_camp_dashboard),
+              ('/round', juror_landing),
+              ('/round/<round_id:int>', juror_round_redirect),
+              ('/round/<round_id:int>/<round_name>', juror_round_dashboard),
+              ('/login', login),
+              ('/logout', logout),
+              ('/complete_login', complete_login)]
 
     config_file_name = 'config.%s.yaml' % env_name
     config = yaml.load(open(config_file_name))
@@ -276,7 +273,8 @@ def create_app(env_name='prod'):
                                     http_only=True,
                                     secure=scm_secure)
 
-    middlewares = [scm_mw,
+    middlewares = [ResponseDictMiddleware(),
+                   scm_mw,
                    DBSessionMiddleware(session_type),
                    UserMiddleware()]
 
@@ -297,4 +295,4 @@ def create_app(env_name='prod'):
 
 if __name__ == '__main__':
     app = create_app(env_name="dev")
-    app.serve(use_meta=False)
+    app.serve()

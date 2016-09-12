@@ -27,19 +27,20 @@ def make_fake_data(debug=True, echo=True):
     coord = User(username='Leila')
     juror1 = User(username='Slaporte')
     juror2 = User(username='MahmoudHashemi')
-    juror3 = User(username='Yuvi')
+    juror3 = User(username='Yarl')
 
     campaign = Campaign(name='Test Campaign 2016')
     rdb_session.add(campaign)
+    round = Round(name='Test Round 1', quorum=2)
+    rdb_session.add(round)
 
     campaign.coords.append(coord)
-    round = Round(name='Test Round 1', quorum=2)
-    campaign.rounds.append(round)
+
     round.jurors.append(juror1)
     round.jurors.append(juror2)
     round.jurors.append(juror3)
 
-    CSV_PATH = DATA_PATH + '/wlm2015_fr_12k.csv'
+    CSV_PATH = DATA_PATH + '/wlm2015_ir_5.csv'
 
     with open(CSV_PATH) as f:
         entries = load_full_csv(f)
