@@ -1,3 +1,5 @@
+@import '../../variables';
+
 .campaign {
     width: 100%;
 
@@ -7,7 +9,7 @@
 
     .campaign__rounds-description {
         padding: 6px 16px;
-        color: rgba(0,0,0,0.54);
+        color: $lightGrey;
     }
 
     .campaign__rounds {
