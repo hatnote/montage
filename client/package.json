@@ -1,18 +1,15 @@
 {
-  "name": "app",
+  "name": "montage",
   "version": "0.0.0",
-  "description": "",
+  "description": "Photo evaluation tool for and by Wiki Loves competitions",
   "main": "app/index.js",
-  "repository": "",
+  "repository": "https://github.com/hatnote/montage",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start-live": "webpack-dev-server --content-base app --progress --colors",
     "start": "webpack --watch --content-base app --progress --colors",
     "build": "cross-env NODE_ENV=production webpack"
   },
-  "keywords": [],
-  "author": "",
-  "license": "",
+  "license": "BSD-3-Clause",
   "devDependencies": {
     "angular-formly": "^4.0.8",
     "api-check": "^6.0.10",
@@ -46,6 +43,7 @@
     "angular-material": "^1.0.0",
     "angular-messages": "^1.3.14",
     "angular-ui-router": "*",
+    "lodash": "^4.15.0",
     "material-design-icons": "^3.0.1"
   }
 }
