@@ -7,3 +7,14 @@
         margin-bottom: 5px;
     }
 }
+
+.gallery {
+    .gallery__image {
+        background: #ccc;
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    }
+}

@@ -3,4 +3,21 @@
         {{$ctrl.round.name}}<br />
         <small class="muted">part of {{$ctrl.round.campaign}}</small>
     </h2>
+
+    <md-button ng-click="$ctrl.setGallerySize(1)">S</md-button>
+    <md-button ng-click="$ctrl.setGallerySize(2)">M</md-button>
+    <md-button ng-click="$ctrl.setGallerySize(3)">L</md-button>
+
+    <md-grid-list class="gallery"
+        md-row-height="1:1" md-gutter="8px"
+        md-cols="1" md-cols-sm="2" md-cols-md="3" md-cols-gt-md="6">
+        <md-grid-tile class="gallery__image"
+                      md-rowspan="{{$ctrl.size}}" md-colspan="{{$ctrl.size}}"
+                      ng-repeat="image in $ctrl.images">
+            <img src="http://placehold.it/640x480">
+            <md-grid-tile-footer>
+                <h3>{{image.title}}</h3>
+            </md-grid-tile-footer>
+        </md-grid-tile>
+    </md-grid-list>
 </div>
