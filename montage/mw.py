@@ -39,7 +39,6 @@ class MessageMiddleware(Middleware):
             request_data = request.get_data()
             request_dict = json.loads(request_data)
         except Exception:
-            raise
             request_dict = None
 
         return next(response_dict=response_dict, request_dict=request_dict)

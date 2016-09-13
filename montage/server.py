@@ -287,9 +287,11 @@ def create_app(env_name='prod'):
     app = Application(routes, resources, middlewares=middlewares)
 
     static_app = StaticApplication(STATIC_PATH)
-    app.add(('/static/', static_app))
 
-    return app
+    root_app = Application([('/', app),
+                            ('/static/', static_app)])
+
+    return root_app
 
 
 if __name__ == '__main__':
