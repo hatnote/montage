@@ -1,14 +1,30 @@
-<md-toolbar class="md-hue-2">
+<md-toolbar class="toolbar">
     <div class="md-toolbar-tools">
         <md-button class="md-icon-button" aria-label="Settings" ng-disabled="true">
             <md-icon>menu</md-icon>
         </md-button>
         <h2 ui-sref="main.dashboard">montage</h2>
         <span flex></span>
-        <md-button>
-            <md-icon>face</md-icon>
-            {{$ctrl.user.username}}
-        </md-button>
+        <md-menu md-position-mode="target-right target">
+            <md-button ng-show="$ctrl.user.username" ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)">
+                <md-icon>face</md-icon>
+                {{$ctrl.user.username}}
+            </md-button>
+            <md-menu-content width="4">
+                <md-menu-item>
+                    <div class="md-title toolbar__userinfo" layout="row" layout-align="start center">
+                        <md-icon>face</md-icon>
+                        <span flex>{{$ctrl.user.username}}</span>
+                    </div>
+                </md-menu-item>
+                <md-menu-divider></md-menu-divider>
+                <md-menu-item>
+                    <md-button ng-click="$ctrl.logout()">
+                        Logout
+                    </md-button>
+                </md-menu-item>
+            </md-menu-content>
+        </md-menu>
     </div>
 </md-toolbar>
 <div class="container" layout="row" flex>

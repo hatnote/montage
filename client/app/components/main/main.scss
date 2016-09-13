@@ -1,0 +1,13 @@
+@import '../../variables';
+
+.toolbar {
+
+}
+
+.toolbar__userinfo {
+    color: $lightGrey;
+
+    span {
+        margin-left: 5px;
+    }
+}
