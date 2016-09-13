@@ -1,13 +1,11 @@
 const DataService = function($http, $q) {
 
   const service = {
-
+    getCampaign: (id) => $http.get('/campaign/' + id),
+    getRound: (id) => $http.get('/round/' + id),
   };
 
   return service;
-
-  //// functions
-
 };
 
 export default () => {

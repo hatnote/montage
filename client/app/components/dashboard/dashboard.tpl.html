@@ -4,13 +4,17 @@
         <md-icon>edit</md-icon>
     </h2>
 
-    <div class="campaign__rounds-description" layout="row" layout-align="space-between center">
+    <div class="campaign__rounds-description"
+         layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="20">Round Name</span>
         <span class="md-body-1" flex="20">No. of Jurors</span>
         <span flex></span>
     </div>
     <md-card class="campaign__rounds">
-        <div class="round" layout="row" layout-align="space-between center" ng-repeat="round in campaign.rounds">
+        <div class="campaign__round md-primary md-hue-1"
+             layout="row" layout-align="space-between center"
+             ng-repeat="round in campaign.rounds"
+             ng-click="$ctrl.openRound(round.id)">
             <span class="md-body-2" flex="20">{{round.name}}</span>
             <span class="md-body-1" flex="20">{{round.jury.length}} jurors</span>
             <span flex></span>
@@ -19,4 +23,11 @@
             </md-button>
         </div>
     </md-card>
+    <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
+        <md-button>
+            <md-icon>add_circle</md-icon>
+            <span>Add round</span>
+        </md-button>
+        <span flex></span>
+    </div>
 </div>

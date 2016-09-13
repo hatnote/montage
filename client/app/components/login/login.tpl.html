@@ -1,7 +1,9 @@
 <div class="login" layout="column" layout-align="center center">
     <h2 class="md-headline">Sign in to Montage</h2>
     <md-card class="login__frame">
-        <md-button class="md-raised md-primary" ng-click="$ctrl.login()">Sign in using Wikimedia</md-button>
+        <md-button class="md-raised md-primary"
+                   ng-click="$ctrl.login()"
+                   ng-disabled="$ctrl.loading">Sign in using Wikimedia</md-button>
         <div class="login__info" layout="row" layout-align="start start">
             <md-icon flex="15">security</md-icon>
             <span flex>

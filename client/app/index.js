@@ -9,61 +9,37 @@ import 'material-design-icons/iconfont/material-icons.css';
 import components from './components';
 import services from './services';
 
+
 angular.module('montage', ['ngMaterial', 'ui.router'])
-  .config(function ($mdThemingProvider, $provide, $stateProvider) {
+  .config(function ($mdThemingProvider, $provide, $stateProvider, $urlRouterProvider) {
     $mdThemingProvider.generateThemesOnDemand(true);
     $mdThemingProvider.alwaysWatchTheme(true);
     $provide.value('themeProvider', $mdThemingProvider);
 
-    // states
-    [
-      {
-        name: 'dashboard',
-        url: '/dashboard',
-        template: '<mont-dashboard layout="column" layout-align="start start" data="$resolve.campaigns"></mont-dashboard>',
+    $stateProvider
+      .state('main', {
+        template: '<ui-view/>',
         resolve: {
           campaigns: (userService) => userService.getCampaigns()
         }
-      },
-      {
-        name: 'hello',
-        url: '/hello',
-        template: '<hello name="\'Edward\'"></hello>'
-      },
-      {
-        name: 'login',
+      })
+      .state('main.dashboard', {
+        url: '/',
+        template: '<mont-dashboard layout="column" layout-align="start start" data="$resolve.campaigns"></mont-dashboard>'
+      })
+      .state('main.round', {
+        url: '/round/:id',
+        template: '<mont-round layout="column" layout-align="start start" data="$resolve.round"></mont-round>',
+        resolve: {
+          round: ($stateParams, userService) => userService.getRound($stateParams.id)
+        }
+      })
+      .state('login', {
         url: '/login',
         template: '<mont-login layout="column" layout-align="center center"></mont-login>'
-      }
-    ].forEach(function (state) {
-      $stateProvider.state(state);
-    });
+      });
+    $urlRouterProvider.otherwise('/');
   });
-
-const MainComponent = {
-  bindings: {},
-  controller: function ($state, dataService, versionService) {
-    let vm = this;
-
-    versionService.setVersion('gray');
-  },
-  template: `<md-toolbar class="md-hue-2">
-      <div class="md-toolbar-tools">
-        <md-button class="md-icon-button" aria-label="Settings" ng-disabled="true">
-          <md-icon>menu</md-icon>
-        </md-button>
-        <h2>montage</h2>
-        <span flex></span>
-      </div>
-    </md-toolbar>
-    <div class="container" layout="row" flex>
-      <ui-view></ui-view>
-    </div>`
-};
-
-angular
-  .module('montage')
-  .component('montMain', MainComponent);
 
 components();
 services();

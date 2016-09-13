@@ -7,13 +7,14 @@ const DashboardComponent = {
     },
     controller: function ($state) {
         let vm = this;
-
-        if (vm.data.data.authorized === false) {
-            $state.go('login');
-            return;
-        }
-
         vm.campaigns = vm.data.data.data;
+        vm.openRound = openRound;
+        
+        // functions
+
+        function openRound(id) {
+            $state.go('main.round', {id: id});
+        }
     },
     template: template
 };

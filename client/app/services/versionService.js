@@ -1,8 +1,9 @@
 const VersionService = function($timeout, $mdTheming, themeProvider) {
   const versions = {
-    gray: ['blue-grey', 'red'],
+    grey: ['blue-grey', 'red'],
     green: ['green', 'red'],
-    red: ['pink', 'red']
+    red: ['pink', 'red'],
+    blue: ['blue', 'red']
   };
 
   const service = {

@@ -1,4 +1,5 @@
 @import url(https://fonts.googleapis.com/css?family=Roboto:400,500,300&subset=latin,latin-ext);
+@import 'variables';
 
 html, body {
     width: 100%;
@@ -7,7 +8,7 @@ html, body {
 
 body {
     background-color: #eee;
-    color: rgba(0,0,0,.87);
+    color: $darkGrey;
     font: 14px Roboto, Arial, sans-serif; 
 }
 
@@ -25,4 +26,8 @@ body {
     .container {
         margin: 0 10px;
     }
+}
+
+.muted {
+    color: $lightGrey;
 }
