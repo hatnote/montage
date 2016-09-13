@@ -1,5 +1,4 @@
-"""
- x Logging in
+"""x Logging in
  - Health check
  - Coordinators
   x See a list of campaigns
@@ -20,9 +19,15 @@
 
 Practical design:
 
-Because we're building on react, most URLs return JSON, except for
+Because we're building on angular, most URLs return JSON, except for
 login and complete_login, which give back redirects, and the root
 page, which gives back the HTML basis.
+
+# A bit of TBI design
+
+We add privileged Users (with coordinator flag enabled). Coordinators
+can create Campaigns, and see and interact only with Campaigns they've
+created or been added to. Can Coordinators create other Coordinators?
 
 """
 import os.path
@@ -30,10 +35,10 @@ import datetime
 
 import yaml
 
-from clastic import Application, redirect
+from clastic import Application, redirect, GET, POST
+from clastic.errors import Forbidden
 from clastic.static import StaticApplication
-from clastic.render import render_basic, render_json
-from clastic.middleware.cookie import SignedCookieMiddleware
+from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from boltons.strutils import slugify
@@ -41,9 +46,9 @@ from mwoauth import ConsumerToken, Handshaker, RequestToken
 
 from mw import (public,
                 UserMiddleware,
-                DBSessionMiddleware,
-                ResponseDictMiddleware)
-from rdb import User
+                MessageMiddleware,
+                DBSessionMiddleware)
+from rdb import User, Campaign
 
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
@@ -51,10 +56,15 @@ DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
+ROOT_ADMINS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
+
 
 @public
-def home(cookie):
-    return {'cookie': dict(cookie)}
+def home(cookie, request):
+    headers = dict([(k, v) for k, v in
+                    request.environ.items() if k.startswith('HTTP_')])
+    return {'cookie': dict(cookie),
+            'headers': headers}
 
 
 @public
@@ -121,110 +131,95 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     return redirect(return_to_url)
 
 
-def admin_camp_redirect(user_dao, campaign_id, correct_name=None):
-    if not correct_name:
-        correct_name = user_dao.get_campaign_name(campaign_id)
-    correct_name = correct_name.replace(' ', '-')
-    new_path = '/admin/campaign/%s/%s' % (campaign_id, correct_name)
-    return redirect(new_path)
+#
+#  End public/auth endpoint functions
+#
 
 
-def admin_round_redirect(user_dao, round_id, correct_name=None):
-    if not correct_name:
-        correct_name = user_dao.get_round_name(round_id)
-    correct_name = correct_name.replace(' ', '-')
-    new_path = '/admin/round/%s/%s' % (round_id, correct_name)
-    return redirect(new_path)
+def create_campaign(user, rdb_session, request_dict):
+    if user.username not in ROOT_ADMINS:
+        raise Forbidden('only a root admin can create a campaign')  # for now
+    camp = Campaign(name=request_dict['name'])
+    rdb_session.add(camp)
+    rdb_session.commit()
+    return {'data': camp.to_dict()}
 
 
-def admin_landing(user_dao):
+def get_admin_landing(user_dao):
     campaigns = user_dao.get_all_campaigns()
     data = []
     for campaign in campaigns:
-        campaign_info = get_campaign_admin_info(user_dao, campaign.id)
-        data.append(campaign_info)
+        camp = get_admin_campaign(user_dao, campaign.id)
+        data.append(camp)
     return {'data': data}
 
 
-def get_campaign_admin_info(user_dao, campaign_id):
+def get_admin_campaign(user_dao, campaign_id):
     campaign = user_dao.get_campaign_config(campaign_id)
     info = {'id': campaign.id,
             'name': campaign.name,
             'rounds': [],
             'coords': [u.username for u in campaign.coords]}
     for round in campaign.rounds:
-        info['rounds'].append(get_round_admin_info(user_dao, round.id))
+        info['rounds'].append(get_admin_round(user_dao, round.id))
+
+    info['canonical_url_name'] = slugify(info['name'], '-')
+
     return info
 
 
-def get_round_admin_info(user_dao, round_id):
+def get_admin_round(user_dao, round_id):
     round = user_dao.get_round_config(round_id)
     # entries_info = user_dao.get_entry_info(round_id) # TODO
+
+    # TODO: joinedload if this generates too many queries
+    jurors = [{'username': rj.user.username,
+               'id': rj.user.id,
+               'active': rj.is_active} for rj in round.round_jurors]
+
     info = {'id': round.id,
             'name': round.name,
             'voteMethod': round.vote_method,
             'status': round.status,
-            'jury': [u.username for u in round.jurors],
+            'jurors': jurors,
             'quorum': round.quorum,
             'sourceInfo': {
                 'entryCount': None,
                 'uploadersCount': None,
-                'roundSource': 'round',
                 'roundSource': {'id': None,
                                 'title': None}},
-            'endDate': round.close_date,
-            'campaign': round.campaign_id
-    }
+            'closeDate': round.close_date,
+            'campaign': round.campaign_id}
+
+    info['canonical_url_name'] = slugify(info['name'], '-')
+
     return info
 
 
-def admin_camp_dashboard(user_dao, campaign_id, camp_name):
-    correct_name = user_dao.get_campaign_name(campaign_id)
-    if camp_name != correct_name.replace(' ', '-'):
-        return admin_camp_redirect(user_dao, campaign_id, correct_name)
-    data = get_campaign_admin_info(user_dao, campaign_id)
-    return {'data': data}
+# - cancel round
+# - update round
+#   - no reassignment required: name, description, directions, display_settings
+#   - reassignment required: quorum, active_jurors
+#   - not updateable: id, open_date, close_date, vote_method, campaign_id/seq
 
 
-def admin_round_dashboard(user_dao, round_id, round_name):
-    correct_name = user_dao.get_round_name(round_id)
-    if round_name != correct_name.replace(' ', '-'):
-        return admin_round_redirect(user_dao, round_id, correct_name)
-    data = get_round_admin_info(user_dao, round_id)
-    return {'data': data}
+
+#
+#  End admin endpoint functions
+#
 
 
-def juror_camp_redirect(user_dao, campaign_id, correct_name=None):
-    if not correct_name:
-        correct_name = user_dao.get_campaign_name(campaign_id)
-    correct_name = correct_name.replace(' ', '-')
-    new_path = '/campaign/%s/%s' % (campaign_id, correct_name)
-    return redirect(new_path)
-
-
-def juror_round_redirect(user_dao, round_id, correct_name=None):
-    if not correct_name:
-        correct_name = user_dao.get_round_name(round_id)
-    correct_name = correct_name.replace(' ', '-')
-    new_path = '/round/%s/%s' % (round_id, correct_name)
-    return redirect(new_path)
-
-
-def juror_landing(user_dao):
+def get_juror_rounds(user_dao):
     rounds = user_dao.get_all_rounds()
     return {'rounds': rounds}
 
 
-def juror_camp_dashboard(user_dao, campaign_id, camp_name):
-    # TODO: add top-level wrapper
-    correct_name = user_dao.get_campaign_name(campaign_id)
-    if camp_name != correct_name.replace(' ', '-'):
-        return juror_camp_redirect(user_dao, campaign_id, correct_name)
+def get_juror_campaign(user_dao, campaign_id, camp_name):
     campaign = user_dao.get_campaign(campaign_id)
     return {'campaign': campaign}
 
 
-def juror_round_dashboard(user_dao, round_id, round_name):
+def get_juror_round(user_dao, round_id):
     # in a SPA, this redirecting/URL correcting behavior is done by the client.
     # correct_name = user_dao.get_round_name(round_id)
     # if round_name != correct_name.replace(' ', '-'):
@@ -233,23 +228,25 @@ def juror_round_dashboard(user_dao, round_id, round_name):
     return {'round': round.to_dict()}
 
 
+#
+#  End juror endpoint functions
+#
+
+
 def create_app(env_name='prod'):
     # render functions have been removed, as this is now managed by
     # the ResponesDictMiddleware
     routes = [('/', home),
-              ('/admin', admin_landing),
-              ('/admin/campaign', admin_landing, render_json),
-              ('/admin/campaign/<campaign_id:int>', admin_camp_redirect),
-              ('/admin/campaign/<campaign_id:int>/<camp_name>', admin_camp_dashboard),
-              ('/admin/round', admin_landing),
-              ('/admin/round/<round_id:int>', admin_round_redirect),
-              ('/admin/round/<round_id:int>/<round_name>', admin_round_dashboard),
-              ('/campaign', juror_landing),
-              ('/campaign/<campaign_id:int>', juror_camp_redirect),
-              ('/campaign/<campaign_id:int>/<camp_name>', juror_camp_dashboard),
-              ('/round', juror_landing),
-              ('/round/<round_id:int>', juror_round_redirect),
-              ('/round/<round_id:int>/<round_name>', juror_round_dashboard),
+              ('/admin', get_admin_landing),
+              GET('/admin/campaign', get_admin_landing),
+              POST('/admin/campaign', create_campaign),
+              ('/admin/campaign/<campaign_id:int>/<camp_name?>', get_admin_campaign),
+              ('/admin/round', get_admin_landing),
+              ('/admin/round/<round_id:int>/<round_name?>', get_admin_round),
+              ('/campaign', get_juror_rounds),  # TODO
+              ('/campaign/<campaign_id:int>/<camp_name?>', get_juror_campaign),
+              ('/round', get_juror_rounds),
+              ('/round/<round_id:int>/<round_name?>', get_juror_round),
               ('/login', login),
               ('/logout', logout),
               ('/complete_login', complete_login)]
@@ -272,8 +269,10 @@ def create_app(env_name='prod'):
                                     path=root_path,
                                     http_only=True,
                                     secure=scm_secure)
+    if not scm_secure:
+        scm_mw.data_expiry = NEVER
 
-    middlewares = [ResponseDictMiddleware(),
+    middlewares = [MessageMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(session_type),
                    UserMiddleware()]

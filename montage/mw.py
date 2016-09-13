@@ -1,4 +1,6 @@
 
+import json
+
 from clastic import Middleware, BaseResponse
 from clastic.route import NullRoute
 from clastic.render import render_basic
@@ -16,7 +18,7 @@ def public(endpoint_func):
     return endpoint_func
 
 
-class ResponseDictMiddleware(Middleware):
+class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
     endpoints.
 
@@ -25,15 +27,22 @@ class ResponseDictMiddleware(Middleware):
     "failure". Uncaught endpoint function exceptions get status:
     "exception".
     """
-    provides = ('response_dict',)
+    provides = ('response_dict', 'request_dict')
 
     def __init__(self, raise_errors=True):
         self.raise_errors = raise_errors
 
-    def request(self, next):
+    def request(self, next, request):
         response_dict = {'errors': [], 'status': 'success'}
 
-        return next(response_dict=response_dict)
+        try:
+            request_data = request.get_data()
+            request_dict = json.loads(request_data)
+        except Exception:
+            raise
+            request_dict = None
+
+        return next(response_dict=response_dict, request_dict=request_dict)
 
     def endpoint(self, next, response_dict, request, _route):
         # TODO: autoswitch resp status code
@@ -90,7 +99,7 @@ class UserMiddleware(Middleware):
             return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
-        response_dict['user'] = user.to_dict()
+        response_dict['user'] = user.to_dict() if user else user
 
         if user is None and not ep_is_public:
             err = 'unknown cookie userid, try logging in again'

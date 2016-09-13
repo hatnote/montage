@@ -1,4 +1,5 @@
 # Relational database models for Montage
+import json
 import random
 import itertools
 from math import ceil
@@ -19,6 +20,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from simple_serdes import DictableBase
 
 Base = declarative_base()
+
+
+# Some basic display settings for now
+DEFAULT_ROUND_CONFIG = json.dumps({'show_link': True,
+                                   'show_filename': True,
+                                   'show_resolution': True})
 
 """
 Column ordering and groupings:
@@ -100,10 +107,8 @@ class Round(Base, DictableBase):
     status = Column(String)
     vote_method = Column(String)
     quorum = Column(Integer)
-    # Should we just have some settings in json?
-    show_link = Column(Boolean)
-    show_filename = Column(Boolean)
-    show_resolution = Column(Boolean)
+    # Should we just have some settings in json? yes. -mh
+    config_json = Column(String, default=DEFAULT_ROUND_CONFIG)
 
     create_date = Column(DateTime, server_default=func.now())
 
@@ -126,6 +131,7 @@ class RoundJuror(Base, DictableBase):
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
+    is_active = Column(Boolean, default=True)
 
     user = relationship('User', back_populates='jurored_rounds')
     round = relationship('Round', back_populates='round_jurors')
@@ -321,7 +327,7 @@ def create_initial_tasks(rdb_session, round):
     ret = []
 
     quorum = round.quorum
-    jurors = list(round.jurors)
+    jurors = [rj.user for rj in round.round_jurors if rj.is_active]
     random.shuffle(jurors)
 
     rdb_type = rdb_session.bind.dialect.name
