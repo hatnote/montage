@@ -11,7 +11,7 @@ npm install
 Run server:
 
 ```
-mkvirtualenv montage
+workon montage
 python montage/server.py
 ```
 
@@ -21,4 +21,4 @@ Run app:
 npm run start
 ```
 
-http://localhost:5000/static/index.html
+[localhost:5000/static/index.html](http://localhost:5000/static/index.html)
