@@ -36,6 +36,7 @@ class ResponseDictMiddleware(Middleware):
         return next(response_dict=response_dict)
 
     def endpoint(self, next, response_dict, request, _route):
+        # TODO: autoswitch resp status code
         try:
             ret = next()
         except Exception:
@@ -54,6 +55,7 @@ class ResponseDictMiddleware(Middleware):
             # preserialized responses (and 404s, etc.)  TODO: log that
             # we're skipping over response_dict if the response status
             # code == 2xx
+            # TODO: autoserialize body if no body is set
             return ret
         elif isinstance(ret, dict):
             response_dict.update(ret)
