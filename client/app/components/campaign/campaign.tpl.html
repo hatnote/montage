@@ -1,0 +1,56 @@
+<div class="campaign">
+    <h2 class="campaign__title md-display-1">
+        <span ng-hide="$ctrl.isNameEdited">{{$ctrl.campaign.name}}</span>
+        <form ng-show="$ctrl.isNameEdited"
+              ng-submit="$ctrl.saveCampaignName()">
+            <md-input-container md-no-float>
+                <input placeholder="Campaign name"
+                       ng-model="$ctrl.nameEdit">
+            </md-input-container>
+        </form>
+        <md-button class="md-icon-button" aria-label="Edit"
+                   ng-hide="$ctrl.isNameEdited"
+                   ng-click="$ctrl.editCampaignName($event)">
+            <md-icon>edit</md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="Edit"
+                   ng-show="$ctrl.isNameEdited"
+                   ng-click="$ctrl.cancelCampaignName()">
+            <md-icon>cancel</md-icon>
+        </md-button>
+    </h2>
+
+    <div class="campaign__rounds-description"
+         layout="row" layout-align="space-between center">
+        <span class="md-body-1" flex="20">Round Name</span>
+        <span class="md-body-1" flex="20">Close Date</span>
+        <span class="md-body-1" flex="20">No. of Jurors</span>
+        <span class="md-body-1" flex="15">Status</span>
+        <span class="md-body-1" flex="15">Vote Method</span>
+        <span flex></span>
+    </div>
+    <md-card class="campaign__rounds">
+        <div class="campaign__round md-primary md-hue-1"
+             layout="row" layout-align="space-between center"
+             ng-repeat="round in $ctrl.campaign.rounds"
+             ng-click="$ctrl.openRound(round.id)">
+            <span class="md-body-2" flex="20">{{round.name}}</span>
+            <span class="md-body-1" flex="20">{{round.closeDate || "Unknown"}}</span>
+            <span class="md-body-1" flex="20">{{round.jurors.length || "0"}} jurors</span>
+            <span class="md-body-1" flex="15">{{round.status || "Unknown"}}</span>
+            <span class="md-body-1" flex="15">{{round.voteMethod || "Unknown"}}</span>
+            <span flex></span>
+            <md-button class="md-icon-button" aria-label="Edit"
+                       ng-click="$event.stopPropagation(); $ctrl.editRound(round)">
+                <md-icon>more_vert</md-icon>
+            </md-button>
+        </div>
+    </md-card>
+    <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
+        <md-button>
+            <md-icon>add_circle</md-icon>
+            <span>Add round</span>
+        </md-button>
+        <span flex></span>
+    </div>
+</div>

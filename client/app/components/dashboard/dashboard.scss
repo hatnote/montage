@@ -1,32 +1,8 @@
 @import '../../variables';
 
-.campaign {
+.campaign__add {
     width: 100%;
-
-    .campaign__title {
-        margin-bottom: 5px;
-    }
-
-    .campaign__rounds-description {
-        padding: 6px 16px;
-        color: $lightGrey;
-    }
-
-    .campaign__rounds {
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    .campaign__round {
-        padding: 6px 6px 6px 16px;
-        outline: none;
-        border-bottom: 1px solid rgba(0,0,0,0.12);
-        cursor: pointer;
-    }
-    
-    .campaign__rounds-add {
-        color: $lightGrey;
-    }
+    margin-bottom: 15px;
 }
 
 .campaign__zero {

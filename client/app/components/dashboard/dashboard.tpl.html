@@ -1,42 +1,12 @@
-<div class="campaign" ng-repeat="campaign in $ctrl.campaigns">
-    <h2 class="campaign__title md-display-1">
-        {{campaign.name}}
-        <md-icon>edit</md-icon>
-    </h2>
-
-    <div class="campaign__rounds-description"
-         layout="row" layout-align="space-between center">
-        <span class="md-body-1" flex="20">Round Name</span>
-        <span class="md-body-1" flex="20">Close Date</span>
-        <span class="md-body-1" flex="20">No. of Jurors</span>
-        <span class="md-body-1" flex="15">Status</span>
-        <span class="md-body-1" flex="15">Vote Method</span>
-        <span flex></span>
-    </div>
-    <md-card class="campaign__rounds">
-        <div class="campaign__round md-primary md-hue-1"
-             layout="row" layout-align="space-between center"
-             ng-repeat="round in campaign.rounds"
-             ng-click="$ctrl.openRound(round.id)">
-            <span class="md-body-2" flex="20">{{round.name}}</span>
-            <span class="md-body-1" flex="20">{{round.closeDate || "Unknown"}}</span>
-            <span class="md-body-1" flex="15">{{round.jurors.length || "0"}} jurors</span>
-            <span class="md-body-1" flex="15">{{round.status || "Unknown"}}</span>
-            <span class="md-body-1" flex="15">{{round.voteMethod || "Unknown"}}</span>
-            <span flex></span>
-            <md-button class="md-icon-button" aria-label="Edit">
-                <md-icon>more_vert</md-icon>
-            </md-button>
-        </div>
-    </md-card>
-    <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
-        <md-button>
-            <md-icon>add_circle</md-icon>
-            <span>Add round</span>
-        </md-button>
-        <span flex></span>
-    </div>
+<mont-campaign data="campaign" ng-repeat="campaign in $ctrl.campaigns">
+<div flex></div>
+<div class="campaign__add" layout="row" layout-align="end center">
+    <md-button class="md-fab campaign__add-btn" aria-label="Photos">
+        <md-tooltip md-direction="left">Add new campaign</md-tooltip>
+        <md-icon>playlist_add</md-icon>
+    </md-button>
 </div>
+
 <div class="campaign__zero" layout="row" layout-align="center center"
      ng-show="!$ctrl.campaigns.length">
     <h2 class="md-display-1">You have no campaigns assigned</h2>

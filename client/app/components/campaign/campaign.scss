@@ -1,0 +1,48 @@
+@import '../../variables';
+
+mont-campaign {
+    width: 100%;
+
+    .campaign__title {
+        margin-bottom: 5px;
+
+        form {
+            display: inline;
+        }
+
+        md-input-container {
+            margin: 0;
+
+            .md-input {
+                padding-bottom: 6px;
+                padding-left: 0;
+                margin-left: -2px;
+            }
+
+            .md-errors-spacer {
+                display: none;
+            }
+        }
+    }
+
+    .campaign__rounds-description {
+        padding: 6px 16px;
+        color: $lightGrey;
+    }
+
+    .campaign__rounds {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .campaign__round {
+        padding: 6px 6px 6px 16px;
+        outline: none;
+        border-bottom: 1px solid rgba(0,0,0,0.12);
+        cursor: pointer;
+    }
+    
+    .campaign__rounds-add {
+        color: $lightGrey;
+    }
+}

@@ -8,13 +8,6 @@ const DashboardComponent = {
     controller: function ($state) {
         let vm = this;
         vm.campaigns = vm.data.data.data;
-        vm.openRound = openRound;
-        
-        // functions
-
-        function openRound(id) {
-            $state.go('main.round', {id: id});
-        }
     },
     template: template
 };
