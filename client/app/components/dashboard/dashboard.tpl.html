@@ -1,4 +1,6 @@
-<mont-campaign data="campaign" ng-repeat="campaign in $ctrl.campaigns">
+<div>
+    <mont-campaign data="campaign" ng-repeat="campaign in $ctrl.campaigns">
+</div>
 <div flex></div>
 <div class="campaign__add" layout="row" layout-align="end center">
     <md-button class="md-fab campaign__add-btn" aria-label="Photos">
@@ -6,7 +8,6 @@
         <md-icon>playlist_add</md-icon>
     </md-button>
 </div>
-
 <div class="campaign__zero" layout="row" layout-align="center center"
      ng-show="!$ctrl.campaigns.length">
     <h2 class="md-display-1">You have no campaigns assigned</h2>

@@ -1,12 +1,17 @@
 @import '../../variables';
 
-.campaign__add {
-    width: 100%;
-    margin-bottom: 15px;
+mont-dashboard {
+    & > div {
+        width: 100%;
+    }
+
+    .campaign__add {
+        margin-bottom: 15px;
+    }
+
+    .campaign__zero {
+        height: 100%;
+        color: $lightGrey;
+    }
 }
 
-.campaign__zero {
-    width: 100%;
-    height: 100%;
-    color: $lightGrey;
-}
