@@ -35,7 +35,9 @@
         <md-grid-tile class="gallery__image"
                       md-rowspan="{{$ctrl.size}}" md-colspan="{{$ctrl.size}}"
                       ng-repeat="image in $ctrl.images">
-            <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
+            <img class="link"
+                 ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800"
+                 ng-click="$ctrl.openImage(image, $event)">
             <md-grid-tile-footer class="gallery__footer"
                                  layout="column" layout-align="start start">
                 <h3 class="gallery__footer-name">{{image.name}}</h3>
