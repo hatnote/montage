@@ -30,6 +30,7 @@ can create Campaigns, and see and interact only with Campaigns they've
 created or been added to. Can Coordinators create other Coordinators?
 
 """
+import sys
 import os.path
 import datetime
 
@@ -48,7 +49,8 @@ from mw import (public,
                 UserMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
-from rdb import User, Campaign
+from rdb import Base, User, Campaign
+from rdb_check import get_schema_errors
 
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
@@ -254,10 +256,23 @@ def create_app(env_name='prod'):
     config_file_name = 'config.%s.yaml' % env_name
     config = yaml.load(open(config_file_name))
 
-    engine = create_engine(config.get('db_url', DEFAULT_DB_URL),
-                           echo=config.get('db_echo', False))
+    engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
     session_type = sessionmaker()
     session_type.configure(bind=engine)
+
+    # import pdb;pdb.set_trace()
+
+    tmp_rdb_session = session_type()
+    schema_errors = get_schema_errors(Base, tmp_rdb_session)
+    if not schema_errors:
+        print '++  schema validated ok'
+    else:
+        for err in schema_errors:
+            print '!! ', err
+        print '!!  recreate the database and update the code, then try again'
+        sys.exit(2)
+
+    engine.echo = config.get('db_echo', False)
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
@@ -294,6 +309,9 @@ def create_app(env_name='prod'):
     return root_app
 
 
-if __name__ == '__main__':
+if __name__ != '__main__':
+    # generally imported for serving, ideally this would be side-effect free
+    app = create_app(env_name="prod")
+else:
     app = create_app(env_name="dev")
     app.serve()

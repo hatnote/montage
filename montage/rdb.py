@@ -13,13 +13,13 @@ from sqlalchemy import (Column,
                         ForeignKey)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.associationproxy import association_proxy
-
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.associationproxy import association_proxy
 
 from simple_serdes import DictableBase
 
-Base = declarative_base()
+
+Base = declarative_base(cls=DictableBase)
 
 
 # Some basic display settings for now
@@ -37,7 +37,7 @@ Column ordering and groupings:
 """
 
 
-class User(Base, DictableBase):
+class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
@@ -56,7 +56,7 @@ class User(Base, DictableBase):
     # update_date?
 
 
-class Campaign(Base, DictableBase):
+class Campaign(Base):
     __tablename__ = 'campaigns'
 
     id = Column(Integer, primary_key=True)
@@ -76,7 +76,7 @@ class Campaign(Base, DictableBase):
     # round_names = association_proxy('rounds', 'name') "simplifying scalar stuff"
 
 
-class CampaignCoord(Base, DictableBase):  # Coordinator, not Coordinate
+class CampaignCoord(Base):  # Coordinator, not Coordinate
     __tablename__ = 'campaign_coords'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -91,7 +91,7 @@ class CampaignCoord(Base, DictableBase):  # Coordinator, not Coordinate
         self.user = coord
 
 
-class Round(Base, DictableBase):
+class Round(Base):
     """The "directions" field is for coordinators to communicate
     localized directions to jurors, whereas the "description" field is
     for coordinator comments (and not shown to jurors).
@@ -126,7 +126,7 @@ class Round(Base, DictableBase):
                                 creator=lambda e: RoundEntry(entry=e))
 
 
-class RoundJuror(Base, DictableBase):
+class RoundJuror(Base):
     __tablename__ = 'round_jurors'
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -145,7 +145,7 @@ class RoundJuror(Base, DictableBase):
             self.user = user
 
 
-class Entry(Base, DictableBase):
+class Entry(Base):
     # if this is being kept generic for other types of media judging,
     # then I think a "duration" attribute makes sense -mh
     __tablename__ = 'entries'
@@ -174,7 +174,7 @@ class Entry(Base, DictableBase):
                                creator=lambda r: RoundEntry(round=r))
 
 
-class RoundEntry(Base, DictableBase):
+class RoundEntry(Base):
     __tablename__ = 'round_entries'
 
     id = Column(Integer, primary_key=True)
@@ -192,7 +192,7 @@ class RoundEntry(Base, DictableBase):
         return
 
 
-class Rating(Base, DictableBase):
+class Rating(Base):
     __tablename__ = 'votes'
 
     id = Column(Integer, primary_key=True)
@@ -206,13 +206,14 @@ class Rating(Base, DictableBase):
     create_date = Column(DateTime, server_default=func.now())
 
 
-class Ranking(Base, DictableBase):
+class Ranking(Base):
     __tablename__ = 'rankings'
 
     id = Column(Integer, primary_key=True)
+    # user_id = Column(Integer, ForeignKey('users.id'))
 
 
-class Task(Base, DictableBase):
+class Task(Base):
     __tablename__ = 'tasks'
 
     id = Column(Integer, primary_key=True)
@@ -236,7 +237,7 @@ class UserDAO(object):
     different areas of the schema.
 
     # TODO: name? true that user is bound in, but UserDAO doesn't ring
-    totally true.
+    totally true. ActorDAO?
     # TODO: will blow up a bit if user is None
 
     # TODO: rather than query(Model), this should do user.models and
