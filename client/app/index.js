@@ -29,9 +29,10 @@ angular.module('montage', ['ngMaterial', 'ui.router'])
       })
       .state('main.round', {
         url: '/round/:id',
-        template: '<mont-round layout="column" layout-align="start start" data="$resolve.round"></mont-round>',
+        template: '<mont-round layout="column" layout-align="start start" data="$resolve.round" images="$resolve.images"></mont-round>',
         resolve: {
-          round: ($stateParams, userService) => userService.getRound($stateParams.id)
+          round: ($stateParams, userService) => userService.getRound($stateParams.id),
+          images: (dataService) => dataService.getTempImages() // temporary!
         }
       })
       .state('login', {
