@@ -5,7 +5,7 @@ const CampaignComponent = {
     bindings: {
         data: '<'
     },
-    controller: function ($state, $timeout) {
+    controller: function ($state, $timeout, $mdToast) {
         let vm = this;
         vm.campaign = vm.data;
 
@@ -44,6 +44,18 @@ const CampaignComponent = {
         function saveCampaignName() {
             vm.campaign.name = vm.nameEdit;
             vm.isNameEdited = false;
+
+            let toast = $mdToast.simple()
+                .textContent('Campaign name changed')
+                .action('UNDO')
+                .highlightAction(true)
+                .highlightClass('md-accent')
+                .toastClass('campain__change-name-toast')
+                .position('top right');
+
+            $mdToast.show(toast).then((response) => {
+                console.log(response);
+            });
         }
     },
     template: template

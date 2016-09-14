@@ -1,5 +1,6 @@
 <div class="campaign">
-    <h2 class="campaign__title md-display-1">
+    <h2 class="campaign__title md-display-1"
+        layout="row" layout-align="start center">
         <span ng-hide="$ctrl.isNameEdited">{{$ctrl.campaign.name}}</span>
         <form ng-show="$ctrl.isNameEdited"
               ng-submit="$ctrl.saveCampaignName()">
@@ -13,10 +14,15 @@
                    ng-click="$ctrl.editCampaignName($event)">
             <md-icon>edit</md-icon>
         </md-button>
-        <md-button class="md-icon-button" aria-label="Edit"
+        <md-button class="md-icon-button" aria-label="Cancel"
                    ng-show="$ctrl.isNameEdited"
                    ng-click="$ctrl.cancelCampaignName()">
             <md-icon>cancel</md-icon>
+        </md-button>
+        <span flex></span>
+        <md-button class="md-icon-button" aria-label="Edit"
+                   ng-click="$ctrl.editCampaign()">
+            <md-icon>settings</md-icon>
         </md-button>
     </h2>
 
