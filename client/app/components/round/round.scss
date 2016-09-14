@@ -4,7 +4,17 @@
     width: 100%;
 
     .round__title {
-        margin-bottom: 5px;
+        margin-bottom: 25px;
+
+        .md-headline {
+            margin-bottom: 0;
+        }
+
+        & > span {
+            line-height: 40px;
+            font-size: 24px;
+            color: $lightGrey;
+        }
     }
 }
 
@@ -16,5 +26,36 @@
             max-width: 100%;
             max-height: 100%;
         }
+
+        .gallery__footer {
+            -webkit-transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            -webkit-transition-duration: 200ms;
+            transition-duration: 200ms;
+
+            padding-top: 5px;
+            height: 28px;
+
+            figcaption {
+                max-width: 100%; 
+            }
+
+            .gallery__footer-name {
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                margin: 0 15px;
+            }
+
+            &:hover {
+                height: 50%;
+                background: $lightGrey;
+
+                .gallery__footer-name {
+                    white-space: normal;
+                    font-size: 16px;
+                }
+            }
+        } 
     }
 }

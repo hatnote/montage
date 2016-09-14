@@ -1,12 +1,33 @@
 <div class="round">
-    <h2 class="round__title md-headline">
-        {{$ctrl.round.name}}<br />
-        <small class="muted">part of {{$ctrl.round.campaign}}</small>
-    </h2>
-
-    <md-button ng-click="$ctrl.setGallerySize(1)">S</md-button>
-    <md-button ng-click="$ctrl.setGallerySize(2)">M</md-button>
-    <md-button ng-click="$ctrl.setGallerySize(3)">L</md-button>
+    <div class="round__title" layout="row" layout-align="start end">
+        <h2 class="md-headline">
+            {{$ctrl.round.name}}<br />
+            <small class="muted">part of {{$ctrl.round.campaign}}</small>
+        </h2>
+        <span flex></span>
+        <md-button class="md-icon-button" aria-label="Sort">
+            <md-icon>filter_list</md-icon>
+        </md-button>
+        <span>|</span>
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 3}"
+                   ng-click="$ctrl.setGallerySize(3)">
+            <md-tooltip>Big thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_actual</md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 2}"
+                   ng-click="$ctrl.setGallerySize(2)">
+            <md-tooltip>Medium thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_large</md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 1}"
+                   ng-click="$ctrl.setGallerySize(1)">
+            <md-tooltip>Small thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_small</md-icon>
+        </md-button>
+    </div>
 
     <md-grid-list class="gallery"
         md-row-height="1:1" md-gutter="8px"
@@ -14,9 +35,10 @@
         <md-grid-tile class="gallery__image"
                       md-rowspan="{{$ctrl.size}}" md-colspan="{{$ctrl.size}}"
                       ng-repeat="image in $ctrl.images">
-            <img src="http://placehold.it/640x480">
-            <md-grid-tile-footer>
-                <h3>{{image.title}}</h3>
+            <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
+            <md-grid-tile-footer class="gallery__footer"
+                                 layout="column" layout-align="start start">
+                <h3 class="gallery__footer-name">{{image.name}}</h3>
             </md-grid-tile-footer>
         </md-grid-tile>
     </md-grid-list>

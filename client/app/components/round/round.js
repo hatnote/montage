@@ -5,7 +5,8 @@ import template from './round.tpl.html';
 
 const RoundComponent = {
     bindings: {
-        data: '<'
+        data: '<',
+        images: '<' // temporary!
     },
     controller: function ($state) {
         let vm = this;
@@ -16,16 +17,12 @@ const RoundComponent = {
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
 
-        // temp image generator
-
-        vm.images = [];
-        for (let i = 0; i < 50; i++) {
-            vm.images.push({
-                title: 'Image ' + i
-            });
-        }
-
         // functions
+        vm.images = vm.images.data.images.map(element => ({
+            id: element.id,
+            title: element.title,
+            name: element.title.replace(/_/gi, ' ')
+        })); // temporary!
 
         function isJuror(id) {
             return !!_.find(vm.round.jurors, {
