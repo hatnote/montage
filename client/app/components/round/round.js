@@ -43,10 +43,34 @@ const RoundComponent = {
                 controller: ($scope, $mdDialog) => {
                     $scope.cancel = () => $mdDialog.hide();
                     $scope.image = image;
+                    $scope.isFirst = vm.images.indexOf(image) === 0;
+                    $scope.isLast = vm.images.indexOf(image) === vm.images.length - 1;
+                    $scope.nextImage = () => {
+                        if ($scope.isLast) { return; }
+                        const currentIndex = vm.images.indexOf(image);
+                        const nextImage = vm.images[currentIndex + 1];
+                        $mdDialog.hide();
+                        openImage(nextImage);
+                    };
+                    $scope.prevImage = () => {
+                        if ($scope.isFirst) { return; }
+                        const currentIndex = vm.images.indexOf(image);
+                        const prevImage = vm.images[currentIndex - 1];
+                        $mdDialog.hide();
+                        openImage(prevImage);
+                    };
+                    $scope.keyDown = function (event) {
+                        if (event.code === 'ArrowRight') {
+                            $scope.nextImage();
+                        }
+                        else if (event.code === 'ArrowLeft') {
+                            $scope.prevImage();
+                        }
+                    };
                 }
-            }).then(function(answer) {
+            }).then(function (answer) {
                 // answer
-            }, function() {
+            }, function () {
                 // cancelled
             });
         }
