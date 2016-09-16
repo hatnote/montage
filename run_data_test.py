@@ -8,7 +8,7 @@ from montage.loaders import load_full_csv
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(CUR_PATH, 'test_data')
 
-DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
+DEFAULT_DB_URL = 'sqlite:///montage/tmp_montage.db'
 
 
 def make_rdb_session(db_url=DEFAULT_DB_URL, echo=True):
