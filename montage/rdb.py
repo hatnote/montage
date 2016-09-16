@@ -16,7 +16,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from simple_serdes import DictableBase
+from simple_serdes import DictableBase, JSONEncodedDict
 
 
 Base = declarative_base(cls=DictableBase)
@@ -42,6 +42,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String)
+    flags = Column(JSONEncodedDict)
     last_login_date = Column(DateTime)
 
     create_date = Column(DateTime, server_default=func.now())
@@ -54,6 +55,10 @@ class User(Base):
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJuror(round=r))
     # update_date?
+
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(User, self).__init__(**kw)
 
 
 class Campaign(Base):
@@ -166,7 +171,6 @@ class Entry(Base):
     upload_date = Column(DateTime)
 
     # TODO: img_sha1/page_touched for updates?
-
     create_date = Column(DateTime, server_default=func.now())
 
     entered_rounds = relationship('RoundEntry')
@@ -180,6 +184,9 @@ class RoundEntry(Base):
     id = Column(Integer, primary_key=True)
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
+
+    dq_reason = Column(String)  # in case it's disqualified
+    # examples: too low resolution, out of date range
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')

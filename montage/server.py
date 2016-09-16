@@ -237,7 +237,7 @@ def get_juror_round(user_dao, round_id):
 
 def create_app(env_name='prod'):
     # render functions have been removed, as this is now managed by
-    # the ResponesDictMiddleware
+    # the MessageMiddleware
     routes = [('/', home),
               ('/admin', get_admin_landing),
               GET('/admin/campaign', get_admin_landing),

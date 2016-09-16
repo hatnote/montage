@@ -1,19 +1,23 @@
 
+import json
 import datetime
-from json import JSONEncoder
 
 from sqlalchemy import inspect
+from sqlalchemy.types import TypeDecorator, String
+from sqlalchemy.ext.mutable import Mutable
+
+
 from sqlalchemy.orm.state import InstanceState
 
 
-class EntityJSONEncoder(JSONEncoder):
+class EntityJSONEncoder(json.JSONEncoder):
     """ JSON encoder for custom classes:
 
         Uses __json__() method if available to prepare the object.
         Especially useful for SQLAlchemy models
     """
     def __init__(self, *a, **kw):
-        self.eager = kw.pop(eager, False)
+        self.eager = kw.pop('eager', False)
         super(EntityJSONEncoder, self).__init__(*a, **kw)
 
     def default(self, o):
@@ -26,13 +30,13 @@ class EntityJSONEncoder(JSONEncoder):
 def get_entity_propnames(entity):
     """ Get entity property names
 
-        :param entity: Entity
+       :param entity: Entity
         :type entity: sqlalchemy.ext.declarative.api.DeclarativeMeta
         :returns: Set of entity property names
         :rtype: set
     """
-    ins = entity if isinstance(entity, InstanceState) else inspect(entity)
-    return set(ins.mapper.column_attrs.keys() + ins.mapper.relationships.keys())
+    e = entity if isinstance(entity, InstanceState) else inspect(entity)
+    return set(e.mapper.column_attrs.keys() + e.mapper.relationships.keys())
 
 
 def get_entity_loaded_propnames(entity):
@@ -94,3 +98,45 @@ class DictableBase(object):
 
         cn = self.__class__.__name__
         return '<%s %s>' % (cn, ' '.join(parts))
+
+
+class JSONEncodedDict(TypeDecorator):
+    impl = String
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            value = {}
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            value = '{}'
+        return json.loads(value)
+
+
+class MutableDict(Mutable, dict):
+    @classmethod
+    def coerce(cls, key, value):
+        "Convert plain dictionaries to MutableDict."
+
+        if not isinstance(value, MutableDict):
+            if isinstance(value, dict):
+                return MutableDict(value)
+
+            # this call will raise ValueError
+            return Mutable.coerce(key, value)
+        else:
+            return value
+
+    def __setitem__(self, key, value):
+        "Detect dictionary set events and emit change events."
+        dict.__setitem__(self, key, value)
+        self.changed()
+
+    def __delitem__(self, key):
+        "Detect dictionary del events and emit change events."
+        dict.__delitem__(self, key)
+        self.changed()
+
+
+MutableDict.associate_with(JSONEncodedDict)
