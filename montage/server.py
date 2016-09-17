@@ -49,7 +49,6 @@ from mw import (public,
                 UserMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
-
 from rdb import Base, User, Campaign, CoordinatorDAO, JurorDAO
 from check_rdb import get_schema_errors
 
