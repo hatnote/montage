@@ -50,7 +50,7 @@ from mw import (public,
                 MessageMiddleware,
                 DBSessionMiddleware)
 from rdb import Base, User, Campaign
-from rdb_check import get_schema_errors
+from check_rdb import get_schema_errors
 
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
