@@ -36,16 +36,30 @@ Column ordering and groupings:
 * n-n relationships
 """
 
+"""
+# Note on "flags"
+
+The "flags" column, when present, is a string
+column with serialized JSON data, used for incidental data that isn't
+represented in columns (and thus can't be indexed/queried
+directly). The hope is that this saves us a migration or two down the
+line.
+
+Also note that unless there is an __init__ that populates the field
+with a dict, brand new flags-having objects will have None for the
+flags attribute.
+"""
+
 
 class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
     username = Column(String)
-    flags = Column(JSONEncodedDict)
-    last_login_date = Column(DateTime)
 
+    last_login_date = Column(DateTime)
     create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
     coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
@@ -73,6 +87,7 @@ class Campaign(Base):
     close_date = Column(DateTime)
 
     create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
     rounds = relationship('Round', back_populates='campaign')
     campaign_coords = relationship('CampaignCoord')
@@ -116,9 +131,11 @@ class Round(Base):
     config_json = Column(String, default=DEFAULT_ROUND_CONFIG)
 
     create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     # increments for higher rounds within the same campaign
+    # doesn't need to be in the db prolly
     campaign_seq = Column(Integer, default=1)
     campaign = relationship('Campaign', back_populates='rounds')
 
@@ -137,6 +154,7 @@ class RoundJuror(Base):
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
     is_active = Column(Boolean, default=True)
+    flags = Column(JSONEncodedDict)
 
     user = relationship('User', back_populates='jurored_rounds')
     round = relationship('Round', back_populates='round_jurors')
@@ -172,6 +190,7 @@ class Entry(Base):
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
     entered_rounds = relationship('RoundEntry')
     rounds = association_proxy('entered_rounds', 'round',
@@ -187,6 +206,7 @@ class RoundEntry(Base):
 
     dq_reason = Column(String)  # in case it's disqualified
     # examples: too low resolution, out of date range
+    flags = Column(JSONEncodedDict)
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
@@ -211,6 +231,7 @@ class Rating(Base):
     value = Column(Float)
 
     create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
 
 class Ranking(Base):
@@ -233,6 +254,8 @@ class Task(Base):
     create_date = Column(DateTime, server_default=func.now())
     complete_date = Column(DateTime)
     cancel_date = Column(DateTime)
+
+    flags = Column(JSONEncodedDict)
 
 
 class UserDAO(object):
