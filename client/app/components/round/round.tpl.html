@@ -32,12 +32,11 @@
     <md-grid-list class="gallery"
                   md-row-height="1:1" md-gutter="15px"
                   md-cols="1" md-cols-sm="2" md-cols-md="3" md-cols-gt-md="6">
-        <md-grid-tile class="gallery__image"
+        <md-grid-tile class="gallery__image link"
                       md-rowspan="{{$ctrl.size}}" md-colspan="{{$ctrl.size}}"
-                      ng-repeat="image in $ctrl.images">
-            <img class="link"
-                 ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800"
-                 ng-click="$ctrl.openImage(image, $event)">
+                      ng-repeat="image in $ctrl.images"
+                      ng-click="$ctrl.openImage(image, $event)">
+            <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
             <md-grid-tile-footer class="gallery__footer"
                                  layout="column" layout-align="start start">
                 <h3 class="gallery__footer-name">{{image.name}}</h3>
