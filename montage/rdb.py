@@ -17,7 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from simple_serdes import DictableBase, JSONEncodedDict
-
+from utils import get_mw_userid
 
 Base = declarative_base(cls=DictableBase)
 
@@ -294,6 +294,34 @@ class UserDAO(object):
 
 class CoordinatorDAO(UserDAO):
     """A Data Access Object for the Coordinator's view"""
+    def is_coord(self):
+        pass
+
+    def create_round(self, round_name):
+        pass
+
+    def edit_round(self, round_id):
+        pass
+
+    def pause_round(self, round_id):
+        pass
+
+    def activate_round(self, round_id):
+        pass
+
+    def close_round(self, round_id):
+        self
+
+    def add_entries_from_cat(self):
+        pass
+
+    def add_entries_from_csv_url(self):
+        pass
+
+    def reassign(self, round_id, active_jurors):
+        pass
+
+    # Read methods
     def get_all_campaigns(self):
         campaigns = self.query(Campaign)\
                         .filter(
@@ -318,9 +346,44 @@ class CoordinatorDAO(UserDAO):
                     .one_or_none()
         return round
 
+    def create_user(self, username, user_id):
+        pass
+
+
+class OrganizerDAO(CoordinatorDAO): 
+    def is_organizer(self):
+        pass
+
+    def add_coordinator(self, username, campaign_id):
+        pass
+
+    def ceate_campaign(self, name):
+        pass
+
+    # Read methods
+    def get_all_campaigns(self):
+        # Organizers can see everything, including rounds with which
+        # they are not connected
+        pass
+
+
+class MaintainerDAO(OrganizerDAO): 
+    def is_maintainer(self):
+        pass
+
+    def add_organizer(self, username):
+        pass
+        
 
 class JurorDAO(UserDAO):
     """A Data Access Object for the Juror's view"""
+    def is_juror(self):
+        pass
+
+    def apply_rating(self, task_id, rating):
+        pass
+
+    # Read methods
     def get_all_rounds(self):
         rounds = self.query(Round)\
                      .filter(Round.jurors.any(username=self.user.username))\
@@ -343,6 +406,22 @@ class JurorDAO(UserDAO):
                         Round.id == round_id)\
                     .one_or_none()
         return round
+        
+    def get_next_task(self):
+        pass
+
+    def get_next_round_task(self, round_id):
+        pass
+
+
+def lookup_user(rdb_session, username=None, userid=None):
+    if not username and userid:
+        raise TypeError('missing either a username or userid')
+    if username and not userid:
+        userid = get_mw_userid(username)
+
+    user = session.query(User).filter(User.id == userid).first()
+    return user
 
 
 def create_initial_tasks(rdb_session, round):
@@ -425,8 +504,8 @@ if __name__ == '__main__':
     coord_dao = CoordinatorDAO(rdb_session=session, user=user)
     juror_dao = JurorDAO(rdb_session=session, user=user)
 
-    permission = coord_dao.check_campaign_permission()
-    print  permission
+    user = lookup_user(session, username='Slaporte')
+    print user
 
     import pdb;pdb.set_trace()
 
