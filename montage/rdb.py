@@ -56,12 +56,14 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String)
-    created_by = Column(String)  # TODO: FK to self
 
     last_login_date = Column(DateTime)
     create_date = Column(DateTime, server_default=func.now())
+    is_organizer = Column(Boolean, default=False)
+
     flags = Column(JSONEncodedDict)
 
+    created_by = Column(Integer, ForeignKey('users.id'))
     coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
                                   creator=lambda c: CampaignCoord(campaign=c))
@@ -362,7 +364,7 @@ class UserDAO(object):
 
 class CoordinatorDAO(UserDAO):
     """A Data Access Object for the Coordinator's view"""
-    def is_coord(self):
+    def check_is_coord(self):
         pass
 
     def create_round(self, round_name):
@@ -419,7 +421,7 @@ class CoordinatorDAO(UserDAO):
 
 
 class OrganizerDAO(CoordinatorDAO): 
-    def is_organizer(self):
+    def check_is_organizer(self):
         pass
 
     def add_coordinator(self, username, campaign_id):
@@ -436,11 +438,23 @@ class OrganizerDAO(CoordinatorDAO):
 
 
 class MaintainerDAO(OrganizerDAO): 
-    def is_maintainer(self):
+    def check_is_maintainer(self):
         pass
 
     def add_organizer(self, username):
-        pass
+        user = lookup_user(self.rdb_session, username=username)
+        if not user:
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=self.user)
+        if user.is_organizer:
+            raise Exception('organizer already exists')
+        user.is_organizer = True
+        self.rdb_session.add(user)
+        self.rdb_session.commit()
+        return user
+        
         
 
 class JurorDAO(UserDAO):
@@ -483,12 +497,14 @@ class JurorDAO(UserDAO):
 
 
 def lookup_user(rdb_session, username=None, userid=None):
+    if not rdb_session:
+        import pdb; pdb.set_trace()
     if not username and userid:
         raise TypeError('missing either a username or userid')
     if username and not userid:
         userid = get_mw_userid(username)
 
-    user = session.query(User).filter(User.id == userid).first()
+    user = rdb_session.query(User).filter(User.id == userid).one_or_none()
     return user
 
 
@@ -539,6 +555,22 @@ def create_initial_tasks(rdb_session, round):
         ret.append(task)
 
     return ret
+
+DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
+
+
+def make_rdb_session(db_url=DEFAULT_DB_URL, echo=True):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    # echo="debug" also prints results of selects, etc.
+    engine = create_engine(db_url, echo=echo)
+    Base.metadata.create_all(engine)
+
+    session_type = sessionmaker()
+    session_type.configure(bind=engine)
+    session = session_type()
+    return session
 
 
 """* Indexes

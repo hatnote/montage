@@ -16,5 +16,5 @@ def get_mw_userid(username):
     data = json.loads(resp.read())
     user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
     if not user_id:
-        raise RuntimeError('user does not exist')
+        raise RuntimeError('user %s does not exist' % username)
     return user_id
