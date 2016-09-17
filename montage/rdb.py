@@ -56,6 +56,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String)
+    created_by = Column(String)  # TODO: FK to self
 
     last_login_date = Column(DateTime)
     create_date = Column(DateTime, server_default=func.now())
@@ -224,9 +225,8 @@ class Rating(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    entry_id = Column(Integer, ForeignKey('entries.id'))
-    round_id = Column(Integer, ForeignKey('rounds.id'))
     task_id = Column(Integer, ForeignKey('tasks.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     value = Column(Float)
 
@@ -238,7 +238,14 @@ class Ranking(Base):
     __tablename__ = 'rankings'
 
     id = Column(Integer, primary_key=True)
-    # user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
+    task_id = Column(Integer, ForeignKey('tasks.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+
+    value = Column(Integer)
+
+    create_date = Column(DateTime, server_default=func.now())
+    flags = Column(JSONEncodedDict)
 
 
 class Task(Base):
@@ -256,6 +263,67 @@ class Task(Base):
     cancel_date = Column(DateTime)
 
     flags = Column(JSONEncodedDict)
+
+
+class ResultsSummary(Base):
+    """# Results modeling
+
+    This is more like a persistent cache. Results could be recomputed from
+    the ratings/rankings.
+
+    ## Campaign results
+
+    (Same as last round results?)
+
+    * Ranked winners
+    * Total number of entries
+    * Total number of votes
+    * Credits (organizers, coordinators, jurors)
+
+    ## Round results
+
+    All have:
+
+    * Total number in/out
+    * Time created/closed
+    * Created/closed by
+
+    Style-specific:
+
+    * Rating-based
+        * Winning images (up to 50, sampled?)
+        * Parameters (scale, threshold)
+    * Ranking-based
+        * ?
+
+    """
+    __tablename__ = 'results_summaries'
+
+    id = Column(Integer, primary_key=True)
+
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    round_id = Column(Integer, ForeignKey('rounds.id'))
+
+    summary = Column(JSONEncodedDict)
+
+    create_date = Column(DateTime, server_default=func.now())
+
+
+class AuditLogEntry(Base):
+    __tablename__ = 'audit_log_entries'
+
+    id = Column(Integer, primary_key=True)
+
+    user_id = Column(Integer, ForeignKey('users.id'))
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    round_id = Column(Integer, ForeignKey('rounds.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+
+    role = Column(String)
+    action = Column(String)
+    message = Column(String)
+
+    create_date = Column(DateTime, server_default=func.now())
 
 
 class UserDAO(object):
@@ -508,4 +576,3 @@ if __name__ == '__main__':
     print user
 
     import pdb;pdb.set_trace()
-
