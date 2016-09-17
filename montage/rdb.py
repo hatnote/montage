@@ -306,7 +306,7 @@ class CoordinatorDAO(UserDAO):
                        .filter(
                            Campaign.coords.any(username=self.user.username))\
                        .filter_by(id=campaign_id)\
-                       .one()
+                       .one_or_none()
         return campaign
 
     def get_round(self, round_id):
@@ -315,7 +315,7 @@ class CoordinatorDAO(UserDAO):
                         Round.campaign.has(
                             Campaign.coords.any(username=self.user.username)))\
                     .filter_by(id=round_id)\
-                    .one()
+                    .one_or_none()
         return round
 
 
@@ -326,29 +326,22 @@ class JurorDAO(UserDAO):
                      .filter(Round.jurors.any(username=self.user.username))\
                      .group_by(Round.campaign_id)\
                      .all()
-        ret = [r.to_dict() for r in rounds]
-        return ret
+        return rounds
 
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
                            Round.jurors.any(username=self.user.username)))\
                        .filter_by(id=campaign_id)\
-                       .one()
-        rounds = self.query(Round)\
-                     .filter(Round.jurors.any(username=self.user.username),
-                             Round.campaign_id == campaign_id)\
-                     .all()
-        ret = campaign.to_dict()
-        ret['rounds'] = [r.to_dict() for r in rounds]
-        return ret
+                       .one_or_none()
+        return campaign
 
     def get_round(self, round_id):
         round = self.query(Round)\
                     .filter(
                         Round.jurors.any(username=self.user.username),
                         Round.id == round_id)\
-                    .one()
+                    .one_or_none()
         return round
 
 
@@ -413,11 +406,11 @@ same as average) what about when images have more than quorum ratings?
 """
 
 if __name__ == '__main__':
-    db_url = 'sqlite:///tmp_montage.db'
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    # echo="debug" also prints results of selects, etc.
+    db_url = 'sqlite:///tmp_montage.db'
+
     engine = create_engine(db_url, echo=False)
     Base.metadata.create_all(engine)
 
@@ -427,15 +420,13 @@ if __name__ == '__main__':
 
     user = session.query(User).filter(User.id == '6024474').first()
 
-    db = UserDAO(rdb_session=session, user=user)
-    test_campaign_config = db.get_campaign_config(1)
-    print 'test campaign config', test_campaign_config
-    test_campaign = db.get_campaign(1)
-    print 'test campaign', test_campaign
-    test_round_config = db.get_round_config(1)
-    print 'test round config', test_round_config
-    test_round = db.get_round(1)
-    print 'test round', test_round
+    # TODO: Make into tests
+
+    coord_dao = CoordinatorDAO(rdb_session=session, user=user)
+    juror_dao = JurorDAO(rdb_session=session, user=user)
+
+    permission = coord_dao.check_campaign_permission()
+    print  permission
 
     import pdb;pdb.set_trace()
 

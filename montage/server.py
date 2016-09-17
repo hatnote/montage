@@ -162,16 +162,20 @@ def edit_round(user_dao, round_id, request_dict):
 def get_admin_landing(rdb_session, user):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaigns = coord_dao.get_all_campaigns()
+    if len(campaigns) == 0:
+        raise Forbidden('not a coordinator on any campaigns')
     data = []
     for campaign in campaigns:
         camp = get_admin_campaign(rdb_session, user, campaign.id)
         data.append(camp)
-    return {'data': data}
+    return data
 
 
 def get_admin_campaign(rdb_session, user, campaign_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = coord_dao.get_campaign(campaign_id)
+    if campaign is None:
+        raise Forbidden('not a coordinator on this campaign')
     info = {'id': campaign.id,
             'name': campaign.name,
             'rounds': [],
@@ -187,6 +191,8 @@ def get_admin_campaign(rdb_session, user, campaign_id):
 def get_admin_round(rdb_session, user, round_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
     # entries_info = user_dao.get_entry_info(round_id) # TODO
 
     # TODO: joinedload if this generates too many queries
@@ -229,19 +235,35 @@ def get_admin_round(rdb_session, user, round_id):
 def get_juror_rounds(rdb_session, user):
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     rounds = juror_dao.get_all_rounds()
-    return {'rounds': rounds}
+    if len(rounds) == 0:
+        raise Forbidden('not a juror for any rounds')
+    info = [rnd.to_dict() for rnd in rounds]
+    return info
 
 
 def get_juror_campaign(rdb_session, user, campaign_id, camp_name):
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     campaign = juror_dao.get_campaign(campaign_id)
-    return {'campaign': campaign}
+    if campaign is None:
+        raise Forbidden('not a juror for this campaign')
+    info = {'id': campaign.id,
+            'name': campaign.name,
+            'rounds': [],
+            'coords': [u.username for u in campaign.coords]}
+    for rnd in campaign.rounds:
+        info['rounds'].append(get_juror_round(rdb_session, user, rnd.id))
+
+    info['canonical_url_name'] = slugify(info['name'], '-')
+    return info
 
 
 def get_juror_round(rdb_session, user,  round_id):
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     rnd = juror_dao.get_round(round_id)
-    return {'round': rnd.to_dict()}
+    if rnd is None:
+        raise Forbidden('not a juror for this round')
+    info = rnd.to_dict()
+    return info
 
 
 #
@@ -253,7 +275,7 @@ def create_app(env_name='prod'):
     # render functions have been removed, as this is now managed by
     # the MessageMiddleware
     routes = [('/', home),
-              ('/admin', get_admin_landing),
+              GET('/admin', get_admin_landing),
               GET('/admin/campaign', get_admin_landing),
               POST('/admin/campaign', create_campaign),
               GET('/admin/campaign/<campaign_id:int>/<camp_name?>', get_admin_campaign),
