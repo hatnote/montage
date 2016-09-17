@@ -1,0 +1,65 @@
+
+from common import (make_rdb_session,
+                    JurorDAO,
+                    OrganizerDAO,
+                    MaintainerDAO,
+                    CoordinatorDAO,
+                    lookup_user)
+
+
+def main():
+    rdb_session = make_rdb_session()
+
+    cur_user = 'MahmoudHashemi'  # maintainer
+    user_obj = lookup_user(cur_user)
+
+    maint_dao = MaintainerDAO(user_obj, rdb_session)
+    maint_dao.add_organizer('Leila')
+
+    org_dao = OrganizerDAO(user_obj)
+
+    # should automatically add the creator as coordinator
+    campaign = org_dao.create_campaign(name='Test Campaign 2016')
+
+    org_dao.add_coordinator('Yarl')
+
+    coord_dao = CoordinatorDAO(lookup_user('Yarl'))
+
+    # the org_dao should be able to do this stuff, too
+    rnd = coord_dao.create_round(name='Test Round 1',
+                                 quorum=2,
+                                 jurors=['Slaporte', 'MahmoudHashemi'],
+                                 campaign=campaign)
+    # returns successful, disqualified, total counts
+    # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
+    #                               round_id=rnd.id)
+    coord_dao.add_entries_from_csv_url('http://commons.wikimedia.org/...',
+                                       round_id=rnd.id)
+
+    coord_dao.activate_round(rnd.id)  # or something
+
+    juror_dao = JurorDAO(lookup_user('Slaporte'))
+    task1 = juror_dao.get_next_task()
+
+    juror_dao.apply_rating(task1.id, 0.8)
+
+    coord_dao.reassign(active_jurors=['Slaporte'])
+
+    task2 = juror_dao.get_next_task()
+    juror_dao.apply_rating(task2.id, 0.4)
+
+    # a loop going over a bunch more ratings probably until
+    # get_next_task returns None
+
+    # coord_dao can do the following, too
+    # org_dao.cancel_round
+    org_dao.close_round(rnd.id)
+
+    # start new round
+    # close round
+    # close campaign
+    # download audit logs
+
+
+if __name__ == '__main__':
+    main()
