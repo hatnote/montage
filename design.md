@@ -87,7 +87,7 @@ For ranking type rounds, the interface shows a rankable list of images
 with limited metadata (the image's resolution). The juror can arrange
 the photos in an order and then submit the round.
 
-The juror can also see their overall progress and the due date.  
+The juror can also see their overall progress and the due date.
 
 Jurors have an option to enable a low-bandwidth version, which
 displays reduced resolution versions of images.
@@ -101,3 +101,27 @@ working order.
 
  - [Commons:Jury tools/WLM jury tool
 requirements](https://commons.wikimedia.org/wiki/Commons:Jury_tools/WLM_jury_tool_requirements)
+
+## Montage User Roles
+
+Montage has a simple permission scheme tailored to the tasks of
+contest organization and judging.
+
+* Maintainers - Creators/operators/maintainers of Montage
+    * Add Organizers
+* Organizers
+    * Create campaigns
+    * Add coordinators to campaigns they created
+    * All actions available to coordinators.
+* Coordinators
+    * Create/cancel/close a round
+    * Add/remove jurors
+    * Mark jurors active/inactive
+    * Initiate a task reassignment
+    * Download results and audit logs
+* Jurors
+    * Rate and rank photos to which they are assigned
+    * See their own progress
+
+Maintainers can technically do anything, as they have database access
+to the system, however they are intended to only add organizers.
