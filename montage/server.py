@@ -147,6 +147,18 @@ def create_campaign(user, rdb_session, request_dict):
     return {'data': camp.to_dict()}
 
 
+def edit_campaign(user_dao, campaign_id, request_dict):
+    pass
+
+
+def create_round(user_dao, request_dict):
+    pass
+
+
+def edit_round(user_dao, campaign_id, request_dict):
+    pass
+
+
 def get_admin_landing(user_dao):
     campaigns = user_dao.get_all_campaigns()
     data = []
@@ -242,9 +254,12 @@ def create_app(env_name='prod'):
               ('/admin', get_admin_landing),
               GET('/admin/campaign', get_admin_landing),
               POST('/admin/campaign', create_campaign),
-              ('/admin/campaign/<campaign_id:int>/<camp_name?>', get_admin_campaign),
-              ('/admin/round', get_admin_landing),
-              ('/admin/round/<round_id:int>/<round_name?>', get_admin_round),
+              GET('/admin/campaign/<campaign_id:int>/<camp_name?>', get_admin_campaign),
+              POST('/admin/campaign/<campaign_id:int>/<camp_name?>', edit_campaign),
+              GET('/admin/round', get_admin_landing),
+              POST('/admin/round', create_round),
+              GET('/admin/round/<round_id:int>/<round_name?>', get_admin_round),
+              POST('/admin/round/<round_id:int>/<round_name?>', edit_round),
               ('/campaign', get_juror_rounds),  # TODO
               ('/campaign/<campaign_id:int>/<camp_name?>', get_juror_campaign),
               ('/round', get_juror_rounds),
