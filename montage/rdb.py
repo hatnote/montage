@@ -281,13 +281,53 @@ class UserDAO(object):
         "a call-through to the underlying session.query"
         return self.rdb_session.query(*a, **kw)
 
-    def get_campaign_config(self, campaign_id=None):
+    def get_campaign_name(self, campaign_id):
+        # TODO: check user permissions?
+        campaign = self.query(Campaign).filter_by(id=campaign_id).one()
+        return campaign.name
+
+    def get_round_name(self, round_id):
+        # TODO: check user permissions?
+        round = self.query(Round).filter_by(id=round_id).one()
+        return round.name
+
+
+class CoordinatorDAO(UserDAO):
+    """A Data Access Object for the Coordinator's view"""
+    def get_all_campaigns(self):
+        campaigns = self.query(Campaign)\
+                        .filter(
+                            Campaign.coords.any(username=self.user.username))\
+                        .all()
+        return campaigns
+
+    def get_campaign(self, campaign_id=None):
         campaign = self.query(Campaign)\
                        .filter(
                            Campaign.coords.any(username=self.user.username))\
                        .filter_by(id=campaign_id)\
                        .one()
         return campaign
+
+    def get_round(self, round_id):
+        round = self.query(Round)\
+                    .filter(
+                        Round.campaign.has(
+                            Campaign.coords.any(username=self.user.username)))\
+                    .filter_by(id=round_id)\
+                    .one()
+        return round
+
+
+class JurorDAO(UserDAO):
+    """A Data Access Object for the Juror's view"""
+    def get_all_rounds(self):
+        rounds = self.query(Round)\
+                     .filter(Round.jurors.any(username=self.user.username))\
+                     .group_by(Round.campaign_id)\
+                     .all()
+        ret = [r.to_dict() for r in rounds]
+        return ret
 
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
@@ -303,25 +343,6 @@ class UserDAO(object):
         ret['rounds'] = [r.to_dict() for r in rounds]
         return ret
 
-    def get_campaign_name(self, campaign_id):
-        # TODO: check user permissions?
-        campaign = self.query(Campaign).filter_by(id=campaign_id).one()
-        return campaign.name
-
-    def get_round_name(self, round_id):
-        # TODO: check user permissions?
-        round = self.query(Round).filter_by(id=round_id).one()
-        return round.name
-
-    def get_round_config(self, round_id):
-        round = self.query(Round)\
-                    .filter(
-                        Round.campaign.has(
-                            Campaign.coords.any(username=self.user.username)),
-                        Round.id == round_id)\
-                    .one()
-        return round
-
     def get_round(self, round_id):
         round = self.query(Round)\
                     .filter(
@@ -329,21 +350,6 @@ class UserDAO(object):
                         Round.id == round_id)\
                     .one()
         return round
-
-    def get_all_campaigns(self):
-        campaigns = self.query(Campaign)\
-                        .filter(
-                            Campaign.coords.any(username=self.user.username))\
-                        .all()
-        return campaigns
-
-    def get_all_rounds(self):
-        rounds = self.query(Round)\
-                     .filter(Round.jurors.any(username=self.user.username))\
-                     .group_by(Round.campaign_id)\
-                     .all()
-        ret = [r.to_dict() for r in rounds]
-        return ret
 
 
 def create_initial_tasks(rdb_session, round):
@@ -405,3 +411,31 @@ ratings that form the quorum and average them? or median? (sum is the
 same as average) what about when images have more than quorum ratings?
 
 """
+
+if __name__ == '__main__':
+    db_url = 'sqlite:///tmp_montage.db'
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    # echo="debug" also prints results of selects, etc.
+    engine = create_engine(db_url, echo=False)
+    Base.metadata.create_all(engine)
+
+    session_type = sessionmaker()
+    session_type.configure(bind=engine)
+    session = session_type()
+
+    user = session.query(User).filter(User.id == '6024474').first()
+
+    db = UserDAO(rdb_session=session, user=user)
+    test_campaign_config = db.get_campaign_config(1)
+    print 'test campaign config', test_campaign_config
+    test_campaign = db.get_campaign(1)
+    print 'test campaign', test_campaign
+    test_round_config = db.get_round_config(1)
+    print 'test round config', test_round_config
+    test_round = db.get_round(1)
+    print 'test round', test_round
+
+    import pdb;pdb.set_trace()
+

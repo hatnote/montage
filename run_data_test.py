@@ -35,7 +35,7 @@ def populate_initial_data(db_url, debug=False, echo=True):
 
     campaign = Campaign(name='Test Campaign 2016')
     rdb_session.add(campaign)
-    round = Round(name='Test Round 1', quorum=2)
+    round = Round(name='Test Round 1', quorum=2, campaign=campaign)
     rdb_session.add(round)
 
     campaign.coords.append(coord)
