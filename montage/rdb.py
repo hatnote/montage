@@ -367,8 +367,25 @@ class CoordinatorDAO(UserDAO):
     def check_is_coord(self):
         pass
 
-    def create_round(self, round_name):
-        pass
+    def create_round(self, name, campaign=None, campaign_id=None, **kwargs):
+        if not campaign and campaign_id:
+            raise Exception('missing campaign object or campaign_id')
+        if not campaign and campaign_id:
+            campaign = self.get_camapign(campaign_id)
+        if not campaign:
+            raise Exception('campaign does not exist')
+        jurors = []
+        for juror_name in kwargs['jurors']:
+            juror = self.add_juror(juror_name)
+            jurors.append(juror)
+        # TODO: verify the minimum for creating a round
+        rnd = Round(name=name,
+                    campaign=campaign_id,
+                    quorum=kwargs['quorum'],
+                    jurors=jurors)
+        self.rdb_session.add(rnd)
+        self.rdb_session.commit()
+                    
 
     def edit_round(self, round_id):
         pass
@@ -390,6 +407,17 @@ class CoordinatorDAO(UserDAO):
 
     def reassign(self, round_id, active_jurors):
         pass
+
+    def add_juror(self, username):
+        user = lookup_user(self.rdb_session, username=username)
+        if not user:
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=self.user.id)
+            self.rdb_session.add(user)
+            self.rdb_session.commit()
+        return user
 
     # Read methods
     def get_all_campaigns(self):
@@ -422,13 +450,34 @@ class CoordinatorDAO(UserDAO):
 
 class OrganizerDAO(CoordinatorDAO): 
     def check_is_organizer(self):
-        pass
+        return self.user.is_organizer
 
     def add_coordinator(self, username, campaign_id):
-        pass
+        user = lookup_user(self.rdb_session, username=username)
+        if not user:
+            print 'new user'
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=self.user.id)
+        campaign = self.get_campaign(campaign_id=campaign_id)
+        if not campaign:
+            raise Exception('campaign does not exist')
+        if user in campaign.coords:
+            raise Exception('user is already a coordinator')
+        campaign.coords.append(user)
+        self.rdb_session.add(campaign)
+        self.rdb_session.add(user)
+        self.rdb_session.commit()
+        return user
 
-    def ceate_campaign(self, name):
-        pass
+    def create_campaign(self, name):
+        # TODO: Check if campaign with this name already exists?
+        campaign = Campaign(name=name)
+        self.rdb_session.add(campaign)
+        campaign.coords.append(self.user)
+        self.rdb_session.commit()
+        return campaign
 
     # Read methods
     def get_all_campaigns(self):
@@ -447,9 +496,10 @@ class MaintainerDAO(OrganizerDAO):
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
-                        created_by=self.user)
+                        created_by=self.user.id)
         if user.is_organizer:
-            raise Exception('organizer already exists')
+            #raise Exception('organizer already exists')
+            pass
         user.is_organizer = True
         self.rdb_session.add(user)
         self.rdb_session.commit()

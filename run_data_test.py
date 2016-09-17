@@ -27,6 +27,7 @@ def make_rdb_session(db_url=DEFAULT_DB_URL, echo=True):
 
 def populate_initial_data(db_url, debug=False, echo=True):
     rdb_session = make_rdb_session(db_url=db_url, echo=echo)
+    # Note, we should create these users with the proper mediawiki id
     coord = User(username='Leila')
     coord2 = User(username='Slaporte')
     juror1 = User(username='Slaporte')

@@ -15,20 +15,22 @@ def main():
     maint_dao = MaintainerDAO(rdb_session, user_obj)
     maint_dao.add_organizer('LilyOfTheWest')
 
-    # org_dao = OrganizerDAO(user_obj)
+    org_user = lookup_user(rdb_session, 'LilyOfTheWest')
+    org_dao = OrganizerDAO(rdb_session, org_user)
 
-    # # should automatically add the creator as coordinator
-    # campaign = org_dao.create_campaign(name='Test Campaign 2016')
+    # should automatically add the creator as coordinator
+    campaign = org_dao.create_campaign(name='Test Campaign 2016')
 
-    # org_dao.add_coordinator('Yarl')
+    org_dao.add_coordinator('Yarl', campaign.id)
 
-    # coord_dao = CoordinatorDAO(lookup_user('Yarl'))
+    coord_user = lookup_user(rdb_session, 'Yarl')
+    coord_dao = CoordinatorDAO(rdb_session, coord_user)
 
-    # # the org_dao should be able to do this stuff, too
-    # rnd = coord_dao.create_round(name='Test Round 1',
-    #                              quorum=2,
-    #                              jurors=['Slaporte', 'MahmoudHashemi'],
-    #                              campaign=campaign)
+    # the org_dao should be able to do this stuff, too
+    rnd = coord_dao.create_round(name='Test Round 1',
+                                 quorum=2,
+                                 jurors=['Slaporte', 'MahmoudHashemi'],
+                                 campaign=campaign)
     # # returns successful, disqualified, total counts
     # # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
     # #                               round_id=rnd.id)
