@@ -19,6 +19,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from simple_serdes import DictableBase, JSONEncodedDict
 from utils import get_mw_userid
 
+from loaders import get_csv_from_gist
+
 Base = declarative_base(cls=DictableBase)
 
 
@@ -380,12 +382,12 @@ class CoordinatorDAO(UserDAO):
             jurors.append(juror)
         # TODO: verify the minimum for creating a round
         rnd = Round(name=name,
-                    campaign=campaign_id,
+                    campaign=campaign,
                     quorum=kwargs['quorum'],
                     jurors=jurors)
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
-                    
+        return rnd
 
     def edit_round(self, round_id):
         pass
@@ -402,8 +404,22 @@ class CoordinatorDAO(UserDAO):
     def add_entries_from_cat(self):
         pass
 
-    def add_entries_from_csv_url(self):
-        pass
+    def add_entries_from_csv_gist(self, gist_url, round_id):
+        entries = get_csv_from_gist(gist_url)
+        rnd = self.get_round(round_id)
+        if not rnd:
+            raise Exception('round does not exist')
+        for entry in entries:
+            # Check if entry exists
+            db_entry = self.get_entry(entry.name)
+            if db_entry:
+                entry = db_entry
+            # Check if disqualified
+            rnd.entries.append(entry)
+
+        self.rdb_session.merge(rnd)
+        self.rdb_session.commit()
+        return rnd
 
     def reassign(self, round_id, active_jurors):
         pass
@@ -443,6 +459,12 @@ class CoordinatorDAO(UserDAO):
                     .filter_by(id=round_id)\
                     .one_or_none()
         return round
+
+    def get_entry(self, filename):
+        entry = self.query(Entry)\
+                    .filter_by(name=filename)\
+                    .first()
+        return entry
 
     def create_user(self, username, user_id):
         pass
@@ -539,7 +561,7 @@ class JurorDAO(UserDAO):
                     .one_or_none()
         return round
         
-    def get_next_task(self):
+    def get_next_task(self, num=1):
         pass
 
     def get_next_round_task(self, round_id):

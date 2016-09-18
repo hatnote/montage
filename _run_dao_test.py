@@ -31,11 +31,11 @@ def main():
                                  quorum=2,
                                  jurors=['Slaporte', 'MahmoudHashemi'],
                                  campaign=campaign)
-    # # returns successful, disqualified, total counts
-    # # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
-    # #                               round_id=rnd.id)
-    # coord_dao.add_entries_from_csv_url('http://commons.wikimedia.org/...',
-    #                                    round_id=rnd.id)
+    # returns successful, disqualified, total counts
+    # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
+    #                               round_id=rnd.id)
+    entry = coord_dao.get_entry('715.jpg.StJust-Pasteur_En.jpg')
+    coord_dao.add_entries_from_csv_gist('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv', round_id=rnd.id)
 
     # coord_dao.activate_round(rnd.id)  # or something
 

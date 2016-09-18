@@ -1,9 +1,10 @@
 
 import datetime
+import urllib2
 
 from unicodecsv import DictReader
 
-from rdb import Entry
+import rdb
 from labs import get_files
 
 CSV_FULL_COLS = ['img_name',
@@ -33,7 +34,7 @@ def make_entry(edict):
                  'upload_user_text': edict['img_user_text']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
-    return Entry(**raw_entry)
+    return rdb.Entry(**raw_entry)
 
 
 def load_full_csv(csv_file_obj):
@@ -56,6 +57,12 @@ def load_full_csv(csv_file_obj):
 def load_brief_csv(csv_file_obj):
     "Just the image names, we'll look up the rest in the DB"
     return
+
+
+def get_csv_from_gist(raw_url):
+    resp = urllib2.urlopen(raw_url)
+    ret = load_full_csv(resp)
+    return ret
 
 
 def load_category(category_name):
@@ -82,5 +89,6 @@ TODO:
 """
 
 if __name__ == '__main__':
-    imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
+    #imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
+    imgs = get_csv_from_gist('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
     import pdb; pdb.set_trace()
