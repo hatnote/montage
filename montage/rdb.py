@@ -16,6 +16,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
+from boltons.iterutils import chunked
+
 from simple_serdes import DictableBase, JSONEncodedDict
 from utils import get_mw_userid
 
@@ -181,7 +183,7 @@ class Entry(Base):
     id = Column(Integer, primary_key=True)
 
     # page_id?
-    name = Column(String)
+    name = Column(String, unique=True, index=True)
     mime_major = Column(String)
     mime_minor = Column(String)
     width = Column(Integer)
@@ -407,17 +409,29 @@ class CoordinatorDAO(UserDAO):
     def add_entries_from_csv_gist(self, gist_url, round_id):
         entries = get_csv_from_gist(gist_url)
         rnd = self.get_round(round_id)
+
         if not rnd:
             raise Exception('round does not exist')
-        for entry in entries:
-            # Check if entry exists
-            db_entry = self.get_entry(entry.name)
-            if db_entry:
-                entry = db_entry
-            # Check if disqualified
-            rnd.entries.append(entry)
 
-        self.rdb_session.merge(rnd)
+        commit_objs = []
+        entry_chunks = chunked(entries, 200)
+
+        for entry_chunk in entry_chunks:
+            entry_names = [e.name for e in entry_chunk]
+            db_entries = self.get_entries(entry_names)
+
+            for entry in entry_chunk:
+                db_entry = db_entries.get(entry.name)
+
+                if db_entry:
+                    entry = db_entry # commit_objs.append(db_entry)
+                else:
+                    commit_objs.append(entry)
+
+                round_entry = RoundEntry(entry=entry, round=rnd)
+                commit_objs.append(round_entry)
+
+        self.rdb_session.bulk_save_objects(commit_objs)
         self.rdb_session.commit()
         return rnd
 
@@ -460,14 +474,15 @@ class CoordinatorDAO(UserDAO):
                     .one_or_none()
         return round
 
-    def get_entry(self, filename):
-        entry = self.query(Entry)\
-                    .filter_by(name=filename)\
-                    .first()
-        return entry
-
-    def create_user(self, username, user_id):
-        pass
+    def get_entries(self, filenames):
+        entries = self.query(Entry)\
+                      .filter(Entry.name.in_(filenames))\
+                      .all()
+        ret = {}
+        for entry in entries:
+            name = entry.name
+            ret[name] = entry
+        return ret
 
 
 class OrganizerDAO(CoordinatorDAO): 
@@ -514,11 +529,15 @@ class MaintainerDAO(OrganizerDAO):
 
     def add_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
+        if user:
+            created_by = self.user.id
+        else:
+            created_by = None
         if not user:
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
-                        created_by=self.user.id)
+                        created_by=created_by)
         if user.is_organizer:
             #raise Exception('organizer already exists')
             pass
