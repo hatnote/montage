@@ -7,6 +7,7 @@ from server import get_admin_round
 
 # TODO: flex
 
+
 def get_admin_campaign(rdb_session, user, campaign_id):
     """
     Some non-API related facts.
@@ -16,26 +17,25 @@ def get_admin_campaign(rdb_session, user, campaign_id):
     Summary: Get admin-level details for a campaign, identified by campaign ID.
 
     Request message:
-       - name: campaign_id
-         type: int64
-         required: true
+        campaign_id:
+            type: int64
 
     Response model name: CampaignDetails
     Response model:
-       - name: id
-         type: int64
-       - name: name
-         type: string
-       - name: rounds
-         type: array
-         items:
-           type: RoundDetails
-       - name: coordinators
-         type: array
-         items:
-           type: CoordDetails
-       - name: url_name
-         type: string
+        id:
+            type: int64
+        name:
+            type: string
+        rounds:
+            type: array
+            items:
+                type: RoundDetails
+        coordinators:
+            type: array
+            items:
+                type: CoordDetails
+        url_name:
+            type:string
 
     Errors:
        403: User does not have permission to access requested campaign
@@ -106,6 +106,11 @@ def attach_api_schema(func):
     return spec_dict
 
 
+def _pprint_od(od):
+    ded = remap(od, lambda p, k, v: (k, dict(v) if isinstance(v, dict) else v))
+    pprint(ded)
+
+
 class SchemaBroker(object):
     def __init__(self):
         self.api_version = '0.1'
@@ -119,7 +124,8 @@ class SchemaBroker(object):
         self.consumes = ['application/json']
         self.produces = ['application/json']
 
-        self.paths = []
+        self.paths = {}
+        self._un_paths = {}
 
         """
         example_path = {'get': {'description': '',
@@ -134,18 +140,32 @@ class SchemaBroker(object):
 
         self.definitions = {}
 
-    def register_route(self, route):
-        pass
-
-    def register_all_routes(self, app, autofilter=True):
+    def register_route(self, route, autoskip=True):
         warnings = []
-        routes = app.routes
-        for rt in routes:
-            if autofilter and not rt.methods:
-                warnings.append('skipping %r, has no methods specified' % rt)
-                continue
-            self.register_route(rt)
+        if autoskip and not route.methods:
+            warnings.append('skipping %r, no methods specified' % route)
+            return
+        endpoint_func = route.endpoint
+        spec_dict = attach_api_schema(endpoint_func)
+
+        path = route.pattern  # TODO: curly-brace formatted
+
+        if not spec_dict:
+            return []  # TODO
+
+        _pprint_od(dict(spec_dict))
+
+        return []
+
+    def register_app_routes(self, app, autoskip=True):
+        warnings = []
+        for rt in app.routes:
+            ws = self.register_route(rt, autoskip=autoskip)
+            warnings.extend(ws)
         return warnings
+
+    def resolve(self):
+        pass
 
     def get_openapi_spec_dict(self):
         from collections import OrderedDict
@@ -196,9 +216,14 @@ yaml.add_constructor(_mapping_tag, dict_constructor)
 
 
 if __name__ == '__main__':
-    attach_api_schema(get_admin_campaign)
+    # attach_api_schema(get_admin_campaign)
+
+    route = GET('/admin/campaign', get_admin_campaign)
 
     sb = SchemaBroker()
+
+    sb.register_route(route)
+    sb.resolve()
 
     print sb.get_openapi_spec_yaml()
     print
