@@ -6,6 +6,10 @@ from rdb import CoordinatorDAO
 from server import get_admin_round
 
 # TODO: flex
+# TODO: support "required"
+
+# TODO: clastic add a bind-time middleware callback (application
+# creation fails unless middleware signs off on success)
 
 
 def get_admin_campaign(rdb_session, user, campaign_id):
@@ -16,7 +20,7 @@ def get_admin_campaign(rdb_session, user, campaign_id):
 
     Summary: Get admin-level details for a campaign, identified by campaign ID.
 
-    Request message:
+    Request model:
         campaign_id:
             type: int64
 
@@ -73,6 +77,7 @@ import collections
 from pprint import pprint
 
 from clastic import GET
+from boltons.strutils import under2camel
 from boltons.iterutils import remap
 
 _api_spec_start_re = re.compile('# API Spec', re.I)
@@ -111,7 +116,11 @@ def _pprint_od(od):
     pprint(ded)
 
 
-class SchemaBroker(object):
+class APISpecMiddleware(object):
+    pass
+
+
+class APISpecBroker(object):
     def __init__(self):
         self.api_version = '0.1'
         self.title = ''
@@ -124,8 +133,8 @@ class SchemaBroker(object):
         self.consumes = ['application/json']
         self.produces = ['application/json']
 
-        self.paths = {}
-        self._un_paths = {}
+        self.def_map = collections.OrderedDict()
+        self.path_map = collections.OrderedDict()
 
         """
         example_path = {'get': {'description': '',
@@ -138,8 +147,6 @@ class SchemaBroker(object):
                                                 'schema': {'$ref': '#/definitions/RoundRequestInfo'}}]}}
         """
 
-        self.definitions = {}
-
     def register_route(self, route, autoskip=True):
         warnings = []
         if autoskip and not route.methods:
@@ -147,13 +154,42 @@ class SchemaBroker(object):
             return
         endpoint_func = route.endpoint
         spec_dict = attach_api_schema(endpoint_func)
-
-        path = route.pattern  # TODO: curly-brace formatted
-
         if not spec_dict:
             return []  # TODO
 
+        path = route.pattern  # TODO: curly-brace formatted
+        op_id = route.endpoint.func_name
+
         _pprint_od(dict(spec_dict))
+
+        param_list = []  # TODO: url path params
+
+        req_def_name = spec_dict.get('request_model_name')
+        if req_def_name:
+            self.def_map[req_def_name] = None
+
+        req_def = spec_dict.get('request_model')
+        if req_def:
+            cc_op_id = under2camel(op_id)
+            default_req_def_name = '%sRequestModel' % (cc_op_id,)
+            req_def_name = req_def_name or default_req_def_name
+            req_param = {'name': op_id + '_request_message',
+                         'in': 'body',
+                         'description': 'JSON-encoded request message for %s' % (op_id,),
+                         'required': True,
+                         'schema': {'$ref': '#/definitions/' + req_def_name}}
+            param_list.append(req_param)
+
+            self.def_map[req_def_name] = req_def
+
+        path_dict = {'description': spec_dict.get('summary', ''),
+                     'operationId': op_id,
+                     'produces': spec_dict.get('produces', self.produces),
+                     'parameters': param_list}
+
+        self.path_map[path] = path_dict
+
+        # TODO: response schema
 
         return []
 
@@ -168,14 +204,15 @@ class SchemaBroker(object):
         pass
 
     def get_openapi_spec_dict(self):
-        from collections import OrderedDict
-        ret = OrderedDict()
+        ret = collections.OrderedDict()
 
-        spec_paths = []
-        spec_defs = []
-
-        for path in self.paths:
-            pass
+        unresolved_models = []
+        for name, defn in self.def_map.items():
+            if defn is None:
+                unresolved_models.append(defn)
+        if unresolved_models:
+            raise ValueError('no definitions found for models: %r'
+                             % unresolved_models)
 
         ret['swagger'] = '2.0'
         ret['host'] = self.host
@@ -187,18 +224,19 @@ class SchemaBroker(object):
                        'title': self.title,
                        'description': self.description,
                        'contact': self.contact}
-        ret['paths'] = spec_paths
-        ret['definitions'] = spec_defs
+        ret['paths'] = self.path_map
+        ret['definitions'] = self.def_map
 
         return ret
 
     def get_openapi_spec_yaml(self):
-        return yaml.dump(self.get_openapi_spec_dict(),
-                         default_flow_style=False)
+        return dump_yaml(self.get_openapi_spec_dict())
 
     def get_openapi_spec_json(self):
         return json.dumps(self.get_openapi_spec_dict(), indent=2)
 
+
+# set up yaml pretty printing
 
 _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
 
@@ -214,17 +252,36 @@ def dict_constructor(loader, node):
 yaml.add_representer(collections.OrderedDict, dict_representer)
 yaml.add_constructor(_mapping_tag, dict_constructor)
 
+# disable reference/alias emission
+
+
+class ExplicitDumper(yaml.Dumper):
+    """
+    A dumper that will never emit aliases.
+    """
+    def ignore_aliases(self, data):
+        return True
+
+
+def dump_yaml(*a, **kw):
+    kw['Dumper'] = ExplicitDumper
+
+    # always dump in characteristic yaml block style
+    kw['default_flow_style'] = False
+    return yaml.dump(*a, **kw)
+
+# end yaml customization
+
 
 if __name__ == '__main__':
     # attach_api_schema(get_admin_campaign)
 
     route = GET('/admin/campaign', get_admin_campaign)
 
-    sb = SchemaBroker()
+    sb = APISpecBroker()
 
     sb.register_route(route)
     sb.resolve()
 
     print sb.get_openapi_spec_yaml()
-    print
-    print sb.get_openapi_spec_json()
+    sb.get_openapi_spec_json()
