@@ -71,10 +71,12 @@ class User(Base):
     coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
                                   creator=lambda c: CampaignCoord(campaign=c))
-
+    
     jurored_rounds = relationship('RoundJuror', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJuror(round=r))
+
+    tasks = relationship('Task', back_populates='user')
     # update_date?
 
     def __init__(self, **kw):
@@ -217,6 +219,7 @@ class RoundEntry(Base):
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
+    task = relationship('Task', back_populates='round_entry')
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -261,8 +264,8 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
-    user = relationship('User')
-    round_entry = relationship('RoundEntry')
+    user = relationship('User', back_populates='tasks')
+    round_entry = relationship('RoundEntry', back_populates='task')
 
     create_date = Column(DateTime, server_default=func.now())
     complete_date = Column(DateTime)
@@ -391,17 +394,29 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.commit()
         return rnd
 
-    def edit_round(self, round_id):
-        pass
+    def edit_round(self, round_id, round_dict):
+        # TODO: Confirm if dict keys are columns?
+        ret = self.rdb_session.query(Round)\
+                              .filter_by(id=round_id)\
+                              .update(round_dict)
+        self.rdb_session.commit()
+        return ret
 
     def pause_round(self, round_id):
-        pass
+        rnd_status = {'status': 'paused'}
+        query = self.edit_round(round_id, rnd_status)
+        return query
 
     def activate_round(self, round_id):
-        pass
+        rnd_status = {'status': 'active'}
+        query = self.edit_round(round_id, rnd_status)
+        rnd = self.get_round(round_id)
+        tasks = create_initial_tasks(self.rdb_session, rnd)
+        import pdb;pdb.set_trace()
+        return query
 
     def close_round(self, round_id):
-        self
+        pass
 
     def add_entries_from_cat(self):
         pass
@@ -431,7 +446,10 @@ class CoordinatorDAO(UserDAO):
                 round_entry = RoundEntry(entry=entry, round=rnd)
                 commit_objs.append(round_entry)
 
-        self.rdb_session.bulk_save_objects(commit_objs)
+        # self.rdb_session.bulk_save_objects(commit_objs) 
+        # Mystery: Why does this lead to a unique constraint failure
+        # when adding new files?
+
         self.rdb_session.commit()
         return rnd
 
@@ -581,6 +599,8 @@ class JurorDAO(UserDAO):
         return round
         
     def get_next_task(self, num=1):
+        #task = self.query(Round)\
+        #           .filter(
         pass
 
     def get_next_round_task(self, round_id):
@@ -644,7 +664,8 @@ def create_initial_tasks(rdb_session, round):
         # TODO: bulk_save_objects
         task = Task(user=juror, round_entry=entry)
         ret.append(task)
-
+    rdb_session.bulk_save_objects(ret)
+    rdb_session.commit()
     return ret
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'

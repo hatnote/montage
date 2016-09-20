@@ -36,8 +36,10 @@ def main():
     #                               round_id=rnd.id)
 
     coord_dao.add_entries_from_csv_gist('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv', round_id=rnd.id)
+    
+    # coord_dao.edit_round(rnd.id, {'status': 'active'})
 
-    # coord_dao.activate_round(rnd.id)  # or something
+    coord_dao.activate_round(rnd.id)  # or something
 
     # juror_dao = JurorDAO(lookup_user('Slaporte'))
     # task1 = juror_dao.get_next_task()
