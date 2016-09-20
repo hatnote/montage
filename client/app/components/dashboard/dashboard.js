@@ -7,7 +7,8 @@ const DashboardComponent = {
     },
     controller: function ($state) {
         let vm = this;
-        vm.campaigns = vm.data.data.data;
+        vm.campaigns = vm.data.data;
+        vm.error = vm.data.error;
     },
     template: template
 };

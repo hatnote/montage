@@ -11,7 +11,7 @@ const RoundComponent = {
     },
     controller: function ($state, $mdDialog) {
         let vm = this;
-        vm.round = vm.data.data; //vm.data.data.data;
+        vm.round = vm.data;
         vm.user = vm.round.user;
 
         vm.isJuror = isJuror(vm.user.id);

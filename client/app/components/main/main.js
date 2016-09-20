@@ -7,11 +7,13 @@ const MainComponent = {
     let vm = this;
 
     userService.getCampaigns().then(data => {
+      /*
       if (data.data.status === 'failure') {
         $state.go('login');
         return false;
       }
-      vm.user = data.data.user;
+      */
+      vm.user = data.user || {};
     });
 
     vm.logout = logout;
