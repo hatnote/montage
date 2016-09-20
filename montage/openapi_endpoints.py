@@ -1,4 +1,5 @@
 
+import flex
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
@@ -39,7 +40,7 @@ def get_admin_campaign(rdb_session, user, campaign_id):
             items:
                 type: CoordDetails
         url_name:
-            type:string
+            type: string
 
     Errors:
        403: User does not have permission to access requested campaign
@@ -84,7 +85,7 @@ _api_spec_start_re = re.compile('# API Spec', re.I)
 _api_spec_end_re = re.compile('# End API Spec', re.I)
 
 
-def attach_api_schema(func):
+def extract_api_spec(func):
     parts = _api_spec_start_re.split(func.__doc__, maxsplit=1)
     if len(parts) == 1:
         # no match found, continuing
@@ -104,10 +105,6 @@ def attach_api_schema(func):
     # should remap have a maxdepth? technically len(p) gives you the depth
     spec_dict = remap(spec_dict, format_spec_key)
 
-    # pprint(spec_dict)
-
-    func.spec_dict = spec_dict
-
     return spec_dict
 
 
@@ -121,44 +118,43 @@ class APISpecMiddleware(object):
 
 
 class APISpecBroker(object):
-    def __init__(self):
+    def __init__(self, title='', description='', contact_name='',
+                 extra_defs=None):
         self.api_version = '0.1'
-        self.title = ''
-        self.description = ''
-        self.contact = ''  # TODO name/etc.?
+        self.title = title
+        self.description = description
+        self.contact = {'name': contact_name}
 
-        self.host = ''
+        self.host = 'localhost'
         self.base_path = '/'
         self.schemes = ['http']
         self.consumes = ['application/json']
         self.produces = ['application/json']
 
-        self.def_map = collections.OrderedDict()
         self.path_map = collections.OrderedDict()
 
-        """
-        example_path = {'get': {'description': '',
-                                'operationId': 'get_rounds',
-                                'produces': ['application/json'],
-                                'parameters': [{'name': '<request_message_name>',
-                                                'in': 'body',
-                                                'description': '...',
-                                                'required': True,
-                                                'schema': {'$ref': '#/definitions/RoundRequestInfo'}}]}}
-        """
+        self.def_map = collections.OrderedDict()
+        if extra_defs:
+            if isinstance(extra_defs, basestring):
+                extra_defs = yaml.load(extra_defs)
+                self.def_map.update(extra_defs)
+
+        # TODO: base defs for error model etc.
+        return
 
     def register_route(self, route, autoskip=True):
-        warnings = []
+        warnings = []  # TODO: better warning system
         if autoskip and not route.methods:
             warnings.append('skipping %r, no methods specified' % route)
             return
         endpoint_func = route.endpoint
-        spec_dict = attach_api_schema(endpoint_func)
+        spec_dict = extract_api_spec(endpoint_func)
         if not spec_dict:
             return []  # TODO
 
         path = route.pattern  # TODO: curly-brace formatted
         op_id = route.endpoint.func_name
+        cc_op_id = under2camel(op_id)
 
         _pprint_od(dict(spec_dict))
 
@@ -170,26 +166,42 @@ class APISpecBroker(object):
 
         req_def = spec_dict.get('request_model')
         if req_def:
-            cc_op_id = under2camel(op_id)
             default_req_def_name = '%sRequestModel' % (cc_op_id,)
             req_def_name = req_def_name or default_req_def_name
             req_param = {'name': op_id + '_request_message',
                          'in': 'body',
-                         'description': 'JSON-encoded request message for %s' % (op_id,),
+                         'description': 'JSON request message for %s' % op_id,
                          'required': True,
                          'schema': {'$ref': '#/definitions/' + req_def_name}}
             param_list.append(req_param)
 
             self.def_map[req_def_name] = req_def
 
+        resp_def_name = spec_dict.get('response_model_name')
+        if resp_def_name:
+            self.def_map[resp_def_name] = None
+
+        resp_def = spec_dict.get('response_model')
+
+        if resp_def:
+            default_resp_def_name = '%sResponseModel' % (cc_op_id,)
+            resp_def_name = resp_def_name or default_resp_def_name
+            resp_param = {'name': op_id + '_response_message',
+                          'in': 'body',
+                          'description': 'JSON response message for %s' % op_id,
+                          'required': True,
+                          'schema': {'$ref': '#/definitions/' + req_def_name}}
+            param_list.append(resp_param)
+
+            self.def_map[resp_def_name] = resp_def
+
         path_dict = {'description': spec_dict.get('summary', ''),
                      'operationId': op_id,
                      'produces': spec_dict.get('produces', self.produces),
                      'parameters': param_list}
+        # TODO: errors
 
         self.path_map[path] = path_dict
-
-        # TODO: response schema
 
         return []
 
@@ -201,11 +213,6 @@ class APISpecBroker(object):
         return warnings
 
     def resolve(self):
-        pass
-
-    def get_openapi_spec_dict(self):
-        ret = collections.OrderedDict()
-
         unresolved_models = []
         for name, defn in self.def_map.items():
             if defn is None:
@@ -213,6 +220,12 @@ class APISpecBroker(object):
         if unresolved_models:
             raise ValueError('no definitions found for models: %r'
                              % unresolved_models)
+        return
+
+    def get_openapi_spec_dict(self):
+        ret = collections.OrderedDict()
+
+        self.resolve()
 
         ret['swagger'] = '2.0'
         ret['host'] = self.host
@@ -285,3 +298,7 @@ if __name__ == '__main__':
 
     print sb.get_openapi_spec_yaml()
     sb.get_openapi_spec_json()
+
+    tmp = flex.load(sb.get_openapi_spec_yaml())
+
+    import pdb;pdb.set_trace()
