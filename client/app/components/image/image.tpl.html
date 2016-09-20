@@ -1,0 +1,52 @@
+<div class="image" layout="row" layout-align="center start">
+    <div class="image__gallery" layout="row" layout-align="center center" flex>
+        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.image.title}}&w=1280">
+    </div>
+    <div class="image__description">
+        <h3 class="md-title">Vote</h3>
+        <div class="image__voting--star" layout="row" layout-align="start end">
+            <md-button class="md-icon-button"
+                       ng-repeat="rate in $ctrl.rates"
+                       ng-click="$ctrl.setRate(rate)"
+                       ng-class="{'md-primary': $ctrl.hover >= rate }"
+                       ng-mouseenter="$ctrl.hover = rate"
+                       ng-mouseleave="$ctrl.hover = 0">
+                <md-icon>star_rate</md-icon>
+            </md-button>
+            <span class="image__divider">|</span>
+            <md-button class="image__skip-btn" ng-click="$ctrl.setRate()">
+                <md-tooltip>Skip voting on this file</md-tooltip>
+                Skip
+            </md-button>
+        </div>
+        <h3 class="md-title">Description</h3>
+        <md-list flex>
+            <md-list-item class="md-2-line">
+                <md-icon>date_range</md-icon>
+                <div class="md-list-item-text">
+                    <h3>September 25, 2016</h3>
+                    <p>Monday, 15:25</p>
+                </div>
+            </md-list-item>
+            <md-list-item class="md-2-line">
+                <md-icon>image</md-icon>
+                <div class="md-list-item-text">
+                    <h3>16 Mpix</h3>
+                    <p>4160 × 3120 &nbsp; 2.8 MiB</p>
+                </div>
+            </md-list-item>
+            <md-divider></md-divider>
+            <md-list-item class="md-long-text">
+                <div class="md-list-item-text">
+                    <p>Curabitur et tortor placerat nulla accumsan fringilla. Maecenas vitae mauris sollicitudin ex ullamcorper mattis sed et nulla.
+            Donec sed ipsum et nisi volutpat semper. Integer at ultrices ligula. Cras imperdiet aliquam velit, sit amet euismod
+            nunc tempor at. Suspendisse vitae ultrices turpis. Integer in eros elit.</p>
+                </div>
+            </md-list-item>
+        </md-list>
+
+        <div>
+            
+        </div>
+    </div>
+</div>

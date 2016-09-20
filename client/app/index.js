@@ -35,6 +35,13 @@ angular.module('montage', ['ngMaterial', 'ui.router'])
           images: (dataService) => dataService.getTempImages() // temporary!
         }
       })
+      .state('main.image', {
+        url: '/image',
+        template: '<mont-image layout="column" layout-align="start start" data="$resolve.image"></mont-round>',
+        resolve: {
+          image: (dataService) => dataService.getTempImage() // temporary!
+        }
+      })
       .state('login', {
         url: '/login',
         template: '<mont-login layout="column" layout-align="center center"></mont-login>'
