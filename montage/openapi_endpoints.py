@@ -1,12 +1,10 @@
 
-import flex
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import CoordinatorDAO
 from server import get_admin_round
 
-# TODO: flex
 # TODO: support "required"
 
 # TODO: clastic add a bind-time middleware callback (application
@@ -131,6 +129,7 @@ class APISpecBroker(object):
         self.consumes = ['application/json']
         self.produces = ['application/json']
 
+        self.routes = []
         self.path_map = collections.OrderedDict()
 
         self.def_map = collections.OrderedDict()
@@ -144,9 +143,11 @@ class APISpecBroker(object):
 
     def register_route(self, route, autoskip=True):
         warnings = []  # TODO: better warning system
+        if route in self.routes:
+            return warnings
         if autoskip and not route.methods:
             warnings.append('skipping %r, no methods specified' % route)
-            return
+            return warnings
         endpoint_func = route.endpoint
         spec_dict = extract_api_spec(endpoint_func)
         if not spec_dict:
@@ -177,6 +178,8 @@ class APISpecBroker(object):
 
             self.def_map[req_def_name] = req_def
 
+        resp_map = collections.OrderedDict()
+
         resp_def_name = spec_dict.get('response_model_name')
         if resp_def_name:
             self.def_map[resp_def_name] = None
@@ -186,23 +189,25 @@ class APISpecBroker(object):
         if resp_def:
             default_resp_def_name = '%sResponseModel' % (cc_op_id,)
             resp_def_name = resp_def_name or default_resp_def_name
-            resp_param = {'name': op_id + '_response_message',
-                          'in': 'body',
-                          'description': 'JSON response message for %s' % op_id,
-                          'required': True,
-                          'schema': {'$ref': '#/definitions/' + req_def_name}}
-            param_list.append(resp_param)
-
+            # TODO: response_summary?
+            resp_dict = {'description': 'JSON response message for %s' % op_id,
+                         'schema': {'$ref': '#/definitions/' + resp_def_name}}
             self.def_map[resp_def_name] = resp_def
+            resp_map['200'] = resp_dict
 
         path_dict = {'description': spec_dict.get('summary', ''),
                      'operationId': op_id,
                      'produces': spec_dict.get('produces', self.produces),
-                     'parameters': param_list}
+                     'parameters': param_list,
+                     'responses': resp_map}
         # TODO: errors
 
-        self.path_map[path] = path_dict
-
+        for method in sorted(route.methods):
+            if method == 'HEAD':
+                continue
+            m_dict = self.path_map.setdefault(path, collections.OrderedDict())
+            m_dict[method] = path_dict
+        self.routes.append(route)
         return []
 
     def register_app_routes(self, app, autoskip=True):
@@ -220,6 +225,9 @@ class APISpecBroker(object):
         if unresolved_models:
             raise ValueError('no definitions found for models: %r'
                              % unresolved_models)
+
+        for route in self.routes:
+            pass
         return
 
     def get_openapi_spec_dict(self):
@@ -299,6 +307,7 @@ if __name__ == '__main__':
     print sb.get_openapi_spec_yaml()
     sb.get_openapi_spec_json()
 
-    tmp = flex.load(sb.get_openapi_spec_yaml())
+    from bravado_core.spec import Spec
+    spec = Spec(sb.get_openapi_spec_dict())
 
     import pdb;pdb.set_trace()
