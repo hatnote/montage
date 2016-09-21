@@ -36,7 +36,12 @@ def get_entity_propnames(entity):
         :rtype: set
     """
     e = entity if isinstance(entity, InstanceState) else inspect(entity)
-    return set(e.mapper.column_attrs.keys() + e.mapper.relationships.keys())
+    ret = set(e.mapper.column_attrs.keys() + e.mapper.relationships.keys())
+
+    type_props = [a for a in dir(entity.object)
+                  if isinstance(getattr(entity.object.__class__, a, None), property)]
+    ret |= set(type_props)
+    return ret
 
 
 def get_entity_loaded_propnames(entity):
@@ -78,6 +83,7 @@ class DictableBase(object):
         items = []
         for attr_name in prop_names - excluded:
             val = getattr(self, attr_name)
+
             if isinstance(val, datetime.datetime):
                 val = val.isoformat()
             items.append((attr_name, val))

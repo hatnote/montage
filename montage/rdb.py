@@ -55,6 +55,8 @@ with a dict, brand new flags-having objects will have None for the
 flags attribute.
 """
 
+MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -72,7 +74,7 @@ class User(Base):
     coordinated_campaigns = relationship('CampaignCoord', back_populates='user')
     campaigns = association_proxy('coordinated_campaigns', 'campaign',
                                   creator=lambda c: CampaignCoord(campaign=c))
-    
+
     jurored_rounds = relationship('RoundJuror', back_populates='user')
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJuror(round=r))
@@ -83,6 +85,10 @@ class User(Base):
     def __init__(self, **kw):
         self.flags = kw.pop('flags', {})
         super(User, self).__init__(**kw)
+
+    @property
+    def is_maintainer(self):
+        return self.username in MAINTAINERS
 
 
 class Campaign(Base):
@@ -397,7 +403,7 @@ class CoordinatorDAO(UserDAO):
 
     def edit_round(self, round_id, round_dict):
         # TODO: Confirm if dict keys are columns?
-        
+
         # Some restrictions on editing round properties:
         #
         #   - no reassignment required: name, description, directions,
@@ -454,7 +460,7 @@ class CoordinatorDAO(UserDAO):
                 round_entry = RoundEntry(entry=entry, round=rnd)
                 commit_objs.append(round_entry)
 
-        # self.rdb_session.bulk_save_objects(commit_objs) 
+        # self.rdb_session.bulk_save_objects(commit_objs)
         # Mystery: Why does this lead to a unique constraint failure
         # when adding new files?
 
@@ -511,7 +517,7 @@ class CoordinatorDAO(UserDAO):
         return ret
 
 
-class OrganizerDAO(CoordinatorDAO): 
+class OrganizerDAO(CoordinatorDAO):
     def check_is_organizer(self):
         return self.user.is_organizer
 
@@ -549,7 +555,7 @@ class OrganizerDAO(CoordinatorDAO):
         pass
 
 
-class MaintainerDAO(OrganizerDAO): 
+class MaintainerDAO(OrganizerDAO):
     def check_is_maintainer(self):
         pass
 
@@ -571,8 +577,8 @@ class MaintainerDAO(OrganizerDAO):
         self.rdb_session.add(user)
         self.rdb_session.commit()
         return user
-        
-        
+
+
 
 class JurorDAO(UserDAO):
     """A Data Access Object for the Juror's view"""
@@ -620,10 +626,10 @@ class JurorDAO(UserDAO):
                         Round.id == round_id)\
                     .one_or_none()
         return round
-        
+
     def get_next_task(self, num=1, offset=0):
         tasks = self.query(Task)\
-                    .filter(Task.user == self.user, 
+                    .filter(Task.user == self.user,
                             Task.complete_date == None)\
                     .limit(num)\
                     .offset(offset)\
@@ -635,7 +641,7 @@ class JurorDAO(UserDAO):
                    .filter_by(id=task_id)\
                    .one_or_none()
         return task
-        
+
     def get_next_round_task(self, round_id):
         pass
 
