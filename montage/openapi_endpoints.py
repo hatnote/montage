@@ -116,8 +116,14 @@ class APISpecMiddleware(object):
 
 
 class APISpecBroker(object):
-    def __init__(self, title='', description='', contact_name='',
+    def __init__(self,
+                 title='',
+                 description='',
+                 contact_name='',
+                 response_wrapper_name=None,
+                 response_wrapper_key=None,
                  extra_defs=None):
+        # TODO: request wrapper
         self.api_version = '0.1'
         self.title = title
         self.description = description
@@ -137,6 +143,19 @@ class APISpecBroker(object):
             if isinstance(extra_defs, basestring):
                 extra_defs = yaml.load(extra_defs)
                 self.def_map.update(extra_defs)
+
+        self.response_wrapper = None
+        self.response_wrapper_key = response_wrapper_key
+        self.response_wrapper_name = response_wrapper_name
+
+        if response_wrapper_name:
+            try:
+                response_wrapper = self.def_map[response_wrapper_name]
+            except KeyError:
+                raise ValueError('response wrapper %r not found in extra_defs'
+                                 % response_wrapper_name)
+            # TODO: assert response_wrapper_key in response_wrapper
+            self.response_wrapper = response_wrapper
 
         # TODO: base defs for error model etc.
         return
@@ -190,9 +209,22 @@ class APISpecBroker(object):
             default_resp_def_name = '%sResponseModel' % (cc_op_id,)
             resp_def_name = resp_def_name or default_resp_def_name
             # TODO: response_summary?
-            resp_dict = {'description': 'JSON response message for %s' % op_id,
-                         'schema': {'$ref': '#/definitions/' + resp_def_name}}
+            resp_dict = {'description': 'JSON response message for %s' % op_id}
+
             self.def_map[resp_def_name] = resp_def
+            if self.response_wrapper:
+                wrapper_name = '%sResponseWrapper' % (cc_op_id,)
+                resp_wrapper = dict(self.response_wrapper)
+                wrapper_dict = {'type': 'object',
+                                'schema':
+                                {'$ref': '#/definitions/' + resp_def_name}}
+                resp_wrapper[self.response_wrapper_key] = wrapper_dict
+                self.def_map[wrapper_name] = resp_wrapper
+                schema_name = wrapper_name
+            else:
+                schema_name = resp_def_name
+
+            resp_dict['schema'] = {'$ref': '#/definitions/' + schema_name}
             resp_map['200'] = resp_dict
 
         path_dict = {'description': spec_dict.get('summary', ''),
@@ -299,7 +331,37 @@ if __name__ == '__main__':
 
     route = GET('/admin/campaign', get_admin_campaign)
 
-    sb = APISpecBroker()
+    BASE_DEFS = """
+    BaseResponseWrapper:
+        user:
+            type: object
+            schema:
+                $ref: #/definitions/UserSessionInfo
+        data:
+            type: object
+        errors:
+            type: array
+            items:
+                type: string
+
+    UserInfo:
+        id:
+            type: int64
+        username:
+            type: string
+        created_by:
+            type: string
+        is_organizer:
+            type: bool
+        create_date:
+            type: date-time
+        last_login_date:
+            type: date-time
+    """
+
+    sb = APISpecBroker(response_wrapper_name='BaseResponseWrapper',
+                       response_wrapper_key='data',
+                       extra_defs=BASE_DEFS)
 
     sb.register_route(route)
     sb.resolve()
