@@ -1,6 +1,10 @@
 <div class="login" layout="column" layout-align="center center">
     <h2 class="md-headline">Sign in to Montage</h2>
     <md-card class="login__frame">
+        <div class="login__spinner" layout="row" layout-align="center center"
+             ng-show="$ctrl.loading">
+            <md-progress-circular md-diameter="40"></md-progress-circular>
+        </div>
         <md-button class="md-raised md-primary"
                    ng-click="$ctrl.login()"
                    ng-disabled="$ctrl.loading">Sign in using Wikimedia</md-button>
