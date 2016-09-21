@@ -39,7 +39,7 @@
         <div class="campaign__round md-primary md-hue-1"
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
-             ng-click="$ctrl.openRound(round.id)">
+             ng-click="$ctrl.openRound(round)">
             <span class="md-body-2" flex="20">{{round.name}}</span>
             <span class="md-body-1" flex="20">{{round.closeDate || "Unknown"}}</span>
             <span class="md-body-1" flex="20">{{round.jurors.length || "0"}} jurors</span>

@@ -3,9 +3,10 @@ import template from './campaign.tpl.html';
 
 const CampaignComponent = {
     bindings: {
-        data: '<'
+        data: '<',
+        user: '<'
     },
-    controller: function ($state, $timeout, $mdToast) {
+    controller: function($state, $timeout, $mdToast, userService) {
         let vm = this;
         vm.campaign = vm.data;
 
@@ -37,15 +38,19 @@ const CampaignComponent = {
 
         }
 
-        function openRound(id) {
-            $state.go('main.round', { id: id });
-            //$state.go('main.image');
+        function isAdmin() {
+            return vm.campaign.coords.indexOf(vm.user.username) > -1;
+        }
+
+        function openRound(round) {
+            if (round.voteMethod === 'voting') {
+                $state.go('main.image');
+            } else {
+                $state.go(isAdmin() ? 'main.admin-round' : 'main.round', { id: round.id });
+            }
         }
 
         function saveCampaignName() {
-            vm.campaign.name = vm.nameEdit;
-            vm.isNameEdited = false;
-
             let toast = $mdToast.simple()
                 .textContent('Campaign name changed')
                 .action('UNDO')
@@ -54,8 +59,15 @@ const CampaignComponent = {
                 .toastClass('campain__change-name-toast')
                 .position('top right');
 
-            $mdToast.show(toast).then((response) => {
-                console.log(response);
+            vm.campaign.name = vm.nameEdit;
+            vm.isNameEdited = false;
+            
+            userService.admin.editCampaign(vm.campaign.id, {
+                name: vm.campaign.name
+            }).then(() => {
+                $mdToast.show(toast).then((response) => {
+                    console.log(response);
+                });
             });
         }
     },

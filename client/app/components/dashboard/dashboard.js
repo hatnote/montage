@@ -9,6 +9,7 @@ const DashboardComponent = {
         let vm = this;
         vm.campaigns = vm.data.data;
         vm.logout = logout;
+        vm.user = vm.data.user;
         vm.error = vm.data.error;
 
         // functions 
