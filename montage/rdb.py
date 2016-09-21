@@ -2,6 +2,7 @@
 import json
 import random
 import itertools
+from datetime import datetime
 from math import ceil
 
 from sqlalchemy import (Column,
@@ -385,7 +386,7 @@ class CoordinatorDAO(UserDAO):
         for juror_name in kwargs['jurors']:
             juror = self.add_juror(juror_name)
             jurors.append(juror)
-        # TODO: verify the minimum for creating a round
+        # TODO: verify the minimum elements for creating ar round
         rnd = Round(name=name,
                     campaign=campaign,
                     quorum=kwargs['quorum'],
@@ -396,6 +397,14 @@ class CoordinatorDAO(UserDAO):
 
     def edit_round(self, round_id, round_dict):
         # TODO: Confirm if dict keys are columns?
+        
+        # Some restrictions on editing round properties:
+        #
+        #   - no reassignment required: name, description, directions,
+        #     display_settings
+        #   - reassignment required: quorum, active_jurors
+        #   - not updateable: id, open_date, close_date, vote_method,
+        #     campaign_id/seq
         ret = self.rdb_session.query(Round)\
                               .filter_by(id=round_id)\
                               .update(round_dict)
@@ -412,8 +421,7 @@ class CoordinatorDAO(UserDAO):
         query = self.edit_round(round_id, rnd_status)
         rnd = self.get_round(round_id)
         tasks = create_initial_tasks(self.rdb_session, rnd)
-        import pdb;pdb.set_trace()
-        return query
+        return rnd
 
     def close_round(self, round_id):
         pass
@@ -571,8 +579,23 @@ class JurorDAO(UserDAO):
     def is_juror(self):
         pass
 
+    def edit_task(self, task_id, task_dict):
+        # TODO: Confirm if dict keys are columns?
+        ret = self.rdb_session.query(Task)\
+                              .filter_by(id=task_id)\
+                              .update(task_dict)
+        self.rdb_session.commit()
+        return ret
+
     def apply_rating(self, task_id, rating):
-        pass
+        task = self.get_task(task_id)
+        rating = Rating(user_id=self.user.id,
+                        task_id=task_id,
+                        round_entry_id=task.round_entry_id,
+                        value=rating)
+        self.rdb_session.add(rating)
+        task_dict = {'complete_date': datetime.now()}
+        self.edit_task(task_id, task_dict)
 
     # Read methods
     def get_all_rounds(self):
@@ -598,11 +621,21 @@ class JurorDAO(UserDAO):
                     .one_or_none()
         return round
         
-    def get_next_task(self, num=1):
-        #task = self.query(Round)\
-        #           .filter(
-        pass
+    def get_next_task(self, num=1, offset=0):
+        tasks = self.query(Task)\
+                    .filter(Task.user == self.user, 
+                            Task.complete_date == None)\
+                    .limit(num)\
+                    .offset(offset)\
+                    .all()
+        return tasks
 
+    def get_task(self, task_id):
+        task = self.query(Task)\
+                   .filter_by(id=task_id)\
+                   .one_or_none()
+        return task
+        
     def get_next_round_task(self, round_id):
         pass
 
@@ -664,7 +697,7 @@ def create_initial_tasks(rdb_session, round):
         # TODO: bulk_save_objects
         task = Task(user=juror, round_entry=entry)
         ret.append(task)
-    rdb_session.bulk_save_objects(ret)
+
     rdb_session.commit()
     return ret
 

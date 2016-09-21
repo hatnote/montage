@@ -22,6 +22,7 @@ def main():
     campaign = org_dao.create_campaign(name='Test Campaign 2016')
 
     org_dao.add_coordinator('Yarl', campaign.id)
+    org_dao.add_coordinator('Slaporte', campaign.id)
 
     coord_user = lookup_user(rdb_session, 'Yarl')
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
@@ -40,11 +41,14 @@ def main():
     # coord_dao.edit_round(rnd.id, {'status': 'active'})
 
     coord_dao.activate_round(rnd.id)  # or something
-
-    # juror_dao = JurorDAO(lookup_user('Slaporte'))
-    # task1 = juror_dao.get_next_task()
-
-    # juror_dao.apply_rating(task1.id, 0.8)
+    
+    juror_user = lookup_user(rdb_session, 'Slaporte')
+    juror_dao = JurorDAO(rdb_session, juror_user)
+    tasks = juror_dao.get_next_task()
+    
+    task1 = tasks[0]
+    
+    juror_dao.apply_rating(task1.id, 0.8)
 
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
