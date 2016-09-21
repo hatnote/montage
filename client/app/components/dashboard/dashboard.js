@@ -5,10 +5,20 @@ const DashboardComponent = {
     bindings: {
         data: '<'
     },
-    controller: function ($state) {
+    controller: function ($state, userService) {
         let vm = this;
         vm.campaigns = vm.data.data;
+        vm.logout = logout;
         vm.error = vm.data.error;
+
+        // functions 
+
+        function logout() {
+            userService.logout().then(() => {
+                vm.user = {};
+                $state.go('login');
+            });
+        }
     },
     template: template
 };
