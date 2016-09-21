@@ -21,7 +21,7 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
       .state('main', {
         template: '<ui-view/>',
         resolve: {
-          campaigns: (userService) => userService.getCampaigns()
+          campaigns: (userService) => userService.juror.get()
         }
       })
       .state('main.dashboard', {
@@ -32,7 +32,7 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
         url: '/round/:id',
         template: '<mont-round layout="column" layout-align="start start" data="$resolve.round" images="$resolve.images"></mont-round>',
         resolve: {
-          round: ($stateParams, userService) => userService.getRound($stateParams.id),
+          round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
           images: (dataService) => dataService.getTempImages() // temporary!
         }
       })

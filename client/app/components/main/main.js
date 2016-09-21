@@ -6,7 +6,7 @@ const MainComponent = {
   controller: function ($state, userService, versionService) {
     let vm = this;
 
-    userService.getCampaigns().then(data => {
+    userService.juror.get().then(data => {
       /*
       if (data.data.status === 'failure') {
         $state.go('login');
