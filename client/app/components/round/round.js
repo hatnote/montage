@@ -13,6 +13,11 @@ const RoundComponent = {
         let vm = this;
         vm.round = vm.data;
         vm.user = vm.round.user;
+        vm.voting = {
+            yesno: vm.round.voteMethod === 'yesno',
+            voting: vm.round.voteMethod === 'voting',
+            ranking: vm.round.voteMethod === 'ranking',
+        };
 
         vm.isJuror = isJuror(vm.user.id);
         vm.setGallerySize = (size) => { vm.size = size; };

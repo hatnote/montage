@@ -34,14 +34,18 @@
                    ng-class="'gallery__image--size-'+$ctrl.size"
                    ng-repeat="image in $ctrl.images"
                    ng-click="$ctrl.openImage(image, $event)" sv-element>
-            <md-button class="md-icon-button gallery__drag-icon" sv-handle>
+            <md-button class="md-icon-button gallery__drag-icon"
+                       ng-show="$ctrl.voting.ranking" sv-handle>
                 <md-icon>drag_handle</md-icon>
             </md-button>
             <div class="gallery__image-containter" layout="column" layout-align="center center">
                 <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
             </div>
             <grid-tile-footer class="gallery__footer">
-                <h3 class="gallery__footer-name">{{image.name}}</h3>
+                <h3 class="gallery__footer-name">
+                    <span ng-show="$ctrl.voting.ranking">#{{$index+1}}</span>
+                    <span>{{image.name}}</span>
+                </h3>
             </grid-tile-footer>
         </grid-tile>
     </grid-list>
