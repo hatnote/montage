@@ -30,6 +30,19 @@ def edit_round(user_dao, round_id, request_dict):
 
 
 def get_admin_index(rdb_session, user):
+    """
+    Summary: Get admin-level details for all campaigns.
+
+    Response model name: CampaignIndex
+    Response model:
+        campaigns:
+            type: array
+            items: 
+                type: CampaignDetails
+
+    Errors:
+       403: User does not have permission to access any campaigns
+    """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaigns = coord_dao.get_all_campaigns()
     if len(campaigns) == 0:
@@ -42,6 +55,34 @@ def get_admin_index(rdb_session, user):
 
 
 def get_admin_campaign(rdb_session, user, campaign_id):
+    """
+    Summary: Get admin-level details for a campaign, identified by campaign ID.
+
+    Request model:
+        campaign_id:
+            type: int64
+
+    Response model name: CampaignDetails
+    Response model:
+        id:
+            type: int64
+        name:
+            type: string
+        rounds:
+            type: array
+            items:
+                type: RoundDetails
+        coordinators:
+            type: array
+            items:
+                type: CoordDetails
+        url_name:
+            type: string
+
+    Errors:
+       403: User does not have permission to access requested campaign
+       404: Campaign not found
+    """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = coord_dao.get_campaign(campaign_id)
     if campaign is None:
@@ -59,6 +100,40 @@ def get_admin_campaign(rdb_session, user, campaign_id):
 
 
 def get_admin_round(rdb_session, user, round_id):
+    """
+    Summary: Get admin-level details for a round, identified by round ID.
+
+    Request model:
+        round_id:
+            type: int64
+
+    Response model name: RoundDetails
+    Response model:
+        id:
+            type: int64
+        name:
+            type: string
+        url_name:
+            type: string
+        vote_method:
+            type: string
+        status:
+            type: string
+        jurors:
+            type: array
+            items:
+                type: UserDetails
+        quorum:
+            type: int64
+        close_date:
+            type: date-time
+        campaign:
+            type: CampaignInfo
+
+    Errors:
+       403: User does not have permission to access requested round
+       404: Round not found
+    """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
     if rnd is None:
