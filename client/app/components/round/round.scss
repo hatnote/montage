@@ -23,8 +23,8 @@
         display: inline-block;
         position: relative;
         background: #ccc;
-        width: calc((100% - 100px) / 5);
-        height: 15vw;
+        width: calc((100% - 100px) / 5) !important; // id needs to be important, because of sortable plugin adds inline css
+        height: 15vw !important;
         margin: 10px;
         vertical-align: top;
 
@@ -34,13 +34,13 @@
         }
 
         &.gallery__image--size-2 {
-            width: 28vw;
-            height: 28vw;
+            width: calc((100% - 100px) / 3) !important;
+            height: 28vw !important;
         }
 
         &.gallery__image--size-3 {
-            width: 43vw;
-            height: 43vw;
+            width: calc((100% - 100px) / 2) !important;
+            height: 43vw !important;
         }
 
         .gallery__image-containter {
