@@ -5,6 +5,10 @@ from boltons.strutils import slugify
 from rdb import JurorDAO
 
 
+def get_juror_index(rdb_session, user):
+    pass
+
+
 def get_juror_rounds(rdb_session, user):
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     rounds = juror_dao.get_all_rounds()

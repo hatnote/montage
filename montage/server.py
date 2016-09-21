@@ -50,7 +50,8 @@ from mw import (UserMiddleware,
 from rdb import Base
 from check_rdb import get_schema_errors
 
-from juror_endpoints import (get_juror_round,
+from juror_endpoints import (get_juror_index,
+                             get_juror_round,
                              get_juror_rounds,
                              get_juror_campaign)
 from admin_endpoints import (create_campaign,
@@ -75,7 +76,7 @@ def create_app(env_name='prod'):
               ('/login', login),
               ('/logout', logout),
               ('/complete_login', complete_login),
-              GET('/admin/overview',
+              GET('/admin',
                   get_admin_index),
               POST('/admin/campaign',
                    create_campaign),
@@ -89,6 +90,8 @@ def create_app(env_name='prod'):
                   get_admin_round),
               POST('/admin/round/<round_id:int>/<round_name?>',
                    edit_round),
+              GET('/juror',
+                  get_juror_index),
               GET('/juror/campaign',
                   get_juror_rounds),
               GET('/juror/campaign/<campaign_id:int>/<camp_name?>',
