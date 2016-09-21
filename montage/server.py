@@ -32,265 +32,71 @@ created or been added to. Can Coordinators create other Coordinators?
 """
 import sys
 import os.path
-import datetime
 
 import yaml
 
-from clastic import Application, redirect, GET, POST
-from clastic.errors import Forbidden
+from clastic import Application, GET, POST
+
 from clastic.static import StaticApplication
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from boltons.strutils import slugify
-from mwoauth import ConsumerToken, Handshaker, RequestToken
 
-from mw import (public,
-                UserMiddleware,
+from mwoauth import ConsumerToken
+
+from mw import (UserMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
-from rdb import Base, User, Campaign, CoordinatorDAO, JurorDAO
+from rdb import Base
 from check_rdb import get_schema_errors
 
+from juror_endpoints import (get_juror_round,
+                             get_juror_rounds,
+                             get_juror_campaign)
+from admin_endpoints import (create_campaign,
+                             edit_campaign,
+                             create_round,
+                             edit_round,
+                             get_admin_index,
+                             get_admin_round,
+                             get_admin_campaign)
 
-WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
+from public_endpoints import home, login, logout, complete_login
+
+
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
-ROOT_ADMINS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
-
-
-@public
-def home(cookie, request):
-    headers = dict([(k, v) for k, v in
-                    request.environ.items() if k.startswith('HTTP_')])
-    return {'cookie': dict(cookie),
-            'headers': headers}
-
-
-@public
-def login(request, consumer_token, cookie, root_path):
-    handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
-
-    redirect_url, request_token = handshaker.initiate()
-
-    cookie['request_token_key'] = request_token.key
-    cookie['request_token_secret'] = request_token.secret
-
-    cookie['return_to_url'] = request.args.get('next', root_path)
-    return redirect(redirect_url)
-
-
-@public
-def logout(request, cookie, root_path):
-    cookie.pop('userid', None)
-    cookie.pop('username', None)
-
-    return_to_url = request.args.get('next', root_path)
-
-    return redirect(return_to_url)
-
-
-@public
-def complete_login(request, consumer_token, cookie, rdb_session):
-    handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
-
-    req_token = RequestToken(cookie['request_token_key'],
-                             cookie['request_token_secret'])
-
-    access_token = handshaker.complete(req_token,
-                                       request.query_string)
-    identity = handshaker.identify(access_token)
-
-    userid = identity['sub']
-    username = identity['username']
-    user = rdb_session.query(User).filter(User.id == userid).first()
-    now = datetime.datetime.utcnow()
-    if user is None:
-        user = User(id=userid, username=username, last_login_date=now)
-        rdb_session.add(user)
-    else:
-        user.last_login_date = now
-
-    # These would be useful when we have oauth beyond simple ID, but
-    # they should be stored in the database along with expiration times.
-    # ID tokens only last 100 seconds or so
-    # cookie['access_token_key'] = access_token.key
-    # cookie['access_token_secret'] = access_token.secret
-
-    # identity['confirmed_email'] = True/False might be interesting
-    # for contactability through the username. Might want to assert
-    # that it is True.
-
-    cookie['userid'] = identity['sub']
-    cookie['username'] = identity['username']
-
-    return_to_url = cookie.get('return_to_url')
-    del cookie['request_token_key']
-    del cookie['request_token_secret']
-    del cookie['return_to_url']
-    return redirect(return_to_url)
-
-
-#
-#  End public/auth endpoint functions
-#
-
-
-def create_campaign(user, rdb_session, request_dict):
-    if user.username not in ROOT_ADMINS:
-        raise Forbidden('only a root admin can create a campaign')  # for now
-    camp = Campaign(name=request_dict['name'])
-    rdb_session.add(camp)
-    rdb_session.commit()
-    return {'data': camp.to_dict()}
-
-
-def edit_campaign(user_dao, campaign_id, request_dict):
-    pass
-
-
-def create_round(user_dao, request_dict):
-    pass
-
-
-def edit_round(user_dao, round_id, request_dict):
-    pass
-
-
-def get_admin_landing(rdb_session, user):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaigns = coord_dao.get_all_campaigns()
-    if len(campaigns) == 0:
-        raise Forbidden('not a coordinator on any campaigns')
-    data = []
-    for campaign in campaigns:
-        camp = get_admin_campaign(rdb_session, user, campaign.id)
-        data.append(camp)
-    return data
-
-
-def get_admin_campaign(rdb_session, user, campaign_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.get_campaign(campaign_id)
-    if campaign is None:
-        raise Forbidden('not a coordinator on this campaign')
-    info = {'id': campaign.id,
-            'name': campaign.name,
-            'rounds': [],
-            'coords': [u.username for u in campaign.coords]}
-    for rnd in campaign.rounds:
-        info['rounds'].append(get_admin_round(rdb_session, user, rnd.id))
-
-    info['canonical_url_name'] = slugify(info['name'], '-')
-
-    return info
-
-
-def get_admin_round(rdb_session, user, round_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
-    # entries_info = user_dao.get_entry_info(round_id) # TODO
-
-    # TODO: joinedload if this generates too many queries
-    jurors = [{'username': rj.user.username,
-               'id': rj.user.id,
-               'active': rj.is_active} for rj in rnd.round_jurors]
-
-    info = {'id': rnd.id,
-            'name': rnd.name,
-            'voteMethod': rnd.vote_method,
-            'status': rnd.status,
-            'jurors': jurors,
-            'quorum': rnd.quorum,
-            'sourceInfo': {
-                'entryCount': None,
-                'uploadersCount': None,
-                'roundSource': {'id': None,
-                                'title': None}},
-            'closeDate': rnd.close_date,
-            'campaign': rnd.campaign_id}
-
-    info['canonical_url_name'] = slugify(info['name'], '-')
-
-    return info
-
-
-# - cancel round
-# - update round
-#   - no reassignment required: name, description, directions, display_settings
-#   - reassignment required: quorum, active_jurors
-#   - not updateable: id, open_date, close_date, vote_method, campaign_id/seq
-
-
-
-#
-#  End admin endpoint functions
-#
-
-
-def get_juror_rounds(rdb_session, user):
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    rounds = juror_dao.get_all_rounds()
-    if len(rounds) == 0:
-        raise Forbidden('not a juror for any rounds')
-    info = [rnd.to_dict() for rnd in rounds]
-    return info
-
-
-def get_juror_campaign(rdb_session, user, campaign_id, camp_name):
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    campaign = juror_dao.get_campaign(campaign_id)
-    if campaign is None:
-        raise Forbidden('not a juror for this campaign')
-    info = {'id': campaign.id,
-            'name': campaign.name,
-            'rounds': [],
-            'coords': [u.username for u in campaign.coords]}
-    for rnd in campaign.rounds:
-        info['rounds'].append(get_juror_round(rdb_session, user, rnd.id))
-
-    info['canonical_url_name'] = slugify(info['name'], '-')
-    return info
-
-
-def get_juror_round(rdb_session, user,  round_id):
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    rnd = juror_dao.get_round(round_id)
-    if rnd is None:
-        raise Forbidden('not a juror for this round')
-    info = rnd.to_dict()
-    return info
-
-
-#
-#  End juror endpoint functions
-#
-
 
 def create_app(env_name='prod'):
-    # render functions have been removed, as this is now managed by
-    # the MessageMiddleware
+    # rendering is handled by MessageMiddleware
     routes = [('/', home),
-              GET('/admin', get_admin_landing),
-              GET('/admin/campaign', get_admin_landing),
-              POST('/admin/campaign', create_campaign),
-              GET('/admin/campaign/<campaign_id:int>/<camp_name?>', get_admin_campaign),
-              POST('/admin/campaign/<campaign_id:int>/<camp_name?>', edit_campaign),
-              GET('/admin/round', get_admin_landing),
-              POST('/admin/round', create_round),
-              GET('/admin/round/<round_id:int>/<round_name?>', get_admin_round),
-              POST('/admin/round/<round_id:int>/<round_name?>', edit_round),
-              ('/campaign', get_juror_rounds),  # TODO
-              ('/campaign/<campaign_id:int>/<camp_name?>', get_juror_campaign),
-              ('/round', get_juror_rounds),
-              ('/round/<round_id:int>/<round_name?>', get_juror_round),
               ('/login', login),
               ('/logout', logout),
-              ('/complete_login', complete_login)]
+              ('/complete_login', complete_login),
+              GET('/admin/overview',
+                  get_admin_index),
+              POST('/admin/campaign',
+                   create_campaign),
+              GET('/admin/campaign/<campaign_id:int>/<camp_name?>',
+                  get_admin_campaign),
+              POST('/admin/campaign/<campaign_id:int>/<camp_name?>',
+                   edit_campaign),
+              POST('/admin/round',
+                   create_round),
+              GET('/admin/round/<round_id:int>/<round_name?>',
+                  get_admin_round),
+              POST('/admin/round/<round_id:int>/<round_name?>',
+                   edit_round),
+              GET('/juror/campaign',
+                  get_juror_rounds),
+              GET('/juror/campaign/<campaign_id:int>/<camp_name?>',
+                  get_juror_campaign),
+              GET('/juror/round',
+                  get_juror_rounds),
+              GET('/juror/round/<round_id:int>/<round_name?>',
+                  get_juror_round)]
 
     config_file_name = 'config.%s.yaml' % env_name
     config = yaml.load(open(config_file_name))
