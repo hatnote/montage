@@ -2,14 +2,11 @@
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
-from rdb import Campaign, CoordinatorDAO
-
-
-ROOT_ADMINS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
+from rdb import Campaign, CoordinatorDAO, MAINTAINERS
 
 
 def create_campaign(user, rdb_session, request_dict):
-    if user.username not in ROOT_ADMINS:
+    if user.username not in MAINTAINERS:
         raise Forbidden('only a root admin can create a campaign')  # for now
     camp = Campaign(name=request_dict['name'])
     rdb_session.add(camp)
@@ -37,7 +34,7 @@ def get_admin_index(rdb_session, user):
     Response model:
         campaigns:
             type: array
-            items: 
+            items:
                 type: CampaignDetails
 
     Errors:
