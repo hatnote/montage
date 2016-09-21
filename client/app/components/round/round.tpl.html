@@ -29,18 +29,20 @@
         </md-button>
     </div>
 
-    <md-grid-list class="gallery"
-                  md-row-height="1:1" md-gutter="15px"
-                  md-cols="1" md-cols-sm="2" md-cols-md="3" md-cols-gt-md="6">
-        <md-grid-tile class="gallery__image link"
-                      md-rowspan="{{$ctrl.size}}" md-colspan="{{$ctrl.size}}"
-                      ng-repeat="image in $ctrl.images"
-                      ng-click="$ctrl.openImage(image, $event)">
-            <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
-            <md-grid-tile-footer class="gallery__footer"
-                                 layout="column" layout-align="start start">
+    <grid-list class="gallery" sv-root sv-part="$ctrl.images">
+        <grid-tile class="gallery__image link"
+                   ng-class="'gallery__image--size-'+$ctrl.size"
+                   ng-repeat="image in $ctrl.images"
+                   ng-click="$ctrl.openImage(image, $event)" sv-element>
+            <md-button class="md-icon-button gallery__drag-icon" sv-handle>
+                <md-icon>drag_handle</md-icon>
+            </md-button>
+            <div class="gallery__image-containter" layout="column" layout-align="center center">
+                <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
+            </div>
+            <grid-tile-footer class="gallery__footer">
                 <h3 class="gallery__footer-name">{{image.name}}</h3>
-            </md-grid-tile-footer>
-        </md-grid-tile>
-    </md-grid-list>
+            </grid-tile-footer>
+        </grid-tile>
+    </grid-list>
 </div>

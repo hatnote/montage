@@ -38,8 +38,8 @@ const CampaignComponent = {
         }
 
         function openRound(id) {
-            //$state.go('main.round', { id: id });
-            $state.go('main.image');
+            $state.go('main.round', { id: id });
+            //$state.go('main.image');
         }
 
         function saveCampaignName() {

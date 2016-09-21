@@ -1,6 +1,7 @@
 import angular from 'angular';
 import ngMaterial from 'angular-material';
 import uiRouter from 'angular-ui-router';
+import sort from './components/angular-sortable-view';
 
 import './style.scss';
 import 'angular-material/angular-material.css';
@@ -10,7 +11,7 @@ import components from './components';
 import services from './services';
 
 
-angular.module('montage', ['ngMaterial', 'ui.router'])
+angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
   .config(function ($mdThemingProvider, $provide, $stateProvider, $urlRouterProvider) {
     $mdThemingProvider.generateThemesOnDemand(true);
     $mdThemingProvider.alwaysWatchTheme(true);
