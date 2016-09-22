@@ -24,7 +24,16 @@ def get_juror_index(rdb_session, user):
     rounds = juror_dao.get_all_rounds()
     if len(rounds) == 0:
         raise Forbidden('not a juror for any rounds')
-    info = [rnd.to_dict() for rnd in rounds]
+    info = []
+    for rnd in rounds:
+        rnd_info = rnd.to_dict()
+        campaign_id = rnd_info['campaign_id']
+        campaign = juror_dao.get_campaign(campaign_id)
+        rnd_info['campaign'] = campaign.to_dict()
+        campaign_name = rnd_info['campaign']['name']
+        rnd_info['campaign']['canonical_url_name'] = slugify(campaign_name, '-')
+        rnd_info['canonical_url_name'] = slugify(rnd_info['name'], '-')
+        info.append(rnd_info)
     return info
 
 
