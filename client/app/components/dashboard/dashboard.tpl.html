@@ -1,5 +1,8 @@
 <div>
-    <mont-campaign data="campaign" user="$ctrl.user" ng-repeat="campaign in $ctrl.campaigns">
+    <mont-campaign ng-repeat="campaign in $ctrl.campaigns"
+                   campaign="campaign"
+                   type="$ctrl.type"
+                   user="$ctrl.user">
 </div>
 <div flex></div>
 <div class="campaign__zero" layout="column" layout-align="center center"

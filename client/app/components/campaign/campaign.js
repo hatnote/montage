@@ -1,15 +1,15 @@
 import './campaign.scss';
-import template from './campaign.tpl.html';
+import templateAdmin from './campaign.tpl.html';
+import templateJury from './campaign-jury.tpl.html';
 
 const CampaignComponent = {
     bindings: {
-        data: '<',
-        user: '<'
+        campaign: '<',
+        user: '<',
+        type: '<'
     },
-    controller: function($state, $timeout, $mdToast, userService) {
+    controller: function($state, $timeout, $mdToast, $templateCache, userService) {
         let vm = this;
-        vm.campaign = vm.data;
-
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
@@ -17,6 +17,8 @@ const CampaignComponent = {
         vm.isNameEdited = false;
         vm.openRound = openRound;
         vm.saveCampaignName = saveCampaignName;
+
+        $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
 
         // functions
 
@@ -39,7 +41,7 @@ const CampaignComponent = {
         }
 
         function isAdmin() {
-            return vm.campaign.coords.indexOf(vm.user.username) > -1;
+            return vm.type === 'admin';
         }
 
         function openRound(round) {
@@ -71,7 +73,7 @@ const CampaignComponent = {
             });
         }
     },
-    template: template
+    template: `<ng-include src="'campaign-template'"/>`
 };
 
 export default () => {

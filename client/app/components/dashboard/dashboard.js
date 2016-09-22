@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import './dashboard.scss';
 import template from './dashboard.tpl.html';
 
@@ -9,14 +11,26 @@ const DashboardComponent = {
     },
     controller: function ($state, userService, versionService) {
         let vm = this;
-        vm.campaigns = vm.data.data;
+        vm.isAdmin = isAdmin;
         vm.logout = logout;
         vm.user = angular.extend(vm.user, vm.data.user);
         vm.error = vm.data.error;
 
-        versionService.setVersion(vm.type === 'juror' ? 'blue' : 'grey');
+        if (isAdmin()) {
+            vm.campaigns = vm.data.data;
+        } else {
+            vm.campaigns = _.groupBy(vm.data.data, 'campaign_id');
+        }
+
+        console.log(vm);
+
+        versionService.setVersion(isAdmin() ? 'grey' : 'blue');
 
         // functions 
+
+        function isAdmin() {
+            return vm.type === 'admin';
+        }
 
         function logout() {
             userService.logout().then(() => {

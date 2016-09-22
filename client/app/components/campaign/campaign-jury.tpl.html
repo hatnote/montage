@@ -1,0 +1,28 @@
+<div class="campaign">
+    <h2 class="campaign__title md-display-1"
+        layout="row" layout-align="start center">
+        <span>{{$ctrl.campaign[0].campaign.name}}</span>
+        <span flex></span>
+    </h2>
+
+    <div class="campaign__rounds-description"
+         layout="row" layout-align="space-between center">
+        <span class="md-body-1" flex="20">Name</span>
+        <span class="md-body-1" flex="20">Round Date</span>
+        <span class="md-body-1" flex="15">Status</span>
+        <span class="md-body-1" flex="15">Vote Method</span>
+        <span flex></span>
+    </div>
+    <md-card class="campaign__rounds">
+        <div class="campaign__round md-primary md-hue-1"
+             layout="row" layout-align="space-between center"
+             ng-repeat="round in $ctrl.campaign"
+             ng-click="$ctrl.openRound(round)">
+            <span class="md-body-2" flex="20">{{round.name}}</span>
+            <span class="md-body-1" flex="20">{{round.open_date | date}} – {{round.close_date | date}}</span>
+            <span class="md-body-1" flex="15">{{round.status || "Unknown"}}</span>
+            <span class="md-body-1" flex="15">{{round.vote_method || "Unknown"}}</span>
+            <span flex></span>
+        </div>
+    </md-card>
+</div>
