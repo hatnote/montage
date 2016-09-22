@@ -1,3 +1,5 @@
+import moment from 'moment';
+
 import './campaign.scss';
 import templateAdmin from './campaign.tpl.html';
 import templateJury from './campaign-jury.tpl.html';
@@ -8,7 +10,7 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function($state, $timeout, $mdToast, $templateCache, userService) {
+    controller: function ($state, $timeout, $mdToast, $templateCache, userService) {
         let vm = this;
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
@@ -63,7 +65,7 @@ const CampaignComponent = {
 
             vm.campaign.name = vm.nameEdit;
             vm.isNameEdited = false;
-            
+
             userService.admin.editCampaign(vm.campaign.id, {
                 name: vm.campaign.name
             }).then(() => {
@@ -79,5 +81,6 @@ const CampaignComponent = {
 export default () => {
     angular
         .module('montage')
-        .component('montCampaign', CampaignComponent);
+        .component('montCampaign', CampaignComponent)
+        .filter('fromNow', () => (input) => moment(input).fromNow());
 };

@@ -19,7 +19,11 @@
              ng-repeat="round in $ctrl.campaign"
              ng-click="$ctrl.openRound(round)">
             <span class="md-body-2" flex="20">{{round.name}}</span>
-            <span class="md-body-1" flex="20">{{round.open_date | date}} – {{round.close_date | date}}</span>
+            <span class="md-body-1" flex="20" layout="row" layout-align="start center">
+                <span>{{round.open_date | date}}<br /><small class="muted">{{round.open_date | fromNow}}</small></span>
+                <span class="campaign__dash">–</span>
+                <span>{{round.close_date | date}}<br /><small class="muted">{{round.close_date | fromNow}}</small></span>
+            </span>
             <span class="md-body-1" flex="15">{{round.status || "Unknown"}}</span>
             <span class="md-body-1" flex="15">{{round.vote_method || "Unknown"}}</span>
             <span flex></span>
