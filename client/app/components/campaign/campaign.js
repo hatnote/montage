@@ -12,6 +12,7 @@ const CampaignComponent = {
     },
     controller: function ($state, $timeout, $mdToast, $templateCache, userService) {
         let vm = this;
+        vm.addRound = addRound;
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
@@ -23,6 +24,16 @@ const CampaignComponent = {
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
 
         // functions
+
+        function addRound() {
+            userService.admin.addRound(vm.campaign.id, {
+                round_name: 'Test round',
+                quorum: 2,
+                jurors: 'Slaporte,MahmoudHashemi'
+            }).then((data) => {
+                console.log(data);
+            });
+        }
 
         function cancelCampaignName() {
             vm.isNameEdited = false;
