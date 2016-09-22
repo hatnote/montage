@@ -278,7 +278,8 @@ class Task(Base):
     complete_date = Column(DateTime)
     cancel_date = Column(DateTime)
 
-    flags = Column(JSONEncodedDict)
+    entry = association_proxy('round_entry', 'entry',
+                               creator=lambda e: RoundEntry(entry=e))
 
 
 class ResultsSummary(Base):

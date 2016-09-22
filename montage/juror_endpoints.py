@@ -4,7 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
-
+from imgutils import make_mw_img_url
 
 def get_juror_index(rdb_session, user):
     """
@@ -125,7 +125,13 @@ def get_tasks(rdb_session, user, round_id, request):
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     tasks = juror_dao.get_next_task(num=count, offset=offset)
-    return tasks
+    info = []
+    for task in tasks:
+        task_info = task.to_dict()
+        task_info['entry'] = task.entry.to_dict()
+        info.append(task_info)
+        task_info['entry']['url'] = make_mw_img_url(task_info['entry']['name'])
+    return info
 
 def submit_vote(rdb_session, user, request):
     # TODO: Check permissions
