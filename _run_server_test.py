@@ -63,7 +63,7 @@ def main():
 
     # add a round to that campaign
     data = {'round_name': 'Another test round', 
-            'quourm': 2, 
+            'quorum': 2, 
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
     resp = fetch('http://localhost:5000/admin/campaign/%s/new/round' % campaign_id, data).read()
     resp_dict = json.loads(resp)

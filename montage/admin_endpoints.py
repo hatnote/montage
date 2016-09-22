@@ -56,7 +56,7 @@ def create_round(rdb_session, user, campaign_id, request):
     # TODO: Confirm if campaign exists
     new_round_name = request.form.get('round_name')
     qourum = request.form.get('qourum')
-    jurors = request.form.get('jurors').split(',')
+    jurors = request.form.get('jurors').split(',', '')
     ret = coord_dao.create_round(name=new_round_name,
                                  quorum=qourum,
                                  jurors=jurors,
