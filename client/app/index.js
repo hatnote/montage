@@ -19,18 +19,28 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
 
     $stateProvider
       .state('main', {
-        template: '<ui-view/>',
+        template: '<mont-main user="$resolve.user"></mont-main>',
         resolve: {
-          campaigns: (userService) => userService.juror.get()
+          user: ($q) => $q.when({})
         }
       })
       .state('main.dashboard', {
         url: '/',
-        template: '<mont-dashboard layout="column" layout-align="start start" data="$resolve.campaigns"></mont-dashboard>'
+        template: `<mont-dashboard
+                      layout="column" layout-align="start start"
+                      data="$resolve.data"
+                      user="$resolve.user"
+                      type="'juror'"></mont-dashboard>`,
+        resolve: {
+          data: (userService) => userService.juror.get()
+        }
       })
       .state('main.round', {
         url: '/round/:id',
-        template: '<mont-round layout="column" layout-align="start start" data="$resolve.round" images="$resolve.images"></mont-round>',
+        template: `<mont-round
+                      layout="column" layout-align="start start"
+                      data="$resolve.round"
+                      images="$resolve.images"></mont-round>`,
         resolve: {
           round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
           images: (dataService) => dataService.getTempImages() // temporary!
@@ -38,22 +48,30 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
       })
       .state('main.image', {
         url: '/image',
-        template: '<mont-image layout="column" layout-align="start start" data="$resolve.image"></mont-round>',
+        template: `<mont-image
+                      layout="column" layout-align="start start"
+                      data="$resolve.image"></mont-round>`,
         resolve: {
           image: (dataService) => dataService.getTempImage() // temporary!
         }
       })
-
       .state('main.admin-dashboard', {
         url: '/admin',
-        template: '<mont-dashboard layout="column" layout-align="start start" data="$resolve.campaigns"></mont-dashboard>',
+        template: `<mont-dashboard
+                      layout="column" layout-align="start start"
+                      data="$resolve.data"
+                      user="$resolve.user"
+                      type="'admin'"></mont-dashboard>`,
         resolve: {
-          campaigns: (userService) => userService.admin.get()
+          data: (userService) => userService.admin.get()
         }
       })
       .state('main.admin-round', {
         url: '/admin/round/:id',
-        template: '<mont-round layout="column" layout-align="start start" data="$resolve.round" images="$resolve.images"></mont-round>',
+        template: `<mont-round
+                      layout="column" layout-align="start start"
+                      data="$resolve.round"
+                      images="$resolve.images"></mont-round>`,
         resolve: {
           round: ($stateParams, userService) => userService.admin.getRound($stateParams.id),
           images: (dataService) => dataService.getTempImages() // temporary!
@@ -61,7 +79,9 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
       })
       .state('main.admin-image', {
         url: '/admin/image',
-        template: '<mont-image layout="column" layout-align="start start" data="$resolve.image"></mont-round>',
+        template: `<mont-image
+                      layout="column" layout-align="start start"
+                      data="$resolve.image"></mont-round>`,
         resolve: {
           image: (dataService) => dataService.getTempImage() // temporary!
         }

@@ -2,24 +2,13 @@ import './main.scss';
 import template from './main.tpl.html';
 
 const MainComponent = {
-  bindings: {},
-  controller: function ($state, userService, versionService) {
+  bindings: {
+    user: '='
+  },
+  controller: function ($state, userService, versionService, $timeout) {
     let vm = this;
-
-    userService.juror.get().then(data => {
-      /*
-      if (data.data.status === 'failure') {
-        $state.go('login');
-        return false;
-      }
-      */
-      vm.user = data.user || {};
-    });
-
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
-
-    versionService.setVersion('blue');
 
     // functions 
 
