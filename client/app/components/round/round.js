@@ -7,12 +7,14 @@ import imageTemplate from './image.tpl.html';
 const RoundComponent = {
     bindings: {
         data: '<',
-        images: '<' // temporary!
+        user: '=',
+        images: '<', // temporary!
+        type: '<'
     },
-    controller: function ($state, $mdDialog) {
+    controller: function ($state, $mdDialog, versionService) {
         let vm = this;
         vm.round = vm.data;
-        vm.user = vm.round.user;
+        vm.user = angular.extend(vm.user, vm.data.user);
         vm.voting = {
             yesno: vm.round.voteMethod === 'yesno',
             voting: vm.round.voteMethod === 'voting',
@@ -23,6 +25,8 @@ const RoundComponent = {
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
         vm.openImage = openImage;
+
+        versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
 
         // functions
 

@@ -7,10 +7,15 @@ const MainComponent = {
   },
   controller: function ($state, userService, versionService, $timeout) {
     let vm = this;
+    vm.goToDashboard = goToDashboard;
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
     // functions 
+
+    function goToDashboard() {
+      $state.go('main.juror.dashboard');
+    }
 
     function logout() {
       userService.logout().then(() => {

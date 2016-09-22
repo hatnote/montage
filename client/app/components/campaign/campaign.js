@@ -46,9 +46,9 @@ const CampaignComponent = {
 
         function openRound(round) {
             if (round.voteMethod === 'voting') {
-                $state.go('main.image');
+                $state.go('main.juror.image');
             } else {
-                $state.go(isAdmin() ? 'main.admin-round' : 'main.round', { id: round.id });
+                $state.go(isAdmin() ? 'main.admin.round' : 'main.juror.round', { id: round.id });
             }
         }
 
