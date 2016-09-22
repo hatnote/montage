@@ -21,6 +21,7 @@ const UserService = function ($http, $q) {
     get: () => $http.get('/juror').then(getData, getData),
     getCampaign: (id) => $http.get('/juror/campaign/' + id).then(getData, getData),
     getRound: (id) => $http.get('/juror/round/' + id).then(getData, getData),
+    getRoundTasks: (id) => $http.get('/juror/round/' + id + '/tasks').then(getData, getData),
   };
 
   const service = {

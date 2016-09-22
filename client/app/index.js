@@ -50,6 +50,7 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
                       type="$resolve.userType"></mont-round>`,
         resolve: {
           round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
+          tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id),
           images: (dataService) => dataService.getTempImages() // temporary!
         }
       })
