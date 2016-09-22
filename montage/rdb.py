@@ -427,7 +427,7 @@ class CoordinatorDAO(UserDAO):
         query = self.edit_round(round_id, rnd_status)
         rnd = self.get_round(round_id)
         tasks = create_initial_tasks(self.rdb_session, rnd)
-        return rnd
+        return tasks
 
     def close_round(self, round_id):
         pass
@@ -607,7 +607,6 @@ class JurorDAO(UserDAO):
     def get_all_rounds(self):
         rounds = self.query(Round)\
                      .filter(Round.jurors.any(username=self.user.username))\
-                     .group_by(Round.campaign_id)\
                      .all()
         return rounds
 

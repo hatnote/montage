@@ -7,6 +7,8 @@ from mwoauth import Handshaker, RequestToken
 from mw import public
 from rdb import User
 
+DEBUG = True
+
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
 
@@ -43,14 +45,19 @@ def logout(request, cookie, root_path):
 
 @public
 def complete_login(request, consumer_token, cookie, rdb_session):
-    handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
-
-    req_token = RequestToken(cookie['request_token_key'],
-                             cookie['request_token_secret'])
-
-    access_token = handshaker.complete(req_token,
-                                       request.query_string)
-    identity = handshaker.identify(access_token)
+    # TODO: Remove or standardize the DEBUG option
+    if DEBUG:
+        identity = {'sub': 6024474,
+                    'username': 'Slaporte'}
+    else:
+        handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
+        
+        req_token = RequestToken(cookie['request_token_key'],
+                                 cookie['request_token_secret'])
+        
+        access_token = handshaker.complete(req_token,
+                                           request.query_string)
+        identity = handshaker.identify(access_token)
 
     userid = identity['sub']
     username = identity['username']
@@ -76,7 +83,11 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     cookie['username'] = identity['username']
 
     return_to_url = cookie.get('return_to_url')
-    del cookie['request_token_key']
-    del cookie['request_token_secret']
-    del cookie['return_to_url']
+    # TODO: Clean up
+    if not DEBUG:
+        del cookie['request_token_key']
+        del cookie['request_token_secret']
+        del cookie['return_to_url']
+    else:
+        return_to_url = '/'
     return redirect(return_to_url)

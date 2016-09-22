@@ -1,25 +1,67 @@
-
+from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
-from rdb import Campaign, CoordinatorDAO, MAINTAINERS
+from rdb import (Campaign,
+                 CoordinatorDAO,
+                 MaintainerDAO,
+                 OrganizerDAO)
 
 
-def create_campaign(user, rdb_session, request_dict):
-    if user.username not in MAINTAINERS:
-        raise Forbidden('only a root admin can create a campaign')  # for now
-    camp = Campaign(name=request_dict['name'])
-    rdb_session.add(camp)
-    rdb_session.commit()
-    return {'data': camp.to_dict()}
+def create_campaign(user, rdb_session, request):
+    if not user.is_maintainer:  # TODO: check if user is an organizer too
+        raise Forbidden('not allowed to create campaigns')
+
+    org_dao = OrganizerDAO(rdb_session, user)
+    new_camp_name = request.form.get('campaign_name')
+    ret = org_dao.create_campaign(name=new_camp_name)
+    return ret
+
+
+def import_entries(rdb_session, user, round_id, request):
+    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
+        raise Forbidden('not allowed to import entries')
+
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+    # TODO: Confirm if round exists
+    import_method = request.form.get('import_method')
+    if import_method == 'gistcsv':
+        gist_url = request.form.get('gist_url')
+        ret = coord_dao.add_entries_from_csv_gist(gist_url, round_id)
+    else:
+        # TODO: Support category based input via labs
+        #       (other import methods too?)
+        pass
+    return ret
+
+def activate_round(rdb_session, user, round_id, request):
+    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
+        raise Forbidden('not allowed to activate round')
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    ret = coord_dao.activate_round(round_id)
+    # TODO: Confirm round exists?
+    return ret  # Should return stats on the number of tasks
 
 
 def edit_campaign(user_dao, campaign_id, request_dict):
     pass
 
 
-def create_round(user_dao, request_dict):
-    pass
+def create_round(rdb_session, user, campaign_id, request):
+    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
+        raise Forbidden('not allowed to create rounds')
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    campaign = coord_dao.get_campaign(campaign_id)
+    # TODO: Confirm if campaign exists
+    new_round_name = request.form.get('round_name')
+    qourum = request.form.get('qourum')
+    jurors = request.form.get('jurors').split(',')
+    ret = coord_dao.create_round(name=new_round_name,
+                                 quorum=qourum,
+                                 jurors=jurors,
+                                 campaign=campaign)
+    return ret
 
 
 def edit_round(user_dao, round_id, request_dict):
@@ -30,12 +72,12 @@ def get_admin_index(rdb_session, user):
     """
     Summary: Get admin-level details for all campaigns.
 
-    Response model name: CampaignIndex
+    Response model name: AdminCampaignIndex
     Response model:
         campaigns:
             type: array
             items:
-                type: CampaignDetails
+                type: AdminCampaignDetails
 
     Errors:
        403: User does not have permission to access any campaigns
@@ -59,7 +101,7 @@ def get_admin_campaign(rdb_session, user, campaign_id):
         campaign_id:
             type: int64
 
-    Response model name: CampaignDetails
+    Response model name: AdminCampaignDetails
     Response model:
         id:
             type: int64
@@ -68,7 +110,7 @@ def get_admin_campaign(rdb_session, user, campaign_id):
         rounds:
             type: array
             items:
-                type: RoundDetails
+                type: AdminRoundDetails
         coordinators:
             type: array
             items:
@@ -92,7 +134,7 @@ def get_admin_campaign(rdb_session, user, campaign_id):
         info['rounds'].append(get_admin_round(rdb_session, user, rnd.id))
 
     info['canonical_url_name'] = slugify(info['name'], '-')
-
+    # TODO: Format output?
     return info
 
 
@@ -104,7 +146,7 @@ def get_admin_round(rdb_session, user, round_id):
         round_id:
             type: int64
 
-    Response model name: RoundDetails
+    Response model name: AdminRoundDetails
     Response model:
         id:
             type: int64
@@ -159,6 +201,46 @@ def get_admin_round(rdb_session, user, round_id):
     info['canonical_url_name'] = slugify(info['name'], '-')
 
     return info
+
+
+def add_organizer(rdb_session, user, request):
+    if not user.is_maintainer:
+        raise Forbidden('not allowed to add organizers')
+
+    maint_dao = MaintainerDAO(rdb_session, user)
+    new_user_name = request.form.get('username')
+    ret = maint_dao.add_organizer(new_user_name)
+    return ret
+
+
+def add_coordinator(rdb_session, user, campaign_id, request):
+    if not user.is_maintainer:  # TODO: Check if organizer too
+        raise Forbidden('not allowed to add coordinators')
+    # TODO: verify campaign id?
+    org_dao = OrganizerDAO(rdb_session, user)
+    new_user_name = request.form.get('username')
+    ret = org_dao.add_coordinator(new_user_name, campaign_id)
+    return ret
+
+
+admin_routes = [GET('/admin', get_admin_index),
+                POST('/admin/new/campaign', create_campaign),
+                GET('/admin/campaign/<campaign_id:int>/<camp_name?>',
+                    get_admin_campaign),
+                POST('/admin/campaign/<campaign_id:int>/<camp_name?>',
+                     edit_campaign),
+                POST('/admin/campaign/<campaign_id:int>/new/round',
+                     create_round),
+                POST('/admin/round/<round_id:int>/import', import_entries),
+                POST('/admin/round/<round_id:int>/activate', activate_round),
+                GET('/admin/round/<round_id:int>/<round_name?>',
+                    get_admin_round),
+                POST('/admin/round/<round_id:int>/<round_name?>',
+                     edit_round),
+                POST('/admin/add_organizer', add_organizer),
+                POST('/admin/add_coordinator/campaign/<campaign_id:int>', 
+                     add_coordinator)]
+
 
 
 # - cancel round
