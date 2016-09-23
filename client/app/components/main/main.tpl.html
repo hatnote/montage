@@ -17,6 +17,11 @@
                         <span flex>{{$ctrl.user.username}}</span>
                     </div>
                 </md-menu-item>
+                <md-menu-item>
+                    <md-button ui-sref="main.admin.dashboard">
+                        Admin Panel
+                    </md-button>
+                </md-menu-item>
                 <md-menu-divider></md-menu-divider>
                 <md-menu-item>
                     <md-button ng-click="$ctrl.logout()">
