@@ -2,10 +2,13 @@ from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
+from utils import fmt_date
+
 from rdb import (Campaign,
                  CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
+
 
 
 def make_admin_campaign_info(campaign):
@@ -31,8 +34,8 @@ def make_admin_round_info(rnd):
            'directions': rnd.directions,
            'canonical_url_name': slugify(rnd.name, '-'),
            'vote_method': rnd.vote_method,
-           'open_date': rnd.open_date,
-           'close_date': rnd.close_date,
+           'open_date': fmt_date(rnd.open_date),
+           'close_date': fmt_date(rnd.close_date),
            'status': rnd.status,
            'quorum': rnd.quorum,
            'jurors': [make_round_juror_details(j) for j in rnd.round_jurors]}
@@ -45,8 +48,8 @@ def make_admin_round_details(rnd):
            'directions': rnd.directions,
            'canonical_url_name': slugify(rnd.name, '-'),
            'vote_method': rnd.vote_method,
-           'open_date': rnd.open_date,
-           'close_date': rnd.close_date,
+           'open_date': fmt_date(rnd.open_date),
+           'close_date': fmt_date(rnd.close_date),
            'status': rnd.status,
            'quorum': rnd.quorum,
            'campaign': make_admin_campaign_info(rnd.campaign),
@@ -340,7 +343,7 @@ def add_organizer(rdb_session, user, request):
     new_user_name = request.form.get('username')
     new_organizer = maint_dao.add_organizer(new_user_name)
     data = {'username': new_organizer.username,
-            'last_login_date': new_organizer.last_login_date}
+            'last_login_date': fmt_date(new_organizer.last_login_date)}
     return {'data': data}
 
 
@@ -374,7 +377,7 @@ def add_coordinator(rdb_session, user, campaign_id, request):
     new_coord = org_dao.add_coordinator(new_user_name, campaign_id)
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
-            'last_login_date': new_coord.last_login_date}
+            'last_login_date': fmt_date(new_coord.last_login_date)}
     return {'data': data}
 
 

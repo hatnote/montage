@@ -1,4 +1,6 @@
+import datetime
 import json
+
 from urllib2 import urlopen
 from urllib import urlencode
 
@@ -18,3 +20,10 @@ def get_mw_userid(username):
     if not user_id:
         raise RuntimeError('user %s does not exist' % username)
     return user_id
+
+
+def fmt_date(date):
+    if isinstance(date, datetime.datetime):
+        date =  date.isoformat()
+    return date
+

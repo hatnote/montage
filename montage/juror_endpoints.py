@@ -4,6 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
+from utils import fmt_date
 from imgutils import make_mw_img_url
 
 
@@ -31,8 +32,8 @@ def make_juror_round_details(rnd):
            'directions':  rnd.directions,
            'name': rnd.name,
            'vote_method': rnd.vote_method,
-           'open_date': rnd.open_date,
-           'close_date': rnd.close_date,
+           'open_date': fmt_date(rnd.open_date),
+           'close_date': fmt_date(rnd.close_date),
            'status': rnd.status,
            'canonical_url_name': slugify(rnd.name, '-'),
            'campaign': make_juror_campaign_info(rnd.campaign)}
@@ -48,7 +49,7 @@ def make_juror_task_details(task):
 
 def make_entry_details(entry):
     ret = {'id': entry.id,
-           'upload_date': entry.upload_date.isoformat(),
+           'upload_date': fmt_date(entry.upload_date),
            'mime_major': entry.mime_major,
            'mime_minor': entry.mime_minor,
            'name': entry.name,
