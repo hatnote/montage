@@ -54,7 +54,7 @@ def main():
     resp_dict = json.loads(resp)
     assert resp_dict['status'] == 'success'
 
-    campaign_id = resp_dict['data'][0]['id']
+    campaign_id = resp_dict['data'][-1]['id']
 
     # get coordinator's view of the first campaign    
     resp = fetch('http://localhost:5000/admin/campaign/%s' % campaign_id).read()
@@ -79,7 +79,7 @@ def main():
     assert resp_dict['status'] == 'success'
 
     # active the round
-    resp = fetch('http://localhost:5000/admin/round/%s/activate' % round_id).read()
+    resp = fetch('http://localhost:5000/admin/round/%s/activate' % round_id, {'post': True}).read()
     resp_dict = json.loads(resp)
     # TODO: check results?
 
