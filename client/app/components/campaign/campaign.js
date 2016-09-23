@@ -27,6 +27,7 @@ const CampaignComponent = {
         // functions
 
         function addRound() {
+            /*
             userService.admin.addRound(vm.campaign.id, {
                 round_name: 'Test round',
                 quorum: 2,
@@ -34,6 +35,7 @@ const CampaignComponent = {
             }).then((data) => {
                 console.log(data);
             });
+            */
         }
 
         function cancelCampaignName() {
