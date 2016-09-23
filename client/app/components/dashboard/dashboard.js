@@ -12,15 +12,10 @@ const DashboardComponent = {
     controller: function ($state, userService, versionService) {
         let vm = this;
         vm.isAdmin = isAdmin;
+        vm.campaigns = isAdmin() ? vm.data.data : _.groupBy(vm.data.data, 'campaign.id');
         vm.logout = logout;
         vm.user = angular.extend(vm.user, vm.data.user);
         vm.error = vm.data.error;
-
-        if (isAdmin()) {
-            vm.campaigns = vm.data.data;
-        } else {
-            vm.campaigns = _.groupBy(vm.data.data, 'campaign_id');
-        }
 
         console.log(vm);
 
