@@ -1,4 +1,4 @@
-<div class="round" ng-if="!$ctrl.error">
+<div class="round" ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
     <div class="round__title" layout="row" layout-align="start end">
         <h2 class="md-headline">
             {{$ctrl.round.name}}<br />
@@ -54,4 +54,8 @@
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
     <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
+    <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
 </div>

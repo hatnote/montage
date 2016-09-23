@@ -15,7 +15,7 @@ const RoundComponent = {
         let vm = this;
         vm.error = vm.data.error;
         vm.images = vm.tasks.data;
-        vm.isVoting = (type) => vm.round.vote_method === type;
+        vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.rates = [1, 2, 3, 4, 5];
         vm.round = vm.data.data;
         vm.openImage = openImage;
@@ -36,7 +36,7 @@ const RoundComponent = {
                 targetEvent: event,
                 clickOutsideToClose: true,
                 template: imageTemplate,
-                controller: ($scope, $mdDialog) => {
+                controller: ($scope, $mdDialog, $timeout) => {
                     $scope.cancel = () => $mdDialog.hide();
                     $scope.image = image;
                     $scope.isFirst = vm.images.indexOf(image) === 0;
@@ -63,6 +63,9 @@ const RoundComponent = {
                             $scope.prevImage();
                         }
                     };
+                    $timeout(() => {
+                        $scope.filePath = 'https://commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
+                    }, 100);
                 }
             }).then(function (answer) {
                 // answer

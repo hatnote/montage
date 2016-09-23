@@ -1,8 +1,8 @@
 <div class="image"
      layout="row" layout-align="center start"
-     ng-if="!$ctrl.error">
+     ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
     <div class="image__gallery" layout="row" layout-align="center center" flex>
-        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.image.title}}&w=1280">
+        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.images[0].entry.name}}&w=800">
     </div>
     <div class="image__description">
         <h3 class="md-title">Vote</h3>
@@ -26,15 +26,15 @@
             <md-list-item class="md-2-line">
                 <md-icon>date_range</md-icon>
                 <div class="md-list-item-text">
-                    <h3>September 25, 2016</h3>
-                    <p>Monday, 15:25</p>
+                    <h3>{{$ctrl.images[0].entry.upload_date | date}}</h3>
+                    <p>{{$ctrl.images[0].entry.upload_date | date:'EEEE'}}, {{$ctrl.images[0].entry.upload_date | date:'H:mm'}}</p>
                 </div>
             </md-list-item>
             <md-list-item class="md-2-line">
                 <md-icon>image</md-icon>
                 <div class="md-list-item-text">
-                    <h3>16 Mpix</h3>
-                    <p>4160 × 3120 &nbsp; 2.8 MiB</p>
+                    <h3>{{$ctrl.images[0].entry.resolution / 1000000 | number:2}} Mpix</h3>
+                    <p>{{$ctrl.images[0].entry.width}} × {{$ctrl.images[0].entry.height}}</p>
                 </div>
             </md-list-item>
             <md-divider></md-divider>
@@ -56,4 +56,8 @@
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
     <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
+    <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
 </div>

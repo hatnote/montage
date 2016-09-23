@@ -134,6 +134,17 @@ mont-round {
             width: auto;
             height: auto;
         }
+
+        .md-button md-icon.material-icons {
+            width: 40px;
+            height: 40px;
+            color: white;
+            font-size: 40px;
+        }
+
+        .md-button[disabled] md-icon.material-icons {
+            opacity: .5;
+        }
     }
 
     .dialog__image-description {
