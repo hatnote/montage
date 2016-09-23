@@ -18,6 +18,7 @@ const CampaignComponent = {
         vm.editRound = editRound;
         vm.nameEdit = '';
         vm.isNameEdited = false;
+        vm.isRoundActive = isRoundActive;
         vm.openRound = openRound;
         vm.saveCampaignName = saveCampaignName;
 
@@ -57,7 +58,15 @@ const CampaignComponent = {
             return vm.type === 'admin';
         }
 
+        function isRoundActive(round) {
+            return round.status === 'active';
+        }
+
         function openRound(round) {
+            if(!isRoundActive(round)) {
+                return;
+            }
+
             if (round.voteMethod === 'voting') {
                 $state.go('main.juror.image');
             } else {

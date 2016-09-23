@@ -40,7 +40,18 @@ mont-campaign {
         padding: 10px 6px 10px 16px;
         outline: none;
         border-bottom: 1px solid rgba(0,0,0,0.12);
+
+        .md-body-2 {
+            font-size: 16px;
+        }
+    }
+
+    .campaign__round--active {
         cursor: pointer;
+    }
+
+    .campaign__round--inactive {
+        background: #fafafa;
     }
 
     .campaign__dash {
@@ -49,6 +60,14 @@ mont-campaign {
     
     .campaign__rounds-add {
         color: $lightGrey;
+    }
+
+    .tag--completed {
+        background-color: #5cb85c;
+    }
+
+    .tag--active {
+        background-color: #f0ad4e;
     }
 }
 

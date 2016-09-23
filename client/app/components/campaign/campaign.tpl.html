@@ -28,7 +28,7 @@
 
     <div class="campaign__rounds-description"
          layout="row" layout-align="space-between center">
-        <span class="md-body-1" flex="20">Round Name</span>
+        <span class="md-body-1" flex="30">Round Name</span>
         <span class="md-body-1" flex="20">Close Date</span>
         <span class="md-body-1" flex="20">No. of Jurors</span>
         <span class="md-body-1" flex="15">Status</span>
@@ -39,8 +39,9 @@
         <div class="campaign__round md-primary md-hue-1"
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
+             ng-class="$ctrl.isRoundActive(round) ? 'campaign__round--active' : 'campaign__round--inactive'"
              ng-click="$ctrl.openRound(round)">
-            <span class="md-body-2" flex="20">{{round.name}}</span>
+            <span class="md-body-2" flex="30">{{round.name}}</span>
             <span class="md-body-1" flex="20">{{round.closeDate || "Unknown"}}</span>
             <span class="md-body-1" flex="20">{{round.jurors.length || "0"}} jurors</span>
             <span class="md-body-1" flex="15">{{round.status || "Unknown"}}</span>
