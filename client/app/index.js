@@ -46,12 +46,11 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
                       layout="column" layout-align="start start"
                       data="$resolve.round"
                       user="$resolve.user"
-                      images="$resolve.images"
+                      tasks="$resolve.tasks"
                       type="$resolve.userType"></mont-round>`,
         resolve: {
           round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
-          tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id),
-          images: (dataService) => dataService.getTempImages() // temporary!
+          tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id)
         }
       })
       .state('main.juror.image', {

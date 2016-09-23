@@ -1,47 +1,32 @@
-import _ from 'lodash';
-
 import './round.scss';
-import template from './round.tpl.html';
+import './image.scss';
+import templateMultiple from './round-multiple.tpl.html';
+import templateRating from './round-rating.tpl.html';
 import imageTemplate from './image.tpl.html';
 
 const RoundComponent = {
     bindings: {
         data: '<',
         user: '=',
-        images: '<', // temporary!
+        tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, versionService) {
+    controller: function ($state, $mdDialog, $templateCache, versionService) {
         let vm = this;
+        vm.error = vm.data.error;
+        vm.images = vm.tasks.data;
+        vm.isVoting = (type) => vm.round.voteMethod === type;
         vm.round = vm.data;
-        vm.user = angular.extend(vm.user, vm.data.user);
-        vm.voting = {
-            yesno: vm.round.voteMethod === 'yesno',
-            voting: vm.round.voteMethod === 'voting',
-            ranking: vm.round.voteMethod === 'ranking',
-        };
-
-        vm.isJuror = isJuror(vm.user.id);
+        vm.openImage = openImage;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
-        vm.openImage = openImage;
+        vm.user = angular.extend(vm.user, vm.data.user);
 
         versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
+        $templateCache.put('round-template', vm.isVoting('rating') ? templateRating : templateMultiple);
 
         // functions
 
-        vm.images = vm.images.data.images.map(element => ({
-            id: element.id,
-            title: element.title,
-            name: element.title.replace(/_/gi, ' ')
-        })); // temporary!
-
-        function isJuror(id) {
-            return !!_.find(vm.round.jurors, {
-                active: true,
-                id: id
-            });
-        }
 
         function openImage(image, event) {
             $mdDialog.show({
@@ -84,7 +69,7 @@ const RoundComponent = {
             });
         }
     },
-    template: template
+    template: `<ng-include src="'round-template'"/>`
 };
 
 export default () => {

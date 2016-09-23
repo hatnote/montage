@@ -1,4 +1,6 @@
-<div class="image" layout="row" layout-align="center start">
+<div class="image"
+     layout="row" layout-align="center start"
+     ng-if="!$ctrl.error">
     <div class="image__gallery" layout="row" layout-align="center center" flex>
         <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.image.title}}&w=1280">
     </div>
@@ -49,4 +51,9 @@
             
         </div>
     </div>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.error">
+    <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
+    <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
 </div>

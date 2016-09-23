@@ -1,4 +1,4 @@
-<div class="round">
+<div class="round" ng-if="!$ctrl.error">
     <div class="round__title" layout="row" layout-align="start end">
         <h2 class="md-headline">
             {{$ctrl.round.name}}<br />
@@ -35,7 +35,7 @@
                    ng-repeat="image in $ctrl.images"
                    ng-click="$ctrl.openImage(image, $event)" sv-element>
             <md-button class="md-icon-button gallery__drag-icon"
-                       ng-show="$ctrl.voting.ranking" sv-handle>
+                       ng-show="$ctrl.isVoting('ranking')" sv-handle>
                 <md-icon>drag_handle</md-icon>
             </md-button>
             <div class="gallery__image-containter" layout="column" layout-align="center center">
@@ -43,10 +43,15 @@
             </div>
             <grid-tile-footer class="gallery__footer">
                 <h3 class="gallery__footer-name">
-                    <span ng-show="$ctrl.voting.ranking">#{{$index+1}}</span>
+                    <span ng-show="$ctrl.isVoting('ranking')">#{{$index+1}}</span>
                     <span>{{image.name}}</span>
                 </h3>
             </grid-tile-footer>
         </grid-tile>
     </grid-list>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.error">
+    <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
+    <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
 </div>
