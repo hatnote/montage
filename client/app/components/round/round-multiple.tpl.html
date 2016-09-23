@@ -2,7 +2,7 @@
     <div class="round__title" layout="row" layout-align="start end">
         <h2 class="md-headline">
             {{$ctrl.round.name}}<br />
-            <small class="muted">part of {{$ctrl.round.campaign}}</small>
+            <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
         </h2>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Sort">
@@ -39,12 +39,12 @@
                 <md-icon>drag_handle</md-icon>
             </md-button>
             <div class="gallery__image-containter" layout="column" layout-align="center center">
-                <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.title}}&w=800">
+                <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.entry.name}}&w=800">
             </div>
             <grid-tile-footer class="gallery__footer">
                 <h3 class="gallery__footer-name">
                     <span ng-show="$ctrl.isVoting('ranking')">#{{$index+1}}</span>
-                    <span>{{image.name}}</span>
+                    <span>{{image.entry.name}}</span>
                 </h3>
             </grid-tile-footer>
         </grid-tile>

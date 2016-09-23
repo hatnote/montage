@@ -15,10 +15,12 @@ const RoundComponent = {
         let vm = this;
         vm.error = vm.data.error;
         vm.images = vm.tasks.data;
-        vm.isVoting = (type) => vm.round.voteMethod === type;
-        vm.round = vm.data;
+        vm.isVoting = (type) => vm.round.vote_method === type;
+        vm.rates = [1, 2, 3, 4, 5];
+        vm.round = vm.data.data;
         vm.openImage = openImage;
         vm.setGallerySize = (size) => { vm.size = size; };
+        vm.setRate = (rate) => { $state.reload(); };
         vm.size = 1;
         vm.user = angular.extend(vm.user, vm.data.user);
 
