@@ -383,24 +383,39 @@ class CoordinatorDAO(UserDAO):
     def check_is_coord(self):
         pass
 
-    def create_round(self, name, campaign=None, campaign_id=None, **kwargs):
+    def create_round(self, 
+                     name, 
+                     quorum, 
+                     vote_method, 
+                     jurors,
+                     campaign=None, 
+                     campaign_id=None):
         if not campaign and campaign_id:
             raise Exception('missing campaign object or campaign_id')
+
         if not campaign and campaign_id:
             campaign = self.get_camapign(campaign_id)
+
         if not campaign:
             raise Exception('campaign does not exist')
-        jurors = []
-        for juror_name in kwargs['jurors']:
+
+        rnd_jurors = []
+
+        for juror_name in jurors:
             juror = self.add_juror(juror_name)
-            jurors.append(juror)
-        # TODO: verify the minimum elements for creating ar round
+            rnd_jurors.append(juror)
+        
+        # TOSO: campaign_seq, ie the rounds position within the campaign
+            
         rnd = Round(name=name,
                     campaign=campaign,
-                    quorum=kwargs['quorum'],
-                    jurors=jurors)
+                    quorum=quorum,
+                    vote_method=vote_method,
+                    jurors=rnd_jurors)
+        
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
+
         return rnd
 
     def edit_round(self, round_id, round_dict):
@@ -425,10 +440,10 @@ class CoordinatorDAO(UserDAO):
         return query
 
     def activate_round(self, round_id):
-        rnd_status = {'status': 'active'}
-        query = self.edit_round(round_id, rnd_status)
         rnd = self.get_round(round_id)
         tasks = create_initial_tasks(self.rdb_session, rnd)
+        rnd_status = {'status': 'active'}
+        query = self.edit_round(round_id, rnd_status)
         return tasks
 
     def close_round(self, round_id):

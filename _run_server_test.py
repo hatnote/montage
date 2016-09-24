@@ -62,7 +62,8 @@ def main():
     assert resp_dict['status'] == 'success'
 
     # add a round to that campaign
-    data = {'round_name': 'Another test round', 
+    data = {'name': 'Another test round', 
+            'vote_method': 'rating',
             'quorum': 2, 
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
     resp = fetch('http://localhost:5000/admin/campaign/%s/new/round' % campaign_id, data).read()
@@ -75,7 +76,6 @@ def main():
     data = {'directions': 'these are new directions'}
     resp = fetch('http://localhost:5000/admin/round/%s/edit' % round_id, data).read()
     resp_dict = json.loads(resp)
-    import pdb; pdb.set_trace()
     assert resp_dict['status'] == 'success'
 
     # import the initial set of images to the round

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
@@ -155,6 +157,8 @@ def activate_round(rdb_session, user, round_id, request):
         raise Forbidden('not allowed to activate round')
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     tasks = coord_dao.activate_round(round_id)
+    rnd_dict = {'open_date': datetime.now()}
+    coord_dao.edit_round(round_id, rnd_dict)
     # TODO: Confirm round exists?
     data = {'round_id': round_id,
             'total_tasks': len(tasks)}
@@ -186,19 +190,29 @@ def create_round(rdb_session, user, campaign_id, request):
     """
     if not user.is_maintainer:  # TODO: check if user is an organizer or coord
         raise Forbidden('not allowed to create rounds')
+
+    rnd_dict = {}
+    req_columns = ['jurors', 'name', 'vote_method']
+    valid_vote_methods = ['ranking', 'rating', 'yesno']
+
+    for column in req_columns:
+        val = request.form.get(column)
+        if not val:
+            raise Exception('%s is required to create a round' % val)
+            # TODO: raise http error
+        if column is 'jurors':
+            val = val.split(',') 
+        if column is 'vote_method' and val not in valid_vote_methods:
+            raise Exception('%s is an invalid vote method' % val)
+            # TODO: raise http error
+        rnd_dict[column] = val
+
+    default_quorum = len(rnd_dict['jurors']) 
+    rnd_dict['quorum'] = request.form.get('quorum', default_quorum)
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.get_campaign(campaign_id)
+    rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
-    new_round_name = request.form.get('round_name')
-    jurors = request.form.get('jurors').split(',')
-    if not jurors:
-        raise Exception('jurors are required to create a round')
-    default_quorum = len(jurors) 
-    quorum = request.form.get('quorum', default_quorum)
-    rnd = coord_dao.create_round(name=new_round_name,
-                                 quorum=quorum,
-                                 jurors=jurors,
-                                 campaign=campaign)
+    rnd = coord_dao.create_round(**rnd_dict)
     rnd_stats = coord_dao.get_round_stats(rnd.id)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
@@ -220,9 +234,11 @@ def edit_round(rdb_session, user,  round_id, request):
     #  - status: activate_round, pause_round
     #  - qourum: [requires reallocation]
     #  - active_jruros: [requires reallocation]
+
     for column_name in column_names:
         if request.form.get(column_name):
             rnd_dict[column_name] = request.form.get(column_name)
+
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.edit_round(round_id, rnd_dict)
     return {'data': rnd_dict}
@@ -244,11 +260,15 @@ def get_index(rdb_session, user):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaigns = coord_dao.get_all_campaigns()
+
     if len(campaigns) == 0:
         raise Forbidden('not a coordinator on any campaigns')
+
     data = []
+
     for campaign in campaigns:
         data.append(make_admin_campaign_details(campaign))
+
     return {'data': data}
 
 
