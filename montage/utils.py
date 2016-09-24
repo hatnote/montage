@@ -1,8 +1,15 @@
-import datetime
-import json
 
-from urllib2 import urlopen
+import json
+import getpass
+import datetime
+
 from urllib import urlencode
+from urllib2 import urlopen
+
+
+USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
+                'tools.montage': 'prod'}
+DEFAULT_ENV_NAME = 'dev'
 
 
 def get_mw_userid(username):
@@ -22,8 +29,12 @@ def get_mw_userid(username):
     return user_id
 
 
+def get_env_name():
+    username = getpass.getuser()
+    return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
+
+
 def fmt_date(date):
     if isinstance(date, datetime.datetime):
         date =  date.isoformat()
     return date
-
