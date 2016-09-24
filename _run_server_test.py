@@ -10,13 +10,15 @@ handlers = [
     urllib2.HTTPCookieProcessor(cookies)
 ]
 
-opener = urllib2.build_opener(*handlers)    
+opener = urllib2.build_opener(*handlers)
+
 
 def fetch(url, data=None):
     if data:
         data = urllib.urlencode(data)
     req = urllib2.Request(url, data)
     return opener.open(req)
+
 
 def main():
     # load home
@@ -40,7 +42,7 @@ def main():
     resp = fetch('http://localhost:5000/admin/new/campaign', data).read()
     resp_dict = json.loads(resp)
     assert resp_dict['status'] == 'success'
-    
+
     new_campaign_id = resp_dict['data']['id']
 
     # add a coordinator to this new camapign
@@ -56,14 +58,14 @@ def main():
 
     campaign_id = resp_dict['data'][-1]['id']
 
-    # get coordinator's view of the first campaign    
+    # get coordinator's view of the first campaign
     resp = fetch('http://localhost:5000/admin/campaign/%s' % campaign_id).read()
     resp_dict = json.loads(resp)
     assert resp_dict['status'] == 'success'
 
     # add a round to that campaign
-    data = {'round_name': 'Another test round', 
-            'quorum': 2, 
+    data = {'round_name': 'Another test round',
+            'quorum': 2,
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
     resp = fetch('http://localhost:5000/admin/campaign/%s/new/round' % campaign_id, data).read()
     resp_dict = json.loads(resp)

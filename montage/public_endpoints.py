@@ -51,10 +51,10 @@ def complete_login(request, consumer_token, cookie, rdb_session):
                     'username': 'Slaporte'}
     else:
         handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
-        
+
         req_token = RequestToken(cookie['request_token_key'],
                                  cookie['request_token_secret'])
-        
+
         access_token = handshaker.complete(req_token,
                                            request.query_string)
         identity = handshaker.identify(access_token)
