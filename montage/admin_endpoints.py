@@ -12,7 +12,6 @@ from rdb import (Campaign,
                  OrganizerDAO)
 
 
-
 def make_admin_campaign_info(campaign):
     ret = {'id': campaign.id,
            'name': campaign.name,
@@ -25,7 +24,7 @@ def make_admin_campaign_details(campaign):
            'name': campaign.name,
            'canonical_url_name': slugify(campaign.name),
            'rounds': [make_admin_round_info(rnd) for rnd in campaign.rounds],
-           'coordinators': [make_campaign_coordinator_info(c) 
+           'coordinators': [make_campaign_coordinator_info(c)
                             for c in campaign.coords]}
     return ret
 
@@ -90,8 +89,8 @@ def create_campaign(user, rdb_session, request):
 
     Response model: AdminCampaignDetails
     """
-    if not user.is_maintainer:  # TODO: check if user is an organizer too
-        raise Forbidden('not allowed to create campaigns')
+    if not user.is_maintainer or not user.is_organizer:
+        raise Forbidden('must be a designated organizer to create campaigns')
 
     org_dao = OrganizerDAO(rdb_session, user)
     new_camp_name = request.form.get('campaign_name')
@@ -212,7 +211,20 @@ def create_round(rdb_session, user, campaign_id, request):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
+<<<<<<< HEAD
     rnd = coord_dao.create_round(**rnd_dict)
+=======
+    new_round_name = request.form.get('round_name')
+    jurors = request.form.get('jurors').split(',')
+    if not jurors:
+        raise Exception('jurors are required to create a round')
+    default_quorum = len(jurors)
+    quorum = request.form.get('quorum', default_quorum)
+    rnd = coord_dao.create_round(name=new_round_name,
+                                 quorum=quorum,
+                                 jurors=jurors,
+                                 campaign=campaign)
+>>>>>>> 10bae22b664d5d405307957e767ddc25f201d01f
     rnd_stats = coord_dao.get_round_stats(rnd.id)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
@@ -443,7 +455,7 @@ admin_routes = [GET('/admin', get_index),
                 GET('/admin/round/<round_id:int>', get_round),
                 POST('/admin/round/<round_id:int>/edit', edit_round),
                 POST('/admin/add_organizer', add_organizer),
-                POST('/admin/add_coordinator/campaign/<campaign_id:int>', 
+                POST('/admin/add_coordinator/campaign/<campaign_id:int>',
                      add_coordinator)]
 
 
