@@ -48,6 +48,7 @@ from mw import (UserMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
 from rdb import Base
+from utils import get_env_name
 from check_rdb import get_schema_errors
 
 from juror_endpoints import juror_routes
@@ -57,6 +58,7 @@ from public_endpoints import home, login, logout, complete_login
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
 
@@ -69,8 +71,14 @@ def create_app(env_name='prod'):
     routes += juror_routes
     routes += admin_routes
 
+    print '==  creating WSGI app using env name: %s' % (env_name,)
+
     config_file_name = 'config.%s.yaml' % env_name
-    config = yaml.load(open(config_file_name))
+    config_file_path = os.path.join(PROJ_PATH, config_file_name)
+
+    print '==  loading config file: %s' % (config_file_path,)
+
+    config = yaml.load(open(config_file_path))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
     session_type = sessionmaker()
@@ -125,9 +133,9 @@ def create_app(env_name='prod'):
     return root_app
 
 
-if __name__ != '__main__':
-    # generally imported for serving, ideally this would be side-effect free
-    app = create_app(env_name="prod")
-else:
-    app = create_app(env_name="dev")
+env_name = get_env_name()
+app = create_app(env_name=env_name)
+
+
+if __name__ == '__main__':
     app.serve()
