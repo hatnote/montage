@@ -384,6 +384,15 @@ class CoordinatorDAO(UserDAO):
     def check_is_coord(self):
         pass
 
+    def edit_campaign(self, campaign_id, campaign_dict):
+        # TODO: confirm permissions in this query
+        ret = self.rdb_session.query(Campaign)\
+                              .filter_by(id=campaign_id)\
+                              .update(campaign_dict)
+        self.rdb_session.commit()
+        
+        return ret
+
     def create_round(self, 
                      name, 
                      quorum, 
@@ -423,6 +432,7 @@ class CoordinatorDAO(UserDAO):
         # TODO: Confirm if dict keys are columns?
 
         # Some restrictions on editing round properties:
+        # (these restrictions are enforced in the endpoint funcs)
         #
         #   - no reassignment required: name, description, directions,
         #     display_settings
@@ -432,7 +442,9 @@ class CoordinatorDAO(UserDAO):
         ret = self.rdb_session.query(Round)\
                               .filter_by(id=round_id)\
                               .update(round_dict)
+
         self.rdb_session.commit()
+
         return ret
 
     def pause_round(self, round_id):
@@ -443,8 +455,9 @@ class CoordinatorDAO(UserDAO):
     def activate_round(self, round_id):
         rnd = self.get_round(round_id)
         tasks = create_initial_tasks(self.rdb_session, rnd)
-        rnd_status = {'status': 'active'}
-        query = self.edit_round(round_id, rnd_status)
+        rnd_dict = {'status': 'active',
+                    'open_date': datetime.now()}
+        query = self.edit_round(round_id, rnd_dict)
         return tasks
 
     def close_round(self, round_id):
