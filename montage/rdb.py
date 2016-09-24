@@ -11,6 +11,7 @@ from sqlalchemy import (Column,
                         Float,
                         Boolean,
                         DateTime,
+                        Text,
                         ForeignKey)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -62,7 +63,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
-    username = Column(String)
+    username = Column(String(255))
 
     last_login_date = Column(DateTime)
     create_date = Column(DateTime, server_default=func.now())
@@ -95,7 +96,7 @@ class Campaign(Base):
     __tablename__ = 'campaigns'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String(255))
 
     # open/close can be used to select/verify that images were
     # actually uploaded during the contest window
@@ -135,16 +136,16 @@ class Round(Base):
     __tablename__ = 'rounds'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
-    description = Column(String)
-    directions = Column(String)
+    name = Column(String(255))
+    description = Column(Text)
+    directions = Column(Text)
     open_date = Column(DateTime)
     close_date = Column(DateTime)
-    status = Column(String)
+    status = Column(String(255))
     vote_method = Column(String)
     quorum = Column(Integer)
     # Should we just have some settings in json? yes. -mh
-    config_json = Column(String, default=DEFAULT_ROUND_CONFIG)
+    config_json = Column(Text, default=DEFAULT_ROUND_CONFIG)
 
     create_date = Column(DateTime, server_default=func.now())
     flags = Column(JSONEncodedDict)
@@ -193,16 +194,16 @@ class Entry(Base):
     id = Column(Integer, primary_key=True)
 
     # page_id?
-    name = Column(String, unique=True, index=True)
-    mime_major = Column(String)
-    mime_minor = Column(String)
+    name = Column(String(255), unique=True, index=True)
+    mime_major = Column(String(255))
+    mime_minor = Column(String(255))
     width = Column(Integer)
     height = Column(Integer)
     resolution = Column(Integer)
     # if we ever figure out how to get the monument ID
-    subject_id = Column(String)
+    subject_id = Column(String(255))
     upload_user_id = Column(Integer)
-    upload_user_text = Column(String)
+    upload_user_text = Column(String(255))
     upload_date = Column(DateTime)
 
     # TODO: img_sha1/page_touched for updates?
@@ -221,7 +222,7 @@ class RoundEntry(Base):
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
-    dq_reason = Column(String)  # in case it's disqualified
+    dq_reason = Column(String(255))  # in case it's disqualified
     # examples: too low resolution, out of date range
     flags = Column(JSONEncodedDict)
 
@@ -337,9 +338,9 @@ class AuditLogEntry(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'))
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
-    role = Column(String)
-    action = Column(String)
-    message = Column(String)
+    role = Column(String(255))
+    action = Column(String(255))
+    message = Column(Text)
 
     create_date = Column(DateTime, server_default=func.now())
 

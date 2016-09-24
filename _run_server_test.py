@@ -64,14 +64,9 @@ def main():
     assert resp_dict['status'] == 'success'
 
     # add a round to that campaign
-<<<<<<< HEAD
     data = {'name': 'Another test round', 
             'vote_method': 'rating',
             'quorum': 2, 
-=======
-    data = {'round_name': 'Another test round',
-            'quorum': 2,
->>>>>>> 10bae22b664d5d405307957e767ddc25f201d01f
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
     resp = fetch('http://localhost:5000/admin/campaign/%s/new/round' % campaign_id, data).read()
     resp_dict = json.loads(resp)

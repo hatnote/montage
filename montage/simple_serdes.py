@@ -3,7 +3,7 @@ import json
 import datetime
 
 from sqlalchemy import inspect
-from sqlalchemy.types import TypeDecorator, String
+from sqlalchemy.types import TypeDecorator, Text
 from sqlalchemy.ext.mutable import Mutable
 
 
@@ -107,7 +107,7 @@ class DictableBase(object):
 
 
 class JSONEncodedDict(TypeDecorator):
-    impl = String
+    impl = Text
 
     def process_bind_param(self, value, dialect):
         if value is None:

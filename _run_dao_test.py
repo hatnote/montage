@@ -30,6 +30,7 @@ def main():
     # the org_dao should be able to do this stuff, too
     rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=2,
+                                 vote_method='rating',
                                  jurors=['Slaporte', 'MahmoudHashemi'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts

@@ -1,4 +1,3 @@
-from datetime import datetime
 
 from clastic import GET, POST
 from clastic.errors import Forbidden
@@ -156,8 +155,6 @@ def activate_round(rdb_session, user, round_id, request):
         raise Forbidden('not allowed to activate round')
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     tasks = coord_dao.activate_round(round_id)
-    rnd_dict = {'open_date': datetime.now()}
-    coord_dao.edit_round(round_id, rnd_dict)
     # TODO: Confirm round exists?
     data = {'round_id': round_id,
             'total_tasks': len(tasks)}
