@@ -1,11 +1,21 @@
 
+import sys
 import json
 import getpass
+import os.path
 import datetime
-
 from urllib import urlencode
 from urllib2 import urlopen
 
+import yaml
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from check_rdb import get_schema_errors
+
+
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJ_PATH = os.path.dirname(CUR_PATH)
 
 USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
                 'tools.montage': 'prod'}
@@ -34,7 +44,41 @@ def get_env_name():
     return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
 
 
+def load_env_config(env_name=None):
+    if not env_name:
+        env_name = get_env_name()
+
+    config_file_name = 'config.%s.yaml' % env_name
+    config_file_path = os.path.join(PROJ_PATH, config_file_name)
+
+    # print '==  loading config file: %s' % (config_file_path,)
+
+    config = yaml.load(open(config_file_path))
+
+    return config
+
+
+def check_schema(db_url, base_type, echo=False, autoexit=False):
+    engine = create_engine(db_url, echo=echo)
+    session_type = sessionmaker()
+    session_type.configure(bind=engine)
+
+    # import pdb;pdb.set_trace()
+
+    tmp_rdb_session = session_type()
+    schema_errors = get_schema_errors(base_type, tmp_rdb_session)
+    if not schema_errors:
+        print '++  schema validated ok'
+    else:
+        for err in schema_errors:
+            print '!! ', err
+        print '!!  recreate the database and update the code, then try again'
+        if autoexit:
+            sys.exit(2)
+    return schema_errors
+
+
 def fmt_date(date):
     if isinstance(date, datetime.datetime):
-        date =  date.isoformat()
+        date = date.isoformat()
     return date
