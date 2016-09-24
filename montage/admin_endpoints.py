@@ -211,20 +211,7 @@ def create_round(rdb_session, user, campaign_id, request):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
-<<<<<<< HEAD
     rnd = coord_dao.create_round(**rnd_dict)
-=======
-    new_round_name = request.form.get('round_name')
-    jurors = request.form.get('jurors').split(',')
-    if not jurors:
-        raise Exception('jurors are required to create a round')
-    default_quorum = len(jurors)
-    quorum = request.form.get('quorum', default_quorum)
-    rnd = coord_dao.create_round(name=new_round_name,
-                                 quorum=quorum,
-                                 jurors=jurors,
-                                 campaign=campaign)
->>>>>>> 10bae22b664d5d405307957e767ddc25f201d01f
     rnd_stats = coord_dao.get_round_stats(rnd.id)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
