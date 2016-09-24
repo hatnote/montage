@@ -199,12 +199,12 @@ def create_round(rdb_session, user, campaign_id, request):
                                  quorum=quorum,
                                  jurors=jurors,
                                  campaign=campaign)
-    rnd_stats = juror_dao.get_round_stats(rnd.id)
+    rnd_stats = coord_dao.get_round_stats(rnd.id)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
 
-def edit_round(user_dao, round_id, request_dict):
+def edit_round(rdb_session, user,  round_id, request):
     """
     Summary: Post a new campaign
 
@@ -214,7 +214,18 @@ def edit_round(user_dao, round_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    pass
+    rnd_dict = {}
+    column_names = ['name', 'description', 'directions', 'config_json']
+    # Use specific methods to edit other columns:
+    #  - status: activate_round, pause_round
+    #  - qourum: [requires reallocation]
+    #  - active_jruros: [requires reallocation]
+    for column_name in column_names:
+        if request.form.get(column_name):
+            rnd_dict[column_name] = request.form.get(column_name)
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.edit_round(round_id, rnd_dict)
+    return {'data': rnd_dict}
 
 
 def get_index(rdb_session, user):
@@ -409,10 +420,8 @@ admin_routes = [GET('/admin', get_index),
                      create_round),
                 POST('/admin/round/<round_id:int>/import', import_entries),
                 POST('/admin/round/<round_id:int>/activate', activate_round),
-                GET('/admin/round/<round_id:int>/<round_name?>',
-                    get_round),
-                POST('/admin/round/<round_id:int>/<round_name?>',
-                     edit_round),
+                GET('/admin/round/<round_id:int>', get_round),
+                POST('/admin/round/<round_id:int>/edit', edit_round),
                 POST('/admin/add_organizer', add_organizer),
                 POST('/admin/add_coordinator/campaign/<campaign_id:int>', 
                      add_coordinator)]

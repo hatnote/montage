@@ -71,6 +71,13 @@ def main():
 
     round_id = resp_dict['data']['id']
 
+    # edit the round description
+    data = {'directions': 'these are new directions'}
+    resp = fetch('http://localhost:5000/admin/round/%s/edit' % round_id, data).read()
+    resp_dict = json.loads(resp)
+    import pdb; pdb.set_trace()
+    assert resp_dict['status'] == 'success'
+
     # import the initial set of images to the round
     data = {'import_method': 'gistcsv',
         'gist_url': 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv'}
