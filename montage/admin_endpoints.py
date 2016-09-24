@@ -92,7 +92,7 @@ def create_campaign(user, rdb_session, request):
         raise Forbidden('must be a designated organizer to create campaigns')
 
     org_dao = OrganizerDAO(rdb_session, user)
-    new_camp_name = request.form.get('campaign_name')
+    new_camp_name = request.form.get('name')
     campaign = org_dao.create_campaign(name=new_camp_name)
     data = make_admin_campaign_details(campaign)
     return {'data': data}
@@ -161,7 +161,7 @@ def activate_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-def edit_campaign(user_dao, campaign_id, request_dict):
+def edit_campaign(rdb_session, user, campaign_id, request):
     """
     Summary: Change the settings for a round identified by a round ID.
 
@@ -171,7 +171,16 @@ def edit_campaign(user_dao, campaign_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    pass
+    campaign_dict = {}
+    column_names = ['name', 'open_date', 'close_date']
+
+    for column_name in column_names:
+        if request.form.get(column_name):
+            campaign_dict[column_name] = request.form.get(column_name)    
+            
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    campaign = coord_dao.edit_campaign(campaign_id, campaign_dict)
+    return {'data': campaign_dict}
 
 
 def create_round(rdb_session, user, campaign_id, request):
@@ -428,12 +437,9 @@ def add_coordinator(rdb_session, user, campaign_id, request):
 
 admin_routes = [GET('/admin', get_index),
                 POST('/admin/new/campaign', create_campaign),
-                GET('/admin/campaign/<campaign_id:int>/<camp_name?>',
-                    get_campaign),
-                POST('/admin/campaign/<campaign_id:int>/<camp_name?>',
-                     edit_campaign),
-                POST('/admin/campaign/<campaign_id:int>/new/round',
-                     create_round),
+                GET('/admin/campaign/<campaign_id:int>', get_campaign),
+                POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
+                POST('/admin/campaign/<campaign_id:int>/new/round', create_round),
                 POST('/admin/round/<round_id:int>/import', import_entries),
                 POST('/admin/round/<round_id:int>/activate', activate_round),
                 GET('/admin/round/<round_id:int>', get_round),

@@ -38,16 +38,22 @@ def main():
     assert resp_dict['status'] == 'success'
 
     # create a campaign
-    data = {'campaign_name': 'Another Test Campaign'}
+    data = {'name': 'Another Test Campaign'}
     resp = fetch('http://localhost:5000/admin/new/campaign', data).read()
     resp_dict = json.loads(resp)
     assert resp_dict['status'] == 'success'
 
-    new_campaign_id = resp_dict['data']['id']
+    campaign_id = resp_dict['data']['id']
+
+    # edit campaign
+    data = {'name': 'Another Test Campaign - edited'}
+    resp = fetch('http://localhost:5000/admin/campaign/%s/edit' % campaign_id, data).read()
+    resp_dict = json.loads(resp)
+    assert resp_dict['status'] == 'success'
 
     # add a coordinator to this new camapign
     data = {'username': 'MahmoudHashemi'}
-    resp = fetch('http://localhost:5000/admin/add_coordinator/campaign/%s' % new_campaign_id, data).read()
+    resp = fetch('http://localhost:5000/admin/add_coordinator/campaign/%s' % campaign_id, data).read()
     resp_dict = json.loads(resp)
     assert resp_dict['status'] == 'success'
 
