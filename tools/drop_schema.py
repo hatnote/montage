@@ -1,6 +1,7 @@
 
 import pdb
 import sys
+import time
 import os.path
 import argparse
 
@@ -15,20 +16,21 @@ from montage.rdb import Base
 from montage.utils import load_env_config
 
 
-def create_schema(db_url, echo=True):
+def drop_schema(db_url, echo=True):
 
     # echo="debug" also prints results of selects, etc.
     engine = create_engine(db_url, echo=echo)
-    Base.metadata.create_all(engine)
+    Base.metadata.drop_all(engine)
 
     return
 
 
 def main():
-    prs = argparse.ArgumentParser('create montage db and load initial data')
+    prs = argparse.ArgumentParser('drop montage db')
     add_arg = prs.add_argument
     add_arg('--db_url')
     add_arg('--debug', action="store_true", default=False)
+    add_arg('--force', action="store_true", default=False)
     add_arg('--verbose', action="store_true", default=False)
 
     args = prs.parse_args()
@@ -44,14 +46,28 @@ def main():
         else:
             db_url = config.get('db_url')
 
+    if not args.force:
+        confirmed = raw_input('??  this will drop all tables from %r.'
+                              ' type yes to confirm: ' % db_url)
+        if not confirmed == 'yes':
+            print '--  you typed %r, aborting' % confirmed
+            sys.exit(0)
+
+    print '..  dropping all tables in %r in:' % db_url
+    time.sleep(1.2)
+    for x in range(3, 0, -1):
+        print '.. ', x
+        time.sleep(0.85)
+
     try:
-        create_schema(db_url=db_url, echo=args.verbose)
+        drop_schema(db_url=db_url, echo=args.verbose)
     except Exception:
         if not args.debug:
             raise
         pdb.post_mortem()
     else:
-        print '++  schema created'
+        print '++  schema dropped'
+
 
     return
 
