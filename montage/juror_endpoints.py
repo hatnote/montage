@@ -22,12 +22,22 @@ def make_juror_campaign_details(campaign):
     ret = {'id': campaign.id,
            'name': campaign.name,
            'canonical_url_name': slugify(campaign.name),
-           'rounds': [make_juror_round_details(rnd) for rnd in campaign.rounds],
+           'rounds': None,  # must get rnd_stats for each below
            'coordinators': [make_coord_details(coord) for coord in campaign.coords]}
     return ret
 
+def make_juror_round_info(rnd):
+    ret = {'id': rnd.id,
+           'name': rnd.name,
+           'canonical_url_name': slugify(rnd.name)}
 
-def make_juror_round_details(rnd):
+    return ret
+
+def make_juror_round_details(rnd, rnd_stats):
+    if rnd_stats['total_tasks']:
+        percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
+    else:
+        percent_tasks_open = 0
     ret = {'id': rnd.id,
            'directions':  rnd.directions,
            'name': rnd.name,
@@ -36,6 +46,9 @@ def make_juror_round_details(rnd):
            'close_date': fmt_date(rnd.close_date),
            'status': rnd.status,
            'canonical_url_name': slugify(rnd.name, '-'),
+           'total_tasks': rnd_stats['total_tasks'],
+           'total_open_tasks': rnd_stats['total_open_tasks'],
+           'percent_tasks_open': percent_tasks_open,
            'campaign': make_juror_campaign_info(rnd.campaign)}
     return ret
 
@@ -88,7 +101,8 @@ def get_index(rdb_session, user):
         raise Forbidden('not a juror for any rounds')
     data = []
     for rnd in rounds:
-        rnd_details = make_juror_round_details(rnd)
+        rnd_stats = juror_dao.get_round_stats(rnd.id)
+        rnd_details = make_juror_round_details(rnd, rnd_stats)
         data.append(rnd_details)
     return {'data': data}
 
@@ -127,6 +141,11 @@ def get_campaign(rdb_session, user, campaign_id):
     if campaign is None:
         raise Forbidden('not a juror for this campaign')
     data = make_juror_campaign_details(campaign)
+    rounds = []
+    for rnd in campaign.rounds:
+        rnd_stats = juror_dao.get_round_stats(rnd.id)
+        rounds.append(make_juror_round_details(rnd, rnd_stats))
+    data['rounds'] = rounds
     return {'data': data}
 
 
@@ -165,9 +184,10 @@ def get_round(rdb_session, user, round_id):
     """
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     rnd = juror_dao.get_round(round_id)
+    rnd_stats = juror_dao.get_round_stats(round_id)
     if rnd is None:
         raise Forbidden('not a juror for this round')
-    data = make_juror_round_details(rnd)
+    data = make_juror_round_details(rnd, rnd_stats)
     return {'data': data}
 
 

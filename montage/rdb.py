@@ -164,6 +164,7 @@ class Round(Base):
                                 creator=lambda e: RoundEntry(entry=e))
 
 
+
 class RoundJuror(Base):
     __tablename__ = 'round_jurors'
 
@@ -507,6 +508,18 @@ class CoordinatorDAO(UserDAO):
                     .one_or_none()
         return round
 
+    def get_round_stats(self, round_id):
+        total_tasks = self.query(Task)\
+                          .filter(Task.round_entry.has(round_id=round_id),
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.round_entry.has(round_id=round_id),
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return {'total_tasks': total_tasks, 'total_open_tasks': total_open_tasks}
+
     def get_entries(self, filenames):
         entries = self.query(Entry)\
                       .filter(Entry.name.in_(filenames))\
@@ -626,6 +639,20 @@ class JurorDAO(UserDAO):
                         Round.id == round_id)\
                     .one_or_none()
         return round
+
+    def get_round_stats(self, round_id):
+        total_tasks = self.query(Task)\
+                          .filter(Task.round_entry.has(round_id=round_id),
+                                  Task.user_id == self.user.id,
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.round_entry.has(round_id=round_id),
+                                       Task.user_id == self.user.id,
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return {'total_tasks': total_tasks, 'total_open_tasks': total_open_tasks}
 
     def get_next_task(self, num=1, offset=0):
         tasks = self.query(Task)\

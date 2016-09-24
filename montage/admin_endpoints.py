@@ -42,7 +42,11 @@ def make_admin_round_info(rnd):
     return ret
 
 
-def make_admin_round_details(rnd):
+def make_admin_round_details(rnd, rnd_stats):
+    if rnd_stats['total_tasks']:
+        percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
+    else:
+        percent_tasks_open = 0
     ret = {'id': rnd.id,
            'name': rnd.name,
            'directions': rnd.directions,
@@ -52,6 +56,10 @@ def make_admin_round_details(rnd):
            'close_date': fmt_date(rnd.close_date),
            'status': rnd.status,
            'quorum': rnd.quorum,
+           'total_entries': len(rnd.entries),
+           'total_tasks': rnd_stats['total_tasks'],
+           'total_open_tasks': rnd_stats['total_open_tasks'],
+           'percent_tasks_open': percent_tasks_open,
            'campaign': make_admin_campaign_info(rnd.campaign),
            'jurors': [make_round_juror_details(j) for j in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
@@ -191,7 +199,8 @@ def create_round(rdb_session, user, campaign_id, request):
                                  quorum=quorum,
                                  jurors=jurors,
                                  campaign=campaign)
-    data = make_admin_round_details(rnd)
+    rnd_stats = juror_dao.get_round_stats(rnd.id)
+    data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
 
@@ -297,6 +306,14 @@ def get_round(rdb_session, user, round_id):
             type: string
         quorum:
             type: int64
+        total_entries:
+            type: int64
+        total_tasks:
+            type: int64
+        total_open_tasks:
+            type: int64
+        percent_open_tasks:
+            type: float
         campaign:
             type: CampaignInfo
         jurors:
@@ -310,12 +327,13 @@ def get_round(rdb_session, user, round_id):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+    rnd_stats = coord_dao.get_round_stats(round_id)
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
     # entries_info = user_dao.get_entry_info(round_id) # TODO
 
     # TODO: joinedload if this generates too many queries
-    data = make_admin_round_details(rnd)
+    data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
 
