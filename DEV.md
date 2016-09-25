@@ -20,6 +20,20 @@ Almost all endpoints (except for OAuth and `/static/`) return JSON as
 long as the proper Accept header is set (done by most libraries) or
 `format=json` is passed in the query string.
 
+### Building the interface
+
+To build the front-end app, go to `/client/` and install dependencies:
+
+```
+npm install
+```
+
+Then run the app:
+
+```
+npm run start
+```
+
 # TODO
 
 A bit of space for dev bookkeeping.
@@ -29,18 +43,17 @@ A bit of space for dev bookkeeping.
 * Closing behaviors
     * Compute ratings
     * Compute ranking winners
-* Get tasks filtered by round
-     * e.g., organizer checks
 * Permissions cleanup for admin endpoints
+     * e.g., organizer checks
 * Check for resource existence instead of raising 500s (e.g., campaign endpoints)
-* Logging
+* Logging and timing
 * Audit logging
 * Task reassignment
 * Locking
 
 ## Frontend
 
-* Adjust URLs for different root paths (configurable?)
+* Make URLs configurable for different backend paths (e.g., Labs versus localhost)
 * Submit ratings
 * Submit rankings
 * Interfaces for closing rounds
