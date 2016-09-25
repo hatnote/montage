@@ -30,6 +30,12 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
         resolve: {
           data: (userService) => userService.juror.get(),
           userType: ($q) => $q.when('juror')
+        },
+        onEnter: ($state, data) => {
+          //invalid cookie userid, try logging in again
+          if (data.status === 'failure' && data.errors.length) {
+            $state.go('main.login');
+          }
         }
       })
       .state('main.juror.dashboard', {
@@ -70,6 +76,12 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
         resolve: {
           data: (userService) => userService.admin.get(),
           userType: ($q) => $q.when('admin')
+        },
+        onEnter: ($state, data) => {
+          //invalid cookie userid, try logging in again
+          if (data.status === 'failure' && data.errors.length) {
+            $state.go('main.login');
+          }
         }
       })
       .state('main.admin.dashboard', {
@@ -104,9 +116,14 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
           image: (dataService) => dataService.getTempImage() // temporary!
         }
       })
-      .state('login', {
+      .state('main.login', {
         url: '/login',
-        template: '<mont-login layout="column" layout-align="center center"></mont-login>'
+        template: `<mont-login
+                      layout="column" layout-align="center center"
+                      data="$resolve.data"></mont-login>`,
+        resolve: {
+          data: (userService) => userService.juror.get()
+        },
       });
     $urlRouterProvider.otherwise('/');
 

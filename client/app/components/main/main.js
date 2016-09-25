@@ -20,7 +20,7 @@ const MainComponent = {
     function logout() {
       userService.logout().then(() => {
         vm.user = {};
-        $state.go('login');
+        $state.go('main.login');
       });
     }
   },
