@@ -9,19 +9,8 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 
 sys.path.append(PROJ_PATH)
 
-from sqlalchemy import create_engine
-
 from montage.rdb import Base
 from montage.utils import load_env_config, check_schema
-
-
-def create_schema(db_url, echo=True):
-
-    # echo="debug" also prints results of selects, etc.
-    engine = create_engine(db_url, echo=echo)
-    Base.metadata.create_all(engine)
-
-    return
 
 
 def main():

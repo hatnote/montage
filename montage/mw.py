@@ -127,4 +127,6 @@ class DBSessionMiddleware(Middleware):
             raise
         else:
             rdb_session.commit()
+        finally:
+            rdb_session.close()
         return ret
