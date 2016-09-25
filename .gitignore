@@ -2,7 +2,7 @@
 *.db
 config*yaml
 .DS_Store
-montage/static/
+
 
 # emacs
 *~

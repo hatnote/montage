@@ -12,7 +12,7 @@ const LoginComponent = {
 
         function login() {
             vm.loading = true;
-            $window.location.pathname = '/login';
+            $window.location.pathname = '/montage-dev/login';
         }
     },
     template: template
