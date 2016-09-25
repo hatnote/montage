@@ -23,6 +23,7 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 sys.path.append(PROJ_PATH)
 
 from montage import utils
+from montage.log import script_log
 
 
 def fetch(url, data=None):
@@ -32,8 +33,10 @@ def fetch(url, data=None):
     return opener.open(req)
 
 
-def fetch_json(*a, **kw):
-    res = fetch(*a, **kw)
+@script_log.wrap('info', inject_as='act')
+def fetch_json(url, data=None, act=None, **kw):
+    act['url'] = url
+    res = fetch(url, data=data)
     data_dict = json.load(res)
     if kw.get('assert_success', True):
         assert data_dict['status'] == 'success'
