@@ -39,6 +39,7 @@
                 <md-progress-linear md-mode="determinate"
                                     value="{{100 - round.percent_tasks_open}}"></md-progress-linear>
                 <div class="campaign__progress" layout="row" layout-align="space-between center">
+                    <span>{{round.total_tasks - round.total_open_tasks}} / {{round.total_tasks}} reviewed</span>
                     <span flex></span>
                     <span class="muted">{{100 - round.percent_tasks_open}}%</span>
                 </div>
