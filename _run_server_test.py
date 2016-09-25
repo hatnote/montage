@@ -32,6 +32,14 @@ def fetch(url, data=None):
     return opener.open(req)
 
 
+def fetch_json(*a, **kw):
+    res = fetch(*a, **kw)
+    data_dict = json.load(res)
+    if kw.get('assert_success', True):
+        assert data_dict['status'] == 'success'
+    return data_dict
+
+
 def main():
     config = utils.load_env_config()
 
@@ -73,24 +81,20 @@ def main():
 
     # login as a maintainer
     # resp = fetch(url_base + '/complete_login').read()
-    #resp_dict = json.loads(resp)
-    #assert resp_dict['cookie']['username'] == 'Slaporte'
+    # resp_dict = json.loads(resp)
+    # assert resp_dict['cookie']['username'] == 'Slaporte'
 
     print '.. logged in'
 
     # add an organizer
     data = {'username': 'Slaporte'}
-    resp = fetch(url_base + '/admin/add_organizer', data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/add_organizer', data)
 
     print '.. added %s as organizer' % data['username']
 
     # create a campaign
     data = {'name': 'Another Test Campaign'}
-    resp = fetch(url_base + '/admin/new/campaign', data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/new/campaign', data)
 
     campaign_id = resp_dict['data']['id']
 
@@ -98,33 +102,25 @@ def main():
 
     # edit campaign
     data = {'name': 'Another Test Campaign - edited'}
-    resp = fetch(url_base + '/admin/campaign/%s/edit' % campaign_id, data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
 
     print '.. edited campaign no %s' % campaign_id
 
     # add a coordinator to this new camapign
     data = {'username': 'MahmoudHashemi'}
-    resp = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
 
     print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
 
     # get the coordinator's index
-    resp = fetch(url_base + '/admin').read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin')
 
     print '.. loaded the coordinators index'
 
     campaign_id = resp_dict['data'][-1]['id']
 
     # get coordinator's view of the first campaign
-    resp = fetch(url_base + '/admin/campaign/%s' % campaign_id).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/campaign/%s' % campaign_id)
 
     print '.. loaded the coordinator view of campaign no %s' % campaign_id
 
@@ -133,9 +129,7 @@ def main():
             'vote_method': 'rating',
             'quorum': 2,
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
-    resp = fetch(url_base + '/admin/campaign/%s/new/round' % campaign_id, data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id = resp_dict['data']['id']
 
@@ -143,48 +137,38 @@ def main():
 
     # edit the round description
     data = {'directions': 'these are new directions'}
-    resp = fetch(url_base + '/admin/round/%s/edit' % round_id, data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/admin/round/%s/edit' % round_id, data)
 
     print '.. edited the directions of round no %s' % round_id
 
     # import the initial set of images to the round
     data = {'import_method': 'gistcsv',
-        'gist_url': 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv'}
-    resp = fetch(url_base + '/admin/round/%s/import' % round_id, data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+            'gist_url': 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv'}
+    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id, data)
 
     print '.. loaded %s entries into round no %s' % ('_', round_id)
 
     # active the round
-    resp = fetch(url_base + '/admin/round/%s/activate' % round_id, {'post': True}).read()
-    resp_dict = json.loads(resp)
+    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
     # TODO: check results?
 
     print '.. activated round no %s' % round_id
 
     # get the juror's index
-    resp = fetch(url_base + '/juror').read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/juror')
 
     round_id = resp_dict['data'][-1]['id']
 
     print '.. loaded the jurors index'
 
     # get the juror's view of the last round
-    resp = fetch(url_base + '/juror/round/%s' % round_id).read()
-    resp_dict = json.loads(resp)
+    resp_dict = fetch_json(url_base + '/juror/round/%s' % round_id)
 
     print '.. loaded juror view of round no %s' % round_id
 
     # get the juror's next task
     # (optional count and offset params)
-    resp = fetch(url_base + '/juror/round/%s/tasks' % round_id).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/juror/round/%s/tasks' % round_id)
 
     entry_id = resp_dict['data'][0]['round_entry_id']
     task_id = resp_dict['data'][0]['id']
@@ -195,9 +179,7 @@ def main():
     data = {'entry_id': entry_id,
             'task_id': task_id,
             'rating': '0.8'}
-    resp = fetch(url_base + '/juror/submit/rating', data).read()
-    resp_dict = json.loads(resp)
-    assert resp_dict['status'] == 'success'
+    resp_dict = fetch_json(url_base + '/juror/submit/rating', data)
 
     print '.. submitted rating on task no %s' % task_id
 
