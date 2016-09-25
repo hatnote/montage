@@ -35,6 +35,8 @@ import os.path
 
 import yaml
 
+import logging
+
 from clastic import Application, GET, POST, StaticFileRoute
 
 from clastic.static import StaticApplication
@@ -79,6 +81,10 @@ def create_app(env_name='prod'):
     print '==  loading config file: %s' % (config_file_path,)
 
     config = yaml.load(open(config_file_path))
+
+    log_file = os.path.join(PROJ_PATH, 'db.log')
+    logging.basicConfig(filename=log_file)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
     session_type = sessionmaker()
