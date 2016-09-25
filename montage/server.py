@@ -39,7 +39,7 @@ from clastic import Application, GET, POST, StaticFileRoute
 
 from clastic.static import StaticApplication
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken
@@ -49,7 +49,7 @@ from mw import (UserMiddleware,
                 DBSessionMiddleware)
 from rdb import Base
 from utils import get_env_name
-from check_rdb import get_schema_errors
+from check_rdb import get_schema_errors, ping_connection
 
 from juror_endpoints import juror_routes
 from admin_endpoints import admin_routes
@@ -97,6 +97,9 @@ def create_app(env_name='prod'):
         sys.exit(2)
 
     engine.echo = config.get('db_echo', False)
+
+    if not config.get('db_disable_ping'):
+        event.listen(engine, 'engine_connect', ping_connection)
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
