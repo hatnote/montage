@@ -5,6 +5,9 @@ from montage.rdb import (make_rdb_session,
                          MaintainerDAO,
                          CoordinatorDAO,
                          lookup_user)
+import random
+
+random.seed('badidea')
 
 def main():
     rdb_session = make_rdb_session()
@@ -27,29 +30,38 @@ def main():
     coord_user = lookup_user(rdb_session, 'Yarl')
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
 
+    
+
     # the org_dao should be able to do this stuff, too
     rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=2,
-                                 vote_method='rating',
+                                 vote_method='yesno',
                                  jurors=['Slaporte', 'MahmoudHashemi'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
     #                               round_id=rnd.id)
 
-    coord_dao.add_entries_from_csv_gist('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv', round_id=rnd.id)
+    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+    
+    coord_dao.add_entries_from_csv_gist(gist_url, round_id=rnd.id)
     
     # coord_dao.edit_round(rnd.id, {'status': 'active'})
 
     coord_dao.activate_round(rnd.id)  # or something
     
-    juror_user = lookup_user(rdb_session, 'Slaporte')
-    juror_dao = JurorDAO(rdb_session, juror_user)
-    tasks = juror_dao.get_next_task()
-    
-    task1 = tasks[0]
-    
-    juror_dao.apply_rating(task1.id, 0.8)
+    for juror in rnd.jurors:
+        print '.. voting for %s' % juror.username
+        juror_dao = JurorDAO(rdb_session, juror)
+        tasks = juror_dao.get_tasks_from_round(rnd.id)
+        
+        while tasks:
+            task = tasks.pop()
+            vote = random.choice([0.0, 1.0])
+            juror_dao.apply_rating(task.id, vote)
+            tasks = juror_dao.get_tasks_from_round(rnd.id)
+
+    import pdb;pdb.set_trace()
 
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
