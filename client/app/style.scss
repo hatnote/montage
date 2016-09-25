@@ -34,8 +34,16 @@ body {
     cursor: pointer;
 }
 
+.md-button.active {
+    font-weight: 500;
+}
+
 .muted {
     color: $lightGrey;
+}
+
+.full-width {
+    width: 100%;
 }
 
 .tag {

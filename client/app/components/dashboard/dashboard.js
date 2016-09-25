@@ -17,7 +17,6 @@ const DashboardComponent = {
         vm.user = angular.extend(vm.user, vm.data.user);
         vm.error = vm.data.error;
 
-        console.log(vm);
 
         versionService.setVersion(isAdmin() ? 'grey' : 'blue');
 
