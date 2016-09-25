@@ -38,6 +38,7 @@ import yaml
 import logging
 
 from clastic import Application, GET, POST, StaticFileRoute
+from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
@@ -138,7 +139,8 @@ def create_app(env_name='prod'):
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
                             ('/', static_app),
-                            ('/', app)])
+                            ('/', app),
+                            ('/meta', MetaApplication())])
 
     return root_app
 
