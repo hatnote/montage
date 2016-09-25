@@ -28,6 +28,10 @@ mont-campaign {
     .campaign__rounds-description {
         padding: 6px 16px;
         color: $lightGrey;
+
+        & > * {
+            padding-right: 25px;
+        }
     }
 
     .campaign__rounds {
@@ -40,6 +44,10 @@ mont-campaign {
         padding: 10px 6px 10px 16px;
         outline: none;
         border-bottom: 1px solid rgba(0,0,0,0.12);
+
+        & > * {
+            padding-right: 25px;
+        }
 
         .md-body-2 {
             font-size: 16px;
@@ -56,6 +64,11 @@ mont-campaign {
 
     .campaign__dash {
         margin: 0 20px;
+    }
+
+    .campaign__progress {
+        width: 100%;
+        margin-top: 5px;
     }
     
     .campaign__rounds-add {
