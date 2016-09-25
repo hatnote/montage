@@ -55,18 +55,18 @@ A rough draft of Montage's workflow:
 
 ## Details
 
-* Admins add coordinators (by wiki username)
-* Coordinators have permissions to create campaigns and add other
-  coordinators to specific campaigns
-* Coordinators create a round within a campaign, and manually assign
-  jurors, by wiki username, to each round
+* Maintainers add organizers (by wiki username)
+* Organizers have permissions to create campaigns and add other
+  coordinators to campaigns created by them.
+* Coordinators (and organizers) create a round within a campaign, and
+  manually assign jurors, by wiki username, to each round
 * The first round can import from CSV and categories
 * Early rounds are known as elimination rounds, where coordinators can
-  choose between thumbs up/down or five star rating system, with
+  choose between Yes/No or Five-Star rating system, with
   configurable quorum values (number of jurors who must rate each
   entry before it is considered rated)
-* When all vote quorums are met, a new round can be created with the
-  results of a previous round. This closes the round, enabling
+* When all voting tasks are complete, a new round can be created with
+  the results of a previous round. This closes the round, enabling
   downloading of results and votes.
 * Coordinators can rebalance remaining rating tasks (through a
   reassignment flow) to help meet deadlines. Jurors can be
@@ -166,7 +166,6 @@ sounds pretty out of order.
 * Ranking rounds can include nominations for special prizes (better
   run as a separate campaign that pulls from the round of another
   campaign?)
-* If we see mysql connection issues, consider: http://docs.sqlalchemy.org/en/latest/core/pooling.html#disconnect-handling-pessimistic
 
 ## Audience
 
