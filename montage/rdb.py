@@ -15,13 +15,11 @@ from sqlalchemy import (Column,
                         DateTime,
                         TIMESTAMP,
                         Text,
-                        ForeignKey,
-                        UniqueConstraint)
+                        ForeignKey)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.schema import Index
 
 from boltons.iterutils import chunked
 
@@ -170,7 +168,6 @@ class Round(Base):
                                 creator=lambda e: RoundEntry(entry=e))
 
 
-
 class RoundJuror(Base):
     __tablename__ = 'round_jurors'
 
@@ -228,6 +225,7 @@ class RoundEntry(Base):
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
+    dq_user_id = Column(Integer, ForeignKey('users.id'))
     dq_reason = Column(String(255))  # in case it's disqualified
     # examples: too low resolution, out of date range
     flags = Column(JSONEncodedDict)
@@ -384,6 +382,33 @@ class UserDAO(object):
         round = self.query(Round).filter_by(id=round_id).one()
         return round.name
 
+    def log_action(self, action, **kw):
+        # TODO: file logging here too
+        user_id = self.user.id
+        campaign = kw.pop('campaign', None)
+        campaign_id = kw.pop('campaign_id', campaign.id if campaign else None)
+
+        rnd = kw.pop('round', None)
+        round_id = kw.pop('round_id', rnd.id if rnd else None)
+        round_entry_id = kw.pop('round_entry_id', None)
+
+        cn_role = self.__class__.__name__.replace('DAO', '').lower()
+        role = kw.pop('role', cn_role)
+
+        message = kw.pop('message', None)
+        flags = dict(kw.pop('flags', {}))
+
+        ale = AuditLogEntry(user_id=user_id,
+                            campaign_id=campaign_id,
+                            round_id=round_id,
+                            round_entry_id=round_entry_id,
+                            role=role,
+                            action=action,
+                            message=message)
+
+        self.rdb_session.add(ale)
+        return
+
 
 class CoordinatorDAO(UserDAO):
     """A Data Access Object for the Coordinator's view"""
@@ -396,15 +421,15 @@ class CoordinatorDAO(UserDAO):
                               .filter_by(id=campaign_id)\
                               .update(campaign_dict)
         self.rdb_session.commit()
-        
+
         return ret
 
-    def create_round(self, 
-                     name, 
-                     quorum, 
-                     vote_method, 
+    def create_round(self,
+                     name,
+                     quorum,
+                     vote_method,
                      jurors,
-                     campaign=None, 
+                     campaign=None,
                      campaign_id=None):
         if not campaign and campaign_id:
             raise Exception('missing campaign object or campaign_id')
@@ -420,15 +445,15 @@ class CoordinatorDAO(UserDAO):
         for juror_name in jurors:
             juror = self.add_juror(juror_name)
             rnd_jurors.append(juror)
-        
-        # TOSO: campaign_seq, ie the rounds position within the campaign
-            
+
+        # TODO: campaign_seq, ie the rounds position within the campaign
+
         rnd = Round(name=name,
                     campaign=campaign,
                     quorum=quorum,
                     vote_method=vote_method,
                     jurors=rnd_jurors)
-        
+
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
 
@@ -490,7 +515,7 @@ class CoordinatorDAO(UserDAO):
                 db_entry = db_entries.get(entry.name)
 
                 if db_entry:
-                    entry = db_entry # commit_objs.append(db_entry)
+                    entry = db_entry  # commit_objs.append(db_entry)
                 else:
                     commit_objs.append(entry)
 
@@ -587,6 +612,11 @@ class OrganizerDAO(CoordinatorDAO):
         self.rdb_session.add(campaign)
         self.rdb_session.add(user)
         self.rdb_session.commit()
+
+        msg = ('%s added %s as a coordinator of campaign "%s"'
+               % (self.user.username, user.username, campaign.name))
+        self.log_action('add_coordinator', campaign_id=campaign.id,
+                        message=msg)
         return user
 
     def create_campaign(self, name):
@@ -595,6 +625,9 @@ class OrganizerDAO(CoordinatorDAO):
         self.rdb_session.add(campaign)
         campaign.coords.append(self.user)
         self.rdb_session.commit()
+
+        self.log_action('create_campaign', campaign_id=campaign.id)
+
         return campaign
 
     # Read methods
@@ -626,7 +659,6 @@ class MaintainerDAO(OrganizerDAO):
         self.rdb_session.add(user)
         self.rdb_session.commit()
         return user
-
 
 
 class JurorDAO(UserDAO):
@@ -812,21 +844,3 @@ ratings that form the quorum and average them? or median? (sum is the
 same as average) what about when images have more than quorum ratings?
 
 """
-
-if __name__ == '__main__':
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    session = make_rdb_session()
-
-    user = session.query(User).filter(User.id == '6024474').first()
-
-    # TODO: Make into tests
-
-    coord_dao = CoordinatorDAO(rdb_session=session, user=user)
-    juror_dao = JurorDAO(rdb_session=session, user=user)
-
-    user = lookup_user(session, username='Slaporte')
-    print user
-
-    import pdb;pdb.set_trace()
