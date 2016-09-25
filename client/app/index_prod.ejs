@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title>montage</title>
+</head>
+<body ng-app="montage">
+  <ui-view/>
+<script>
+(function (window) {
+  window.__env = window.__env || {};
+  window.__env.name = 'prod';
+  window.__env.baseUrl = '/';
+}(this));
+</script>
+</body>
+</html>

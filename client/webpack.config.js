@@ -1,6 +1,7 @@
 var path = require('path');
 var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var ngAnnotatePlugin = require('ng-annotate-webpack-plugin');
 
 var config = {
   context: path.join(__dirname, 'app'),
@@ -10,9 +11,9 @@ var config = {
     filename: 'bundle.js'
   },
   plugins: [new HtmlWebpackPlugin({
-      template: 'index.ejs',
-      filename: path.join('..', 'index.html')
-    })],
+    template: 'index_local.ejs',
+    filename: path.join('..', 'index.html')
+  })],
   module: {
     loaders: [
       {
@@ -44,9 +45,27 @@ var config = {
   }
 };
 
-if(process.env.NODE_ENV === "production") {
-  config.output.path = path.join(__dirname, "dist");
-  config.plugins.push(new webpack.optimize.UglifyJsPlugin());
+var ENV = process.env.NODE_ENV;
+if (ENV === 'prod' || ENV === 'dev') {
+  config.output = {
+    path: path.join(__dirname, '..', 'montage', 'static', 'dist'),
+    filename: 'bundle.min.js'
+  };
+  config.plugins = [
+    new HtmlWebpackPlugin({
+      template: ENV === 'dev' ? 'index_dev.ejs' : 'index_prod.ejs',
+      filename: path.join('..', 'index.html')
+    }),
+    new ngAnnotatePlugin({
+      add: true
+    }),
+    new webpack.optimize.UglifyJsPlugin({
+      compress: {
+        warnings: false
+      },
+      mangle: false
+    })
+  ];
 }
 
 module.exports = config;

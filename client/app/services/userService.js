@@ -1,34 +1,35 @@
-const UserService = function ($http, $q) {
+const UserService = function ($http, $q, $window) {
 
   function getData(response) {
     let data = response.data;
     return (data.code && data.code !== '200') ? { error: data } : data;
   }
 
+  const base = $window.__env.baseUrl;
+
   const admin = {
-    // TODO: add an easy way to switch between paths for local dev & labs
-    get: () => $http.get('/montage-dev/admin').then(getData, getData),
-    getCampaign: (id) => $http.get('/montage-dev/admin/campaign/' + id).then(getData, getData),
-    getRound: (id) => $http.get('/montage-dev/admin/round/' + id).then(getData, getData),
+    get: () => $http.get(base + 'admin').then(getData, getData),
+    getCampaign: (id) => $http.get(base + 'admin/campaign/' + id).then(getData, getData),
+    getRound: (id) => $http.get(base + 'admin/round/' + id).then(getData, getData),
 
-    addCampaign: (data) => $http.post('/montage-dev/admin/campaign', data).then(getData, getData),
-    addRound: (id, data) => $http.post('/montage-dev/admin/campaign/' + id + '/new/round', data).then(getData, getData),
+    addCampaign: (data) => $http.post(base + 'admin/campaign', data).then(getData, getData),
+    addRound: (id, data) => $http.post(base + 'admin/campaign/' + id + '/new/round', data).then(getData, getData),
 
-    editCampaign: (id, data) => $http.post('/montage-dev/admin/campaign/' + id, data).then(getData, getData),
-    editRound: (id, data) => $http.post('/montage-dev/admin/round/' + id, data).then(getData, getData),
+    editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id, data).then(getData, getData),
+    editRound: (id, data) => $http.post(base + 'admin/round/' + id, data).then(getData, getData),
   };
 
   const juror = {
-    get: () => $http.get('/montage-dev/juror').then(getData, getData),
-    getCampaign: (id) => $http.get('/montage-dev/juror/campaign/' + id).then(getData, getData),
-    getRound: (id) => $http.get('/montage-dev/juror/round/' + id).then(getData, getData),
-    getRoundTasks: (id) => $http.get('/montage-dev/juror/round/' + id + '/tasks').then(getData, getData),
+    get: () => $http.get(base + 'juror').then(getData, getData),
+    getCampaign: (id) => $http.get(base + 'juror/campaign/' + id).then(getData, getData),
+    getRound: (id) => $http.get(base + 'juror/round/' + id).then(getData, getData),
+    getRoundTasks: (id) => $http.get(base + 'juror/round/' + id + '/tasks').then(getData, getData),
   };
 
   const service = {
     admin: admin,
     juror: juror,
-    logout: () => $http.get('/montage-dev/logout')
+    logout: () => $http.get(base + 'logout')
   };
 
   return service;
