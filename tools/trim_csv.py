@@ -26,6 +26,7 @@ def main():
 
     with open(new_path, 'w') as new_file:
         writer = DictWriter(new_file, reader.unicode_fieldnames)
+        writer.writeheader()
         writer.writerows(new_entries)
 
     print open(new_path).read()
