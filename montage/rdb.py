@@ -6,6 +6,7 @@ import random
 import itertools
 from datetime import datetime
 from math import ceil
+from collections import Counter
 
 from sqlalchemy import (Column,
                         String,
@@ -233,6 +234,8 @@ class RoundEntry(Base):
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
     task = relationship('Task', back_populates='round_entry')
+    rating = relationship('Rating', back_populates='round_entry')
+    ranking = relationship('Ranking', back_populates='round_entry')
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -252,6 +255,8 @@ class Rating(Base):
 
     value = Column(Float)
 
+    round_entry = relationship('RoundEntry', back_populates='rating')
+
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
@@ -265,6 +270,8 @@ class Ranking(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     value = Column(Integer)
+
+    round_entry = relationship('RoundEntry', back_populates='ranking')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
@@ -566,6 +573,29 @@ class CoordinatorDAO(UserDAO):
             self.rdb_session.add(user)
             self.rdb_session.commit()
         return user
+
+    def calculate_ratings_round(self, round_id):
+        round_stats = self.get_round_stats(round_id)
+
+        if round_stats['total_open_tasks']:
+            raise Exception('cannot calculate round ratings with outstanding tasks')
+
+        ratings = []
+        results = self.query(Rating, Entry, func.avg(Rating.value).label('average'))\
+                      .join(RoundEntry)\
+                      .join(Entry)\
+                      .filter(Rating.round_entry.has(round_id=round_id))\
+                      .group_by(Rating.round_entry_id)\
+                      .all()
+
+        results.sort(key=lambda x: x[2], reverse=True)
+
+        for rating in results:
+            ratings.append((rating[1].name, rating[2], rating[1]))
+
+        stats = Counter([r[1] for r in ratings])
+        ret = {'ratings': ratings, 'stats': dict(stats)}
+        return ret
 
     # Read methods
     def get_all_campaigns(self):
