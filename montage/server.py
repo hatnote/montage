@@ -83,8 +83,8 @@ def create_app(env_name='prod'):
 
     config = yaml.load(open(config_file_path))
 
-    log_file = os.path.join(PROJ_PATH, 'db.log')
-    logging.basicConfig(filename=log_file)
+
+    logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
