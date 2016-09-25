@@ -95,6 +95,7 @@ A rough draft of Montage's workflow:
 * Ranking rounds can include nominations for special prizes (better
   run as a separate campaign that pulls from the round of another
   campaign?)
+* If we see mysql connection issues, consider: http://docs.sqlalchemy.org/en/latest/core/pooling.html#disconnect-handling-pessimistic
 
 ## Audience
 
