@@ -346,6 +346,8 @@ class AuditLogEntry(Base):
     action = Column(String(255))
     message = Column(Text)
 
+    flags = Column(JSONEncodedDict)
+
     create_date = Column(TIMESTAMP, server_default=func.now())
 
 
@@ -374,23 +376,34 @@ class UserDAO(object):
 
     def get_campaign_name(self, campaign_id):
         # TODO: check user permissions?
-        campaign = self.query(Campaign).filter_by(id=campaign_id).one()
+        campaign = self.query(Campaign).filter_by(Round.id == campaign_id).one()
         return campaign.name
 
     def get_round_name(self, round_id):
         # TODO: check user permissions?
-        round = self.query(Round).filter_by(id=round_id).one()
+        round = self.query(Round).filter_by(Round.id == round_id).one()
         return round.name
 
     def log_action(self, action, **kw):
         # TODO: file logging here too
         user_id = self.user.id
-        campaign = kw.pop('campaign', None)
-        campaign_id = kw.pop('campaign_id', campaign.id if campaign else None)
+        round_entry = kw.pop('round_entry', None)
+        round_entry_id = kw.pop('round_entry_id',
+                                round_entry.id if round_entry else None)
 
         rnd = kw.pop('round', None)
         round_id = kw.pop('round_id', rnd.id if rnd else None)
-        round_entry_id = kw.pop('round_entry_id', None)
+
+        if not round_id and round_entry_id:
+            rnd = self.query(RoundEntry).get(round_entry_id).round
+            round_id = rnd.id
+
+        campaign = kw.pop('campaign', None)
+        campaign_id = kw.pop('campaign_id', campaign.id if campaign else None)
+
+        if round_id and not campaign_id:
+            campaign = self.query(Round).get(round_id).campaign
+            campaign_id = campaign.id
 
         cn_role = self.__class__.__name__.replace('DAO', '').lower()
         role = kw.pop('role', cn_role)
@@ -404,7 +417,8 @@ class UserDAO(object):
                             round_entry_id=round_entry_id,
                             role=role,
                             action=action,
-                            message=message)
+                            message=message,
+                            flags=flags)
 
         self.rdb_session.add(ale)
         return
@@ -481,6 +495,10 @@ class CoordinatorDAO(UserDAO):
     def pause_round(self, round_id):
         rnd_status = {'status': 'paused'}
         query = self.edit_round(round_id, rnd_status)
+        rnd = self.query(Round).filter(id=round_id).first()
+        msg = '%s paused round "%s"' % (self.user.username, rnd.name)
+        self.log_action('pause_round', round_id=round_id,
+                        message=msg)
         return query
 
     def activate_round(self, round_id):
@@ -489,6 +507,12 @@ class CoordinatorDAO(UserDAO):
         rnd_dict = {'status': 'active',
                     'open_date': datetime.now()}
         query = self.edit_round(round_id, rnd_dict)
+
+        rnd = self.query(Round).filter(Round.id == round_id).first()
+        msg = '%s activated round "%s"' % (self.user.username, rnd.name)
+        self.log_action('activate_round', round_id=round_id,
+                        message=msg)
+
         return tasks
 
     def close_round(self, round_id):
