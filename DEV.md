@@ -26,11 +26,28 @@ A bit of space for dev bookkeeping.
 
 ## Backend
 
-* Tasks are generated but are not readable/completable through the API
+* Closing behaviors
+    * Compute ratings
+    * Compute ranking winners
+* Get tasks filtered by round
+     * e.g., organizer checks
+* Permissions cleanup for admin endpoints
+* Check for resource existence instead of raising 500s (e.g., campaign endpoints)
+* Logging
+* Audit logging
+* Task reassignment
+* Locking
 
 ## Frontend
 
-* Pretty much all of it! :)
+* Adjust URLs for different root paths (configurable?)
+* Submit ratings
+* Submit rankings
+* Interfaces for closing rounds
+
+Ratings closing round interface:
+
+* Specify threshold (1, 2, 3, 4, 5 stars, etc.)
 
 # Workflow
 
@@ -78,6 +95,60 @@ A rough draft of Montage's workflow:
   ranking-based round (order-based voting)
 * When at least one ranking-based round is complete, coordinators may
   close out the campaign and download the final results.
+
+## Notes on closing
+
+Generally speaking, compared to some alternatives, Montage streamlines
+many steps into cohesive actions that are designed to be less
+error-prone. Nowhere is this more apparent than during closing. There
+are three round types and while they share some behaviors, behind the
+scenes, there are some differences.
+
+### General closing
+
+A round cannot be closed until all assigned tasks are completed by
+jurors. Once tasks are completed, campaign coordinators will see the
+option to complete the round.
+
+TODO: need to document how concurrent-closing race conditions are mitigated.
+
+The coordinator closing the round is presented with an interface to
+choose the round closing criteria. The criteria will vary by type of
+round.
+
+If the criteria selected brings the advancing set of images under a
+certain global threshold, the campaign can be closed (separate
+interfaces for this?)
+
+### YesNo rounds
+
+The coordinator is presented with a histogram of responses. A "no"
+vote is computed as 0.0 and a "yes" vote is computed as 1.0.
+
+The coordinator must be made to understand how many images will
+advance based on their selection of threshold.
+
+An ideal first round would be YesNo with a quorum of 2, with a
+threshold of 0.5, meaning that if any image had at least one juror
+that saw merit, it would go to the next round.
+
+### Rating rounds
+
+Similar to YesNo rounds, the coordinator again sees a histogram of
+juror responses. 1-star ratings are 0.0, 2-star are 0.25, and so on,
+until 5-star ratings, worth 1.0. (Should this be 0.2-1.0 instead?)
+
+### Ranking rounds
+
+No histogram is displayed, but rather the coordinator must pick an X
+for "Top X". The international round needs at least ten. Data-wise we
+will have the ability to recompute a ranked list for all entries into
+a ranked round.
+
+Note that there is not much sense in a round after a ranked round. The
+nature of ranking is such that runoffs are not necessary. The only
+possible use would be to have a different set of jurors, but that
+sounds pretty out of order.
 
 ## Other
 

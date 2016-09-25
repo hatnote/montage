@@ -687,10 +687,20 @@ class JurorDAO(UserDAO):
                                .count()
         return {'total_tasks': total_tasks, 'total_open_tasks': total_open_tasks}
 
-    def get_next_task(self, num=1, offset=0):
+    def get_tasks(self, num=1, offset=0):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
                             Task.complete_date == None)\
+                    .limit(num)\
+                    .offset(offset)\
+                    .all()
+        return tasks
+
+    def get_tasks_from_round(self, round_id, num=1, offset=0):
+        tasks = self.query(Task)\
+                    .filter(Task.user == self.user,
+                            Task.complete_date == None,
+                            Task.round_entry.has(round_id=round_id))\
                     .limit(num)\
                     .offset(offset)\
                     .all()
