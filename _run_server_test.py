@@ -1,5 +1,8 @@
+import sys
+import os.path
 import urllib
 import urllib2
+import urlparse
 import cookielib
 import json
 
@@ -14,6 +17,13 @@ handlers = [
 
 opener = urllib2.build_opener(*handlers)
 
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJ_PATH = os.path.dirname(CUR_PATH)
+
+sys.path.append(PROJ_PATH)
+
+from montage import utils
+
 
 def fetch(url, data=None):
     if data:
@@ -23,6 +33,8 @@ def fetch(url, data=None):
 
 
 def main():
+    config = utils.load_env_config()
+
     prs = argparse.ArgumentParser('test the montage server endpoints')
     add_arg = prs.add_argument
     add_arg('--remote', action="store_true", default=False)
@@ -34,13 +46,33 @@ def main():
     else:
         url_base = 'http://localhost:5000'
 
+    parsed_url = urlparse.urlparse(url_base)
+
+    domain = parsed_url.netloc.partition(':')[0]
+    if domain.startswith('localhost'):
+        domain = 'localhost.local'
+        ck_val = config['dev_local_cookie_value']
+    else:
+        ck_val = config['dev_remote_cookie_value']
+
+    ck = cookielib.Cookie(version=0, name='clastic_cookie',
+                          value=ck_val,
+                          port=None, port_specified=False,
+                          domain=domain, domain_specified=True,
+                          domain_initial_dot=False,
+                          path=parsed_url.path, path_specified=True,
+                          secure=False, expires=None, discard=False,
+                          comment=None, comment_url=None, rest={},
+                          rfc2109=False)
+    cookies.set_cookie(ck)
+
     # load home
     resp = fetch(url_base).read()
 
     print '.. loaded the home page'
 
     # login as a maintainer
-    resp = fetch(url_base + '/complete_login').read()
+    # resp = fetch(url_base + '/complete_login').read()
     #resp_dict = json.loads(resp)
     #assert resp_dict['cookie']['username'] == 'Slaporte'
 
@@ -97,9 +129,9 @@ def main():
     print '.. loaded the coordinator view of campaign no %s' % campaign_id
 
     # add a round to that campaign
-    data = {'name': 'Another test round', 
+    data = {'name': 'Another test round',
             'vote_method': 'rating',
-            'quorum': 2, 
+            'quorum': 2,
             'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
     resp = fetch(url_base + '/admin/campaign/%s/new/round' % campaign_id, data).read()
     resp_dict = json.loads(resp)
@@ -174,6 +206,8 @@ def main():
     # submit random results for all open tasks in a round
     # close out the round the round
     # load the results of this round into the next
+
+    print cookies
 
     import pdb;pdb.set_trace()
 
