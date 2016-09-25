@@ -11,18 +11,49 @@ const RoundComponent = {
         tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, $templateCache, versionService) {
+    controller: function ($state, $mdDialog, $templateCache, userService, versionService) {
         let vm = this;
         vm.error = vm.data.error;
         vm.images = vm.tasks.data;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
-        vm.rates = [1, 2, 3, 4, 5];
         vm.round = vm.data.data;
         vm.openImage = openImage;
         vm.setGallerySize = (size) => { vm.size = size; };
-        vm.setRate = (rate) => { $state.reload(); };
         vm.size = 1;
         vm.user = angular.extend(vm.user, vm.data.user);
+
+        // rating exclusives
+        vm.rating = {
+            all: vm.images.length,
+            current: vm.images[0],
+            currentIndex: 0,
+            getNext: (goToDashboard) => {
+                if (vm.rating.currentIndex + 1 === vm.rating.all) {
+                    vm.rating.currentIndex = 0;
+                    if (goToDashboard) {
+                        $state.go('main.juror.dashboard', {}, { reload: true });
+                    }
+                } else {
+                    vm.rating.currentIndex++;
+                }
+                vm.rating.current = vm.images[vm.rating.currentIndex];
+            },
+            rates: [1, 2, 3, 4, 5],
+            setRate: (rate) => {
+                const current = vm.rating.current;
+                const rating = (rate - 1) / 4;
+                vm.loading = true;
+
+                userService.juror.setRating({
+                    'entry_id': current.entry.id,
+                    'task_id': current.id,
+                    'rating': rating
+                }).then(() => {
+                    vm.rating.getNext(true);
+                    vm.loading = false;
+                });
+            }
+        };
 
         versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
         $templateCache.put('round-template', vm.isVoting('rating') ? templateRating : templateMultiple);

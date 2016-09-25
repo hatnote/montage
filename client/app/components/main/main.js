@@ -14,7 +14,7 @@ const MainComponent = {
     // functions 
 
     function goToDashboard() {
-      $state.go('main.juror.dashboard');
+      $state.go('main.juror.dashboard', {}, {reload: true});
     }
 
     function logout() {

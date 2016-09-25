@@ -1,22 +1,31 @@
 <div class="image"
      layout="row" layout-align="center start"
-     ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
+     ng-if="!$ctrl.error && $ctrl.round.status === 'active' && $ctrl.images.length">
     <div class="image__gallery" layout="row" layout-align="center center" flex>
-        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.images[0].entry.name}}&w=800">
+        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.rating.current.entry.name}}&w=800">
     </div>
     <div class="image__description">
+        <div layout="row" layout-align="start center">
+            <h1>Image #{{$ctrl.rating.current.entry.id}}</h1>
+            <span flex></span>
+            <span class="muted">{{$ctrl.rating.currentIndex+1}} of {{$ctrl.rating.all}} remaining</span>
+        </div>
         <h3 class="md-title">Vote</h3>
         <div class="image__voting--star" layout="row" layout-align="start end">
+            <div class="spinner__container" layout="row" layout-align="center center"
+                 ng-show="$ctrl.loading">
+                <md-progress-circular md-diameter="40"></md-progress-circular>
+            </div>
             <md-button class="md-icon-button"
-                       ng-repeat="rate in $ctrl.rates"
-                       ng-click="$ctrl.setRate(rate)"
-                       ng-class="{'md-primary': $ctrl.hover >= rate }"
-                       ng-mouseenter="$ctrl.hover = rate"
-                       ng-mouseleave="$ctrl.hover = 0">
+                       ng-repeat="rate in $ctrl.rating.rates"
+                       ng-click="$ctrl.rating.setRate(rate)"
+                       ng-class="{'md-primary': $ctrl.rating.hover >= rate }"
+                       ng-mouseenter="$ctrl.rating.hover = rate"
+                       ng-mouseleave="$ctrl.rating.hover = 0">
                 <md-icon>star_rate</md-icon>
             </md-button>
             <span class="image__divider">|</span>
-            <md-button class="image__skip-btn" ng-click="$ctrl.setRate()">
+            <md-button class="image__skip-btn" ng-click="$ctrl.rating.getNext()">
                 <md-tooltip>Skip voting on this file</md-tooltip>
                 Skip
             </md-button>
@@ -26,15 +35,15 @@
             <md-list-item class="md-2-line">
                 <md-icon>date_range</md-icon>
                 <div class="md-list-item-text">
-                    <h3>{{$ctrl.images[0].entry.upload_date | date}}</h3>
-                    <p>{{$ctrl.images[0].entry.upload_date | date:'EEEE'}}, {{$ctrl.images[0].entry.upload_date | date:'H:mm'}}</p>
+                    <h3>{{$ctrl.rating.current.entry.upload_date | date}}</h3>
+                    <p>{{$ctrl.rating.current.entry.upload_date | date:'EEEE'}}, {{$ctrl.rating.current.entry.upload_date | date:'H:mm'}}</p>
                 </div>
             </md-list-item>
             <md-list-item class="md-2-line">
                 <md-icon>image</md-icon>
                 <div class="md-list-item-text">
-                    <h3>{{$ctrl.images[0].entry.resolution / 1000000 | number:2}} Mpix</h3>
-                    <p>{{$ctrl.images[0].entry.width}} × {{$ctrl.images[0].entry.height}}</p>
+                    <h3>{{$ctrl.rating.current.entry.resolution / 1000000 | number:2}} Mpix</h3>
+                    <p>{{$ctrl.rating.current.entry.width}} × {{$ctrl.rating.current.entry.height}}</p>
                 </div>
             </md-list-item>
             <md-divider></md-divider>
@@ -60,4 +69,9 @@
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
     <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.images && !$ctrl.images.length">
+    <h2 class="md-headline">you voted on all images in the round</h2>
+    <span>good job! :)</span>
 </div>
