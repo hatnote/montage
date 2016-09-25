@@ -220,7 +220,7 @@ def get_campaign_info(rdb_session, user, campaign_id):
     return ret
 
 
-def get_tasks(rdb_session, user, round_id, request):
+def get_tasks(rdb_session, user, request):
     """
     Summary: Get the next tasks for a juror
 
@@ -240,6 +240,38 @@ def get_tasks(rdb_session, user, round_id, request):
             type: EntryInfo
 
     Errors:
+       403: User does not have permission to access any tasks
+       404: Tasks not found
+    """
+    count = request.values.get('count', 3)
+    offset = request.values.get('offset', 0)
+    juror_dao = JurorDAO(rdb_session, user)
+    tasks = juror_dao.get_tasks(num=count, offset=offset)
+    data = []
+
+    for task in tasks:
+        data.append(make_juror_task_details(task))
+
+    return {'data': data}
+
+
+def get_tasks_from_round(rdb_session, user, round_id, request):
+    """
+    Summary: Get the next tasks for a juror
+
+    Request model:
+        round_id:
+            type:int64
+        count:
+            default: 3
+            type: int64
+        offeset:
+            default: 0
+            type: int64
+
+    Response model name: JurorTaskDetails
+
+    Errors:
        403: User does not have permission to access any tasks in the requested round
        404: Round not found
     """
@@ -248,10 +280,12 @@ def get_tasks(rdb_session, user, round_id, request):
     count = request.values.get('count', 3)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
-    tasks = juror_dao.get_next_task(num=count, offset=offset)
+    tasks = juror_dao.get_tasks_from_round(round_id=round_id, num=count, offset=offset)
     data = []
+
     for task in tasks:
         data.append(make_juror_task_details(task))
+
     return {'data': data}
 
 
@@ -288,5 +322,6 @@ def submit_rating(rdb_session, user, request):
 juror_routes = [GET('/juror', get_index),
                 GET('/juror/campaign/<campaign_id:int>', get_campaign),
                 GET('/juror/round/<round_id:int>', get_round),
-                GET('/juror/round/<round_id:int>/tasks', get_tasks),
+                GET('/juror/tasks', get_tasks),
+                GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
                 POST('/juror/submit/rating', submit_rating)]  # TODO: submission for rank style votes

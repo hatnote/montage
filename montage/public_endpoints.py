@@ -7,7 +7,10 @@ from mwoauth import Handshaker, RequestToken
 from mw import public
 from rdb import User
 
-DEBUG = False
+from utils import load_env_config
+
+config = load_env_config()
+DEBUG = config.get('debug', False)
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
