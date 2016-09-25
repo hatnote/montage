@@ -74,13 +74,13 @@ def full_run(url_base):
     campaign_id = resp_dict['data']['id']
 
     print '.. created campaign no %s' % campaign_id
-    '''
+    
     # edit campaign
     data = {'name': 'Another Test Campaign - edited'}
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
 
     print '.. edited campaign no %s' % campaign_id
-    '''
+    
     # add a coordinator to this new camapign
     data = {'username': 'Effeietsanders'}
     resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
@@ -221,6 +221,7 @@ def full_run(url_base):
     import pdb;pdb.set_trace()
 
 def add_votes(domain, round_id):
+    
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks

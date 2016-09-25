@@ -33,10 +33,10 @@ def main():
     
 
     # the org_dao should be able to do this stuff, too
-    rnd = coord_dao.create_round(name='Test Round 1',
-                                 quorum=2,
-                                 vote_method='yesno',
-                                 jurors=['Slaporte', 'MahmoudHashemi'],
+    rnd = coord_dao.create_round(name='Test Round',
+                                 quorum=3,
+                                 vote_method='rating',
+                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
@@ -57,7 +57,7 @@ def main():
         
         while tasks:
             task = tasks.pop()
-            vote = random.choice([0.0, 1.0])
+            vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])
             juror_dao.apply_rating(task.id, vote)
             tasks = juror_dao.get_tasks_from_round(rnd.id)
 
