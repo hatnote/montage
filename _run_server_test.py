@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import sys
 import os.path
 import urllib
@@ -7,6 +9,8 @@ import cookielib
 import json
 
 import argparse
+
+from montage.utils import encode_dict_to_bytes
 
 cookies = cookielib.LWPCookieJar()
 
@@ -28,7 +32,8 @@ from montage.log import script_log
 
 def fetch(url, data=None):
     if data:
-        data = urllib.urlencode(data)
+        data = encode_dict_to_bytes(data)
+        data = urllib.urlencode(list(data))
     req = urllib2.Request(url, data)
     return opener.open(req)
 
@@ -43,40 +48,7 @@ def fetch_json(url, data=None, act=None, **kw):
     return data_dict
 
 
-def main():
-    config = utils.load_env_config()
-
-    prs = argparse.ArgumentParser('test the montage server endpoints')
-    add_arg = prs.add_argument
-    add_arg('--remote', action="store_true", default=False)
-
-    args = prs.parse_args()
-
-    if args.remote:
-        url_base = 'https://tools.wmflabs.org/montage-dev'
-    else:
-        url_base = 'http://localhost:5000'
-
-    parsed_url = urlparse.urlparse(url_base)
-
-    domain = parsed_url.netloc.partition(':')[0]
-    if domain.startswith('localhost'):
-        domain = 'localhost.local'
-        ck_val = config['dev_local_cookie_value']
-    else:
-        ck_val = config['dev_remote_cookie_value']
-
-    ck = cookielib.Cookie(version=0, name='clastic_cookie',
-                          value=ck_val,
-                          port=None, port_specified=False,
-                          domain=domain, domain_specified=True,
-                          domain_initial_dot=False,
-                          path=parsed_url.path, path_specified=True,
-                          secure=False, expires=None, discard=False,
-                          comment=None, comment_url=None, rest={},
-                          rfc2109=False)
-    cookies.set_cookie(ck)
-
+def full_run(url_base):
     # load home
     resp = fetch(url_base).read()
 
@@ -87,7 +59,7 @@ def main():
     # resp_dict = json.loads(resp)
     # assert resp_dict['cookie']['username'] == 'Slaporte'
 
-    print '.. logged in'
+    # print '.. logged in'
 
     # add an organizer
     data = {'username': 'Slaporte'}
@@ -96,24 +68,32 @@ def main():
     print '.. added %s as organizer' % data['username']
 
     # create a campaign
-    data = {'name': 'Another Test Campaign'}
+    data = {'name': 'Another Test Campaign 2016'}
     resp_dict = fetch_json(url_base + '/admin/new/campaign', data)
 
     campaign_id = resp_dict['data']['id']
 
     print '.. created campaign no %s' % campaign_id
-
+    '''
     # edit campaign
     data = {'name': 'Another Test Campaign - edited'}
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
 
     print '.. edited campaign no %s' % campaign_id
-
+    '''
     # add a coordinator to this new camapign
-    data = {'username': 'MahmoudHashemi'}
+    data = {'username': 'Effeietsanders'}
     resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
 
     print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
+
+    # add a coordinator to this new camapign
+    data = {'username': u'Jean-Frédéric'}
+    resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
+
+    print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
+
+    
 
     # get the coordinator's index
     resp_dict = fetch_json(url_base + '/admin')
@@ -128,31 +108,75 @@ def main():
     print '.. loaded the coordinator view of campaign no %s' % campaign_id
 
     # add a round to that campaign
-    data = {'name': 'Another test round',
-            'vote_method': 'rating',
-            'quorum': 2,
-            'jurors': 'Slaporte,MahmoudHashemi'} # Comma separated, is this the usual way?
+    data = {'name': 'Test yes/no round',
+            'vote_method': 'yesno',
+            'quorum': 4,
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id = resp_dict['data']['id']
 
     print '.. added round no %s to campaign no %s' % (round_id, campaign_id)
 
+    # add a round to that campaign
+    data = {'name': 'Test rating round',
+            'vote_method': 'rating',
+            'quorum': 4,
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
+
+    round_id2 = resp_dict['data']['id']
+
+    print '.. added round no %s to campaign no %s' % (round_id2, campaign_id)
+
+    # add a round to that campaign
+    data = {'name': 'Test ranking round',
+            'vote_method': 'ranking',
+            'quorum': 4,
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
+
+    round_id3 = resp_dict['data']['id']
+
+    print '.. added round no %s to campaign no %s' % (round_id3, campaign_id)
+    '''
     # edit the round description
     data = {'directions': 'these are new directions'}
     resp_dict = fetch_json(url_base + '/admin/round/%s/edit' % round_id, data)
 
     print '.. edited the directions of round no %s' % round_id
+    '''
+
+    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
 
     # import the initial set of images to the round
     data = {'import_method': 'gistcsv',
-            'gist_url': 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv'}
+            'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id, data)
 
     print '.. loaded %s entries into round no %s' % ('_', round_id)
 
     # active the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
+
+    data = {'import_method': 'gistcsv',
+            'gist_url': gist_url}
+    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id2, data)
+
+    print '.. loaded %s entries into round no %s' % ('_', round_id2)
+
+    # active the round
+    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id2, {'post': True})
+
+    data = {'import_method': 'gistcsv',
+            'gist_url': gist_url}
+    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id3, data)
+
+    print '.. loaded %s entries into round no %s' % ('_', round_id3)
+
+    # active the round
+    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id3, {'post': True})
     # TODO: check results?
 
     print '.. activated round no %s' % round_id
@@ -195,6 +219,50 @@ def main():
     print cookies
 
     import pdb;pdb.set_trace()
+
+def add_votes(domain, round_id):
+    # get all the jurors that have open tasks in a round
+    # get juror's tasks
+    # submit random valid votes until there are no more tasks
+    pass
+
+
+def main():
+    config = utils.load_env_config()
+
+    prs = argparse.ArgumentParser('test the montage server endpoints')
+    add_arg = prs.add_argument
+    add_arg('--remote', action="store_true", default=False)
+
+    args = prs.parse_args()
+
+    if args.remote:
+        url_base = 'https://tools.wmflabs.org/montage-dev'
+    else:
+        url_base = 'http://localhost:5000'
+
+    parsed_url = urlparse.urlparse(url_base)
+
+    domain = parsed_url.netloc.partition(':')[0]
+    if domain.startswith('localhost'):
+        domain = 'localhost.local'
+        ck_val = config['dev_local_cookie_value']
+    else:
+        ck_val = config['dev_remote_cookie_value']
+
+    ck = cookielib.Cookie(version=0, name='clastic_cookie',
+                          value=ck_val,
+                          port=None, port_specified=False,
+                          domain=domain, domain_specified=True,
+                          domain_initial_dot=False,
+                          path=parsed_url.path, path_specified=True,
+                          secure=False, expires=None, discard=False,
+                          comment=None, comment_url=None, rest={},
+                          rfc2109=False)
+    cookies.set_cookie(ck)
+    
+    full_run(url_base)
+
 
 if __name__ == '__main__':
     main()
