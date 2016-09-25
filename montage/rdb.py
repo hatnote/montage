@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Relational database models for Montage
 import json
 import random
@@ -11,12 +13,15 @@ from sqlalchemy import (Column,
                         Float,
                         Boolean,
                         DateTime,
+                        TIMESTAMP,
                         Text,
-                        ForeignKey)
+                        ForeignKey,
+                        UniqueConstraint)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.schema import Index
 
 from boltons.iterutils import chunked
 
@@ -66,7 +71,7 @@ class User(Base):
     username = Column(String(255))
 
     last_login_date = Column(DateTime)
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     is_organizer = Column(Boolean, default=False)
 
     flags = Column(JSONEncodedDict)
@@ -103,7 +108,7 @@ class Campaign(Base):
     open_date = Column(DateTime)
     close_date = Column(DateTime)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     rounds = relationship('Round', back_populates='campaign')
@@ -142,12 +147,12 @@ class Round(Base):
     open_date = Column(DateTime)
     close_date = Column(DateTime)
     status = Column(String(255))
-    vote_method = Column(String)
+    vote_method = Column(String(255))
     quorum = Column(Integer)
     # Should we just have some settings in json? yes. -mh
     config_json = Column(Text, default=DEFAULT_ROUND_CONFIG)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
@@ -190,11 +195,12 @@ class Entry(Base):
     # if this is being kept generic for other types of media judging,
     # then I think a "duration" attribute makes sense -mh
     __tablename__ = 'entries'
-
+    #__table_args__ = (Index('ix_entries_name', 'name', mysql_length=190, unique=True),)
+                      #UniqueConstraint('u1', 'name'))
     id = Column(Integer, primary_key=True)
 
     # page_id?
-    name = Column(String(255), unique=True, index=True)
+    name = Column(String(255), index=True, unique=True)
     mime_major = Column(String(255))
     mime_minor = Column(String(255))
     width = Column(Integer)
@@ -207,7 +213,7 @@ class Entry(Base):
     upload_date = Column(DateTime)
 
     # TODO: img_sha1/page_touched for updates?
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     entered_rounds = relationship('RoundEntry')
@@ -248,7 +254,7 @@ class Rating(Base):
 
     value = Column(Float)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
 
@@ -262,7 +268,7 @@ class Ranking(Base):
 
     value = Column(Integer)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
 
@@ -276,7 +282,7 @@ class Task(Base):
     user = relationship('User', back_populates='tasks')
     round_entry = relationship('RoundEntry', back_populates='task')
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
     complete_date = Column(DateTime)
     cancel_date = Column(DateTime)
 
@@ -325,7 +331,7 @@ class ResultsSummary(Base):
 
     summary = Column(JSONEncodedDict)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
 
 
 class AuditLogEntry(Base):
@@ -342,7 +348,7 @@ class AuditLogEntry(Base):
     action = Column(String(255))
     message = Column(Text)
 
-    create_date = Column(DateTime, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now())
 
 
 class UserDAO(object):
@@ -773,20 +779,26 @@ def create_initial_tasks(rdb_session, round):
     rdb_session.commit()
     return ret
 
-DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 
-
-def make_rdb_session(db_url=DEFAULT_DB_URL, echo=True):
+def make_rdb_session(echo=True):
+    from utils import load_env_config
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    # echo="debug" also prints results of selects, etc.
-    engine = create_engine(db_url, echo=echo)
-    Base.metadata.create_all(engine)
+    try:
+        config = load_env_config()
+    except Exception:
+        print '!!  no db_url specified and could not load config file'
+        raise
+    else:
+        db_url = config.get('db_url')
+
+    engine = create_engine(db_url, echo=echo, encoding='utf8')
 
     session_type = sessionmaker()
     session_type.configure(bind=engine)
     session = session_type()
+
     return session
 
 
@@ -805,14 +817,7 @@ if __name__ == '__main__':
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    db_url = 'sqlite:///tmp_montage.db'
-
-    engine = create_engine(db_url, echo=False)
-    Base.metadata.create_all(engine)
-
-    session_type = sessionmaker()
-    session_type.configure(bind=engine)
-    session = session_type()
+    session = make_rdb_session()
 
     user = session.query(User).filter(User.id == '6024474').first()
 

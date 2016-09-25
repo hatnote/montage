@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 import sys
 import json
@@ -22,6 +23,19 @@ USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
 DEFAULT_ENV_NAME = 'dev'
 
 
+def encode_dict_to_bytes(query):
+    if hasattr(query, 'items'):
+        query=query.items()
+    for key, value in query:
+        yield (encode_value_to_bytes(key), encode_value_to_bytes(value))
+
+
+def encode_value_to_bytes(value):
+    if not isinstance(value, unicode):
+        return str(value)
+    return value.encode('utf8')
+
+
 def get_mw_userid(username):
     # Look up the central/global userid based on the username
     # See also: https://commons.wikimedia.org//w/api.php?action=query&format=json&list=globalallusers&meta=&agufrom=Yarl
@@ -31,7 +45,7 @@ def get_mw_userid(username):
               'usprop': 'centralids',
               'ususers': username,
               'format': 'json'}
-    resp = urlopen(api_url + urlencode(params))
+    resp = urlopen(api_url + urlencode(list(encode_dict_to_bytes(params))))
     data = json.loads(resp.read())
     user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
     if not user_id:

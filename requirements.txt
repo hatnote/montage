@@ -1,5 +1,6 @@
 boltons==16.5.0
 clastic==0.4.3
+lithoxyl==0.4.0
 mwoauth==0.2.8
 oauthlib==1.1.2
 phpserialize==1.3

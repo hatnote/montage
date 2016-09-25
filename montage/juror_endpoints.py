@@ -243,7 +243,7 @@ def get_tasks(rdb_session, user, request):
        403: User does not have permission to access any tasks
        404: Tasks not found
     """
-    count = request.values.get('count', 3)
+    count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     tasks = juror_dao.get_tasks(num=count, offset=offset)
@@ -277,7 +277,7 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     """
     # TODO: get task from within a round
     # TODO: Check permissions
-    count = request.values.get('count', 3)
+    count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     tasks = juror_dao.get_tasks_from_round(round_id=round_id, num=count, offset=offset)
