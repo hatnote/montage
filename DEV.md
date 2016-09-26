@@ -51,6 +51,13 @@ A bit of space for dev bookkeeping.
 * Task reassignment
 * Locking
 
+...
+
+* DAO.add_juror doesn't add jurors really
+* check for image date range (and disqualify accordingly)
+* category import
+* lookup round + check round permissions
+
 ## Frontend
 
 * Make URLs configurable for different backend paths (e.g., Labs versus localhost)

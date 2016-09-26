@@ -364,12 +364,7 @@ class UserDAO(object):
     As the DAO expands, it will likely break up into multiple DAOs for
     different areas of the schema.
 
-    # TODO: name? true that user is bound in, but UserDAO doesn't ring
-    totally true. ActorDAO?
     # TODO: will blow up a bit if user is None
-
-    # TODO: rather than query(Model), this should do user.models and
-    filter from there, I'm thinking.
     """
     def __init__(self, rdb_session, user):
         self.rdb_session = rdb_session
@@ -527,11 +522,11 @@ class CoordinatorDAO(UserDAO):
         pass
 
     def add_entries_from_csv_gist(self, gist_url, round_id):
-        entries = get_csv_from_gist(gist_url)
         rnd = self.get_round(round_id)
 
         if not rnd:
             raise Exception('round does not exist')
+        entries = get_csv_from_gist(gist_url)
 
         commit_objs = []
         entry_chunks = chunked(entries, 200)
