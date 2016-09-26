@@ -30,8 +30,7 @@
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
         <span class="md-body-1" flex="20">Round Date</span>
-        <span class="md-body-1" flex="15">No. of Jurors</span>
-        <span class="md-body-1" flex="10">Status</span>
+        <span class="md-body-1" flex="25">No. of Jurors</span>
         <span class="md-body-1" flex="10">Vote Method</span>
         <span flex></span>
     </div>
@@ -39,9 +38,12 @@
         <div class="campaign__round md-primary md-hue-1"
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
-             ng-class="$ctrl.isRoundActive(round) ? 'campaign__round--active' : 'campaign__round--inactive'"
-             ng-click="$ctrl.openRound(round)">
-            <span class="md-body-2" flex="30">{{round.name}}</span>
+             ng-class="'campaign__round--inactive'">
+            <span class="md-body-2" flex="30">
+                {{round.name}}
+                <span class="tag tag--pill"
+                      ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+            </span>
             <span class="md-body-1" flex="20" layout="row" layout-align="start center">
                 <span>
                     {{round.open_date | date}}<br />
@@ -53,8 +55,7 @@
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>
             </span>
-            <span class="md-body-1" flex="15">{{round.jurors.length || "0"}} jurors</span>
-            <span class="md-body-1" flex="10">{{round.status || "Unknown"}}</span>
+            <span class="md-body-1" flex="25">{{round.jurors.length || "0"}} jurors</span>
             <span class="md-body-1" flex="20">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
