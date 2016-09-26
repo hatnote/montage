@@ -37,6 +37,8 @@ DEFAULT_ROUND_CONFIG = json.dumps({'show_link': True,
                                    'show_filename': True,
                                    'show_resolution': True})
 
+DEFAULT_MIN_RESOLUTION = 2097152
+
 """
 Column ordering and groupings:
 * ID
@@ -492,6 +494,64 @@ class CoordinatorDAO(UserDAO):
 
         return ret
 
+    def autodisqualify_by_date(self, rnd):
+        campaign = rnd.campaign
+        min_date = campaign.open_date
+        max_date = campaign.close_date
+
+        round_entries = self.query(RoundEntry)\
+                            .join(Entry)\
+                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter((Entry.upload_date < min_date) |
+                                    (Entry.upload_date > max_date))\
+                            .all()
+
+        for round_entry in round_entries:
+            dq_reason = 'upload date %s is out of campaign range %s '\
+                        '- %s' % (round_entry.entry.upload_date, min_date, max_date)
+            round_entry.dq_reason = dq_reason
+            round_entry.dq_user_id = self.user.id
+
+        msg = '%s disqualified %s entries smaller outside of %s - %s'\
+              % (self.user.username, len(round_entries), min_date, max_date)
+        self.log_action('autodisqualify_by_date', round=rnd, message=msg)
+        
+        return round_entries
+        
+
+    def autodisqualify_by_resolution(self, rnd):
+        campaign = rnd.campaign
+        min_resolution = DEFAULT_MIN_RESOLUTION
+
+        round_entries = self.query(RoundEntry)\
+                            .join(Entry)\
+                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(Entry.resolution < min_resolution)\
+                            .all()
+
+        for round_entry in round_entries:
+            dq_reason = 'resolution %s is less than %s minimum '\
+                        % (round_entry.entry.resolution, min_resolution)
+            round_entry.dq_reason = dq_reason
+            round_entry.dq_user_id = self.user.id
+
+        msg = '%s disqualified %s entries smaller than %s pixels'\
+              % (self.user.username, len(round_entries), min_resolution)
+        self.log_action('autodisqualify_by_resolution', round=rnd, message=msg)
+
+        return round_entries
+
+    def disqualify_round_entry(self, round_entry, dq_reason):
+        dq_dict = {'dq_reason': dq_reason,
+                   'dq_user_id': self.user.id}
+        round_entry = self.rdb_session.query(RoundEntry)\
+                                      .filter_by(id=round_entry.id)\
+                                      .update(dq_dict)
+
+        self.rdb_session.commit()
+
+        return dq_dict
+
     def pause_round(self, round_id):
         rnd_status = {'status': 'paused'}
         query = self.edit_round(round_id, rnd_status)
@@ -667,9 +727,9 @@ class OrganizerDAO(CoordinatorDAO):
                         message=msg)
         return user
 
-    def create_campaign(self, name):
+    def create_campaign(self, name, open_date, close_date):
         # TODO: Check if campaign with this name already exists?
-        campaign = Campaign(name=name)
+        campaign = Campaign(name=name, open_date=open_date, close_date=close_date)
         self.rdb_session.add(campaign)
         campaign.coords.append(self.user)
         self.rdb_session.commit()

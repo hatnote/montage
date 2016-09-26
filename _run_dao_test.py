@@ -1,3 +1,4 @@
+from datetime import datetime
 
 from montage.rdb import (make_rdb_session,
                          JurorDAO,
@@ -22,7 +23,9 @@ def main():
     org_dao = OrganizerDAO(rdb_session, org_user)
 
     # should automatically add the creator as coordinator
-    campaign = org_dao.create_campaign(name='Test Campaign 2016')
+    campaign = org_dao.create_campaign(name='Test Campaign 2016',
+                                       open_date=datetime(2015, 9, 10),
+                                       close_date=datetime(2015, 10,1))
 
     org_dao.add_coordinator('Yarl', campaign.id)
     org_dao.add_coordinator('Slaporte', campaign.id)
@@ -47,6 +50,11 @@ def main():
     coord_dao.add_entries_from_csv_gist(gist_url, round_id=rnd.id)
     
     # coord_dao.edit_round(rnd.id, {'status': 'active'})
+
+    coord_dao.autodisqualify_by_date(rnd)
+    coord_dao.autodisqualify_by_resolution(rnd)
+
+    #coord_dao.disqualify_entry(entry)
 
     coord_dao.activate_round(rnd.id)  # or something
     

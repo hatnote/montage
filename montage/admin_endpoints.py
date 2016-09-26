@@ -104,9 +104,14 @@ def create_campaign(user, rdb_session, request):
         raise Forbidden('must be a designated organizer to create campaigns')
 
     org_dao = OrganizerDAO(rdb_session, user)
+
     new_camp_name = request.form.get('name')
+    open_date = request.form.get('open_date')
+    close_date = request.form.get('close_date')
+
     campaign = org_dao.create_campaign(name=new_camp_name)
     data = make_admin_campaign_details(campaign)
+
     return {'data': data}
 
 
