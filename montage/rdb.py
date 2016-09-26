@@ -25,7 +25,9 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from boltons.iterutils import chunked
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import get_mw_userid, PermissionDenied, DoesNotExist, InvalidAction
+from utils import (get_mw_userid,
+                   get_threshold_map,
+                   PermissionDenied, DoesNotExist, InvalidAction)
 
 from loaders import get_csv_from_gist
 
@@ -520,9 +522,9 @@ class CoordinatorDAO(UserDAO):
         msg = '%s disqualified %s entries outside of %s - %s'\
               % (self.user.username, len(round_entries), min_date, max_date)
         self.log_action('autodisqualify_by_date', round=rnd, message=msg)
-        
+
         return round_entries
-        
+
 
     def autodisqualify_by_resolution(self, rnd):
         campaign = rnd.campaign
@@ -621,6 +623,17 @@ class CoordinatorDAO(UserDAO):
     def reassign(self, round_id, active_jurors):
         pass
 
+    def add_juror(self, username):
+        user = lookup_user(self.rdb_session, username=username)
+        if not user:
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=self.user.id)
+            self.rdb_session.add(user)
+            self.rdb_session.commit()
+        return user
+
     def cancel_round(self, round_id):
         rnd = self.query(Round)\
                   .get(round_id)
@@ -642,26 +655,38 @@ class CoordinatorDAO(UserDAO):
               (self.user.username, rnd.name, len(tasks))
         self.log_action('cancel_round', round=rnd, message=msg)
 
-        return round
+        return rnd
 
-    def add_juror(self, username):
-        user = lookup_user(self.rdb_session, username=username)
-        if not user:
-            user_id = get_mw_userid(username)
-            user = User(id=user_id,
-                        username=username,
-                        created_by=self.user.id)
-            self.rdb_session.add(user)
-            self.rdb_session.commit()
-        return user
+    def finalize_round(self, round_id):
+        rnd = self.query(Round)\
+                  .get(round_id)
 
-    def calculate_ratings_round(self, round_id):
-        round_stats = self.get_round_stats(round_id)
+        tasks = self.query(Task)\
+                    .filter(Task.round_entry.has(round_id=round_id),
+                            Task.complete_date == None)\
+                    .all()
 
-        if round_stats['total_open_tasks']:
+        rnd.status = 'cancelled'
+        rnd.close_date = datetime.utcnow()
+
+        cancel_date = datetime.utcnow()
+
+        for task in tasks:
+            task.cancel_date = cancel_date
+
+        msg = '%s cancelled round "%s" and %s open tasks' %\
+              (self.user.username, rnd.name, len(tasks))
+        self.log_action('cancel_round', round=rnd, message=msg)
+
+        return rnd
+
+    def get_round_average_ratings(self, round_id):
+        round_counts = self.get_round_task_counts(round_id)
+
+        if round_counts['total_open_tasks']:
             raise InvalidAction('cannot close round with open tasks'
                                 ' (%r outstanding)'
-                                % round_stats['total_open_tasks'])
+                                % round_counts['total_open_tasks'])
 
         ratings = []
         results = self.query(Rating, Entry,
@@ -672,13 +697,14 @@ class CoordinatorDAO(UserDAO):
                       .group_by(Rating.round_entry_id)\
                       .all()
 
-        results.sort(key=lambda x: x[2], reverse=True)
+        results.sort(key=lambda x: x[2], reverse=True)  # TODO: order_by
 
         for rating in results:
             ratings.append((rating[1].name, rating[2], rating[1]))
 
-        stats = Counter([r[1] for r in ratings])
-        ret = {'ratings': ratings, 'stats': dict(stats)}
+        thresh_counts = get_threshold_map(r[1] for r in ratings)
+
+        ret = {'ratings': ratings, 'counts': thresh_counts}
         return ret
 
     # Read methods
@@ -706,7 +732,7 @@ class CoordinatorDAO(UserDAO):
                     .one_or_none()
         return round
 
-    def get_round_stats(self, round_id):
+    def get_round_task_counts(self, round_id):
         total_tasks = self.query(Task)\
                           .filter(Task.round_entry.has(round_id=round_id),
                                   Task.cancel_date == None)\
@@ -857,7 +883,7 @@ class JurorDAO(UserDAO):
                     .one_or_none()
         return round
 
-    def get_round_stats(self, round_id):
+    def get_round_task_counts(self, round_id):
         total_tasks = self.query(Task)\
                           .filter(Task.round_entry.has(round_id=round_id),
                                   Task.user_id == self.user.id,
@@ -869,7 +895,8 @@ class JurorDAO(UserDAO):
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
-        return {'total_tasks': total_tasks, 'total_open_tasks': total_open_tasks}
+        return {'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks}
 
     def get_tasks(self, num=1, offset=0):
         tasks = self.query(Task)\

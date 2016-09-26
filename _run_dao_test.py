@@ -12,6 +12,8 @@ import random
 
 random.seed('badidea')
 
+GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+
 
 def cross_complete(rdb_session, rnd):
     juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
@@ -24,19 +26,23 @@ def cross_complete(rdb_session, rnd):
     return
 
 
-def vote_to_completion(rdb_session, rnd):
+def rate_round_tasks(rdb_session, rnd, limit_per=None):
     for juror in rnd.jurors:
         print '.. voting for %s' % juror.username
         juror_dao = JurorDAO(rdb_session, juror)
         tasks = juror_dao.get_tasks_from_round(rnd.id)
 
+        count = 0
         while tasks:
+            if limit_per and count > limit_per:
+                break
             task = tasks.pop()
             vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])
             juror_dao.apply_rating(task.id, vote)
             tasks = juror_dao.get_tasks_from_round(rnd.id)
-    
-    return 
+            count += 1
+
+    return
 
 
 def main():
@@ -62,9 +68,7 @@ def main():
     coord_user = lookup_user(rdb_session, 'Yarl')
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
 
-
-    # the org_dao should be able to do this stuff, too
-    rnd = coord_dao.create_round(name='Test Round',
+    rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=3,
                                  vote_method='rating',
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
@@ -73,9 +77,7 @@ def main():
     # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
     #                               round_id=rnd.id)
 
-    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
-
-    coord_dao.add_entries_from_csv_gist(gist_url, round_id=rnd.id)
+    coord_dao.add_entries_from_csv_gist(GIST_URL, round_id=rnd.id)
 
     # coord_dao.edit_round(rnd.id, {'status': 'active'})
 
@@ -84,7 +86,7 @@ def main():
 
     #coord_dao.disqualify_entry(entry)
 
-    coord_dao.activate_round(rnd.id)  # or something
+    coord_dao.activate_round(rnd.id)
 
     try:
         cross_complete(rdb_session, rnd)
@@ -93,14 +95,34 @@ def main():
     else:
         raise ValueError('expected permission denied on cross complete')
 
-    #vote_to_completion(rdb_session, rnd)
+    rate_round_tasks(rdb_session, rnd, limit_per=20)
 
     coord_dao.cancel_round(rnd.id)
 
+    # # should fail, quorum must be <= # of jurors
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
-    # task2 = juror_dao.get_next_task()
-    # juror_dao.apply_rating(task2.id, 0.4)
+    rnd = coord_dao.create_round(name='Test Round 2',
+                                 quorum=3,
+                                 vote_method='rating',
+                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
+                                 campaign=campaign)
+    coord_dao.add_entries_from_csv_gist(GIST_URL, round_id=rnd.id)
+    coord_dao.activate_round(rnd.id)
+
+    rate_round_tasks(rdb_session, rnd, limit_per=20)
+
+    # some read tasks
+
+    rate_round_tasks(rdb_session, rnd)
+
+    ratings_res = coord_dao.get_round_average_ratings(rnd.id)
+
+    import pdb;pdb.set_trace()
+
+    # coord_dao.finalize_round(rnd.id)
+
+    # coord_dao.reassign(active_jurors=['Slaporte', 'Yarl'])
 
     # # a loop going over a bunch more ratings probably until
     # # get_next_task returns None

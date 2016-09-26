@@ -235,7 +235,7 @@ def create_round(rdb_session, user, campaign_id, request):
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
     rnd = coord_dao.create_round(**rnd_dict)
-    rnd_stats = coord_dao.get_round_stats(rnd.id)
+    rnd_stats = coord_dao.get_round_task_counts(rnd.id)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
@@ -380,7 +380,7 @@ def get_round(rdb_session, user, round_id):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    rnd_stats = coord_dao.get_round_stats(round_id)
+    rnd_stats = coord_dao.get_round_task_counts(round_id)
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
     # entries_info = user_dao.get_entry_info(round_id) # TODO

@@ -7,6 +7,7 @@ import os.path
 import datetime
 from urllib import urlencode
 from urllib2 import urlopen
+from collections import Counter
 
 import yaml
 from clastic.errors import Forbidden, NotFound, BadRequest
@@ -64,6 +65,17 @@ def get_mw_userid(username):
     if not user_id:
         raise DoesNotExist('user %s does not exist' % username)
     return user_id
+
+
+def get_threshold_map(values):
+    score_counts = Counter([v for v in values])
+    thresh_counts = {}
+    scores = [0] + list(score_counts)
+    for score in scores:
+        score = round(score, 3)
+        total_gte = sum([v for k, v in score_counts.items() if k >= score])
+        thresh_counts[score] = total_gte
+    return thresh_counts
 
 
 def get_env_name():

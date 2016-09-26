@@ -67,6 +67,7 @@ A bit of space for dev bookkeeping.
 * Submit rankings
 * Interfaces for closing rounds
 * Undo rating submit
+* Where to show directions in interface? ("show these directions next time"/cookie)
 
 Ratings closing round interface:
 
