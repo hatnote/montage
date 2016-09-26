@@ -4,6 +4,12 @@ config*yaml
 .DS_Store
 *.log
 
+# Compiled front-end
+montage/static/index.html
+montage/static/assets
+montage/static/dist
+
+
 # emacs
 *~
 ._*

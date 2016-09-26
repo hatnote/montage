@@ -7,7 +7,8 @@
   "scripts": {
     "start-live": "webpack-dev-server --content-base app --progress --colors",
     "start": "webpack --watch --content-base app --progress --colors",
-    "build": "webpack --content-base app --progress"
+    "build": "webpack --content-base app --progress",
+    "build-zip": "webpack --content-base app --progress && cd ../montage/static && zip -r app.zip ."
   },
   "license": "BSD-3-Clause",
   "devDependencies": {
