@@ -517,7 +517,7 @@ class CoordinatorDAO(UserDAO):
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-        msg = '%s disqualified %s entries smaller outside of %s - %s'\
+        msg = '%s disqualified %s entries outside of %s - %s'\
               % (self.user.username, len(round_entries), min_date, max_date)
         self.log_action('autodisqualify_by_date', round=rnd, message=msg)
         
@@ -620,6 +620,29 @@ class CoordinatorDAO(UserDAO):
 
     def reassign(self, round_id, active_jurors):
         pass
+
+    def cancel_round(self, round_id):
+        rnd = self.query(Round)\
+                  .get(round_id)
+
+        tasks = self.query(Task)\
+                    .filter(Task.round_entry.has(round_id=round_id),
+                            Task.complete_date == None)\
+                    .all()
+
+        rnd.status = 'cancelled'
+        rnd.close_date = datetime.utcnow()
+
+        cancel_date = datetime.utcnow()
+
+        for task in tasks:
+            task.cancel_date = cancel_date
+
+        msg = '%s cancelled round "%s" and %s open tasks' %\
+              (self.user.username, rnd.name, len(tasks))
+        self.log_action('cancel_round', round=rnd, message=msg)
+
+        return round
 
     def add_juror(self, username):
         user = lookup_user(self.rdb_session, username=username)
@@ -913,7 +936,8 @@ def create_initial_tasks(rdb_session, round):
 
     # this does the shuffling in the database
     shuffled_entries = rdb_session.query(RoundEntry)\
-                                  .filter(RoundEntry.round_id == round.id)\
+                                  .filter(RoundEntry.round_id == round.id,
+                                          RoundEntry.dq_user_id == None)\
                                   .order_by(rand_func).all()
 
     to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)

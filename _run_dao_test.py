@@ -12,6 +12,33 @@ import random
 
 random.seed('badidea')
 
+
+def cross_complete(rdb_session, rnd):
+    juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
+    juror1_dao = JurorDAO(rdb_session, juror1)
+    task = juror1_dao.get_tasks_from_round(rnd.id, num=1)[0]
+
+    juror2_dao = JurorDAO(rdb_session, juror2)
+    juror2_dao.apply_rating(task.id, 0.2)
+
+    return
+
+
+def vote_to_completion(rdb_session, rnd):
+    for juror in rnd.jurors:
+        print '.. voting for %s' % juror.username
+        juror_dao = JurorDAO(rdb_session, juror)
+        tasks = juror_dao.get_tasks_from_round(rnd.id)
+
+        while tasks:
+            task = tasks.pop()
+            vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])
+            juror_dao.apply_rating(task.id, vote)
+            tasks = juror_dao.get_tasks_from_round(rnd.id)
+    
+    return 
+
+
 def main():
     rdb_session = make_rdb_session()
 
@@ -59,16 +86,6 @@ def main():
 
     coord_dao.activate_round(rnd.id)  # or something
 
-    def cross_complete(rdb_session, rnd):
-        juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
-        juror1_dao = JurorDAO(rdb_session, juror1)
-        task = juror1_dao.get_tasks_from_round(rnd.id, num=1)[0]
-
-        juror2_dao = JurorDAO(rdb_session, juror2)
-        juror2_dao.apply_rating(task.id, 0.2)
-
-        return
-
     try:
         cross_complete(rdb_session, rnd)
     except PermissionDenied:
@@ -76,18 +93,9 @@ def main():
     else:
         raise ValueError('expected permission denied on cross complete')
 
-    for juror in rnd.jurors:
-        print '.. voting for %s' % juror.username
-        juror_dao = JurorDAO(rdb_session, juror)
-        tasks = juror_dao.get_tasks_from_round(rnd.id)
+    #vote_to_completion(rdb_session, rnd)
 
-        while tasks:
-            task = tasks.pop()
-            vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])
-            juror_dao.apply_rating(task.id, vote)
-            tasks = juror_dao.get_tasks_from_round(rnd.id)
-
-    import pdb;pdb.set_trace()
+    coord_dao.cancel_round(rnd.id)
 
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
@@ -105,6 +113,9 @@ def main():
     # # close round
     # # close campaign
     # # download audit logs
+
+    rdb_session.commit()
+    import pdb;pdb.set_trace()
 
 
 if __name__ == '__main__':
