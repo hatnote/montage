@@ -22,15 +22,17 @@
             <span class="md-body-2" flex="30">
                 {{round.name}}
                 <span class="tag tag--pill"
+                      ng-show="round.status"
                       ng-class="'tag--{{round.status}}'">{{round.status}}</span>
             </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
-                <span>
+                <span ng-show="round.open_date">
                     {{round.open_date | date}}<br />
                     <small class="muted">{{round.open_date | fromNow}}</small>
                 </span>
-                <span class="campaign__dash">–</span>
-                <span>
+                <span class="campaign__dash"
+                      ng-show="round.open_date || round.close_date">–</span>
+                <span ng-show="round.close_date">
                     {{round.close_date | date}}<br />
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>

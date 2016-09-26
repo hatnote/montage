@@ -29,9 +29,9 @@
     <div class="campaign__rounds-description"
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
-        <span class="md-body-1" flex="20">Round Date</span>
-        <span class="md-body-1" flex="25">No. of Jurors</span>
-        <span class="md-body-1" flex="10">Vote Method</span>
+        <span class="md-body-1" flex="30">Round Date</span>
+        <span class="md-body-1" flex="15">No. of Jurors</span>
+        <span class="md-body-1" flex="15">Vote Method</span>
         <span flex></span>
     </div>
     <md-card class="campaign__rounds">
@@ -42,21 +42,23 @@
             <span class="md-body-2" flex="30">
                 {{round.name}}
                 <span class="tag tag--pill"
+                      ng-show="round.status"
                       ng-class="'tag--{{round.status}}'">{{round.status}}</span>
             </span>
-            <span class="md-body-1" flex="20" layout="row" layout-align="start center">
-                <span>
+            <span class="md-body-1" flex="30" layout="row" layout-align="start center">
+                <span ng-show="round.open_date">
                     {{round.open_date | date}}<br />
                     <small class="muted">{{round.open_date | fromNow}}</small>
                 </span>
-                <span class="campaign__dash">–</span>
-                <span>
+                <span class="campaign__dash"
+                      ng-show="round.open_date || round.close_date">–</span>
+                <span ng-show="round.close_date">
                     {{round.close_date | date}}<br />
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>
             </span>
-            <span class="md-body-1" flex="25">{{round.jurors.length || "0"}} jurors</span>
-            <span class="md-body-1" flex="20">
+            <span class="md-body-1" flex="15">{{round.jurors.length || "0"}} jurors</span>
+            <span class="md-body-1" flex="15">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
                 <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon> Ranking</span>
@@ -69,7 +71,7 @@
         </div>
     </md-card>
     <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
-        <md-button ng-click="$ctrl.addRound()">
+        <md-button ng-click="$ctrl.addRound($event)">
             <md-icon>add_circle</md-icon>
             <span>Add round</span>
         </md-button>
