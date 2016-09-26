@@ -246,7 +246,7 @@ class RoundEntry(Base):
 
 
 class Rating(Base):
-    __tablename__ = 'votes'
+    __tablename__ = 'ratings'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
