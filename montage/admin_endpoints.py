@@ -10,7 +10,6 @@ from rdb import (Campaign,
                  MaintainerDAO,
                  OrganizerDAO)
 
-
 def make_admin_campaign_info(campaign):
     ret = {'id': campaign.id,
            'name': campaign.name,
@@ -70,6 +69,19 @@ def make_round_juror_details(round_juror):
     ret = {'id': round_juror.user.id,
            'username': round_juror.user.username,
            'is_active': round_juror.is_active}
+    return ret
+
+
+def make_audit_log(audit_log):
+    ret = {'id': audit_log.id,
+           'user_id': audit_log.user_id,
+           'campaign_id': audit_log.campaign_id,
+           'round_id': audit_log.round_id,
+           'round_entry_id': audit_log.round_entry_id,
+           'role': audit_log.role,
+           'action': audit_log.action,
+           'message': audit_log.message,
+           'create_date': fmt_date(audit_log.create_date)}
     return ret
 
 
@@ -373,6 +385,20 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
+def get_audit_logs(rdb_session, user, request):
+    if not user.is_maintainer:
+        raise Forbidden('not allowed to view the audit log')
+
+    limit = request.args.get('limit', 10)
+    offset = request.args.get('offset', 0)
+
+    main_dao = MaintainerDAO(rdb_session, user)
+    audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
+    data = [make_audit_log(l) for l in audit_logs]
+
+    return {'data': data}
+
+
 def add_organizer(rdb_session, user, request):
     """
     Summary: Add a new organizer identified by Wikimedia username
@@ -446,7 +472,8 @@ admin_routes = [GET('/admin', get_index),
                 POST('/admin/round/<round_id:int>/edit', edit_round),
                 POST('/admin/add_organizer', add_organizer),
                 POST('/admin/add_coordinator/campaign/<campaign_id:int>',
-                     add_coordinator)]
+                     add_coordinator),
+                GET('/admin/audit_logs', get_audit_logs)]
 
 
 

@@ -76,7 +76,7 @@ def full_run(url_base):
     print '.. created campaign no %s' % campaign_id
     
     # edit campaign
-    data = {'name': 'Another Test Campaign - edited'}
+    data = {'name': 'A demo campaign 2016'}
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
 
     print '.. edited campaign no %s' % campaign_id
@@ -92,8 +92,6 @@ def full_run(url_base):
     resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
 
     print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
-
-    
 
     # get the coordinator's index
     resp_dict = fetch_json(url_base + '/admin')
@@ -111,7 +109,7 @@ def full_run(url_base):
     data = {'name': 'Test yes/no round',
             'vote_method': 'yesno',
             'quorum': 4,
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
 
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
@@ -123,7 +121,7 @@ def full_run(url_base):
     data = {'name': 'Test rating round',
             'vote_method': 'rating',
             'quorum': 4,
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id2 = resp_dict['data']['id']
@@ -134,7 +132,7 @@ def full_run(url_base):
     data = {'name': 'Test ranking round',
             'vote_method': 'ranking',
             'quorum': 4,
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric'} # Comma separated, is this the usual way?
+            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id3 = resp_dict['data']['id']

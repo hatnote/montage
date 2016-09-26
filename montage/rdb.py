@@ -694,6 +694,14 @@ class MaintainerDAO(OrganizerDAO):
     def check_is_maintainer(self):
         pass
 
+    def get_audit_log(self, limit=100, offset=0):
+        audit_logs = self.query(AuditLogEntry)\
+                         .order_by(AuditLogEntry.create_date.desc())\
+                         .limit(limit)\
+                         .offset(offset)\
+                         .all()
+        return audit_logs
+        
     def add_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
         if user:
