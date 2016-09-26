@@ -25,7 +25,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from boltons.iterutils import chunked
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import get_mw_userid, PermissionDenied
+from utils import get_mw_userid, PermissionDenied, DoesNotExist, InvalidAction
 
 from loaders import get_csv_from_gist
 
@@ -446,13 +446,13 @@ class CoordinatorDAO(UserDAO):
                      campaign=None,
                      campaign_id=None):
         if not campaign and campaign_id:
-            raise Exception('missing campaign object or campaign_id')
+            raise DoesNotExist('missing campaign object or campaign_id')
 
         if not campaign and campaign_id:
             campaign = self.get_camapign(campaign_id)
 
         if not campaign:
-            raise Exception('campaign does not exist')
+            raise DoesNotExist('campaign does not exist')
 
         rnd_jurors = []
 
@@ -525,7 +525,7 @@ class CoordinatorDAO(UserDAO):
         rnd = self.get_round(round_id)
 
         if not rnd:
-            raise Exception('round does not exist')
+            raise DoesNotExist('round does not exist')
         entries = get_csv_from_gist(gist_url)
 
         commit_objs = []
@@ -571,10 +571,13 @@ class CoordinatorDAO(UserDAO):
         round_stats = self.get_round_stats(round_id)
 
         if round_stats['total_open_tasks']:
-            raise Exception('cannot calculate round ratings with outstanding tasks')
+            raise InvalidAction('cannot close round with open tasks'
+                                ' (%r outstanding)'
+                                % round_stats['total_open_tasks'])
 
         ratings = []
-        results = self.query(Rating, Entry, func.avg(Rating.value).label('average'))\
+        results = self.query(Rating, Entry,
+                             func.avg(Rating.value).label('average'))\
                       .join(RoundEntry)\
                       .join(Entry)\
                       .filter(Rating.round_entry.has(round_id=round_id))\
@@ -653,9 +656,9 @@ class OrganizerDAO(CoordinatorDAO):
                         created_by=self.user.id)
         campaign = self.get_campaign(campaign_id=campaign_id)
         if not campaign:
-            raise Exception('campaign does not exist')
+            raise DoesNotExist('campaign does not exist')
         if user in campaign.coords:
-            raise Exception('user is already a coordinator')
+            raise InvalidAction('user is already a coordinator')
         campaign.coords.append(user)
         self.rdb_session.add(campaign)
         self.rdb_session.add(user)

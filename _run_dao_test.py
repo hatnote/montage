@@ -33,7 +33,6 @@ def main():
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
 
 
-
     # the org_dao should be able to do this stuff, too
     rnd = coord_dao.create_round(name='Test Round',
                                  quorum=3,
