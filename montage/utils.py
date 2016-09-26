@@ -9,10 +9,14 @@ from urllib import urlencode
 from urllib2 import urlopen
 
 import yaml
+from clastic.errors import Forbidden
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from check_rdb import get_schema_errors
+
+class PermissionDenied(Forbidden):
+    "Raised when users perform actions on the wrong resources"
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))

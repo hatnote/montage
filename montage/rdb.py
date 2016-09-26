@@ -25,7 +25,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from boltons.iterutils import chunked
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import get_mw_userid
+from utils import get_mw_userid, PermissionDenied
 
 from loaders import get_csv_from_gist
 
@@ -696,7 +696,7 @@ class MaintainerDAO(OrganizerDAO):
                          .offset(offset)\
                          .all()
         return audit_logs
-        
+
     def add_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
         if user:
@@ -732,6 +732,8 @@ class JurorDAO(UserDAO):
 
     def apply_rating(self, task_id, rating):
         task = self.get_task(task_id)
+        if task.user != self.user:
+            raise PermissionDenied()
         rating = Rating(user_id=self.user.id,
                         task_id=task_id,
                         round_entry_id=task.round_entry_id,

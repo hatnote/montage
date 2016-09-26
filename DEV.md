@@ -50,6 +50,7 @@ A bit of space for dev bookkeeping.
 * Audit logging
 * Task reassignment
 * Locking
+* Round overview for admins
 
 ...
 
