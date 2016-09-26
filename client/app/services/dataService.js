@@ -1,13 +1,17 @@
-const DataService = function($http, $q) {
+const DataService = function ($http, $q) {
 
   const service = {
-    getCampaign: (id) => $http.get('/campaign/' + id),
-    getRound: (id) => $http.get('/round/' + id),
-
-    getTempImages: () => $http.get('/static/images_50.json'),  // temporary!
-    getTempImage: () => $http.get('/static/images_50.json').then(data => {
-      let index = Math.floor((Math.random() * 45) + 1);
-      return data.data.images[index];
+    searchUser: (username) => $http({
+      method: 'JSONP',
+      url: '//commons.wikimedia.org/w/api.php',
+      params: {
+        action: 'query',
+        list: 'globalallusers',
+        format: 'json',
+        rawcontinue: 'true',
+        agufrom: username,
+        callback: 'JSON_CALLBACK'
+      }
     })
   };
 

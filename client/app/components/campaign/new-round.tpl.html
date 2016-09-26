@@ -1,0 +1,65 @@
+<md-dialog style="min-width: 400px;">
+    <div class="spinner__container" layout="row" layout-align="center center"
+            ng-show="loading">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+    <form ng-cloak>
+        <md-toolbar>
+            <div class="md-toolbar-tools">
+                <h2>Add new round</h2>
+                <span flex></span>
+                <md-button class="md-icon-button" ng-click="cancel()">
+                    <md-icon>close</md-icon>
+                </md-button>
+            </div>
+        </md-toolbar>
+
+        <md-dialog-content>
+            <div class="md-dialog-content" layout="column" layout-align="start stretch">
+                <md-input-container class="md-title">
+                    <label>Round Name</label>
+                    <input ng-model="round.name" type="text">
+                </md-input-container>
+                <div layout="row" layout-align="start start">
+                    <md-input-container flex="50">
+                        <label>Vote Method</label>
+                        <md-select ng-model="round.vote_method">
+                            <md-option ng-repeat="method in voteMethods" ng-value="method.value">
+                                {{method.label}}
+                            </md-option>
+                        </md-select>
+                    </md-input-container>
+                    <md-input-container flex="50">
+                        <label>Quorum</label>
+                        <input ng-model="round.quorum" type="number">
+                    </md-input-container>
+                </div>
+                <div layout="row" layout-align="start start">
+                    <md-datepicker ng-model="round.open_date" md-placeholder="Open Date"></md-datepicker>
+                    <md-datepicker ng-model="round.close_date" md-placeholder="Close Date"></md-datepicker>
+                </div>
+                <h2 class="md-title">Jurors</h2>
+                <md-contact-chips
+                    ng-model="round.jurors"
+                    ng-model-options="{ debounce: 200 }"
+                    md-contacts="searchUser($query)"
+                    md-contact-name="name"
+                    md-require-match="true"
+                    md-highlight-flags="i"
+                    filter-selected="true"
+                    placeholder="Enter username">
+                </md-contact-chips>
+            </div>
+        </md-dialog-content>
+
+        <md-dialog-actions layout="row">
+            <span flex></span>
+            <md-button ng-click="cancel()">
+                Cancel
+            </md-button>
+            <md-button class="md-primary" ng-click="create()">
+                Create
+            </md-button>
+        </md-dialog-actions>
+    </form>
+</md-dialog>
