@@ -22,10 +22,12 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
+from boltons.strutils import slugify
 from boltons.iterutils import chunked
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import (get_mw_userid,
+from utils import (fmt_date,
+                   get_mw_userid,
                    get_threshold_map,
                    PermissionDenied, DoesNotExist, InvalidAction)
 
@@ -171,6 +173,27 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    def to_info_dict(self):
+        ret = {'id': self.id,
+               'name': self.name,
+               'directions': self.directions,
+               'canonical_url_name': slugify(self.name, '-'),
+               'vote_method': self.vote_method,
+               'open_date': fmt_date(self.open_date),
+               'close_date': fmt_date(self.close_date),
+               'status': self.status,
+               'quorum': self.quorum,
+               'jurors': [rj.to_details_dict() for rj in self.round_jurors]}
+        return ret
+
+    def to_details_dict(self):
+        # TODO: if more info is needed, can get session with
+        # inspect(self).session (might be None if not attached), only
+        # disadvantage is that user is not available to do permissions
+        # checking.
+        ret = self.to_info_dict()
+        return ret
+
 
 class RoundJuror(Base):
     __tablename__ = 'round_jurors'
@@ -190,6 +213,14 @@ class RoundJuror(Base):
             self.round = round
         if user is not None:
             self.user = user
+
+    def to_details_dict(self):
+        ret = {'id': self.user.id,
+               'username': self.user.username,
+               'is_active': self.is_active}
+        if self.flags:
+            ret['flags'] = self.flags
+        return ret
 
 
 class Entry(Base):
@@ -525,9 +556,7 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-
     def autodisqualify_by_resolution(self, rnd):
-        campaign = rnd.campaign
         min_resolution = DEFAULT_MIN_RESOLUTION
 
         round_entries = self.query(RoundEntry)\
@@ -884,6 +913,7 @@ class JurorDAO(UserDAO):
         return round
 
     def get_round_task_counts(self, round_id):
+        re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
         total_tasks = self.query(Task)\
                           .filter(Task.round_entry.has(round_id=round_id),
                                   Task.user_id == self.user.id,
@@ -895,7 +925,8 @@ class JurorDAO(UserDAO):
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
-        return {'total_tasks': total_tasks,
+        return {'total_round_entries': re_count,
+                'total_tasks': total_tasks,
                 'total_open_tasks': total_open_tasks}
 
     def get_tasks(self, num=1, offset=0):

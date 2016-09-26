@@ -5,10 +5,10 @@ from boltons.strutils import slugify
 
 from utils import fmt_date, InvalidAction
 
-from rdb import (Campaign,
-                 CoordinatorDAO,
+from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
+
 
 def make_admin_campaign_info(campaign):
     ret = {'id': campaign.id,
@@ -21,23 +21,9 @@ def make_admin_campaign_details(campaign):
     ret = {'id': campaign.id,
            'name': campaign.name,
            'canonical_url_name': slugify(campaign.name),
-           'rounds': [make_admin_round_info(rnd) for rnd in campaign.rounds],
+           'rounds': [rnd.to_info_dict() for rnd in campaign.rounds],
            'coordinators': [make_campaign_coordinator_info(c)
                             for c in campaign.coords]}
-    return ret
-
-
-def make_admin_round_info(rnd):
-    ret = {'id': rnd.id,
-           'name': rnd.name,
-           'directions': rnd.directions,
-           'canonical_url_name': slugify(rnd.name, '-'),
-           'vote_method': rnd.vote_method,
-           'open_date': fmt_date(rnd.open_date),
-           'close_date': fmt_date(rnd.close_date),
-           'status': rnd.status,
-           'quorum': rnd.quorum,
-           'jurors': [make_round_juror_details(j) for j in rnd.round_jurors]}
     return ret
 
 
@@ -62,13 +48,6 @@ def make_admin_round_details(rnd, rnd_stats):
            'campaign': make_admin_campaign_info(rnd.campaign),
            'jurors': [make_round_juror_details(j) for j in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
-    return ret
-
-
-def make_round_juror_details(round_juror):
-    ret = {'id': round_juror.user.id,
-           'username': round_juror.user.username,
-           'is_active': round_juror.is_active}
     return ret
 
 
@@ -109,7 +88,9 @@ def create_campaign(user, rdb_session, request):
     open_date = request.form.get('open_date')
     close_date = request.form.get('close_date')
 
-    campaign = org_dao.create_campaign(name=new_camp_name)
+    campaign = org_dao.create_campaign(name=new_camp_name,
+                                       open_date=open_date,
+                                       close_date=close_date)
     data = make_admin_campaign_details(campaign)
 
     return {'data': data}
@@ -152,6 +133,7 @@ def import_entries(rdb_session, user, round_id, request):
     data = {'round_id': rnd.id,
             'total_entries': len(rnd.entries)}
     return {'data': data}
+
 
 def activate_round(rdb_session, user, round_id, request):
     """
