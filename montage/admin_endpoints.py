@@ -3,7 +3,7 @@ from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
-from utils import fmt_date
+from utils import fmt_date, InvalidAction
 
 from rdb import (Campaign,
                  CoordinatorDAO,
@@ -235,7 +235,7 @@ def create_round(rdb_session, user, campaign_id, request):
     return {'data': data}
 
 
-def edit_round(rdb_session, user,  round_id, request):
+def edit_round(rdb_session, user, round_id, request):
     """
     Summary: Post a new campaign
 
@@ -249,8 +249,8 @@ def edit_round(rdb_session, user,  round_id, request):
     column_names = ['name', 'description', 'directions', 'config_json']
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
-    #  - qourum: [requires reallocation]
-    #  - active_jruros: [requires reallocation]
+    #  - quorum: [requires reallocation]
+    #  - active_jurors: [requires reallocation]
 
     for column_name in column_names:
         if request.form.get(column_name):

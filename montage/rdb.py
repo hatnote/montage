@@ -449,7 +449,7 @@ class CoordinatorDAO(UserDAO):
             raise DoesNotExist('missing campaign object or campaign_id')
 
         if not campaign and campaign_id:
-            campaign = self.get_camapign(campaign_id)
+            campaign = self.get_campaign(campaign_id)
 
         if not campaign:
             raise DoesNotExist('campaign does not exist')
