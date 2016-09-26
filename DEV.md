@@ -59,6 +59,11 @@ A bit of space for dev bookkeeping.
 * check for image date range (and disqualify accordingly)
 * category import
 * lookup round + check round permissions
+* endpoint should return progress info (/admin/round/<id>, /admin)
+* deadline date for Round
+* Campaign + first Round as single step?
+* Bug: created round has no status
+* Blacklisted user disqualification
 
 ## Frontend
 
