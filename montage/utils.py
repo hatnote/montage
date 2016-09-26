@@ -16,6 +16,14 @@ from sqlalchemy.orm import sessionmaker
 from check_rdb import get_schema_errors
 
 
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJ_PATH = os.path.dirname(CUR_PATH)
+
+USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
+                'tools.montage': 'prod'}
+DEFAULT_ENV_NAME = 'dev'
+
+
 class PermissionDenied(Forbidden):
     "Raised when users perform actions on the wrong resources"
 
@@ -28,17 +36,9 @@ class InvalidAction(BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
 
 
-CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-PROJ_PATH = os.path.dirname(CUR_PATH)
-
-USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
-                'tools.montage': 'prod'}
-DEFAULT_ENV_NAME = 'dev'
-
-
 def encode_dict_to_bytes(query):
     if hasattr(query, 'items'):
-        query=query.items()
+        query = query.items()
     for key, value in query:
         yield (encode_value_to_bytes(key), encode_value_to_bytes(value))
 
@@ -62,7 +62,7 @@ def get_mw_userid(username):
     data = json.loads(resp.read())
     user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
     if not user_id:
-        raise RuntimeError('user %s does not exist' % username)
+        raise DoesNotExist('user %s does not exist' % username)
     return user_id
 
 

@@ -188,8 +188,8 @@ def edit_campaign(rdb_session, user, campaign_id, request):
 
     for column_name in column_names:
         if request.form.get(column_name):
-            campaign_dict[column_name] = request.form.get(column_name)    
-            
+            campaign_dict[column_name] = request.form.get(column_name)
+
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = coord_dao.edit_campaign(campaign_id, campaign_dict)
     return {'data': campaign_dict}
@@ -215,16 +215,16 @@ def create_round(rdb_session, user, campaign_id, request):
     for column in req_columns:
         val = request.form.get(column)
         if not val:
-            raise Exception('%s is required to create a round' % val)
+            raise InvalidAction('%s is required to create a round' % val)
             # TODO: raise http error
         if column is 'jurors':
-            val = val.split(',') 
+            val = val.split(',')
         if column is 'vote_method' and val not in valid_vote_methods:
-            raise Exception('%s is an invalid vote method' % val)
+            raise InvalidAction('%s is an invalid vote method' % val)
             # TODO: raise http error
         rnd_dict[column] = val
 
-    default_quorum = len(rnd_dict['jurors']) 
+    default_quorum = len(rnd_dict['jurors'])
     rnd_dict['quorum'] = request.form.get('quorum', default_quorum)
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)

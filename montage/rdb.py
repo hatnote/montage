@@ -860,8 +860,7 @@ def create_initial_tasks(rdb_session, round):
 
     pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
     for entry, juror in pairs:
-        if juror is None:
-            raise RuntimeError('should never run out of jurors first')
+        assert juror is not None, 'should never run out of jurors first'
         if entry is None:
             break
 
