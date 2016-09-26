@@ -1,12 +1,17 @@
 import './main.scss';
 import template from './main.tpl.html';
+import pack from '../../../package.json';
 
 const MainComponent = {
   bindings: {
     user: '='
   },
-  controller: function ($state, userService, versionService, $timeout) {
+  controller: function ($state, $window, userService) {
     let vm = this;
+    vm.config = {
+      env: $window.__env,
+      package: pack
+    };
     vm.goToDashboard = goToDashboard;
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };

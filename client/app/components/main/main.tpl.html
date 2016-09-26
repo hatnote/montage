@@ -37,6 +37,13 @@
         </md-menu>
     </div>
 </md-toolbar>
-<div class="container" layout="row" flex>
+<div class="container" layout="column" layout-align="space-between stretch" flex>
     <ui-view></ui-view>
+    <footer layout="row" layout-align="space-between center">
+        <span>&copy; 2016 <a href="https://github.com/hatnote">Hatnote</a></span>
+        <span flex></span>
+        <span>
+            version <strong>{{$ctrl.config.package.version}}</strong> &bull;
+            env <strong>{{$ctrl.config.env.name}}</strong></span>
+    </footer>
 </div>
