@@ -471,6 +471,11 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
 
+        msg = ('%s created %s round "%s" (#%s) with jurors %r for'
+               ' campaign "%s"' % (self.user.username, vote_method,
+                                   rnd.name, rnd.id, jurors, campaign.name))
+        self.log_action('create_round', round=rnd, message=msg)
+
         return rnd
 
     def edit_round(self, round_id, round_dict):
@@ -677,7 +682,8 @@ class OrganizerDAO(CoordinatorDAO):
         campaign.coords.append(self.user)
         self.rdb_session.commit()
 
-        self.log_action('create_campaign', campaign_id=campaign.id)
+        msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
+        self.log_action('create_campaign', campaign=campaign, message=msg)
 
         return campaign
 
