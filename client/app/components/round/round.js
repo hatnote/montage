@@ -13,6 +13,7 @@ const RoundComponent = {
     },
     controller: function ($state, $mdDialog, $templateCache, userService, versionService) {
         let vm = this;
+        vm.encodeName = encodeName;
         vm.error = vm.data.error;
         vm.images = vm.tasks.data;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
@@ -27,32 +28,10 @@ const RoundComponent = {
             all: vm.images.length,
             current: vm.images[0],
             currentIndex: 0,
-            getNext: (goToDashboard) => {
-                if (vm.rating.currentIndex + 1 === vm.rating.all) {
-                    vm.rating.currentIndex = 0;
-                    if (goToDashboard) {
-                        $state.go('main.juror.dashboard', {}, { reload: true });
-                    }
-                } else {
-                    vm.rating.currentIndex++;
-                }
-                vm.rating.current = vm.images[vm.rating.currentIndex];
-            },
+            getNext: getNextImage,
+            next: vm.images[1],
             rates: [1, 2, 3, 4, 5],
-            setRate: (rate) => {
-                const current = vm.rating.current;
-                const rating = (rate - 1) / 4;
-                vm.loading = true;
-
-                userService.juror.setRating({
-                    'entry_id': current.entry.id,
-                    'task_id': current.id,
-                    'rating': rating
-                }).then(() => {
-                    vm.rating.getNext(true);
-                    vm.loading = false;
-                });
-            }
+            setRate: setRate
         };
 
         versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
@@ -60,6 +39,22 @@ const RoundComponent = {
 
         // functions
 
+        function encodeName(image) {
+            return encodeURI(image.entry.name);
+        }
+
+        function getNextImage(goToDashboard) {
+            if (vm.rating.currentIndex + 1 === vm.rating.all) {
+                vm.rating.currentIndex = 0;
+                if (goToDashboard) {
+                    $state.go('main.juror.dashboard', {}, { reload: true });
+                }
+            } else {
+                vm.rating.currentIndex++;
+            }
+            vm.rating.current = vm.images[vm.rating.currentIndex];
+            vm.rating.next = vm.images[vm.rating.currentIndex + 1];
+        }
 
         function openImage(image, event) {
             $mdDialog.show({
@@ -102,6 +97,21 @@ const RoundComponent = {
                 // answer
             }, function () {
                 // cancelled
+            });
+        }
+
+        function setRate(rate) {
+            const current = vm.rating.current;
+            const rating = (rate - 1) / 4;
+            vm.loading = true;
+
+            userService.juror.setRating({
+                'entry_id': current.entry.id,
+                'task_id': current.id,
+                'rating': rating
+            }).then(() => {
+                vm.rating.getNext(true);
+                vm.loading = false;
             });
         }
     },

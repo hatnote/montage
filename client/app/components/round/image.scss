@@ -50,4 +50,23 @@ mont-round {
             min-width: 50px;
         }
     }
+
+    .image__animation.ng-enter, .image__animation.ng-leave {
+        -webkit-transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        -webkit-transition-duration: 200ms;
+        transition-duration: 200ms;
+    }
+    .image__animation.ng-enter {
+        opacity: 0;
+    }
+    .image__animation.ng-enter-active {
+        opacity: 1;
+    }
+    .image__animation.ng-leave {
+        opacity: 1;
+    }
+    .image__animation.ng-leave-active {
+        opacity: 0;
+    }
 }

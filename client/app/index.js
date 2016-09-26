@@ -101,19 +101,7 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
                       images="$resolve.images"
                       type="$resolve.userType"></mont-round>`,
         resolve: {
-          round: ($stateParams, userService) => userService.admin.getRound($stateParams.id),
-          images: (dataService) => dataService.getTempImages() // temporary!
-        }
-      })
-      .state('main.admin.image', {
-        url: '/admin/image',
-        template: `<mont-image
-                      layout="column" layout-align="start start"
-                      data="$resolve.image"
-                      user="$resolve.user"
-                      type="$resolve.userType"></mont-round>`,
-        resolve: {
-          image: (dataService) => dataService.getTempImage() // temporary!
+          round: ($stateParams, userService) => userService.admin.getRound($stateParams.id)
         }
       })
       .state('main.login', {

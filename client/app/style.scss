@@ -46,6 +46,12 @@ body {
     width: 100%;
 }
 
+.invisible {
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
 .spinner__container {
     position: absolute;
     top: 0;

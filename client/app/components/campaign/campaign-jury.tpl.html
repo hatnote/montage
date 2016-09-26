@@ -22,15 +22,17 @@
             <span class="md-body-2" flex="30">
                 {{round.name}}
                 <span class="tag tag--pill"
+                      ng-show="round.status"
                       ng-class="'tag--{{round.status}}'">{{round.status}}</span>
             </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
-                <span>
+                <span ng-show="round.open_date">
                     {{round.open_date | date}}<br />
                     <small class="muted">{{round.open_date | fromNow}}</small>
                 </span>
-                <span class="campaign__dash">–</span>
-                <span>
+                <span class="campaign__dash"
+                      ng-show="round.open_date || round.close_date">–</span>
+                <span ng-show="round.close_date">
                     {{round.close_date | date}}<br />
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>
@@ -41,7 +43,7 @@
                 <div class="campaign__progress" layout="row" layout-align="space-between center">
                     <span>{{round.total_tasks - round.total_open_tasks}} / {{round.total_tasks}} reviewed</span>
                     <span flex></span>
-                    <span class="muted">{{100 - round.percent_tasks_open}}%</span>
+                    <span class="muted">{{100 - round.percent_tasks_open | number: 0}}%</span>
                 </div>
             </span>
             <span flex></span>

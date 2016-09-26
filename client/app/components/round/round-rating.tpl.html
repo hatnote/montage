@@ -2,7 +2,10 @@
      layout="row" layout-align="center start"
      ng-if="!$ctrl.error && $ctrl.round.status === 'active' && $ctrl.images.length">
     <div class="image__gallery" layout="row" layout-align="center center" flex>
-        <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.rating.current.entry.name}}&w=800">
+        <img class="image__animation"
+             ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.rating.current.entry.name}}&w=800"
+             ng-animate-swap="$ctrl.rating.current.entry.name" >
+        <img class="invisible" ng-src="https://commons.wikimedia.org/w/thumb.php?f={{$ctrl.rating.next.entry.name}}&w=800">
     </div>
     <div class="image__description">
         <div layout="row" layout-align="start center">
@@ -22,7 +25,10 @@
                        ng-class="{'md-primary': $ctrl.rating.hover >= rate }"
                        ng-mouseenter="$ctrl.rating.hover = rate"
                        ng-mouseleave="$ctrl.rating.hover = 0">
-                <md-icon>star_rate</md-icon>
+                <md-icon>
+                    star_rate
+                    <md-tooltip>Rate {{rate}}/5</md-tooltip>
+                </md-icon>
             </md-button>
             <span class="image__divider">|</span>
             <md-button class="image__skip-btn" ng-click="$ctrl.rating.getNext()">
@@ -33,14 +39,20 @@
         <h3 class="md-title">Description</h3>
         <md-list flex>
             <md-list-item class="md-2-line">
-                <md-icon>date_range</md-icon>
+                <md-icon>
+                    cloud_upload
+                    <md-tooltip>File upload date</md-tooltip>
+                </md-icon>
                 <div class="md-list-item-text">
                     <h3>{{$ctrl.rating.current.entry.upload_date | date}}</h3>
                     <p>{{$ctrl.rating.current.entry.upload_date | date:'EEEE'}}, {{$ctrl.rating.current.entry.upload_date | date:'H:mm'}}</p>
                 </div>
             </md-list-item>
             <md-list-item class="md-2-line">
-                <md-icon>image</md-icon>
+                <md-icon>
+                    image
+                    <md-tooltip>File resolution</md-tooltip>
+                </md-icon>
                 <div class="md-list-item-text">
                     <h3>{{$ctrl.rating.current.entry.resolution / 1000000 | number:2}} Mpix</h3>
                     <p>{{$ctrl.rating.current.entry.width}} × {{$ctrl.rating.current.entry.height}}</p>

@@ -3,6 +3,7 @@ import moment from 'moment';
 import './campaign.scss';
 import templateAdmin from './campaign.tpl.html';
 import templateJury from './campaign-jury.tpl.html';
+import templateNewRound from './new-round.tpl.html';
 
 const CampaignComponent = {
     bindings: {
@@ -10,7 +11,7 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($state, $timeout, $mdToast, $templateCache, userService) {
+    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, userService) {
         let vm = this;
         vm.addRound = addRound;
         vm.cancelCampaignName = cancelCampaignName;
@@ -26,21 +27,73 @@ const CampaignComponent = {
 
         // functions
 
-        function addRound() {
-            /*
-            userService.admin.addRound(vm.campaign.id, {
-                round_name: 'Test round',
-                quorum: 2,
-                jurors: 'Slaporte,MahmoudHashemi'
-            }).then((data) => {
-                console.log(data);
+        function addRound(event) {
+            $mdDialog.show({
+                template: templateNewRound,
+                parent: angular.element(document.body),
+                targetEvent: event,
+                clickOutsideToClose: false,
+                controller: ($scope, $mdDialog, $timeout, dataService) => {
+                    $scope.round = {
+                        name: 'Round ' + (vm.campaign.rounds.length + 1),
+                        vote_method: 'rating',
+                        quorum: 2,
+                        jurors: [],
+                        status: 'paused'
+                    };
+                    $scope.voteMethods = [
+                        {
+                            label: 'Yes/No',
+                            value: 'yesno'
+                        },
+                        {
+                            label: 'Rating',
+                            value: 'rating'
+                        },
+                        {
+                            label: 'Ranking',
+                            value: 'ranking'
+                        }
+                    ];
+                    $scope.searchUser = (searchName) => dataService.searchUser(capitalize(searchName)).then((response) => {
+                        return response.data.query.globalallusers;
+                    });
+
+                    $scope.hide = function () {
+                        $mdDialog.hide();
+                    };
+                    $scope.cancel = function () {
+                        $mdDialog.cancel();
+                    };
+                    $scope.create = function () {
+                        let round = angular.copy($scope.round);
+                        round = angular.extend(round, {
+                            jurors: round.jurors.map((element) => element.name).join(','),
+                            open_date: $filter('date')(round.open_date, 'yyyy-MM-ddTHH:mm:ss'),
+                            close_date: $filter('date')(round.close_date, 'yyyy-MM-ddTHH:mm:ss')
+                        });
+
+                        $scope.loading = true;
+                        userService.admin.addRound(vm.campaign.id, round).then((response) => {
+                            $scope.loading = false;
+                            $mdDialog.hide(true);
+                            $state.reload();
+                        }, (response) => {
+                            $scope.loading = false;
+                            console.log('err', response);
+                        });
+                    };
+                }
             });
-            */
         }
 
         function cancelCampaignName() {
             vm.isNameEdited = false;
             vm.nameEdit = '';
+        }
+
+        function capitalize(text) {
+            return text.charAt(0).toUpperCase() + text.slice(1);
         }
 
         function editCampaignName($event) {
@@ -65,7 +118,7 @@ const CampaignComponent = {
         }
 
         function openRound(round) {
-            if(!isRoundActive(round)) {
+            if (!isRoundActive(round)) {
                 return;
             }
 
