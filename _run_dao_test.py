@@ -6,6 +6,8 @@ from montage.rdb import (make_rdb_session,
                          MaintainerDAO,
                          CoordinatorDAO,
                          lookup_user)
+from montage.utils import PermissionDenied
+
 import random
 
 random.seed('badidea')
@@ -33,7 +35,6 @@ def main():
     coord_user = lookup_user(rdb_session, 'Yarl')
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
 
-    
 
     # the org_dao should be able to do this stuff, too
     rnd = coord_dao.create_round(name='Test Round',
@@ -46,9 +47,9 @@ def main():
     #                               round_id=rnd.id)
 
     gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
-    
+
     coord_dao.add_entries_from_csv_gist(gist_url, round_id=rnd.id)
-    
+
     # coord_dao.edit_round(rnd.id, {'status': 'active'})
 
     coord_dao.autodisqualify_by_date(rnd)
@@ -57,12 +58,29 @@ def main():
     #coord_dao.disqualify_entry(entry)
 
     coord_dao.activate_round(rnd.id)  # or something
-    
+
+    def cross_complete(rdb_session, rnd):
+        juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
+        juror1_dao = JurorDAO(rdb_session, juror1)
+        task = juror1_dao.get_tasks_from_round(rnd.id, num=1)[0]
+
+        juror2_dao = JurorDAO(rdb_session, juror2)
+        juror2_dao.apply_rating(task.id, 0.2)
+
+        return
+
+    try:
+        cross_complete(rdb_session, rnd)
+    except PermissionDenied:
+        pass
+    else:
+        raise ValueError('expected permission denied on cross complete')
+
     for juror in rnd.jurors:
         print '.. voting for %s' % juror.username
         juror_dao = JurorDAO(rdb_session, juror)
         tasks = juror_dao.get_tasks_from_round(rnd.id)
-        
+
         while tasks:
             task = tasks.pop()
             vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])

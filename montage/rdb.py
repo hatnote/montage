@@ -25,7 +25,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from boltons.iterutils import chunked
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import get_mw_userid
+from utils import get_mw_userid, PermissionDenied, DoesNotExist, InvalidAction
 
 from loaders import get_csv_from_gist
 
@@ -448,13 +448,13 @@ class CoordinatorDAO(UserDAO):
                      campaign=None,
                      campaign_id=None):
         if not campaign and campaign_id:
-            raise Exception('missing campaign object or campaign_id')
+            raise DoesNotExist('missing campaign object or campaign_id')
 
         if not campaign and campaign_id:
-            campaign = self.get_camapign(campaign_id)
+            campaign = self.get_campaign(campaign_id)
 
         if not campaign:
-            raise Exception('campaign does not exist')
+            raise DoesNotExist('campaign does not exist')
 
         rnd_jurors = []
 
@@ -472,6 +472,11 @@ class CoordinatorDAO(UserDAO):
 
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
+
+        msg = ('%s created %s round "%s" (#%s) with jurors %r for'
+               ' campaign "%s"' % (self.user.username, vote_method,
+                                   rnd.name, rnd.id, jurors, campaign.name))
+        self.log_action('create_round', round=rnd, message=msg)
 
         return rnd
 
@@ -585,7 +590,7 @@ class CoordinatorDAO(UserDAO):
         rnd = self.get_round(round_id)
 
         if not rnd:
-            raise Exception('round does not exist')
+            raise DoesNotExist('round does not exist')
         entries = get_csv_from_gist(gist_url)
 
         commit_objs = []
@@ -631,10 +636,13 @@ class CoordinatorDAO(UserDAO):
         round_stats = self.get_round_stats(round_id)
 
         if round_stats['total_open_tasks']:
-            raise Exception('cannot calculate round ratings with outstanding tasks')
+            raise InvalidAction('cannot close round with open tasks'
+                                ' (%r outstanding)'
+                                % round_stats['total_open_tasks'])
 
         ratings = []
-        results = self.query(Rating, Entry, func.avg(Rating.value).label('average'))\
+        results = self.query(Rating, Entry,
+                             func.avg(Rating.value).label('average'))\
                       .join(RoundEntry)\
                       .join(Entry)\
                       .filter(Rating.round_entry.has(round_id=round_id))\
@@ -713,9 +721,9 @@ class OrganizerDAO(CoordinatorDAO):
                         created_by=self.user.id)
         campaign = self.get_campaign(campaign_id=campaign_id)
         if not campaign:
-            raise Exception('campaign does not exist')
+            raise DoesNotExist('campaign does not exist')
         if user in campaign.coords:
-            raise Exception('user is already a coordinator')
+            raise InvalidAction('user is already a coordinator')
         campaign.coords.append(user)
         self.rdb_session.add(campaign)
         self.rdb_session.add(user)
@@ -734,7 +742,8 @@ class OrganizerDAO(CoordinatorDAO):
         campaign.coords.append(self.user)
         self.rdb_session.commit()
 
-        self.log_action('create_campaign', campaign_id=campaign.id)
+        msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
+        self.log_action('create_campaign', campaign=campaign, message=msg)
 
         return campaign
 
@@ -756,7 +765,7 @@ class MaintainerDAO(OrganizerDAO):
                          .offset(offset)\
                          .all()
         return audit_logs
-        
+
     def add_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
         if user:
@@ -792,6 +801,8 @@ class JurorDAO(UserDAO):
 
     def apply_rating(self, task_id, rating):
         task = self.get_task(task_id)
+        if task.user != self.user:
+            raise PermissionDenied()
         rating = Rating(user_id=self.user.id,
                         task_id=task_id,
                         round_entry_id=task.round_entry_id,
@@ -915,8 +926,7 @@ def create_initial_tasks(rdb_session, round):
 
     pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
     for entry, juror in pairs:
-        if juror is None:
-            raise RuntimeError('should never run out of jurors first')
+        assert juror is not None, 'should never run out of jurors first'
         if entry is None:
             break
 

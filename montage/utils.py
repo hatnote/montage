@@ -9,6 +9,7 @@ from urllib import urlencode
 from urllib2 import urlopen
 
 import yaml
+from clastic.errors import Forbidden, NotFound, BadRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -23,9 +24,21 @@ USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
 DEFAULT_ENV_NAME = 'dev'
 
 
+class PermissionDenied(Forbidden):
+    "Raised when users perform actions on the wrong resources"
+
+
+class DoesNotExist(NotFound):
+    "Raised when users perform actions on nonexistent resources"
+
+
+class InvalidAction(BadRequest):
+    "Raised when some user behavior would cause some other assumption to fail"
+
+
 def encode_dict_to_bytes(query):
     if hasattr(query, 'items'):
-        query=query.items()
+        query = query.items()
     for key, value in query:
         yield (encode_value_to_bytes(key), encode_value_to_bytes(value))
 
@@ -49,7 +62,7 @@ def get_mw_userid(username):
     data = json.loads(resp.read())
     user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
     if not user_id:
-        raise RuntimeError('user %s does not exist' % username)
+        raise DoesNotExist('user %s does not exist' % username)
     return user_id
 
 

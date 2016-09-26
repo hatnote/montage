@@ -50,6 +50,8 @@ A bit of space for dev bookkeeping.
 * Audit logging
 * Task reassignment
 * Locking
+* Round overview for admins
+* Undo rating submit
 
 ...
 
@@ -64,6 +66,7 @@ A bit of space for dev bookkeeping.
 * Submit ratings
 * Submit rankings
 * Interfaces for closing rounds
+* Undo rating submit
 
 Ratings closing round interface:
 
