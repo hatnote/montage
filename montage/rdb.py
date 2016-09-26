@@ -114,7 +114,6 @@ class Campaign(Base):
     campaign_coords = relationship('CampaignCoord')
     coords = association_proxy('campaign_coords', 'user',
                                creator=lambda user: CampaignCoord(coord=user))
-    # round_names = association_proxy('rounds', 'name') "simplifying scalar stuff"
 
 
 class CampaignCoord(Base):  # Coordinator, not Coordinate
@@ -193,8 +192,7 @@ class Entry(Base):
     # if this is being kept generic for other types of media judging,
     # then I think a "duration" attribute makes sense -mh
     __tablename__ = 'entries'
-    #__table_args__ = (Index('ix_entries_name', 'name', mysql_length=190, unique=True),)
-                      #UniqueConstraint('u1', 'name'))
+
     id = Column(Integer, primary_key=True)
 
     # page_id?
@@ -292,7 +290,7 @@ class Task(Base):
     cancel_date = Column(DateTime)
 
     entry = association_proxy('round_entry', 'entry',
-                               creator=lambda e: RoundEntry(entry=e))
+                              creator=lambda e: RoundEntry(entry=e))
 
 
 class ResultsSummary(Base):
@@ -632,7 +630,8 @@ class CoordinatorDAO(UserDAO):
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
-        return {'total_tasks': total_tasks, 'total_open_tasks': total_open_tasks}
+        return {'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks}
 
     def get_entries(self, filenames):
         entries = self.query(Entry)\
