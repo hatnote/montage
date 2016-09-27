@@ -5,6 +5,14 @@
                    user="$ctrl.user">
 </div>
 <div flex></div>
+<div layout="row" layout-align="end center"
+      ng-if="$ctrl.isAdmin()">
+    <span flex></span>
+    <md-button class="md-fab" aria-label="Add new campaign">
+        <md-icon>assignment</md-icon>
+        <md-tooltip md-direction="left">Add new campaign</md-tooltip>
+    </md-button>
+</div>
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>

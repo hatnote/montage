@@ -12,7 +12,7 @@ const UserService = function ($http, $q, $window) {
     getCampaign: (id) => $http.get(base + 'admin/campaign/' + id).then(getData, getData),
     getRound: (id) => $http.get(base + 'admin/round/' + id).then(getData, getData),
 
-    addCampaign: (data) => $http.post(base + 'admin/campaign', data).then(getData, getData),
+    addCampaign: (data) => $http.post(base + 'admin/new/campaign', data).then(getData, getData),
     addRound: (id, data) => $http.post(base + 'admin/campaign/' + id + '/new/round', data).then(getData, getData),
 
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id, data).then(getData, getData),
