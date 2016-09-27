@@ -7,6 +7,18 @@ from rdb import JurorDAO
 from utils import fmt_date
 
 
+def get_juror_routes():
+    ret = [GET('/juror', get_index),
+           GET('/juror/campaign/<campaign_id:int>', get_campaign),
+           GET('/juror/round/<round_id:int>', get_round),
+           GET('/juror/tasks', get_tasks),
+           GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
+           POST('/juror/submit/rating', submit_rating)]
+    # TODO: submission for rank style votes
+    # TODO: bulk rating submission
+    return ret
+
+
 def make_juror_round_details(rnd, rnd_stats):
     if rnd_stats['total_tasks']:
         percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
@@ -269,9 +281,4 @@ def submit_rating(rdb_session, user, request):
     return {'data': {'task_id': task_id, 'rating': rating}}  # What should this return?
 
 
-juror_routes = [GET('/juror', get_index),
-                GET('/juror/campaign/<campaign_id:int>', get_campaign),
-                GET('/juror/round/<round_id:int>', get_round),
-                GET('/juror/tasks', get_tasks),
-                GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
-                POST('/juror/submit/rating', submit_rating)]  # TODO: submission for rank style votes
+JUROR_ROUTES = get_juror_routes()

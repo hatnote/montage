@@ -56,9 +56,9 @@ from rdb import Base
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
 
-from juror_endpoints import juror_routes
-from admin_endpoints import admin_routes
-from public_endpoints import home, login, logout, complete_login
+from juror_endpoints import JUROR_ROUTES
+from admin_endpoints import ADMIN_ROUTES
+from public_endpoints import PUBLIC_ROUTES
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -69,12 +69,7 @@ STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
 def create_app(env_name='prod'):
     # rendering is handled by MessageMiddleware
-    routes = [('/', home),
-              ('/login', login),
-              ('/logout', logout),
-              ('/complete_login', complete_login)]
-    routes += juror_routes
-    routes += admin_routes
+    routes = PUBLIC_ROUTES + JUROR_ROUTES + ADMIN_ROUTES
 
     print '==  creating WSGI app using env name: %s' % (env_name,)
 
@@ -85,17 +80,14 @@ def create_app(env_name='prod'):
 
     config = yaml.load(open(config_file_path))
 
-
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
     session_type = sessionmaker()
     session_type.configure(bind=engine)
-
-    # import pdb;pdb.set_trace()
-
     tmp_rdb_session = session_type()
+
     schema_errors = get_schema_errors(Base, tmp_rdb_session)
     if not schema_errors:
         print '++  schema validated ok'

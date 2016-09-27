@@ -15,6 +15,14 @@ DEBUG = config.get('debug', False)
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
 
+def get_public_routes():
+    ret = [('/', home),
+           ('/login', login),
+           ('/logout', logout),
+           ('/complete_login', complete_login)]
+    return ret
+
+
 @public
 def home(cookie, request):
     headers = dict([(k, v) for k, v in
@@ -94,3 +102,6 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     else:
         return_to_url = '/'
     return redirect(return_to_url)
+
+
+PUBLIC_ROUTES = get_public_routes()

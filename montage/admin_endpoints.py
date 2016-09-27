@@ -10,7 +10,27 @@ from rdb import (CoordinatorDAO,
                  OrganizerDAO)
 
 
+def get_admin_routes():
+    ret = [GET('/admin', get_index),
+           POST('/admin/new/campaign', create_campaign),
+           GET('/admin/campaign/<campaign_id:int>', get_campaign),
+           POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
+           POST('/admin/campaign/<campaign_id:int>/new/round', create_round),
+           POST('/admin/round/<round_id:int>/import', import_entries),
+           POST('/admin/round/<round_id:int>/activate', activate_round),
+           GET('/admin/round/<round_id:int>', get_round),
+           POST('/admin/round/<round_id:int>/edit', edit_round),
+           POST('/admin/add_organizer', add_organizer),
+           POST('/admin/add_coordinator/campaign/<campaign_id:int>',
+                add_coordinator),
+           GET('/admin/audit_logs', get_audit_logs)]
+    return ret
+
+
 def make_admin_round_details(rnd, rnd_stats):
+    """
+    Same as juror, but with: quorum, total_entries, jurors
+    """
     if rnd_stats['total_tasks']:
         percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
     else:
@@ -414,20 +434,7 @@ def add_coordinator(rdb_session, user, campaign_id, request):
     return {'data': data}
 
 
-admin_routes = [GET('/admin', get_index),
-                POST('/admin/new/campaign', create_campaign),
-                GET('/admin/campaign/<campaign_id:int>', get_campaign),
-                POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
-                POST('/admin/campaign/<campaign_id:int>/new/round', create_round),
-                POST('/admin/round/<round_id:int>/import', import_entries),
-                POST('/admin/round/<round_id:int>/activate', activate_round),
-                GET('/admin/round/<round_id:int>', get_round),
-                POST('/admin/round/<round_id:int>/edit', edit_round),
-                POST('/admin/add_organizer', add_organizer),
-                POST('/admin/add_coordinator/campaign/<campaign_id:int>',
-                     add_coordinator),
-                GET('/admin/audit_logs', get_audit_logs)]
-
+ADMIN_ROUTES = get_admin_routes()
 
 
 # - cancel round
