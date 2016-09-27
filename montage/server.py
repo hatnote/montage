@@ -39,7 +39,6 @@ import yaml
 
 import logging
 
-from clastic import Application, GET, POST, StaticFileRoute
 from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
