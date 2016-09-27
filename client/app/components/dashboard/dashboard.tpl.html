@@ -8,7 +8,8 @@
 <div layout="row" layout-align="end center"
       ng-if="$ctrl.isAdmin()">
     <span flex></span>
-    <md-button class="md-fab" aria-label="Add new campaign">
+    <md-button class="md-fab" aria-label="Add new campaign"
+               ng-click="$ctrl.addCampaign($event)">
         <md-icon>assignment</md-icon>
         <md-tooltip md-direction="left">Add new campaign</md-tooltip>
     </md-button>
