@@ -4,19 +4,10 @@
         <md-progress-circular md-diameter="40"></md-progress-circular>
     </div>
     <form ng-cloak>
-        <md-toolbar>
-            <div class="md-toolbar-tools">
-                <h2>Add new round</h2>
-                <span flex></span>
-                <md-button class="md-icon-button" ng-click="cancel()">
-                    <md-icon>close</md-icon>
-                </md-button>
-            </div>
-        </md-toolbar>
-
         <md-dialog-content>
             <div class="md-dialog-content" layout="column" layout-align="start stretch">
-                <md-input-container class="md-title">
+                <h2 class="md-title no-margin">Add new round</h2>
+                <md-input-container>
                     <label>Round Name</label>
                     <input ng-model="round.name" type="text">
                 </md-input-container>

@@ -19,6 +19,7 @@ const CampaignComponent = {
         vm.editRound = editRound;
         vm.nameEdit = '';
         vm.isNameEdited = false;
+        vm.isLastRoundCompleted = isLastRoundCompleted;
         vm.isRoundActive = isRoundActive;
         vm.openRound = openRound;
         vm.saveCampaignName = saveCampaignName;
@@ -111,6 +112,12 @@ const CampaignComponent = {
 
         function isAdmin() {
             return vm.type === 'admin';
+        }
+
+        function isLastRoundCompleted() {
+            const rounds = vm.campaign.rounds;
+            const isCompleted = rounds.length && rounds[rounds.length-1].status === 'completed';
+            return !rounds.length || isCompleted;
         }
 
         function isRoundActive(round) {
