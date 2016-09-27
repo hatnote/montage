@@ -15,6 +15,7 @@ const UserService = function ($http, $q, $window) {
     addCampaign: (data) => $http.post(base + 'admin/new/campaign', data).then(getData, getData),
     addRound: (id, data) => $http.post(base + 'admin/campaign/' + id + '/new/round', data).then(getData, getData),
 
+    activateRound: (id) => $http.post(base + 'admin/round/' + id + '/activate', {'post': true}).then(getData, getData),
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
     editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
   };

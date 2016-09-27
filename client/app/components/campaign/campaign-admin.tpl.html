@@ -64,10 +64,18 @@
                 <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon> Ranking</span>
             </span>
             <span flex></span>
-            <md-button class="md-icon-button" aria-label="Edit"
-                       ng-click="$event.stopPropagation(); $ctrl.editRound(round)">
-                <md-icon>more_vert</md-icon>
-            </md-button>
+            <md-menu md-position-mode="target-right target">
+                <md-button class="md-icon-button" aria-label="Edit"
+                        ng-click="$event.stopPropagation(); $ctrl.showRoundMenu($mdOpenMenu, $event)">
+                    <md-icon>more_vert</md-icon>
+                </md-button>
+                    <md-menu-item>
+                        <md-button ng-click="$ctrl.activateRound(round)">
+                            Activate Round
+                        </md-button>
+                    </md-menu-item>
+                </md-menu-content>
+            </md-menu>
         </div>
     </md-card>
     <div class="campaign__rounds-add" layout="row" layout-align="space-between center">

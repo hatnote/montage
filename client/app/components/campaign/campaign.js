@@ -1,7 +1,7 @@
 import moment from 'moment';
 
 import './campaign.scss';
-import templateAdmin from './campaign.tpl.html';
+import templateAdmin from './campaign-admin.tpl.html';
 import templateJury from './campaign-jury.tpl.html';
 import templateNewRound from './new-round.tpl.html';
 
@@ -13,6 +13,7 @@ const CampaignComponent = {
     },
     controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, userService) {
         let vm = this;
+        vm.activateRound = activateRound;
         vm.addRound = addRound;
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
@@ -23,10 +24,19 @@ const CampaignComponent = {
         vm.isRoundActive = isRoundActive;
         vm.openRound = openRound;
         vm.saveCampaignName = saveCampaignName;
+        vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
 
         // functions
+
+        function activateRound(round) {
+            userService.admin.activateRound(round.id).then((response) => {
+                $state.reload();
+            }, (response) => {
+                console.log('err', response);
+            });
+        }
 
         function addRound(event) {
             $mdDialog.show({
@@ -116,7 +126,7 @@ const CampaignComponent = {
 
         function isLastRoundCompleted() {
             const rounds = vm.campaign.rounds;
-            const isCompleted = rounds.length && rounds[rounds.length-1].status === 'completed';
+            const isCompleted = rounds.length && rounds[rounds.length - 1].status === 'completed';
             return !rounds.length || isCompleted;
         }
 
