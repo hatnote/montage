@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import json
 import os.path
 import urllib
 import urllib2
 import urlparse
-import cookielib
-import json
-
 import argparse
+import cookielib
 
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJ_PATH = os.path.dirname(CUR_PATH)
+sys.path.append(PROJ_PATH)
+
+from montage import utils
+from montage.log import script_log
 from montage.utils import encode_dict_to_bytes
 
 cookies = cookielib.LWPCookieJar()
@@ -20,14 +25,6 @@ handlers = [
 ]
 
 opener = urllib2.build_opener(*handlers)
-
-CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-PROJ_PATH = os.path.dirname(CUR_PATH)
-
-sys.path.append(PROJ_PATH)
-
-from montage import utils
-from montage.log import script_log
 
 
 def fetch(url, data=None):
@@ -73,25 +70,25 @@ def full_run(url_base):
 
     campaign_id = resp_dict['data']['id']
 
-    print '.. created campaign no %s' % campaign_id
-    
+    print '.. created campaign #%s' % campaign_id
+
     # edit campaign
     data = {'name': 'A demo campaign 2016'}
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
 
-    print '.. edited campaign no %s' % campaign_id
-    
+    print '.. edited campaign #%s' % campaign_id
+
     # add a coordinator to this new camapign
     data = {'username': 'Effeietsanders'}
-    resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
+    resp_dict = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
 
-    print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
+    print '.. added %s as coordinator for campaign #%s' % (data['username'], campaign_id)
 
     # add a coordinator to this new camapign
     data = {'username': u'Jean-Frédéric'}
-    resp_dict = fetch(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
+    resp_dict = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
 
-    print '.. added %s as coordinator for campaign no %s' % (data['username'], campaign_id)
+    print '.. added %s as coordinator for campaign #%s' % (data['username'], campaign_id)
 
     # get the coordinator's index
     resp_dict = fetch_json(url_base + '/admin')
@@ -103,7 +100,7 @@ def full_run(url_base):
     # get coordinator's view of the first campaign
     resp_dict = fetch_json(url_base + '/admin/campaign/%s' % campaign_id)
 
-    print '.. loaded the coordinator view of campaign no %s' % campaign_id
+    print '.. loaded the coordinator view of campaign #%s' % campaign_id
 
     # add a round to that campaign
     data = {'name': 'Test yes/no round',
@@ -115,7 +112,7 @@ def full_run(url_base):
 
     round_id = resp_dict['data']['id']
 
-    print '.. added round no %s to campaign no %s' % (round_id, campaign_id)
+    print '.. added round #%s to campaign #%s' % (round_id, campaign_id)
 
     # add a round to that campaign
     data = {'name': 'Test rating round',
@@ -126,7 +123,7 @@ def full_run(url_base):
 
     round_id2 = resp_dict['data']['id']
 
-    print '.. added round no %s to campaign no %s' % (round_id2, campaign_id)
+    print '.. added round #%s to campaign #%s' % (round_id2, campaign_id)
 
     # add a round to that campaign
     data = {'name': 'Test ranking round',
@@ -137,13 +134,13 @@ def full_run(url_base):
 
     round_id3 = resp_dict['data']['id']
 
-    print '.. added round no %s to campaign no %s' % (round_id3, campaign_id)
+    print '.. added round #%s to campaign #%s' % (round_id3, campaign_id)
     '''
     # edit the round description
     data = {'directions': 'these are new directions'}
     resp_dict = fetch_json(url_base + '/admin/round/%s/edit' % round_id, data)
 
-    print '.. edited the directions of round no %s' % round_id
+    print '.. edited the directions of round #%s' % round_id
     '''
 
     gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
@@ -153,16 +150,16 @@ def full_run(url_base):
             'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id, data)
 
-    print '.. loaded %s entries into round no %s' % ('_', round_id)
+    print '.. loaded %s entries into round #%s' % ('_', round_id)
 
-    # active the round
+    # activate the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
 
     data = {'import_method': 'gistcsv',
             'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id2, data)
 
-    print '.. loaded %s entries into round no %s' % ('_', round_id2)
+    print '.. loaded %s entries into round #%s' % ('_', round_id2)
 
     # active the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id2, {'post': True})
@@ -171,13 +168,13 @@ def full_run(url_base):
             'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id3, data)
 
-    print '.. loaded %s entries into round no %s' % ('_', round_id3)
+    print '.. loaded %s entries into round #%s' % ('_', round_id3)
 
     # active the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id3, {'post': True})
     # TODO: check results?
 
-    print '.. activated round no %s' % round_id
+    print '.. activated round #%s' % round_id
 
     # get the juror's index
     resp_dict = fetch_json(url_base + '/juror')
@@ -189,7 +186,7 @@ def full_run(url_base):
     # get the juror's view of the last round
     resp_dict = fetch_json(url_base + '/juror/round/%s' % round_id)
 
-    print '.. loaded juror view of round no %s' % round_id
+    print '.. loaded juror view of round #%s' % round_id
 
     # get the juror's next task
     # (optional count and offset params)
@@ -198,7 +195,7 @@ def full_run(url_base):
     entry_id = resp_dict['data'][0]['round_entry_id']
     task_id = resp_dict['data'][0]['id']
 
-    print '.. loaded task(s) from round no %s' % round_id
+    print '.. loaded task(s) from round #%s' % round_id
 
     # submit the juror's rating
     data = {'entry_id': entry_id,
@@ -206,7 +203,7 @@ def full_run(url_base):
             'rating': '0.8'}
     resp_dict = fetch_json(url_base + '/juror/submit/rating', data)
 
-    print '.. submitted rating on task no %s' % task_id
+    print '.. submitted rating on task #%s' % task_id
 
     # TODO:
     #
@@ -218,8 +215,9 @@ def full_run(url_base):
 
     import pdb;pdb.set_trace()
 
+
 def add_votes(domain, round_id):
-    
+
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
@@ -259,7 +257,7 @@ def main():
                           comment=None, comment_url=None, rest={},
                           rfc2109=False)
     cookies.set_cookie(ck)
-    
+
     full_run(url_base)
 
 

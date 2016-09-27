@@ -202,8 +202,10 @@ def create_round(rdb_session, user, campaign_id, request):
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
     rnd = coord_dao.create_round(**rnd_dict)
-    rnd_stats = coord_dao.get_round_task_counts(rnd)
-    data = make_admin_round_details(rnd, rnd_stats)
+
+    data = rnd.to_details_dict()
+    data['progress'] = coord_dao.get_round_task_counts(rnd)
+
     return {'data': data}
 
 
