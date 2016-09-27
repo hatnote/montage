@@ -30,7 +30,7 @@ from utils import (fmt_date,
                    get_mw_userid,
                    get_threshold_map,
                    PermissionDenied, DoesNotExist, InvalidAction)
-
+from imgutils import make_mw_img_url
 from loaders import get_csv_from_gist
 
 Base = declarative_base(cls=DictableBase)
@@ -276,6 +276,26 @@ class Entry(Base):
     rounds = association_proxy('entered_rounds', 'round',
                                creator=lambda r: RoundEntry(round=r))
 
+    def to_info_dict(self):
+        return {'id': self.id}
+
+    def to_details_dict(self, **kw):
+        with_uploader = kw.pop('with_uploader', None)
+        ret = self.to_info_dict()
+        ret.update({'upload_date': fmt_date(self.upload_date),
+                    'mime_major': self.mime_major,
+                    'mime_minor': self.mime_minor,
+                    'name': self.name,
+                    'height': self.height,
+                    'width': self.width,
+                    'url': make_mw_img_url(self.name),
+                    'url_sm': make_mw_img_url(self.name, size='small'),
+                    'url_med': make_mw_img_url(self.name, size='medium'),
+                    'resolution': self.resolution})
+        if with_uploader:
+            ret['upload_user_text'] = self.upload_user_text
+        return ret
+
 
 class RoundEntry(Base):
     __tablename__ = 'round_entries'
@@ -351,6 +371,16 @@ class Task(Base):
 
     entry = association_proxy('round_entry', 'entry',
                               creator=lambda e: RoundEntry(entry=e))
+
+    def to_info_dict(self):
+        ret = {'id': self.id,
+               'round_entry_id': self.round_entry_id}
+        return ret
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['entry'] = self.entry.to_details_dict()
+        return ret
 
 
 class ResultsSummary(Base):

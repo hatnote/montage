@@ -5,33 +5,7 @@ from boltons.strutils import slugify
 
 from rdb import JurorDAO
 from utils import fmt_date
-from imgutils import make_mw_img_url
 
-
-# API Spec
-
-def make_juror_campaign_info(campaign):
-    ret = {'id': campaign.id,
-           'name': campaign.name,
-           'canonical_url_name': slugify(campaign.name)}
-
-    return ret
-
-
-def make_juror_campaign_details(campaign):
-    ret = {'id': campaign.id,
-           'name': campaign.name,
-           'canonical_url_name': slugify(campaign.name),
-           'rounds': None,  # must get rnd_stats for each below
-           'coordinators': [make_coord_details(coord) for coord in campaign.coords]}
-    return ret
-
-def make_juror_round_info(rnd):
-    ret = {'id': rnd.id,
-           'name': rnd.name,
-           'canonical_url_name': slugify(rnd.name)}
-
-    return ret
 
 def make_juror_round_details(rnd, rnd_stats):
     if rnd_stats['total_tasks']:
@@ -39,7 +13,7 @@ def make_juror_round_details(rnd, rnd_stats):
     else:
         percent_tasks_open = 0
     ret = {'id': rnd.id,
-           'directions':  rnd.directions,
+           'directions': rnd.directions,
            'name': rnd.name,
            'vote_method': rnd.vote_method,
            'open_date': fmt_date(rnd.open_date),
@@ -49,33 +23,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': percent_tasks_open,
-           'campaign': make_juror_campaign_info(rnd.campaign)}
-    return ret
-
-
-def make_juror_task_details(task):
-    ret = {'id': task.id,
-           'round_entry_id': task.round_entry_id,
-           'entry': make_entry_details(task.entry)}
-    return ret
-
-
-def make_entry_details(entry):
-    ret = {'id': entry.id,
-           'upload_date': fmt_date(entry.upload_date),
-           'mime_major': entry.mime_major,
-           'mime_minor': entry.mime_minor,
-           'name': entry.name,
-           'upload_user_text': entry.upload_user_text,  # TODO: only if allowed by round options
-           'height': entry.height,
-           'width': entry.width,
-           'url': make_mw_img_url(entry.name),
-           'resolution': entry.resolution}
-    return ret
-
-
-def make_coord_details(coord):
-    ret = {'username': coord.username}
+           'campaign': rnd.campaign.to_info_dict()}
     return ret
 
 
@@ -140,7 +88,7 @@ def get_campaign(rdb_session, user, campaign_id):
     campaign = juror_dao.get_campaign(campaign_id)
     if campaign is None:
         raise Forbidden('not a juror for this campaign')
-    data = make_juror_campaign_details(campaign)
+    data = campaign.to_details_dict()
     rounds = []
     for rnd in campaign.rounds:
         rnd_stats = juror_dao.get_round_task_counts(rnd.id)
@@ -250,7 +198,7 @@ def get_tasks(rdb_session, user, request):
     data = []
 
     for task in tasks:
-        data.append(make_juror_task_details(task))
+        data.append(task.to_details_dict())
 
     return {'data': data}
 
@@ -280,11 +228,13 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
-    tasks = juror_dao.get_tasks_from_round(round_id=round_id, num=count, offset=offset)
+    tasks = juror_dao.get_tasks_from_round(round_id=round_id,
+                                           num=count,
+                                           offset=offset)
     data = []
 
     for task in tasks:
-        data.append(make_juror_task_details(task))
+        data.append(task.to_details_dict())
 
     return {'data': data}
 
