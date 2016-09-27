@@ -8,6 +8,8 @@ import urlparse
 import cookielib
 import json
 
+from datetime import datetime
+
 import argparse
 
 from montage.utils import encode_dict_to_bytes
@@ -50,7 +52,7 @@ def fetch_json(url, data=None, act=None, **kw):
 
 def full_run(url_base):
     # load home
-    resp = fetch(url_base).read()
+    # resp = fetch(url_base).read()
 
     print '.. loaded the home page'
 
@@ -105,10 +107,14 @@ def full_run(url_base):
 
     print '.. loaded the coordinator view of campaign no %s' % campaign_id
 
+    # for date inputs (like deadline_date below), the default format
+    # is %Y-%m-%d %H:%M:%S
+
     # add a round to that campaign
     data = {'name': 'Test yes/no round',
             'vote_method': 'yesno',
             'quorum': 4,
+            'deadline_date': datetime(2016, 10, 15),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
 
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
@@ -121,6 +127,7 @@ def full_run(url_base):
     data = {'name': 'Test rating round',
             'vote_method': 'rating',
             'quorum': 4,
+            'deadline_date': datetime(2016, 10, 15),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
@@ -132,6 +139,7 @@ def full_run(url_base):
     data = {'name': 'Test ranking round',
             'vote_method': 'ranking',
             'quorum': 4,
+            'deadline_date': datetime(2016, 10, 15),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 

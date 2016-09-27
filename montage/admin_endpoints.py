@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
@@ -8,6 +10,9 @@ from utils import fmt_date, InvalidAction
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
+
+
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 def get_admin_routes():
@@ -181,7 +186,7 @@ def create_round(rdb_session, user, campaign_id, request):
         raise Forbidden('not allowed to create rounds')
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns:
@@ -194,6 +199,8 @@ def create_round(rdb_session, user, campaign_id, request):
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
             # TODO: raise http error
+        if column is 'deadline_date':
+            val = datetime.strptime(val, DATETIME_FORMAT)
         rnd_dict[column] = val
 
     default_quorum = len(rnd_dict['jurors'])

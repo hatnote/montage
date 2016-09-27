@@ -71,7 +71,8 @@ def main():
     rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=3,
                                  vote_method='rating',
-                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
+                                 deadline_date=datetime(2015, 10, 15),
+                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
@@ -80,6 +81,7 @@ def main():
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)
+    coord_dao.autodisqualify_by_uploader(rnd)
 
     #coord_dao.disqualify_entry(entry)
 
@@ -102,7 +104,8 @@ def main():
     rnd = coord_dao.create_round(name='Test Round 2',
                                  quorum=3,
                                  vote_method='rating',
-                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
+                                 deadline_date=datetime(2015, 10, 15),
+                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
                                  campaign=campaign)
     coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     coord_dao.activate_round(rnd)

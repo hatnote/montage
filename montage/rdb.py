@@ -179,6 +179,7 @@ class Round(Base):
     quorum = Column(Integer)
     # Should we just have some settings in json? yes. -mh
     config_json = Column(Text, default=DEFAULT_ROUND_CONFIG)
+    deadline_date = Column(TIMESTAMP)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
@@ -601,6 +602,7 @@ class CoordinatorDAO(UserDAO):
                      quorum,
                      vote_method,
                      jurors,
+                     deadline_date,
                      campaign=None,
                      campaign_id=None):
         if not campaign and campaign_id:
@@ -623,6 +625,7 @@ class CoordinatorDAO(UserDAO):
         rnd = Round(name=name,
                     campaign=campaign,
                     quorum=quorum,
+                    deadline_date=deadline_date,
                     vote_method=vote_method,
                     jurors=rnd_jurors)
 
@@ -678,6 +681,57 @@ class CoordinatorDAO(UserDAO):
         msg = '%s disqualified %s entries smaller than %s pixels'\
               % (self.user.username, len(round_entries), min_resolution)
         self.log_action('autodisqualify_by_resolution', round=rnd, message=msg)
+
+        return round_entries
+
+    def autodisqualify_by_uploader(self, 
+                                   rnd, 
+                                   dq_coords=True, 
+                                   dq_organizers=True, 
+                                   dq_maintainers=False):
+        dq_group = {}
+        dq_usernames = [j.username for j in rnd.jurors]
+        for username in dq_usernames:
+            dq_group[username] = 'juror'
+
+        if dq_coords:
+            coord_usernames = [c.username for c in rnd.campaign.coords]
+            dq_usernames += coord_usernames
+            for username in coord_usernames:
+                dq_group[username] = 'coordinator'
+
+        if dq_organizers:
+            organizers = self.query(User)\
+                             .filter_by(is_organizer=True)\
+                             .all()
+            organizer_usernames = [u.username for u in organizers]
+            dq_usernames += organizer_usernames
+            for username in organizer_usernames:
+                dq_group[username] = 'organizer'
+
+        if dq_maintainers:
+            dq_usernames += MAINTAINERS
+            for username in MAINTAINERS:
+                dq_group[username] = 'maintainer'
+
+        dq_usernames = set(dq_usernames)
+
+        round_entries = self.query(RoundEntry)\
+                            .join(Entry)\
+                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(Entry.upload_user_text.in_(dq_usernames))\
+                            .all()
+
+        for round_entry in round_entries:
+            upload_user = round_entry.entry.upload_user_text
+            dq_reason = 'upload user %s is %s'\
+                        % (upload_user, dq_group[upload_user])
+            round_entry.dq_reason = dq_reason
+            round_entry.dq_user_id = self.user.id
+
+        msg = '%s disqualified %s entries from based on upload user'\
+              % (self.user.username, len(round_entries))
+        self.log_action('autodisqualify_by_uploader', round=rnd, message=msg)
 
         return round_entries
 
