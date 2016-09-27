@@ -1,7 +1,10 @@
+import _ from 'lodash';
+
 import './round.scss';
 import './image.scss';
 import templateMultiple from './round-multiple.tpl.html';
 import templateRating from './round-rating.tpl.html';
+import templateYesNo from './round-yesno.tpl.html';
 import imageTemplate from './image.tpl.html';
 
 const RoundComponent = {
@@ -35,7 +38,7 @@ const RoundComponent = {
         };
 
         versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
-        $templateCache.put('round-template', vm.isVoting('rating') ? templateRating : templateMultiple);
+        $templateCache.put('round-template', getTemplate());
 
         // functions
 
@@ -43,17 +46,19 @@ const RoundComponent = {
             return encodeURI(image.entry.name);
         }
 
-        function getNextImage(goToDashboard) {
-            if (vm.rating.currentIndex + 1 === vm.rating.all) {
-                vm.rating.currentIndex = 0;
-                if (goToDashboard) {
-                    $state.go('main.juror.dashboard', {}, { reload: true });
-                }
-            } else {
-                vm.rating.currentIndex++;
+        function getNextImage(next) {
+            if (next) {
+                vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.rating.all;
             }
             vm.rating.current = vm.images[vm.rating.currentIndex];
             vm.rating.next = vm.images[vm.rating.currentIndex + 1];
+        }
+
+        function getTemplate() {
+            if(vm.isVoting('rating')) return templateRating;
+            if(vm.isVoting('yesno')) return templateYesNo;
+            if(vm.isVoting('ranking')) return templateMultiple;
+            return '';
         }
 
         function openImage(image, event) {
@@ -110,7 +115,9 @@ const RoundComponent = {
                 'task_id': current.id,
                 'rating': rating
             }).then(() => {
-                vm.rating.getNext(true);
+                _.pull(vm.images, current);
+                vm.rating.all = vm.images.length;
+                vm.rating.getNext();
                 vm.loading = false;
             });
         }
