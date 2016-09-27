@@ -14,6 +14,7 @@ const DashboardComponent = {
         let vm = this;
         vm.addCampaign = addCampaign;
         vm.isAdmin = isAdmin;
+        vm.isOrganizer = () => vm.user.is_organizer;
         vm.campaigns = isAdmin() ? vm.data.data : _.groupBy(vm.data.data, 'campaign.id');
         vm.logout = logout;
         vm.user = angular.extend(vm.user, vm.data.user);

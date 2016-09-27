@@ -6,7 +6,7 @@
 </div>
 <div flex></div>
 <div layout="row" layout-align="end center"
-      ng-if="$ctrl.isAdmin()">
+      ng-if="$ctrl.isAdmin() && $ctrl.isOrganizer()">
     <span flex></span>
     <md-button class="md-fab" aria-label="Add new campaign"
                ng-click="$ctrl.addCampaign($event)">
