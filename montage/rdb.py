@@ -754,8 +754,8 @@ class CoordinatorDAO(UserDAO):
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-        msg = '%s disqualified %s entries from based on upload user'\
-              % (self.user.username, len(round_entries))
+        msg = ('%s disqualified %s entries based on upload user'
+               % (self.user.username, len(round_entries)))
         self.log_action('autodisqualify_by_uploader', round=rnd, message=msg)
 
         return round_entries
