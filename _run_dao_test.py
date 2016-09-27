@@ -102,7 +102,7 @@ def main():
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
     rnd = coord_dao.create_round(name='Test Round 2',
-                                 quorum=3,
+                                 quorum=2,
                                  vote_method='rating',
                                  deadline_date=datetime(2015, 10, 15),
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
@@ -110,7 +110,10 @@ def main():
     coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     coord_dao.activate_round(rnd)
 
-    rate_round_tasks(rdb_session, rnd, limit_per=20)
+    rate_round_tasks(rdb_session, rnd, limit_per=150)
+
+    coord_dao.modify_jurors(rnd, [user_obj, coord_user])
+    import pdb;pdb.set_trace()
 
     # some read tasks
 

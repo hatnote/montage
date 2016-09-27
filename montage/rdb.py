@@ -336,7 +336,7 @@ class RoundEntry(Base):
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
-    task = relationship('Task', back_populates='round_entry')
+    tasks = relationship('Task', back_populates='round_entry')
     rating = relationship('Rating', back_populates='round_entry')
     ranking = relationship('Ranking', back_populates='round_entry')
 
@@ -388,7 +388,7 @@ class Task(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User', back_populates='tasks')
-    round_entry = relationship('RoundEntry', back_populates='task')
+    round_entry = relationship('RoundEntry', back_populates='tasks')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     complete_date = Column(DateTime)
@@ -899,6 +899,19 @@ class CoordinatorDAO(UserDAO):
         ret = {'ratings': ratings, 'counts': thresh_counts}
         return ret
 
+    def modify_jurors(self, rnd, new_jurors):
+        # NOTE: this does not add or remove tasks. Contrast this with
+        # changing the quorum, which would remove tasks, but carries the
+        # issue of possibly having to reweight or discard completed ratings.
+
+        # TODO: check to make sure only certain round actions can happen
+        # when paused, others only when active, basically none when the
+        # round is complete or cancelled.
+
+        reassign_tasks(self.rdb_session, rnd, new_jurors)
+        # TODO: audit log
+        return
+
 
 class OrganizerDAO(CoordinatorDAO):
     def add_coordinator(self, campaign, username):
@@ -1109,6 +1122,139 @@ def create_initial_tasks(rdb_session, round):
 
     rdb_session.commit()
     return ret
+
+
+from sqlalchemy.orm import joinedload
+
+
+def reassign_tasks(session, rnd, new_jurors):
+    """Different strategies for different outcomes:
+
+    * Try to balance toward everyone having cast roughly the same
+      number of votes (fair)
+    * Try to balance toward the most even task queue length per user
+      (fast)
+    * Balance toward the users that have been voting most (fastest)
+    """
+    # TODO: this may not handle jurors that are removed and then readded
+    from collections import defaultdict
+
+    assert len(new_jurors) >= rnd.quorum
+
+    all_jurors = session.query(User)\
+                        .join(Rating, RoundEntry)\
+                        .filter_by(round_id=rnd.id)\
+                        .all()
+    cur_tasks = session.query(Task)\
+                       .options(joinedload('round_entry'))\
+                       .join(RoundEntry)\
+                       .filter_by(round=rnd)\
+                       .all()
+
+    incomp_tasks = []
+    reassg_tasks = []
+
+    elig_map = defaultdict(lambda: list(new_jurors))
+    work_map = defaultdict(list)
+
+    comp_tasks = [t for t in cur_tasks if t.complete_date]
+    for task in comp_tasks:
+        try:
+            elig_map[task.round_entry].remove(task.user)
+        except ValueError:
+            pass
+
+    incomp_tasks = [t for t in cur_tasks
+                    if not t.complete_date or t.cancel_date]
+
+    for task in incomp_tasks:
+        work_map[task.user].append(task)
+
+    target_work_map = dict([(j, []) for j in new_jurors])
+    target_workload = int(len(incomp_tasks) / float(len(new_jurors))) + 1
+    for user, user_tasks in work_map.items():
+        if user not in new_jurors:
+            reassg_tasks.extend(user_tasks)
+            continue
+
+        reassg_tasks.extend(user_tasks[target_workload:])
+        target_work_map[user] = user_tasks[:target_workload]
+        for task in target_work_map[user]:
+            elig_map[task.round_entry].remove(user)
+
+    # and now the distribution of tasks begins
+
+    # future optimization note: totally new jurors are easy, as we can
+    # skip eligibility checks
+
+    # assuming initial task randomization remains sufficient here
+
+    reassg_set = set()
+    reassg_queue = list(reassg_tasks)
+
+    # weights, users = process_weighted_choice_map(weight_map)
+
+    def pick_eligible(eligible_users):
+        # TODO: cache?
+        if len(eligible_users) == 1:
+            return eligible_users[0]
+        wcp = [(target_workload - len(w), u)
+               for u, w in target_work_map.items()
+               if u in eligible_users]
+        wcp = [p[0] if p[0] > 0 else 0.001 for p in wcp]
+
+        return weighted_choice(wcp)
+
+    while reassg_queue:
+        task = reassg_queue.pop()
+        task.user = pick_eligible(elig_map[task.round_entry])
+        target_work_map[task.user].append(task)
+        reassg_set.add(task)
+
+    """
+    for user, target_work in target_work_map.items():
+        cur_delta = target_workload - len(target_work)
+        for task in reassg_tasks:
+            if cur_delta <= 0:
+                break
+            if user not in elig_map[task.round_entry]:
+                continue
+            if task in reassg_set:
+                continue  # could also do a deque with popleft and append
+            target_work.append(task)
+            task.user = user
+            cur_delta -= 1
+            reassg_set.add(task)
+            # TODO: off-by-ones can lead to unassigned tasks. verify, test.
+    """
+
+    assert len(reassg_set) == len(reassg_tasks)
+
+    return
+
+import bisect
+import random
+
+
+def weighted_choice(weighted_choices):
+    nsw_list, vals = process_weighted_choices(weighted_choices)
+    return fast_weighted_choice(nsw_list, vals)
+
+
+def process_weighted_choices(wcp):
+    total = float(sum([p[0] for p in wcp], 0.0))
+    if any([p[0] < 0 for p in wcp]):
+        raise ValueError('weight cannot be less than 0')
+    if not total:
+        raise ValueError()
+    norm_pairs = [(k / total, v) for k, v in wcp]
+    norm_pairs.sort(lambda x: x[0])
+    norm_sorted_weights, vals = zip(*norm_pairs)
+    return (norm_sorted_weights, vals)
+
+
+def fast_weighted_choice(nsw, values):
+    return values[bisect.bisect(nsw, random.random()) - 1]
 
 
 def make_rdb_session(echo=True):
