@@ -15,8 +15,8 @@ const UserService = function ($http, $q, $window) {
     addCampaign: (data) => $http.post(base + 'admin/new/campaign', data).then(getData, getData),
     addRound: (id, data) => $http.post(base + 'admin/campaign/' + id + '/new/round', data).then(getData, getData),
 
-    editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id, data).then(getData, getData),
-    editRound: (id, data) => $http.post(base + 'admin/round/' + id, data).then(getData, getData),
+    editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
+    editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
   };
 
   const juror = {
