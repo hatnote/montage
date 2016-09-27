@@ -68,6 +68,14 @@ flags attribute.
 MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
 
 
+"""
+class RDBSession(sessionmaker()):
+    def __init__(self, *a, **kw):
+        super(RDBSession, self).__init__(*a, **kw)
+        self.dao_list = []
+"""
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -198,6 +206,27 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    def get_count_map(self):
+        # TODO TODO TODO
+        # when more info is needed, can get session with
+        # inspect(self).session (might be None if not attached), only
+        # disadvantage is that user is not available to do permissions
+        # checking.
+        from sqlalchemy import inspect
+        rdb_session = inspect(self).session
+        if not rdb_session:
+            # TODO: just make a session
+            raise RuntimeError('cannot get counts for detached Round')
+        rdb_session.query(Task)  # etc.
+
+        """
+        interesting counts:
+          * entries
+          * disqualified entries
+          * open tasks
+          * total tasks
+        """
+
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
@@ -206,17 +235,13 @@ class Round(Base):
                'vote_method': self.vote_method,
                'open_date': fmt_date(self.open_date),
                'close_date': fmt_date(self.close_date),
-               'status': self.status,
-               'quorum': self.quorum,
-               'jurors': [rj.to_details_dict() for rj in self.round_jurors]}
+               'status': self.status}
         return ret
 
     def to_details_dict(self):
-        # TODO: if more info is needed, can get session with
-        # inspect(self).session (might be None if not attached), only
-        # disadvantage is that user is not available to do permissions
-        # checking.
         ret = self.to_info_dict()
+        ret['quorum'] = self.quorum
+        ret['jurors'] = [rj.to_details_dict() for rj in self.round_jurors]
         return ret
 
 
@@ -652,13 +677,13 @@ class CoordinatorDAO(UserDAO):
                             .all()
 
         for round_entry in round_entries:
-            dq_reason = 'upload date %s is out of campaign range %s '\
-                        '- %s' % (round_entry.entry.upload_date, min_date, max_date)
+            dq_reason = ('upload date %s is out of campaign range %s - %s'
+                         % (round_entry.entry.upload_date, min_date, max_date))
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-        msg = '%s disqualified %s entries outside of %s - %s'\
-              % (self.user.username, len(round_entries), min_date, max_date)
+        msg = ('%s disqualified %s entries outside of %s - %s'
+               % (self.user.username, len(round_entries), min_date, max_date))
         self.log_action('autodisqualify_by_date', round=rnd, message=msg)
 
         return round_entries
@@ -673,13 +698,13 @@ class CoordinatorDAO(UserDAO):
                             .all()
 
         for round_entry in round_entries:
-            dq_reason = 'resolution %s is less than %s minimum '\
-                        % (round_entry.entry.resolution, min_resolution)
+            dq_reason = ('resolution %s is less than %s minimum '
+                         % (round_entry.entry.resolution, min_resolution))
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-        msg = '%s disqualified %s entries smaller than %s pixels'\
-              % (self.user.username, len(round_entries), min_resolution)
+        msg = ('%s disqualified %s entries smaller than %s pixels'
+               % (self.user.username, len(round_entries), min_resolution))
         self.log_action('autodisqualify_by_resolution', round=rnd, message=msg)
 
         return round_entries
