@@ -4,7 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
-from utils import fmt_date
+from utils import fmt_date, PermissionDenied
 
 
 def get_juror_routes():
@@ -61,7 +61,7 @@ def get_index(rdb_session, user):
         raise Forbidden('not a juror for any rounds')
     data = []
     for rnd in rounds:
-        rnd_stats = juror_dao.get_round_task_counts(rnd.id)
+        rnd_stats = juror_dao.get_round_task_counts(rnd)
         rnd_details = make_juror_round_details(rnd, rnd_stats)
         data.append(rnd_details)
     return {'data': data}
@@ -103,7 +103,7 @@ def get_campaign(rdb_session, user, campaign_id):
     data = campaign.to_details_dict()
     rounds = []
     for rnd in campaign.rounds:
-        rnd_stats = juror_dao.get_round_task_counts(rnd.id)
+        rnd_stats = juror_dao.get_round_task_counts(rnd)
         rounds.append(make_juror_round_details(rnd, rnd_stats))
     data['rounds'] = rounds
     return {'data': data}
@@ -144,7 +144,7 @@ def get_round(rdb_session, user, round_id):
     """
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     rnd = juror_dao.get_round(round_id)
-    rnd_stats = juror_dao.get_round_task_counts(round_id)
+    rnd_stats = juror_dao.get_round_task_counts(rnd)
     if rnd is None:
         raise Forbidden('not a juror for this round')
     data = make_juror_round_details(rnd, rnd_stats)
@@ -240,7 +240,10 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
-    tasks = juror_dao.get_tasks_from_round(round_id=round_id,
+    rnd = juror_dao.get_round(round_id)
+    if not rnd:
+        raise PermissionDenied()
+    tasks = juror_dao.get_tasks_from_round(rnd=rnd,
                                            num=count,
                                            offset=offset)
     data = []
@@ -277,8 +280,11 @@ def submit_rating(rdb_session, user, request):
     # TODO: Confirm if task is open and valid
     task_id = request.form.get('task_id')
     rating = request.form.get('rating')
-    result = juror_dao.apply_rating(task_id, rating)
-    return {'data': {'task_id': task_id, 'rating': rating}}  # What should this return?
+    task = juror_dao.get_task(task_id)
+
+    juror_dao.apply_rating(task, rating)
+    # What should this return?
+    return {'data': {'task_id': task_id, 'rating': rating}}
 
 
 JUROR_ROUTES = get_juror_routes()

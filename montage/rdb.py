@@ -6,7 +6,6 @@ import random
 import itertools
 from datetime import datetime
 from math import ceil
-from collections import Counter
 
 from sqlalchemy import (Column,
                         String,
@@ -458,7 +457,6 @@ class AuditLogEntry(Base):
         return ret
 
 
-
 class UserDAO(object):
     """The Data Acccess Object wraps the rdb_session and active user
     model, providing a layer for model manipulation through
@@ -484,16 +482,6 @@ class UserDAO(object):
     def query(self, *a, **kw):
         "a call-through to the underlying session.query"
         return self.rdb_session.query(*a, **kw)
-
-    def get_campaign_name(self, campaign_id):
-        # TODO: check user permissions?
-        campaign = self.query(Campaign).filter_by(Round.id == campaign_id).one()
-        return campaign.name
-
-    def get_round_name(self, round_id):
-        # TODO: check user permissions?
-        round = self.query(Round).filter_by(Round.id == round_id).one()
-        return round.name
 
     def log_action(self, action, **kw):
         # TODO: file logging here too
@@ -537,9 +525,68 @@ class UserDAO(object):
 
 class CoordinatorDAO(UserDAO):
     """A Data Access Object for the Coordinator's view"""
+
+    # Some restrictions on editing round properties:
+    # (these restrictions are enforced in the endpoint funcs)
+    #
+    #   - no reassignment required: name, description, directions,
+    #     display_settings
+    #   - reassignment required: quorum, active_jurors
+    #   - not updateable: id, open_date, close_date, vote_method,
+    #     campaign_id/seq
+
     def check_is_coord(self):
         pass
 
+    # Read methods
+    def get_campaign(self, campaign_id):
+        campaign = self.query(Campaign)\
+                       .filter(
+                           Campaign.coords.any(username=self.user.username))\
+                       .filter_by(id=campaign_id)\
+                       .one_or_none()
+        return campaign
+
+    def get_all_campaigns(self):
+        campaigns = self.query(Campaign)\
+                        .filter(
+                            Campaign.coords.any(username=self.user.username))\
+                        .all()
+        return campaigns
+
+    def get_round(self, round_id):
+        round = self.query(Round)\
+                    .filter(
+                        Round.campaign.has(
+                            Campaign.coords.any(username=self.user.username)))\
+                    .filter_by(id=round_id)\
+                    .one_or_none()
+        return round
+
+    def get_round_task_counts(self, rnd):
+        total_tasks = self.query(Task)\
+                          .filter(Task.round_entry.has(round_id=rnd.id),
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.round_entry.has(round_id=rnd.id),
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return {'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks}
+
+    def get_entry_name_map(self, filenames):
+        entries = self.query(Entry)\
+                      .filter(Entry.name.in_(filenames))\
+                      .all()
+        ret = {}
+        for entry in entries:
+            name = entry.name
+            ret[name] = entry
+        return ret
+
+    # write methods
     def edit_campaign(self, campaign_id, campaign_dict):
         # TODO: confirm permissions in this query
         ret = self.rdb_session.query(Campaign)\
@@ -588,25 +635,6 @@ class CoordinatorDAO(UserDAO):
         self.log_action('create_round', round=rnd, message=msg)
 
         return rnd
-
-    def edit_round(self, round_id, round_dict):
-        # TODO: Confirm if dict keys are columns?
-
-        # Some restrictions on editing round properties:
-        # (these restrictions are enforced in the endpoint funcs)
-        #
-        #   - no reassignment required: name, description, directions,
-        #     display_settings
-        #   - reassignment required: quorum, active_jurors
-        #   - not updateable: id, open_date, close_date, vote_method,
-        #     campaign_id/seq
-        ret = self.rdb_session.query(Round)\
-                              .filter_by(id=round_id)\
-                              .update(round_dict)
-
-        self.rdb_session.commit()
-
-        return ret
 
     def autodisqualify_by_date(self, rnd):
         campaign = rnd.campaign
@@ -664,40 +692,30 @@ class CoordinatorDAO(UserDAO):
 
         return dq_dict
 
-    def pause_round(self, round_id):
-        rnd_status = {'status': 'paused'}
-        query = self.edit_round(round_id, rnd_status)
-        rnd = self.query(Round).filter(id=round_id).first()
+    def pause_round(self, rnd):
+        rnd.status = 'paused'
+
         msg = '%s paused round "%s"' % (self.user.username, rnd.name)
-        self.log_action('pause_round', round_id=round_id,
-                        message=msg)
-        return query
+        self.log_action('pause_round', round=rnd, message=msg)
 
-    def activate_round(self, round_id):
-        rnd = self.get_round(round_id)
+    def activate_round(self, rnd):
         tasks = create_initial_tasks(self.rdb_session, rnd)
-        rnd_dict = {'status': 'active',
-                    'open_date': datetime.now()}
-        query = self.edit_round(round_id, rnd_dict)
 
-        rnd = self.query(Round).filter(Round.id == round_id).first()
+        rnd.status = 'active'
+        rnd.open_date = rnd.open_date or datetime.now()
+
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
-        self.log_action('activate_round', round_id=round_id,
-                        message=msg)
+        self.log_action('activate_round', round=rnd, message=msg)
 
         return tasks
 
-    def close_round(self, round_id):
+    def close_round(self, rnd):
         pass
 
     def add_entries_from_cat(self):
         pass
 
-    def add_entries_from_csv_gist(self, gist_url, round_id):
-        rnd = self.get_round(round_id)
-
-        if not rnd:
-            raise DoesNotExist('round does not exist')
+    def add_entries_from_csv_gist(self, rnd, gist_url):
         entries = get_csv_from_gist(gist_url)
 
         commit_objs = []
@@ -705,7 +723,7 @@ class CoordinatorDAO(UserDAO):
 
         for entry_chunk in entry_chunks:
             entry_names = [e.name for e in entry_chunk]
-            db_entries = self.get_entries(entry_names)
+            db_entries = self.get_entry_name_map(entry_names)
 
             for entry in entry_chunk:
                 db_entry = db_entries.get(entry.name)
@@ -725,7 +743,7 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.commit()
         return rnd
 
-    def reassign(self, round_id, active_jurors):
+    def reassign(self, rnd, active_jurors):
         pass
 
     def add_juror(self, username):
@@ -739,19 +757,15 @@ class CoordinatorDAO(UserDAO):
             self.rdb_session.commit()
         return user
 
-    def cancel_round(self, round_id):
-        rnd = self.query(Round)\
-                  .get(round_id)
-
+    def cancel_round(self, rnd):
         tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=round_id),
+                    .filter(Task.round_entry.has(round_id=rnd.id),
                             Task.complete_date == None)\
                     .all()
+        cancel_date = datetime.utcnow()
 
         rnd.status = 'cancelled'
-        rnd.close_date = datetime.utcnow()
-
-        cancel_date = datetime.utcnow()
+        rnd.close_date = cancel_date
 
         for task in tasks:
             task.cancel_date = cancel_date
@@ -762,31 +776,25 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def finalize_round(self, round_id):
-        rnd = self.query(Round)\
-                  .get(round_id)
-
+    def finalize_round(self, rnd):
+        # TODO TODO TODO
         tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=round_id),
+                    .filter(Task.round_entry.has(round_id=rnd.id),
                             Task.complete_date == None)\
                     .all()
+        complete_date = datetime.utcnow()
 
-        rnd.status = 'cancelled'
-        rnd.close_date = datetime.utcnow()
+        rnd.status = 'complete'
+        rnd.close_date = complete_date
 
-        cancel_date = datetime.utcnow()
-
-        for task in tasks:
-            task.cancel_date = cancel_date
-
-        msg = '%s cancelled round "%s" and %s open tasks' %\
-              (self.user.username, rnd.name, len(tasks))
+        msg = '%s finalized round "%s"' %\
+              (self.user.username, rnd.name)
         self.log_action('cancel_round', round=rnd, message=msg)
 
         return rnd
 
-    def get_round_average_ratings(self, round_id):
-        round_counts = self.get_round_task_counts(round_id)
+    def get_round_average_ratings(self, rnd):
+        round_counts = self.get_round_task_counts(rnd)
 
         if round_counts['total_open_tasks']:
             raise InvalidAction('cannot close round with open tasks'
@@ -798,7 +806,7 @@ class CoordinatorDAO(UserDAO):
                              func.avg(Rating.value).label('average'))\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(Rating.round_entry.has(round_id=round_id))\
+                      .filter(Rating.round_entry.has(round_id=rnd.id))\
                       .group_by(Rating.round_entry_id)\
                       .all()
 
@@ -812,68 +820,15 @@ class CoordinatorDAO(UserDAO):
         ret = {'ratings': ratings, 'counts': thresh_counts}
         return ret
 
-    # Read methods
-    def get_all_campaigns(self):
-        campaigns = self.query(Campaign)\
-                        .filter(
-                            Campaign.coords.any(username=self.user.username))\
-                        .all()
-        return campaigns
-
-    def get_campaign(self, campaign_id=None):
-        campaign = self.query(Campaign)\
-                       .filter(
-                           Campaign.coords.any(username=self.user.username))\
-                       .filter_by(id=campaign_id)\
-                       .one_or_none()
-        return campaign
-
-    def get_round(self, round_id):
-        round = self.query(Round)\
-                    .filter(
-                        Round.campaign.has(
-                            Campaign.coords.any(username=self.user.username)))\
-                    .filter_by(id=round_id)\
-                    .one_or_none()
-        return round
-
-    def get_round_task_counts(self, round_id):
-        total_tasks = self.query(Task)\
-                          .filter(Task.round_entry.has(round_id=round_id),
-                                  Task.cancel_date == None)\
-                          .count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.round_entry.has(round_id=round_id),
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
-                               .count()
-        return {'total_tasks': total_tasks,
-                'total_open_tasks': total_open_tasks}
-
-    def get_entries(self, filenames):
-        entries = self.query(Entry)\
-                      .filter(Entry.name.in_(filenames))\
-                      .all()
-        ret = {}
-        for entry in entries:
-            name = entry.name
-            ret[name] = entry
-        return ret
-
 
 class OrganizerDAO(CoordinatorDAO):
-    def check_is_organizer(self):
-        return self.user.is_organizer
-
-    def add_coordinator(self, username, campaign_id):
+    def add_coordinator(self, campaign, username):
         user = lookup_user(self.rdb_session, username=username)
         if not user:
-            print 'new user'
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
                         created_by=self.user.id)
-        campaign = self.get_campaign(campaign_id=campaign_id)
         if not campaign:
             raise DoesNotExist('campaign does not exist')
         if user in campaign.coords:
@@ -891,7 +846,8 @@ class OrganizerDAO(CoordinatorDAO):
 
     def create_campaign(self, name, open_date, close_date):
         # TODO: Check if campaign with this name already exists?
-        campaign = Campaign(name=name, open_date=open_date, close_date=close_date)
+        campaign = Campaign(name=name,
+                            open_date=open_date, close_date=close_date)
         self.rdb_session.add(campaign)
         campaign.coords.append(self.user)
         self.rdb_session.commit()
@@ -909,9 +865,6 @@ class OrganizerDAO(CoordinatorDAO):
 
 
 class MaintainerDAO(OrganizerDAO):
-    def check_is_maintainer(self):
-        pass
-
     def get_audit_log(self, limit=100, offset=0):
         audit_logs = self.query(AuditLogEntry)\
                          .order_by(AuditLogEntry.create_date.desc())\
@@ -942,29 +895,6 @@ class MaintainerDAO(OrganizerDAO):
 
 class JurorDAO(UserDAO):
     """A Data Access Object for the Juror's view"""
-    def is_juror(self):
-        pass
-
-    def edit_task(self, task_id, task_dict):
-        # TODO: Confirm if dict keys are columns?
-        ret = self.rdb_session.query(Task)\
-                              .filter_by(id=task_id)\
-                              .update(task_dict)
-        self.rdb_session.commit()
-        return ret
-
-    def apply_rating(self, task_id, rating):
-        task = self.get_task(task_id)
-        if task.user != self.user:
-            raise PermissionDenied()
-        rating = Rating(user_id=self.user.id,
-                        task_id=task_id,
-                        round_entry_id=task.round_entry_id,
-                        value=rating)
-        self.rdb_session.add(rating)
-        task_dict = {'complete_date': datetime.now()}
-        self.edit_task(task_id, task_dict)
-
     # Read methods
     def get_all_rounds(self):
         rounds = self.query(Round)\
@@ -988,22 +918,11 @@ class JurorDAO(UserDAO):
                     .one_or_none()
         return round
 
-    def get_round_task_counts(self, round_id):
-        re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
-        total_tasks = self.query(Task)\
-                          .filter(Task.round_entry.has(round_id=round_id),
-                                  Task.user_id == self.user.id,
-                                  Task.cancel_date == None)\
-                          .count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.round_entry.has(round_id=round_id),
-                                       Task.user_id == self.user.id,
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
-                               .count()
-        return {'total_round_entries': re_count,
-                'total_tasks': total_tasks,
-                'total_open_tasks': total_open_tasks}
+    def get_task(self, task_id):
+        task = self.query(Task)\
+                   .filter_by(id=task_id)\
+                   .one_or_none()
+        return task
 
     def get_tasks(self, num=1, offset=0):
         tasks = self.query(Task)\
@@ -1014,29 +933,46 @@ class JurorDAO(UserDAO):
                     .all()
         return tasks
 
-    def get_tasks_from_round(self, round_id, num=1, offset=0):
+    def get_tasks_from_round(self, rnd, num=1, offset=0):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
                             Task.complete_date == None,
-                            Task.round_entry.has(round_id=round_id))\
+                            Task.round_entry.has(round_id=rnd.id))\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
 
-    def get_task(self, task_id):
-        task = self.query(Task)\
-                   .filter_by(id=task_id)\
-                   .one_or_none()
-        return task
+    def get_round_task_counts(self, rnd):
+        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
+        total_tasks = self.query(Task)\
+                          .filter(Task.round_entry.has(round_id=rnd.id),
+                                  Task.user_id == self.user.id,
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.round_entry.has(round_id=rnd.id),
+                                       Task.user_id == self.user.id,
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return {'total_round_entries': re_count,
+                'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks}
 
-    def get_next_round_task(self, round_id):
-        pass
+    def apply_rating(self, task, rating):
+        if task.user != self.user:
+            raise PermissionDenied()
+        rating = Rating(user_id=self.user.id,
+                        task_id=task.id,
+                        round_entry_id=task.round_entry_id,
+                        value=rating)
+        self.rdb_session.add(rating)
+        task.complete_date = datetime.now()
+        return
 
 
 def lookup_user(rdb_session, username=None, userid=None):
-    if not rdb_session:
-        import pdb; pdb.set_trace()
     if not username and userid:
         raise TypeError('missing either a username or userid')
     if username and not userid:

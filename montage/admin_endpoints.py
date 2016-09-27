@@ -111,7 +111,7 @@ def import_entries(rdb_session, user, round_id, request):
     import_method = request.form.get('import_method')
     if import_method == 'gistcsv':
         gist_url = request.form.get('gist_url')
-        rnd = coord_dao.add_entries_from_csv_gist(gist_url, round_id)
+        rnd = coord_dao.add_entries_from_csv_gist(rnd, gist_url)
     else:
         # TODO: Support category based input via labs
         #       (other import methods too?)
@@ -136,10 +136,9 @@ def activate_round(rdb_session, user, round_id, request):
         status:
             type: string
     """
-    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
-        raise Forbidden('not allowed to activate round')
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    tasks = coord_dao.activate_round(round_id)
+    rnd = coord_dao.get_round(round_id)
+    tasks = coord_dao.activate_round(rnd)
     # TODO: Confirm round exists?
     data = {'round_id': round_id,
             'total_tasks': len(tasks)}
@@ -203,7 +202,7 @@ def create_round(rdb_session, user, campaign_id, request):
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
     rnd = coord_dao.create_round(**rnd_dict)
-    rnd_stats = coord_dao.get_round_task_counts(rnd.id)
+    rnd_stats = coord_dao.get_round_task_counts(rnd)
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
@@ -348,7 +347,7 @@ def get_round(rdb_session, user, round_id):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    rnd_stats = coord_dao.get_round_task_counts(round_id)
+    rnd_stats = coord_dao.get_round_task_counts(rnd)
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
     # entries_info = user_dao.get_entry_info(round_id) # TODO
@@ -427,7 +426,8 @@ def add_coordinator(rdb_session, user, campaign_id, request):
     # TODO: verify campaign id?
     org_dao = OrganizerDAO(rdb_session, user)
     new_user_name = request.form.get('username')
-    new_coord = org_dao.add_coordinator(new_user_name, campaign_id)
+    campaign = org_dao.get_campaign(campaign_id)
+    new_coord = org_dao.add_coordinator(campaign, new_user_name)
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
             'last_login_date': fmt_date(new_coord.last_login_date)}

@@ -18,10 +18,10 @@ GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41
 def cross_complete(rdb_session, rnd):
     juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
     juror1_dao = JurorDAO(rdb_session, juror1)
-    task = juror1_dao.get_tasks_from_round(rnd.id, num=1)[0]
+    task = juror1_dao.get_tasks_from_round(rnd, num=1)[0]
 
     juror2_dao = JurorDAO(rdb_session, juror2)
-    juror2_dao.apply_rating(task.id, 0.2)
+    juror2_dao.apply_rating(task, 0.2)
 
     return
 
@@ -30,7 +30,7 @@ def rate_round_tasks(rdb_session, rnd, limit_per=None):
     for juror in rnd.jurors:
         print '.. voting for %s' % juror.username
         juror_dao = JurorDAO(rdb_session, juror)
-        tasks = juror_dao.get_tasks_from_round(rnd.id)
+        tasks = juror_dao.get_tasks_from_round(rnd)
 
         count = 0
         while tasks:
@@ -38,8 +38,8 @@ def rate_round_tasks(rdb_session, rnd, limit_per=None):
                 break
             task = tasks.pop()
             vote = random.choice([0.0, 0.25, 0.5, 0.75, 1.0])
-            juror_dao.apply_rating(task.id, vote)
-            tasks = juror_dao.get_tasks_from_round(rnd.id)
+            juror_dao.apply_rating(task, vote)
+            tasks = juror_dao.get_tasks_from_round(rnd)
             count += 1
 
     return
@@ -62,8 +62,8 @@ def main():
                                        open_date=datetime(2015, 9, 10),
                                        close_date=datetime(2015, 10,1))
 
-    org_dao.add_coordinator('Yarl', campaign.id)
-    org_dao.add_coordinator('Slaporte', campaign.id)
+    org_dao.add_coordinator(campaign, username='Yarl')
+    org_dao.add_coordinator(campaign, 'Slaporte')
 
     coord_user = lookup_user(rdb_session, 'Yarl')
     coord_dao = CoordinatorDAO(rdb_session, coord_user)
@@ -74,19 +74,16 @@ def main():
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts
-    # coord_dao.add_entries_from_cat('Wiki Loves Monuments France 2015',
-    #                               round_id=rnd.id)
+    # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
 
-    coord_dao.add_entries_from_csv_gist(GIST_URL, round_id=rnd.id)
-
-    # coord_dao.edit_round(rnd.id, {'status': 'active'})
+    coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)
 
     #coord_dao.disqualify_entry(entry)
 
-    coord_dao.activate_round(rnd.id)
+    coord_dao.activate_round(rnd)
 
     try:
         cross_complete(rdb_session, rnd)
@@ -97,7 +94,7 @@ def main():
 
     rate_round_tasks(rdb_session, rnd, limit_per=20)
 
-    coord_dao.cancel_round(rnd.id)
+    coord_dao.cancel_round(rnd)
 
     # # should fail, quorum must be <= # of jurors
     # coord_dao.reassign(active_jurors=['Slaporte'])
@@ -107,8 +104,8 @@ def main():
                                  vote_method='rating',
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl'],
                                  campaign=campaign)
-    coord_dao.add_entries_from_csv_gist(GIST_URL, round_id=rnd.id)
-    coord_dao.activate_round(rnd.id)
+    coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    coord_dao.activate_round(rnd)
 
     rate_round_tasks(rdb_session, rnd, limit_per=20)
 
@@ -116,11 +113,9 @@ def main():
 
     rate_round_tasks(rdb_session, rnd)
 
-    ratings_res = coord_dao.get_round_average_ratings(rnd.id)
+    ratings_res = coord_dao.get_round_average_ratings(rnd)
 
-    import pdb;pdb.set_trace()
-
-    # coord_dao.finalize_round(rnd.id)
+    # coord_dao.finalize_round(rnd)
 
     # coord_dao.reassign(active_jurors=['Slaporte', 'Yarl'])
 
@@ -129,7 +124,7 @@ def main():
 
     # # coord_dao can do the following, too
     # # org_dao.cancel_round
-    # org_dao.close_round(rnd.id)
+    # org_dao.close_round(rnd)
 
     # # start new round
     # # close round
