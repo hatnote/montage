@@ -64,6 +64,7 @@ A bit of space for dev bookkeeping.
 * Campaign + first Round as single step?
 * Bug: created round has no status
 * Blacklisted user disqualification
+* Load dates
 
 ## Frontend
 

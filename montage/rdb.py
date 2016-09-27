@@ -101,6 +101,19 @@ class User(Base):
     def is_maintainer(self):
         return self.username in MAINTAINERS
 
+    def to_info_dict(self):
+        ret = {'id': self.id,
+               'username': self.username,
+               'is_organizer': self.is_organizer,
+               'is_maintainer': self.is_maintainer}
+        return ret
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['last_login_date'] = self.last_login_date
+        ret['created_by'] = self.created_by
+        return ret
+
 
 class Campaign(Base):
     __tablename__ = 'campaigns'
@@ -120,6 +133,18 @@ class Campaign(Base):
     campaign_coords = relationship('CampaignCoord')
     coords = association_proxy('campaign_coords', 'user',
                                creator=lambda user: CampaignCoord(coord=user))
+
+    def to_info_dict(self):
+        ret = {'id': self.id,
+               'name': self.name,
+               'url_name': slugify(self.name, '-')}
+        return ret
+
+    def to_details_dict(self, admin=None):  # TODO: with_admin?
+        ret = self.to_info_dict()
+        ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds]
+        ret['coordinators'] = [user.to_info_dict() for user in self.coords]
+        return ret
 
 
 class CampaignCoord(Base):  # Coordinator, not Coordinate
@@ -390,6 +415,19 @@ class AuditLogEntry(Base):
 
     create_date = Column(TIMESTAMP, server_default=func.now())
 
+    def to_info_dict(self):
+        ret = {'id': self.id,
+               'user_id': self.user_id,
+               'campaign_id': self.campaign_id,
+               'round_id': self.round_id,
+               'round_entry_id': self.round_entry_id,
+               'role': self.role,
+               'action': self.action,
+               'message': self.message,
+               'create_date': fmt_date(self.create_date)}
+        return ret
+
+
 
 class UserDAO(object):
     """The Data Acccess Object wraps the rdb_session and active user
@@ -404,6 +442,14 @@ class UserDAO(object):
     def __init__(self, rdb_session, user):
         self.rdb_session = rdb_session
         self.user = user
+
+    @property
+    def role(self):
+        cn_role = self.__class__.__name__.replace('DAO', '').lower()
+        # allow overriding with _role attribute
+        return getattr(self, '_role', cn_role)
+
+    # TODO: def is_admin ?
 
     def query(self, *a, **kw):
         "a call-through to the underlying session.query"

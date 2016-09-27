@@ -10,23 +10,6 @@ from rdb import (CoordinatorDAO,
                  OrganizerDAO)
 
 
-def make_admin_campaign_info(campaign):
-    ret = {'id': campaign.id,
-           'name': campaign.name,
-           'canonical_url_name': slugify(campaign.name)}
-    return ret
-
-
-def make_admin_campaign_details(campaign):
-    ret = {'id': campaign.id,
-           'name': campaign.name,
-           'canonical_url_name': slugify(campaign.name),
-           'rounds': [rnd.to_info_dict() for rnd in campaign.rounds],
-           'coordinators': [make_campaign_coordinator_info(c)
-                            for c in campaign.coords]}
-    return ret
-
-
 def make_admin_round_details(rnd, rnd_stats):
     if rnd_stats['total_tasks']:
         percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
@@ -45,27 +28,9 @@ def make_admin_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': percent_tasks_open,
-           'campaign': make_admin_campaign_info(rnd.campaign),
-           'jurors': [make_round_juror_details(j) for j in rnd.round_jurors]}
+           'campaign': rnd.campaign.to_info_dict(),
+           'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
-    return ret
-
-
-def make_audit_log(audit_log):
-    ret = {'id': audit_log.id,
-           'user_id': audit_log.user_id,
-           'campaign_id': audit_log.campaign_id,
-           'round_id': audit_log.round_id,
-           'round_entry_id': audit_log.round_entry_id,
-           'role': audit_log.role,
-           'action': audit_log.action,
-           'message': audit_log.message,
-           'create_date': fmt_date(audit_log.create_date)}
-    return ret
-
-
-def make_campaign_coordinator_info(coordinator):
-    ret = {'username': coordinator.username}
     return ret
 
 
@@ -91,7 +56,8 @@ def create_campaign(user, rdb_session, request):
     campaign = org_dao.create_campaign(name=new_camp_name,
                                        open_date=open_date,
                                        close_date=close_date)
-    data = make_admin_campaign_details(campaign)
+    # TODO: need completion info for each round
+    data = campaign.to_details_dict()
 
     return {'data': data}
 
@@ -271,7 +237,7 @@ def get_index(rdb_session, user):
     data = []
 
     for campaign in campaigns:
-        data.append(make_admin_campaign_details(campaign))
+        data.append(campaign.to_details_dict())
 
     return {'data': data}
 
@@ -309,7 +275,7 @@ def get_campaign(rdb_session, user, campaign_id):
     campaign = coord_dao.get_campaign(campaign_id)
     if campaign is None:
         raise Forbidden('not a coordinator on this campaign')
-    data = make_admin_campaign_details(campaign)
+    data = campaign.to_details_dict()
     return {'data': data}
 
 
@@ -381,7 +347,7 @@ def get_audit_logs(rdb_session, user, request):
 
     main_dao = MaintainerDAO(rdb_session, user)
     audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
-    data = [make_audit_log(l) for l in audit_logs]
+    data = [l.to_info_dict() for l in audit_logs]
 
     return {'data': data}
 
