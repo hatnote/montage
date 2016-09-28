@@ -41,16 +41,12 @@ A bit of space for dev bookkeeping.
 ## Backend
 
 * Closing behaviors
-    * Compute ratings
     * Compute ranking winners
 * Permissions cleanup for admin endpoints
      * e.g., organizer checks
 * Check for resource existence instead of raising 500s (e.g., campaign endpoints)
 * Logging and timing
-* Audit logging
-* Task reassignment
 * Locking
-* Round overview for admins
 * Undo rating submit
 * Clean up + standardize user creation for `add_juror/add_organizer/add_coordinator`
 * Add indexes
@@ -62,11 +58,9 @@ A bit of space for dev bookkeeping.
 * category import
 * lookup round + check round permissions
 * endpoint should return progress info (/admin/round/<id>, /admin)
-* deadline date for Round
 * Campaign + first Round as single step?
-* Bug: created round has no status
 * Blacklisted user disqualification
-* Load dates
+* Load dates (?)
 
 ## Frontend
 
