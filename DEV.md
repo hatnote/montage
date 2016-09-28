@@ -53,7 +53,10 @@ A bit of space for dev bookkeeping.
 * Round overview for admins
 * Undo rating submit
 * Clean up + standardize user creation for `add_juror/add_organizer/add_coordinator`
-
+* Add indexes
+* Switch request_dict to Werkzeug MultiDict for BadRequest behavior
+* get rid of comma splitting
+* frontend must not be able to pass floats
 ...
 
 * DAO.add_juror doesn't add jurors really
