@@ -110,7 +110,7 @@ def main():
     coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     coord_dao.activate_round(rnd)
 
-    rate_round_tasks(rdb_session, rnd, limit_per=150)
+    rate_round_tasks(rdb_session, rnd, limit_per=50)
 
     coord_dao.modify_jurors(rnd, [user_obj, coord_user])
     import pdb;pdb.set_trace()

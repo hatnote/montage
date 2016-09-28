@@ -52,11 +52,11 @@ A bit of space for dev bookkeeping.
 * Locking
 * Round overview for admins
 * Undo rating submit
+* Clean up + standardize user creation for `add_juror/add_organizer/add_coordinator`
 
 ...
 
 * DAO.add_juror doesn't add jurors really
-* check for image date range (and disqualify accordingly)
 * category import
 * lookup round + check round permissions
 * endpoint should return progress info (/admin/round/<id>, /admin)

@@ -23,6 +23,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 from boltons.strutils import slugify
 from boltons.iterutils import chunked
+from boltons.statsutils import mean
 
 from simple_serdes import DictableBase, JSONEncodedDict
 from utils import (fmt_date,
@@ -912,10 +913,20 @@ class CoordinatorDAO(UserDAO):
             raise InvalidAction('expected at least %s jurors to make quorum'
                                 ' (%s) for round #%s'
                                 % (len(new_jurors), rnd.quorum, rnd.id))
+        new_juror_names = sorted([nj.username for nj in new_jurors])
+        old_juror_names = sorted([oj.username for oj in rnd.jurors])
+        if new_juror_names == old_juror_names:
+            raise InvalidAction('new jurors must differ from current jurors')
 
-        reassign_tasks(self.rdb_session, rnd, new_jurors)
-        # TODO: audit log
-        return
+        res = reassign_tasks(self.rdb_session, rnd, new_jurors)
+
+        msg = ('%s changed round #%s jurors (%r -> %r), reassigned %s tasks'
+               ' (average juror task queue now at %s)'
+               % (self.user.username, rnd.id, old_juror_names, new_juror_names,
+                  res['reassigned_task_count'], res['task_count_mean']))
+
+        self.log_action('modify_jurors', round=rnd, message=msg)
+        return res
 
 
 class OrganizerDAO(CoordinatorDAO):
@@ -1129,6 +1140,7 @@ def create_initial_tasks(rdb_session, round):
     return ret
 
 
+from collections import defaultdict
 from sqlalchemy.orm import joinedload
 
 
@@ -1141,8 +1153,7 @@ def reassign_tasks(session, rnd, new_jurors):
       (fast)
     * Balance toward the users that have been voting most (fastest)
     """
-    # TODO: this may not handle jurors that are removed and then readded
-    from collections import defaultdict
+    # TODO: have this cancel tasks and create new ones.
 
     assert len(new_jurors) >= rnd.quorum
 
@@ -1170,7 +1181,7 @@ def reassign_tasks(session, rnd, new_jurors):
             pass
 
     incomp_tasks = [t for t in cur_tasks
-                    if not t.complete_date or t.cancel_date]
+                    if not (t.complete_date or t.cancel_date)]
 
     for task in incomp_tasks:
         work_map[task.user].append(task)
@@ -1194,44 +1205,30 @@ def reassign_tasks(session, rnd, new_jurors):
 
     # assuming initial task randomization remains sufficient here
 
-    reassg_set = set()
     reassg_queue = list(reassg_tasks)
 
-    def pick_eligible(eligible_users):
+    def choose_eligible(eligible_users):
         # TODO: cache?
         wcp = [(target_workload - len(w), u)
                for u, w in target_work_map.items()
                if u in eligible_users]
-        wcp = [p[0] if p[0] > 0 else 0.001 for p in wcp]
+        wcp = [(p[0] if p[0] > 0 else 0.001, p[1]) for p in wcp]
 
         return weighted_choice(wcp)
 
     while reassg_queue:
         task = reassg_queue.pop()
-        task.user = pick_eligible(elig_map[task.round_entry])
+        task.user = choose_eligible(elig_map[task.round_entry])
         target_work_map[task.user].append(task)
-        reassg_set.add(task)
 
-    """
-    for user, target_work in target_work_map.items():
-        cur_delta = target_workload - len(target_work)
-        for task in reassg_tasks:
-            if cur_delta <= 0:
-                break
-            if user not in elig_map[task.round_entry]:
-                continue
-            if task in reassg_set:
-                continue  # could also do a deque with popleft and append
-            target_work.append(task)
-            task.user = user
-            cur_delta -= 1
-            reassg_set.add(task)
-            # TODO: off-by-ones can lead to unassigned tasks. verify, test.
-    """
+    if len(reassg_tasks) == 0:
+        import pdb;pdb.set_trace()
 
-    assert len(reassg_set) == len(reassg_tasks)
-
-    return
+    task_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
+    return {'incomplete_task_count': len(incomp_tasks),
+            'reassigned_task_count': len(reassg_tasks),
+            'task_count_map': task_count_map,
+            'task_count_mean': mean(task_count_map.values())}
 
 
 def make_rdb_session(echo=True):
