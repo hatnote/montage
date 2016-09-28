@@ -193,8 +193,6 @@ def create_round(rdb_session, user, campaign_id, request_dict):
         val = request_dict.get(column)
         if not val:
             raise InvalidAction('%s is required to create a round' % val)
-        if column is 'jurors':
-            val = val.split(',')
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
         if column is 'deadline_date':

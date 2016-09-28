@@ -158,7 +158,8 @@ class Campaign(Base):
         ret = self.to_info_dict()
         ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds]
         ret['coordinators'] = [user.to_info_dict() for user in self.coords]
-        ret['active_round'] = self.active_round.to_info_dict()
+        active_rnd = self.active_round
+        ret['active_round'] = active_rnd.to_info_dict() if active_rnd else None
         return ret
 
 

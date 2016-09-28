@@ -117,7 +117,11 @@ def full_run(url_base):
             'vote_method': 'yesno',
             'quorum': 4,
             'deadline_date': datetime(2016, 10, 15).isoformat(),
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
+            'jurors': [u'Slaporte',
+                       u'MahmoudHashemi',
+                       u'Effeietsanders',
+                       u'Jean-Frédéric',
+                       u'LilyOfTheWest']}
 
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
@@ -130,7 +134,12 @@ def full_run(url_base):
             'vote_method': 'rating',
             'quorum': 4,
             'deadline_date': datetime(2016, 10, 15).isoformat(),
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
+            'jurors': [u'Slaporte',
+                       u'MahmoudHashemi',
+                       u'Effeietsanders',
+                       u'Jean-Frédéric',
+                       u'LilyOfTheWest']}
+
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id2 = resp_dict['data']['id']
@@ -142,7 +151,13 @@ def full_run(url_base):
             'vote_method': 'ranking',
             'quorum': 4,
             'deadline_date': datetime(2016, 10, 15).isoformat(),
-            'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
+            'jurors': [u'Slaporte',
+                       u'MahmoudHashemi',
+                       u'Effeietsanders',
+                       u'Jean-Frédéric',
+                       u'LilyOfTheWest']}
+
+
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
     round_id3 = resp_dict['data']['id']
