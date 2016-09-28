@@ -1,19 +1,14 @@
 
-from datetime import datetime
-
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import format_date, InvalidAction
+from utils import format_date, get_threshold_map, InvalidAction
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
-
-
-DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 def get_admin_routes():
@@ -26,6 +21,8 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/activate', activate_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
+           GET('/admin/round/<round_id:int>/preview_results',
+               get_round_results_preview),
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/add_coordinator/campaign/<campaign_id:int>',
                 add_coordinator),
@@ -241,6 +238,22 @@ def edit_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.edit_round(round_id, rnd_dict)
     return {'data': rnd_dict}
+
+
+def get_round_results_preview(rdb_session, user, round_id):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    round_counts = coord_dao.get_round_task_counts(rnd)
+    is_closeable = round_counts['total_open_tasks'] == 0
+
+    rating_map = coord_dao.get_round_average_rating_map(rnd)
+    thresh_map = get_threshold_map(rating_map)
+
+    return {'data': {'counts': round_counts,
+                     'ratings': rating_map,
+                     'thresholds': thresh_map,
+                     'is_closeable': is_closeable}}
 
 
 def get_index(rdb_session, user):

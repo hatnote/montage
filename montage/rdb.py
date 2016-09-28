@@ -5,6 +5,7 @@ import json
 import random
 import itertools
 from datetime import datetime
+from collections import Counter
 from math import ceil
 
 from sqlalchemy import (Column,
@@ -790,9 +791,6 @@ class CoordinatorDAO(UserDAO):
 
         return tasks
 
-    def close_round(self, rnd):
-        pass
-
     def add_entries_from_cat(self):
         pass
 
@@ -874,32 +872,23 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def get_round_average_ratings(self, rnd):
-        round_counts = self.get_round_task_counts(rnd)
+    def get_round_average_rating_map(self, rnd):
+        # round_counts = self.get_round_task_counts(rnd)
+        # if round_counts['total_open_tasks']:
+        #    raise InvalidAction('cannot close round with open tasks'
+        #                        ' (%r outstanding)'
+        #                        % round_counts['total_open_tasks'])
 
-        if round_counts['total_open_tasks']:
-            raise InvalidAction('cannot close round with open tasks'
-                                ' (%r outstanding)'
-                                % round_counts['total_open_tasks'])
-
-        ratings = []
-        results = self.query(Rating, Entry,
-                             func.avg(Rating.value).label('average'))\
+        results = self.query(Rating, func.avg(Rating.value).label('average'))\
                       .join(RoundEntry)\
-                      .join(Entry)\
                       .filter(Rating.round_entry.has(round_id=rnd.id))\
                       .group_by(Rating.round_entry_id)\
                       .all()
 
-        results.sort(key=lambda x: x[2], reverse=True)  # TODO: order_by
+        # thresh_counts = get_threshold_map(r[1] for r in ratings)
+        rating_ctr = Counter([r[1] for r in results])
 
-        for rating in results:
-            ratings.append((rating[1].name, rating[2], rating[1]))
-
-        thresh_counts = get_threshold_map(r[1] for r in ratings)
-
-        ret = {'ratings': ratings, 'counts': thresh_counts}
-        return ret
+        return dict(rating_ctr)
 
     def modify_jurors(self, rnd, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with
@@ -918,6 +907,8 @@ class CoordinatorDAO(UserDAO):
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
+        # TODO: set old_jurors to inactive in RoundJuror table
+        # TODO: add new jurors to RoundJuror table
         res = reassign_tasks(self.rdb_session, rnd, new_jurors)
 
         msg = ('%s changed round #%s jurors (%r -> %r), reassigned %s tasks'

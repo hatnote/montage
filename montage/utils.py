@@ -70,14 +70,15 @@ def get_mw_userid(username):
     return user_id
 
 
-def get_threshold_map(values):
-    score_counts = Counter([v for v in values])
+def get_threshold_map(ratings_map):
     thresh_counts = {}
-    scores = [0] + list(score_counts)
-    for score in scores:
-        score = round(score, 3)
-        total_gte = sum([v for k, v in score_counts.items() if k >= score])
-        thresh_counts[score] = total_gte
+    ratings_map[0.0] = ratings_map.get(0.0, 0)
+    ratings_map[1.0] = ratings_map.get(1.0, 0)
+    ratings = ratings_map.keys()
+    for rating in ratings:
+        rating = round(rating, 3)
+        total_gte = sum([v for k, v in ratings_map.items() if k >= rating])
+        thresh_counts[rating] = total_gte
     return thresh_counts
 
 

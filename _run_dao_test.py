@@ -6,7 +6,7 @@ from montage.rdb import (make_rdb_session,
                          MaintainerDAO,
                          CoordinatorDAO,
                          lookup_user)
-from montage.utils import PermissionDenied
+from montage.utils import PermissionDenied, get_threshold_map
 
 import random
 
@@ -60,7 +60,7 @@ def main():
     # should automatically add the creator as coordinator
     campaign = org_dao.create_campaign(name='Test Campaign 2016',
                                        open_date=datetime(2015, 9, 10),
-                                       close_date=datetime(2015, 10,1))
+                                       close_date=datetime(2015, 10, 1))
 
     org_dao.add_coordinator(campaign, username='Yarl')
     org_dao.add_coordinator(campaign, 'Slaporte')
@@ -113,23 +113,16 @@ def main():
     rate_round_tasks(rdb_session, rnd, limit_per=50)
 
     coord_dao.modify_jurors(rnd, [user_obj, coord_user])
-    import pdb;pdb.set_trace()
 
     # some read tasks
 
     rate_round_tasks(rdb_session, rnd)
 
-    ratings_res = coord_dao.get_round_average_ratings(rnd)
+    avg_ratings_map = coord_dao.get_round_average_rating_map(rnd)
+    threshold_map = get_threshold_map(avg_ratings_map)
 
     # coord_dao.finalize_round(rnd)
 
-    # coord_dao.reassign(active_jurors=['Slaporte', 'Yarl'])
-
-    # # a loop going over a bunch more ratings probably until
-    # # get_next_task returns None
-
-    # # coord_dao can do the following, too
-    # # org_dao.cancel_round
     # org_dao.close_round(rnd)
 
     # # start new round

@@ -8,6 +8,7 @@ import urllib2
 import urlparse
 import argparse
 import cookielib
+from pprint import pprint
 
 from datetime import datetime
 
@@ -216,6 +217,11 @@ def full_run(url_base):
     resp_dict = fetch_json(url_base + '/juror/submit/rating', data)
 
     print '.. submitted rating on task #%s' % task_id
+
+    resp_dict = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id3)
+    pprint(resp_dict)
+    print '.. previewed results for round #%s' % round_id3
+
 
     # TODO:
     #
