@@ -11,7 +11,7 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, userService) {
+    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, alertService, userService) {
         let vm = this;
         vm.activateRound = activateRound;
         vm.addRound = addRound;
@@ -32,9 +32,9 @@ const CampaignComponent = {
 
         function activateRound(round) {
             userService.admin.activateRound(round.id).then((response) => {
-                $state.reload();
-            }, (response) => {
-                console.log('err', response);
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
             });
         }
 
@@ -138,23 +138,15 @@ const CampaignComponent = {
         }
 
         function saveCampaignName() {
-            let toast = $mdToast.simple()
-                .textContent('Campaign name changed')
-                .action('UNDO')
-                .highlightAction(true)
-                .highlightClass('md-accent')
-                .toastClass('campain__change-name-toast')
-                .position('top right');
-
             vm.campaign.name = vm.nameEdit;
             vm.isNameEdited = false;
 
             userService.admin.editCampaign(vm.campaign.id, {
                 name: vm.campaign.name
-            }).then(() => {
-                $mdToast.show(toast).then((response) => {
-                    console.log(response);
-                });
+            }).then((response) => {
+                response.error ?
+                    alertService.error(response.error) :
+                    alertService.success('Campaign name changed');
             });
         }
     },
