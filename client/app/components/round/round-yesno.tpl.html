@@ -11,7 +11,7 @@
         <div layout="row" layout-align="start center">
             <h1>Image #{{$ctrl.rating.current.entry.id}}</h1>
             <span flex></span>
-            <span class="muted">{{$ctrl.rating.all}} remaining</span>
+            <span class="muted">{{$ctrl.rating.all}} images remaining</span>
         </div>
         <h3 class="md-title">Vote</h3>
         <div class="image__voting--star" layout="row" layout-align="start end">
@@ -62,11 +62,17 @@
                 </div>
             </md-list-item>
             <md-divider></md-divider>
-            <md-list-item class="md-long-text">
-                <div class="md-list-item-text">
-                    <p></p>
-                </div>
-            </md-list-item>
+            <h3 class="md-title">External links</h3>
+            <div layout="row" layout-align="center center">
+                <md-button flex="50"
+                           ng-click="$ctrl.openURL($ctrl.rating.current.entry.url)">
+                    Original file
+                </md-button>
+                <md-button class="md-primary" flex="50"
+                           ng-click="$ctrl.openURL('https://commons.wikimedia.org/wiki/File:' + $ctrl.rating.current.entry.name)">
+                    Commons page
+                </md-button>
+            </div>
         </md-list>
     </div>
 </div>

@@ -14,7 +14,7 @@ const RoundComponent = {
         tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, $templateCache, userService, versionService) {
+    controller: function ($state, $mdDialog, $templateCache, $window, userService, versionService) {
         let vm = this;
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
@@ -22,6 +22,7 @@ const RoundComponent = {
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.round = vm.data.data;
         vm.openImage = openImage;
+        vm.openURL = openURL;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
         vm.user = angular.extend(vm.user, vm.data.user);
@@ -103,6 +104,10 @@ const RoundComponent = {
             }, function () {
                 // cancelled
             });
+        }
+
+        function openURL(url) {
+            $window.open(url, '_blank');
         }
 
         function setRate(rate) {
