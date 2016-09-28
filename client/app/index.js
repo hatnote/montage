@@ -114,22 +114,6 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
         },
       });
     $urlRouterProvider.otherwise('/');
-
-    // Intercept POST requests, convert to standard form encoding
-    // http://stackoverflow.com/a/19633847/1418878
-    $httpProvider.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
-    $httpProvider.defaults.transformRequest.unshift((data, headersGetter) => {
-      let key, result = [];
-      if (typeof data === 'string') {
-        return data;
-      }
-      for (key in data) {
-        if (data.hasOwnProperty(key)) {
-          result.push(encodeURIComponent(key) + '=' + encodeURIComponent(data[key]));
-        }
-      }
-      return result.join('&');
-    });
   });
 
 components();
