@@ -16,18 +16,9 @@
                     <md-datepicker ng-model="campaign.open_date" md-placeholder="Open Date"></md-datepicker>
                     <md-datepicker ng-model="campaign.close_date" md-placeholder="Close Date"></md-datepicker>
                 </div>
-                <strong>Campaign coordinators</strong>
-                <md-contact-chips
-                    ng-model="campaign.coordinators"
-                    ng-model-options="{ debounce: 200 }"
-                    md-contacts="searchUser($query)"
-                    md-contact-name="name"
-                    md-require-match="true"
-                    md-highlight-flags="i"
-                    filter-selected="true"
-                    placeholder="Enter username">
-                </md-contact-chips>
                 -->
+                <strong class="md-subhead">Campaign coordinators</strong>
+                <mont-user-list ng-model="campaign.coordinators"></mont-user-list>
             </div>
         </md-dialog-content>
 

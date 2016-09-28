@@ -33,19 +33,14 @@ const DashboardComponent = {
                 clickOutsideToClose: false,
                 controller: ($scope, $mdDialog, $timeout, dataService) => {
                     $scope.campaign = {
-                        name: ''
-                        //coordinators: []
+                        name: '',
+                        coordinators: []
                     };
-                    $scope.searchUser = (searchName) => dataService.searchUser(capitalize(searchName)).then((response) => {
-                        return response.data.query.globalallusers;
-                    });
                     $scope.create = function () {
                         let campaign = angular.copy($scope.campaign);
-                        /*
                         campaign = angular.extend(campaign, {
-                            coordinators: campaign.coordinators.map((element) => element.name).join(',')
+                            coordinators: campaign.coordinators.map((element) => element.name)
                         });
-                        */
                         
                         $scope.loading = true;
                         userService.admin.addCampaign(campaign).then((response) => {
@@ -65,10 +60,6 @@ const DashboardComponent = {
                     };
                 }
             });
-        }
-
-        function capitalize(text) {
-            return text.charAt(0).toUpperCase() + text.slice(1);
         }
 
         function isAdmin() {

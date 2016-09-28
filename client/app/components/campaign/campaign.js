@@ -66,10 +66,6 @@ const CampaignComponent = {
                             value: 'ranking'
                         }
                     ];
-                    $scope.searchUser = (searchName) => dataService.searchUser(capitalize(searchName)).then((response) => {
-                        return response.data.query.globalallusers;
-                    });
-
                     $scope.hide = function () {
                         $mdDialog.hide();
                     };
@@ -79,9 +75,8 @@ const CampaignComponent = {
                     $scope.create = function () {
                         let round = angular.copy($scope.round);
                         round = angular.extend(round, {
-                            jurors: round.jurors.map((element) => element.name).join(','),
-                            open_date: $filter('date')(round.open_date, 'yyyy-MM-ddTHH:mm:ss'),
-                            close_date: $filter('date')(round.close_date, 'yyyy-MM-ddTHH:mm:ss')
+                            jurors: round.jurors.map((element) => element.name),
+                            deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
                         });
 
                         $scope.loading = true;
@@ -101,10 +96,6 @@ const CampaignComponent = {
         function cancelCampaignName() {
             vm.isNameEdited = false;
             vm.nameEdit = '';
-        }
-
-        function capitalize(text) {
-            return text.charAt(0).toUpperCase() + text.slice(1);
         }
 
         function editCampaignName($event) {

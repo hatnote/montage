@@ -25,21 +25,11 @@
                         <input ng-model="round.quorum" type="number">
                     </md-input-container>
                 </div>
-                <div layout="row" layout-align="start start">
-                    <md-datepicker ng-model="round.open_date" md-placeholder="Open Date"></md-datepicker>
-                    <md-datepicker ng-model="round.close_date" md-placeholder="Close Date"></md-datepicker>
-                </div>
-                <h2 class="md-title">Jurors</h2>
-                <md-contact-chips
-                    ng-model="round.jurors"
-                    ng-model-options="{ debounce: 200 }"
-                    md-contacts="searchUser($query)"
-                    md-contact-name="name"
-                    md-require-match="true"
-                    md-highlight-flags="i"
-                    filter-selected="true"
-                    placeholder="Enter username">
-                </md-contact-chips>
+                <md-datepicker ng-model="round.deadline_date"
+                               md-placeholder="Deadline Date"></md-datepicker>
+
+                <strong class="md-subhead">Jurors</strong>
+                <mont-user-list ng-model="round.jurors"></mont-user-list>
             </div>
         </md-dialog-content>
 

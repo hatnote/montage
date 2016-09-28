@@ -8,7 +8,7 @@
     <div class="campaign__rounds-description"
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
-        <span class="md-body-1" flex="30">Round Date</span>
+        <span class="md-body-1" flex="30">Deadline Date</span>
         <span class="md-body-1" flex="20">Progress</span>
         <span flex></span>
         <span class="md-body-1" flex="10">Vote Method</span>
@@ -26,15 +26,9 @@
                       ng-class="'tag--{{round.status}}'">{{round.status}}</span>
             </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
-                <span ng-show="round.open_date">
-                    {{round.open_date | date}}<br />
-                    <small class="muted">{{round.open_date | fromNow}}</small>
-                </span>
-                <span class="campaign__dash"
-                      ng-show="round.open_date || round.close_date">–</span>
-                <span ng-show="round.close_date">
-                    {{round.close_date | date}}<br />
-                    <small class="muted">{{round.close_date | fromNow}}</small>
+                <span ng-show="round.deadline_date">
+                    {{round.deadline_date | date}}<br />
+                    <small class="muted">{{round.deadline_date | fromNow}}</small>
                 </span>
             </span>
             <span class="md-body-1" flex="20" layout="column" layout-align="start start">
