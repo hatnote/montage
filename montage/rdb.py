@@ -243,6 +243,7 @@ class Round(Base):
                'vote_method': self.vote_method,
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
+               'deadline_date': format_date(self.deadline_date),
                'status': self.status}
         return ret
 

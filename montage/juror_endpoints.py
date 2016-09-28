@@ -31,6 +31,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'vote_method': rnd.vote_method,
            'open_date': format_date(rnd.open_date),
            'close_date': format_date(rnd.close_date),
+           'deadline_date': format_date(rnd.deadline_date),
            'status': rnd.status,
            'canonical_url_name': slugify(rnd.name, '-'),
            'total_tasks': rnd_stats['total_tasks'],
