@@ -4,7 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
-from utils import fmt_date, PermissionDenied
+from utils import format_date, PermissionDenied
 
 
 def get_juror_routes():
@@ -28,8 +28,8 @@ def make_juror_round_details(rnd, rnd_stats):
            'directions': rnd.directions,
            'name': rnd.name,
            'vote_method': rnd.vote_method,
-           'open_date': fmt_date(rnd.open_date),
-           'close_date': fmt_date(rnd.close_date),
+           'open_date': format_date(rnd.open_date),
+           'close_date': format_date(rnd.close_date),
            'status': rnd.status,
            'canonical_url_name': slugify(rnd.name, '-'),
            'total_tasks': rnd_stats['total_tasks'],
@@ -254,7 +254,7 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-def submit_rating(rdb_session, user, request):
+def submit_rating(rdb_session, user, request_dict):
     """
     Summary: Post a rating-type vote for an entry
 
@@ -278,8 +278,8 @@ def submit_rating(rdb_session, user, request):
     # TODO: Check permissions
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     # TODO: Confirm if task is open and valid
-    task_id = request.form.get('task_id')
-    rating = request.form.get('rating')
+    task_id = request_dict.get('task_id')
+    rating = request_dict.get('rating')
     task = juror_dao.get_task(task_id)
 
     juror_dao.apply_rating(task, rating)

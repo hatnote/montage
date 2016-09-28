@@ -26,7 +26,7 @@ from boltons.iterutils import chunked
 from boltons.statsutils import mean
 
 from simple_serdes import DictableBase, JSONEncodedDict
-from utils import (fmt_date,
+from utils import (format_date,
                    get_mw_userid,
                    weighted_choice,
                    get_threshold_map,
@@ -235,8 +235,8 @@ class Round(Base):
                'directions': self.directions,
                'canonical_url_name': slugify(self.name, '-'),
                'vote_method': self.vote_method,
-               'open_date': fmt_date(self.open_date),
-               'close_date': fmt_date(self.close_date),
+               'open_date': format_date(self.open_date),
+               'close_date': format_date(self.close_date),
                'status': self.status}
         return ret
 
@@ -309,7 +309,7 @@ class Entry(Base):
     def to_details_dict(self, **kw):
         with_uploader = kw.pop('with_uploader', None)
         ret = self.to_info_dict()
-        ret.update({'upload_date': fmt_date(self.upload_date),
+        ret.update({'upload_date': format_date(self.upload_date),
                     'mime_major': self.mime_major,
                     'mime_minor': self.mime_minor,
                     'name': self.name,
@@ -481,7 +481,7 @@ class AuditLogEntry(Base):
                'role': self.role,
                'action': self.action,
                'message': self.message,
-               'create_date': fmt_date(self.create_date)}
+               'create_date': format_date(self.create_date)}
         return ret
 
 

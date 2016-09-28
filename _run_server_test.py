@@ -32,10 +32,12 @@ opener = urllib2.build_opener(*handlers)
 
 
 def fetch(url, data=None):
-    if data:
-        data = encode_dict_to_bytes(data)
-        data = urllib.urlencode(list(data))
-    req = urllib2.Request(url, data)
+    if not data:
+        req = urllib2.Request(url)
+    else:
+        data_bytes = json.dumps(data)
+        req = urllib2.Request(url, data_bytes,
+                              {'Content-Type': 'application/json'})
     return opener.open(req)
 
 
@@ -113,7 +115,7 @@ def full_run(url_base):
     data = {'name': 'Test yes/no round',
             'vote_method': 'yesno',
             'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15),
+            'deadline_date': datetime(2016, 10, 15).isoformat(),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
 
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
@@ -126,7 +128,7 @@ def full_run(url_base):
     data = {'name': 'Test rating round',
             'vote_method': 'rating',
             'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15),
+            'deadline_date': datetime(2016, 10, 15).isoformat(),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 
@@ -138,7 +140,7 @@ def full_run(url_base):
     data = {'name': 'Test ranking round',
             'vote_method': 'ranking',
             'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15),
+            'deadline_date': datetime(2016, 10, 15).isoformat(),
             'jurors': u'Slaporte,MahmoudHashemi,Effeietsanders,Jean-Frédéric,LilyOfTheWest'} # Comma separated, is this the usual way?
     resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
 

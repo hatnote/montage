@@ -15,6 +15,7 @@ import yaml
 from clastic.errors import Forbidden, NotFound, BadRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from boltons.timeutils import isoparse
 
 from check_rdb import get_schema_errors
 
@@ -119,10 +120,16 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
     return schema_errors
 
 
-def fmt_date(date):
+def format_date(date):
     if isinstance(date, datetime.datetime):
         date = date.isoformat()
     return date
+
+
+def parse_date(date):
+    if date is None:
+        return None
+    return isoparse(date)
 
 
 # The following is almost ready to go to boltons

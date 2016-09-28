@@ -4,8 +4,9 @@ from datetime import datetime
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
+from boltons.timeutils import isoparse
 
-from utils import fmt_date, InvalidAction
+from utils import format_date, InvalidAction
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
@@ -45,8 +46,8 @@ def make_admin_round_details(rnd, rnd_stats):
            'directions': rnd.directions,
            'canonical_url_name': slugify(rnd.name, '-'),
            'vote_method': rnd.vote_method,
-           'open_date': fmt_date(rnd.open_date),
-           'close_date': fmt_date(rnd.close_date),
+           'open_date': format_date(rnd.open_date),
+           'close_date': format_date(rnd.close_date),
            'status': rnd.status,
            'quorum': rnd.quorum,
            'total_entries': len(rnd.entries),
@@ -59,7 +60,7 @@ def make_admin_round_details(rnd, rnd_stats):
     return ret
 
 
-def create_campaign(user, rdb_session, request):
+def create_campaign(user, rdb_session, request_dict):
     """
     Summary: Post a new campaign
 
@@ -74,9 +75,9 @@ def create_campaign(user, rdb_session, request):
 
     org_dao = OrganizerDAO(rdb_session, user)
 
-    new_camp_name = request.form.get('name')
-    open_date = request.form.get('open_date')
-    close_date = request.form.get('close_date')
+    new_camp_name = request_dict.get('name')
+    open_date = request_dict.get('open_date')
+    close_date = request_dict.get('close_date')
 
     campaign = org_dao.create_campaign(name=new_camp_name,
                                        open_date=open_date,
@@ -87,7 +88,7 @@ def create_campaign(user, rdb_session, request):
     return {'data': data}
 
 
-def import_entries(rdb_session, user, round_id, request):
+def import_entries(rdb_session, user, round_id, request_dict):
     """
     Summary: Load entries into a new round identified by a round ID.
 
@@ -113,9 +114,9 @@ def import_entries(rdb_session, user, round_id, request):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
     # TODO: Confirm if round exists
-    import_method = request.form.get('import_method')
+    import_method = request_dict.get('import_method')
     if import_method == 'gistcsv':
-        gist_url = request.form.get('gist_url')
+        gist_url = request_dict.get('gist_url')
         rnd = coord_dao.add_entries_from_csv_gist(rnd, gist_url)
     else:
         # TODO: Support category based input via labs
@@ -126,7 +127,7 @@ def import_entries(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-def activate_round(rdb_session, user, round_id, request):
+def activate_round(rdb_session, user, round_id, request_dict):
     """
     Summary: Set the status of a round to active.
 
@@ -150,7 +151,7 @@ def activate_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-def edit_campaign(rdb_session, user, campaign_id, request):
+def edit_campaign(rdb_session, user, campaign_id, request_dict):
     """
     Summary: Change the settings for a round identified by a round ID.
 
@@ -164,15 +165,15 @@ def edit_campaign(rdb_session, user, campaign_id, request):
     column_names = ['name', 'open_date', 'close_date']
 
     for column_name in column_names:
-        if request.form.get(column_name):
-            campaign_dict[column_name] = request.form.get(column_name)
+        if request_dict.get(column_name):
+            campaign_dict[column_name] = request_dict.get(column_name)
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = coord_dao.edit_campaign(campaign_id, campaign_dict)
     return {'data': campaign_dict}
 
 
-def create_round(rdb_session, user, campaign_id, request):
+def create_round(rdb_session, user, campaign_id, request_dict):
     """
     Summary: Post a new round
 
@@ -190,7 +191,7 @@ def create_round(rdb_session, user, campaign_id, request):
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns:
-        val = request.form.get(column)
+        val = request_dict.get(column)
         if not val:
             raise InvalidAction('%s is required to create a round' % val)
             # TODO: raise http error
@@ -200,11 +201,11 @@ def create_round(rdb_session, user, campaign_id, request):
             raise InvalidAction('%s is an invalid vote method' % val)
             # TODO: raise http error
         if column is 'deadline_date':
-            val = datetime.strptime(val, DATETIME_FORMAT)
+            val = isoparse(val)
         rnd_dict[column] = val
 
     default_quorum = len(rnd_dict['jurors'])
-    rnd_dict['quorum'] = request.form.get('quorum', default_quorum)
+    rnd_dict['quorum'] = request_dict.get('quorum', default_quorum)
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
     # TODO: Confirm if campaign exists
@@ -216,7 +217,7 @@ def create_round(rdb_session, user, campaign_id, request):
     return {'data': data}
 
 
-def edit_round(rdb_session, user, round_id, request):
+def edit_round(rdb_session, user, round_id, request_dict):
     """
     Summary: Post a new campaign
 
@@ -234,8 +235,8 @@ def edit_round(rdb_session, user, round_id, request):
     #  - active_jurors: [requires reallocation]
 
     for column_name in column_names:
-        if request.form.get(column_name):
-            rnd_dict[column_name] = request.form.get(column_name)
+        if request_dict.get(column_name):
+            rnd_dict[column_name] = request_dict.get(column_name)
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.edit_round(round_id, rnd_dict)
@@ -366,12 +367,12 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
-def get_audit_logs(rdb_session, user, request):
+def get_audit_logs(rdb_session, user, request_dict):
     if not user.is_maintainer:
         raise Forbidden('not allowed to view the audit log')
 
-    limit = request.args.get('limit', 10)
-    offset = request.args.get('offset', 0)
+    limit = request_dict.get('limit', 10)
+    offset = request_dict.get('offset', 0)
 
     main_dao = MaintainerDAO(rdb_session, user)
     audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
@@ -380,7 +381,7 @@ def get_audit_logs(rdb_session, user, request):
     return {'data': data}
 
 
-def add_organizer(rdb_session, user, request):
+def add_organizer(rdb_session, user, request_dict):
     """
     Summary: Add a new organizer identified by Wikimedia username
 
@@ -401,14 +402,14 @@ def add_organizer(rdb_session, user, request):
         raise Forbidden('not allowed to add organizers')
 
     maint_dao = MaintainerDAO(rdb_session, user)
-    new_user_name = request.form.get('username')
+    new_user_name = request_dict.get('username')
     new_organizer = maint_dao.add_organizer(new_user_name)
     data = {'username': new_organizer.username,
-            'last_login_date': fmt_date(new_organizer.last_login_date)}
+            'last_login_date': format_date(new_organizer.last_login_date)}
     return {'data': data}
 
 
-def add_coordinator(rdb_session, user, campaign_id, request):
+def add_coordinator(rdb_session, user, campaign_id, request_dict):
     """
     Summary: -
         Add a new coordinator identified by Wikimedia username to a campaign
@@ -434,12 +435,12 @@ def add_coordinator(rdb_session, user, campaign_id, request):
         raise Forbidden('not allowed to add coordinators')
     # TODO: verify campaign id?
     org_dao = OrganizerDAO(rdb_session, user)
-    new_user_name = request.form.get('username')
+    new_user_name = request_dict.get('username')
     campaign = org_dao.get_campaign(campaign_id)
     new_coord = org_dao.add_coordinator(campaign, new_user_name)
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
-            'last_login_date': fmt_date(new_coord.last_login_date)}
+            'last_login_date': format_date(new_coord.last_login_date)}
     return {'data': data}
 
 

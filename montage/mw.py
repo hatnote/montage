@@ -40,6 +40,11 @@ class MessageMiddleware(Middleware):
             request_dict = json.loads(request_data)
         except Exception:
             request_dict = None
+        if request.args:
+            if request_dict:
+                request_dict.update(request.args)
+            else:
+                request_dict = dict(request.args)
 
         return next(response_dict=response_dict, request_dict=request_dict)
 
