@@ -31,7 +31,7 @@ from utils import (format_date,
                    weighted_choice,
                    PermissionDenied, DoesNotExist, InvalidAction)
 from imgutils import make_mw_img_url
-from loaders import get_csv_from_gist
+from loaders import get_entries_from_gist_csv
 from simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
@@ -585,9 +585,6 @@ class CoordinatorDAO(UserDAO):
     #   - not updateable: id, open_date, close_date, vote_method,
     #     campaign_id/seq
 
-    def check_is_coord(self):
-        pass
-
     # Read methods
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
@@ -623,8 +620,13 @@ class CoordinatorDAO(UserDAO):
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
+        if total_tasks:
+            percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
+        else:
+            percent_open = 0.0
         return {'total_tasks': total_tasks,
-                'total_open_tasks': total_open_tasks}
+                'total_open_tasks': total_open_tasks,
+                'percent_tasks_open': percent_open}
 
     def get_entry_name_map(self, filenames):
         entries = self.query(Entry)\
@@ -647,7 +649,8 @@ class CoordinatorDAO(UserDAO):
 
     def create_round(self, campaign, name, quorum,
                      vote_method, jurors, deadline_date):
-
+        jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
+                  for j in jurors]
         rnd = Round(name=name,
                     campaign=campaign,
                     campaign_seq=len(campaign.rounds),
@@ -763,17 +766,6 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def disqualify_round_entry(self, round_entry, dq_reason):
-        dq_dict = {'dq_reason': dq_reason,
-                   'dq_user_id': self.user.id}
-        round_entry = self.rdb_session.query(RoundEntry)\
-                                      .filter_by(id=round_entry.id)\
-                                      .update(dq_dict)
-
-        self.rdb_session.commit()
-
-        return dq_dict
-
     def pause_round(self, rnd):
         rnd.status = 'paused'
 
@@ -798,7 +790,7 @@ class CoordinatorDAO(UserDAO):
         pass
 
     def add_entries_from_csv_gist(self, rnd, gist_url):
-        entries = get_csv_from_gist(gist_url)
+        entries = get_entries_from_gist_csv(gist_url)
 
         entry_chunks = chunked(entries, 200)
 
@@ -821,7 +813,14 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.commit()
         return rnd
 
-    def get_or_create_user(self, username):
+    def get_or_create_user(self, user, role, **kw):
+        # kw is for including round/round_id/campaign/campaign_id
+        # which is used in the audit log if the user is created
+        if isinstance(user, User):
+            return user
+        elif not isinstance(user, basestring):
+            raise TypeError('expected user or username, not %r' % user)
+        username = user
         user = lookup_user(self.rdb_session, username=username)
 
         if not user:
@@ -829,8 +828,10 @@ class CoordinatorDAO(UserDAO):
             user = User(id=user_id,
                         username=username,
                         created_by=self.user.id)
-
             self.rdb_session.add(user)
+            msg = ('%s created user %s while adding them as a %s'
+                   % (self.user.username, username, role))
+            self.log_action('create_user', message=msg, **kw)
 
         return user
 
@@ -938,18 +939,11 @@ class CoordinatorDAO(UserDAO):
 
 class OrganizerDAO(CoordinatorDAO):
     def add_coordinator(self, campaign, username):
-        user = lookup_user(self.rdb_session, username=username)
-        if not user:
-            user_id = get_mw_userid(username)
-            user = User(id=user_id,
-                        username=username,
-                        created_by=self.user.id)
-        if not campaign:
-            raise DoesNotExist('campaign does not exist')
+        user = self.get_or_create_user(username, 'coordinator',
+                                       campaign=campaign)
         if user in campaign.coords:
             raise InvalidAction('user is already a coordinator')
         campaign.coords.append(user)
-        self.rdb_session.add(campaign)
         self.rdb_session.add(user)
         self.rdb_session.commit()
 
@@ -959,11 +953,13 @@ class OrganizerDAO(CoordinatorDAO):
                         message=msg)
         return user
 
-    def create_campaign(self, name, open_date, close_date, coords):
+    def create_campaign(self, name, open_date, close_date, coords=None):
         # TODO: Check if campaign with this name already exists?
+        if not coords:
+            coords = [self.user]
 
         campaign = Campaign(name=name,
-                            open_date=open_date, 
+                            open_date=open_date,
                             close_date=close_date,
                             coords=coords)
 
@@ -992,16 +988,7 @@ class MaintainerDAO(OrganizerDAO):
         return audit_logs
 
     def add_organizer(self, username):
-        user = lookup_user(self.rdb_session, username=username)
-        if user:
-            created_by = self.user.id
-        else:
-            created_by = None
-        if not user:
-            user_id = get_mw_userid(username)
-            user = User(id=user_id,
-                        username=username,
-                        created_by=created_by)
+        user = self.get_or_create_user(username, 'organizer')
         if user.is_organizer:
             #raise Exception('organizer already exists')
             pass
@@ -1079,6 +1066,10 @@ class JurorDAO(UserDAO):
                 'total_open_tasks': total_open_tasks}
 
     def apply_rating(self, task, rating):
+        if not task.user == self.user:
+            # belt and suspenders until server test covers the cross
+            # complete case
+            raise PermissionDenied()
         rating = Rating(user_id=self.user.id,
                         task_id=task.id,
                         round_entry_id=task.round_entry_id,
@@ -1088,14 +1079,8 @@ class JurorDAO(UserDAO):
         return
 
 
-def lookup_user(rdb_session, username=None, userid=None):
-    if not username and userid:
-        raise TypeError('missing either a username or userid')
-    if username and not userid:
-        userid = get_mw_userid(username)
-
-    user = rdb_session.query(User).filter((User.id == userid) | (User.username == username)).one_or_none()
-
+def lookup_user(rdb_session, username):
+    user = rdb_session.query(User).filter_by(username=username).one_or_none()
     return user
 
 
@@ -1156,11 +1141,26 @@ from sqlalchemy.orm import joinedload
 def reassign_tasks(session, rnd, new_jurors):
     """Different strategies for different outcomes:
 
-    * Try to balance toward everyone having cast roughly the same
-      number of votes (fair)
-    * Try to balance toward the most even task queue length per user
-      (fast)
-    * Balance toward the users that have been voting most (fastest)
+    1. Try to balance toward everyone having cast roughly the same
+       number of votes (fair)
+    2. Try to balance toward the most even task queue length per user
+       (fast)
+    3. Balance toward the users that have been voting most (fastest)
+
+    This function takes the second approach to get a reasonably fast,
+    fair result.
+
+    This function does not create or delete tasks. There must be
+    enough new jurors to fulfill round quorum.
+
+    Features:
+
+    * No juror is assigned the same RoundEntry twice.
+    * Looks at all Jurors who have ever submitted a Rating for the
+      Round, meaning that a Juror can be added, removed, and added
+      again without seeing duplicates.
+    * Evens out work queues, so that workload can be redistributed.
+
     """
     # TODO: have this cancel tasks and create new ones.
 

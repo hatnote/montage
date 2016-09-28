@@ -21,10 +21,6 @@ def get_juror_routes():
 
 
 def make_juror_round_details(rnd, rnd_stats):
-    if rnd_stats['total_tasks']:
-        percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
-    else:
-        percent_tasks_open = 0
     ret = {'id': rnd.id,
            'directions': rnd.directions,
            'name': rnd.name,
@@ -35,7 +31,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'canonical_url_name': slugify(rnd.name, '-'),
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
-           'percent_tasks_open': percent_tasks_open,
+           'percent_tasks_open': rnd_stats['percent_tasks_open'],
            'campaign': rnd.campaign.to_info_dict()}
     return ret
 
@@ -317,9 +313,9 @@ def bulk_submit_rating(rdb_session, user, request):
         task = rating['task']
 
         juror_dao.apply_rating(task, rating)
-        
+
         ret.append({'task_id': task_id, 'rating': rating})
-    
+
     return {'data': ret}
 
 

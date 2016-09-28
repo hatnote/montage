@@ -48,7 +48,6 @@ A bit of space for dev bookkeeping.
 * Logging and timing
 * Locking
 * Undo rating submit
-* Clean up + standardize user creation for `add_juror/add_organizer/add_coordinator`
 * Add indexes
 * Switch request_dict to Werkzeug MultiDict for BadRequest behavior
 * fix `one_or_none` getters
@@ -61,6 +60,7 @@ A bit of space for dev bookkeeping.
 * Campaign + first Round as single step?
 * Blacklisted user disqualification
 * Load dates (?)
+* create round from previous round
 
 ## Frontend
 

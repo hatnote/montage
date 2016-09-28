@@ -59,7 +59,7 @@ def load_brief_csv(csv_file_obj):
     return
 
 
-def get_csv_from_gist(raw_url):
+def get_entries_from_gist_csv(raw_url):
     resp = urllib2.urlopen(raw_url)
     ret = load_full_csv(resp)
     return ret
@@ -90,5 +90,5 @@ TODO:
 
 if __name__ == '__main__':
     #imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
-    imgs = get_csv_from_gist('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
+    imgs = get_entries_from_gist_csv('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
     import pdb; pdb.set_trace()

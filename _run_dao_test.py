@@ -48,10 +48,10 @@ def rate_round_tasks(rdb_session, rnd, limit_per=None):
 def main():
     rdb_session = make_rdb_session()
 
-    cur_user = 'MahmoudHashemi'  # maintainer
-    user_obj = lookup_user(rdb_session, cur_user)
+    # TODO: startup should add maintainers as users
+    mahm_user = lookup_user(rdb_session, 'MahmoudHashemi')  # maintainer
 
-    maint_dao = MaintainerDAO(rdb_session, user_obj)
+    maint_dao = MaintainerDAO(rdb_session, mahm_user)
     maint_dao.add_organizer('LilyOfTheWest')
 
     org_user = lookup_user(rdb_session, 'LilyOfTheWest')
@@ -62,17 +62,18 @@ def main():
                                        open_date=datetime.datetime(2015, 9, 10),
                                        close_date=datetime.datetime(2015, 10, 1))
 
-    org_dao.add_coordinator(campaign, username='Yarl')
-    org_dao.add_coordinator(campaign, 'Slaporte')
+    yarl_user = org_dao.add_coordinator(campaign, username='Yarl')
+    slap_user = org_dao.add_coordinator(campaign, 'Slaporte')
 
-    coord_user = lookup_user(rdb_session, 'Yarl')
-    coord_dao = CoordinatorDAO(rdb_session, coord_user)
+    coord_dao = CoordinatorDAO(rdb_session, yarl_user)
+
+    juror_usernames = ['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat']
 
     rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=3,
                                  vote_method='rating',
                                  deadline_date=datetime.datetime(2015, 10, 15),
-                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
+                                 jurors=juror_usernames,
                                  campaign=campaign)
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
@@ -105,14 +106,14 @@ def main():
                                  quorum=2,
                                  vote_method='rating',
                                  deadline_date=datetime.datetime(2015, 10, 15),
-                                 jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
+                                 jurors=juror_usernames,
                                  campaign=campaign)
     coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     coord_dao.activate_round(rnd)
 
     rate_round_tasks(rdb_session, rnd, limit_per=50)
 
-    coord_dao.modify_jurors(rnd, [user_obj, coord_user])
+    coord_dao.modify_jurors(rnd, [slap_user, yarl_user])
 
     # some read tasks
 
@@ -129,8 +130,6 @@ def main():
     campaign = coord_dao.get_campaign(campaign.id)
 
     assert campaign.active_round is None
-
-
 
     # org_dao.close_round(rnd)
 

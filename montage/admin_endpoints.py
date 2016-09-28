@@ -36,10 +36,6 @@ def make_admin_round_details(rnd, rnd_stats):
     """
     Same as juror, but with: quorum, total_entries, jurors
     """
-    if rnd_stats['total_tasks']:
-        percent_tasks_open = (float(rnd_stats['total_open_tasks']) / rnd_stats['total_tasks'])*100
-    else:
-        percent_tasks_open = 0
     ret = {'id': rnd.id,
            'name': rnd.name,
            'directions': rnd.directions,
@@ -52,7 +48,7 @@ def make_admin_round_details(rnd, rnd_stats):
            'total_entries': len(rnd.entries),
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
-           'percent_tasks_open': percent_tasks_open,
+           'percent_tasks_open': rnd_stats['percent_tasks_open'],
            'campaign': rnd.campaign.to_info_dict(),
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
@@ -77,15 +73,12 @@ def create_campaign(user, rdb_session, request_dict):
     new_camp_name = request_dict.get('name')
     open_date = request_dict.get('open_date')
     close_date = request_dict.get('close_date')
-    coord_names = request_dict.get('coordinators')
+    coord_names = request_dict.get('coordinators') or []
 
     coords = []
-
-    if coord_names:
-
-        for coord_name in coord_names:
-            coord = org_dao.get_or_create_user(coord_name)
-            coords.append(coord)
+    for coord_name in coord_names:
+        coord = org_dao.get_or_create_user(coord_name, 'coordinator')
+        coords.append(coord)
 
     campaign = org_dao.create_campaign(name=new_camp_name,
                                        open_date=open_date,
@@ -216,9 +209,8 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     rnd_dict['campaign'] = campaign
     rnd_dict['jurors'] = []
 
-
     for juror_name in juror_names:
-        juror = coord_dao.get_or_create_user(juror_name)
+        juror = coord_dao.get_or_create_user(juror_name, 'juror')
 
         rnd_dict['jurors'].append(juror)
 
