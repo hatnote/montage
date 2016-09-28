@@ -1079,8 +1079,6 @@ class JurorDAO(UserDAO):
                 'total_open_tasks': total_open_tasks}
 
     def apply_rating(self, task, rating):
-        if task.user != self.user:
-            raise PermissionDenied()
         rating = Rating(user_id=self.user.id,
                         task_id=task.id,
                         round_entry_id=task.round_entry_id,

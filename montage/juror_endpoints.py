@@ -4,7 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
-from utils import format_date, PermissionDenied
+from utils import format_date, PermissionDenied, InvalidAction
 
 
 def get_juror_routes():
@@ -254,6 +254,10 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
+VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
+VALID_YESNO = (0.0, 1.0)
+
+
 def submit_rating(rdb_session, user, request_dict):
     """
     Summary: Post a rating-type vote for an entry
@@ -277,12 +281,26 @@ def submit_rating(rdb_session, user, request_dict):
     """
     # TODO: Check permissions
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    # TODO: Confirm if task is open and valid
-    task_id = request_dict.get('task_id')
-    rating = request_dict.get('rating')
+    task_id = request_dict['task_id']
+    rating = float(request_dict['rating'])
     task = juror_dao.get_task(task_id)
+    rnd = task.round_entry.round
+    if rnd.status != 'active':
+        raise InvalidAction('round must be active to submit ratings.'
+                            ' round is currently: %s' % rnd.status)
+    if rnd.vote_method == 'rating':
+        if rating not in VALID_RATINGS:
+            raise InvalidAction('rating expected one of %s, not %r'
+                                % (VALID_RATINGS, rating))
+    elif rnd.vote_method == 'yesno':
+        if rating not in VALID_YESNO:
+            raise InvalidAction('rating expected one of %s, not %r'
+                                % (VALID_YESNO, rating))
+    if task.user != user:  # TODO: this should be handled by the dao get
+        raise PermissionDenied()
+    if not (task.complete_date or task.cancel_date):
+        juror_dao.apply_rating(task, rating)
 
-    juror_dao.apply_rating(task, rating)
     # What should this return?
     return {'data': {'task_id': task_id, 'rating': rating}}
 

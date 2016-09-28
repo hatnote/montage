@@ -55,8 +55,6 @@ A bit of space for dev bookkeeping.
 * Clean up + standardize user creation for `add_juror/add_organizer/add_coordinator`
 * Add indexes
 * Switch request_dict to Werkzeug MultiDict for BadRequest behavior
-* get rid of comma splitting
-* frontend must not be able to pass floats
 * fix `one_or_none` getters
 ...
 
