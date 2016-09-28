@@ -27,6 +27,7 @@ from boltons.iterutils import chunked
 from simple_serdes import DictableBase, JSONEncodedDict
 from utils import (fmt_date,
                    get_mw_userid,
+                   weighted_choice,
                    get_threshold_map,
                    PermissionDenied, DoesNotExist, InvalidAction)
 from imgutils import make_mw_img_url
@@ -709,10 +710,10 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_uploader(self, 
-                                   rnd, 
-                                   dq_coords=True, 
-                                   dq_organizers=True, 
+    def autodisqualify_by_uploader(self,
+                                   rnd,
+                                   dq_coords=True,
+                                   dq_organizers=True,
                                    dq_maintainers=False):
         dq_group = {}
         dq_usernames = [j.username for j in rnd.jurors]
@@ -907,6 +908,10 @@ class CoordinatorDAO(UserDAO):
         # TODO: check to make sure only certain round actions can happen
         # when paused, others only when active, basically none when the
         # round is complete or cancelled.
+        if rnd.quorum > len(new_jurors):
+            raise InvalidAction('expected at least %s jurors to make quorum'
+                                ' (%s) for round #%s'
+                                % (len(new_jurors), rnd.quorum, rnd.id))
 
         reassign_tasks(self.rdb_session, rnd, new_jurors)
         # TODO: audit log
@@ -1192,12 +1197,8 @@ def reassign_tasks(session, rnd, new_jurors):
     reassg_set = set()
     reassg_queue = list(reassg_tasks)
 
-    # weights, users = process_weighted_choice_map(weight_map)
-
     def pick_eligible(eligible_users):
         # TODO: cache?
-        if len(eligible_users) == 1:
-            return eligible_users[0]
         wcp = [(target_workload - len(w), u)
                for u, w in target_work_map.items()
                if u in eligible_users]
@@ -1231,30 +1232,6 @@ def reassign_tasks(session, rnd, new_jurors):
     assert len(reassg_set) == len(reassg_tasks)
 
     return
-
-import bisect
-import random
-
-
-def weighted_choice(weighted_choices):
-    nsw_list, vals = process_weighted_choices(weighted_choices)
-    return fast_weighted_choice(nsw_list, vals)
-
-
-def process_weighted_choices(wcp):
-    total = float(sum([p[0] for p in wcp], 0.0))
-    if any([p[0] < 0 for p in wcp]):
-        raise ValueError('weight cannot be less than 0')
-    if not total:
-        raise ValueError()
-    norm_pairs = [(k / total, v) for k, v in wcp]
-    norm_pairs.sort(lambda x: x[0])
-    norm_sorted_weights, vals = zip(*norm_pairs)
-    return (norm_sorted_weights, vals)
-
-
-def fast_weighted_choice(nsw, values):
-    return values[bisect.bisect(nsw, random.random()) - 1]
 
 
 def make_rdb_session(echo=True):

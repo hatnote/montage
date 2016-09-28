@@ -2,6 +2,8 @@
 
 import sys
 import json
+import bisect
+import random
 import getpass
 import os.path
 import datetime
@@ -121,3 +123,41 @@ def fmt_date(date):
     if isinstance(date, datetime.datetime):
         date = date.isoformat()
     return date
+
+
+# The following is almost ready to go to boltons
+
+def weighted_choice(weighted_choices):
+    nsw_list, vals = process_weighted_choices(weighted_choices)
+    if len(vals) == 1:
+        return vals[0]
+    return fast_weighted_choice(nsw_list, vals)
+
+
+def process_weighted_choices(wcp):
+    if not wcp:
+        raise ValueError('expected weight-choice list or map, not %r' % wcp)
+    if isinstance(wcp, dict):
+        wcp = wcp.items()
+    else:
+        wcp = list(wcp)
+    if any([p[0] < 0 for p in wcp]):
+        raise ValueError('weight cannot be less than 0')
+    total = float(sum([p[0] for p in wcp], 0.0))
+    if not total:
+        raise ValueError()
+    norm_pairs = [(k / total, v) for k, v in wcp]
+    norm_pairs.sort(key=lambda x: x[0], reverse=True)
+
+    summed_pairs = []
+    bound = 0.0
+    for delta, val in norm_pairs:
+        summed_pairs.append((bound, val))
+        bound += delta
+
+    summed_sorted_weights, vals = zip(*summed_pairs)
+    return (summed_sorted_weights, vals)
+
+
+def fast_weighted_choice(nsw, values):
+    return values[bisect.bisect(nsw, random.random()) - 1]
