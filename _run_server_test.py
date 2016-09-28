@@ -48,7 +48,10 @@ def fetch_json(url, data=None, act=None, **kw):
     res = fetch(url, data=data)
     data_dict = json.load(res)
     if kw.get('assert_success', True):
-        assert data_dict['status'] == 'success'
+        try:
+            assert data_dict['status'] == 'success'
+        except AssertionError:
+            import pdb;pdb.set_trace()
     return data_dict
 
 
@@ -72,7 +75,11 @@ def full_run(url_base):
     print '.. added %s as organizer' % data['username']
 
     # create a campaign
-    data = {'name': 'Another Test Campaign 2016'}
+    data = {'name': 'Another Test Campaign 2016',
+            'coordinators': [u'LilyOfTheWest',
+                             u'Slaporte',
+                             u'Jimbo Wales']}
+
     resp_dict = fetch_json(url_base + '/admin/new/campaign', data)
 
     campaign_id = resp_dict['data']['id']
@@ -88,8 +95,6 @@ def full_run(url_base):
     # add a coordinator to this new camapign
     data = {'username': 'Effeietsanders'}
     resp_dict = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
-
-    print '.. added %s as coordinator for campaign #%s' % (data['username'], campaign_id)
 
     # add a coordinator to this new camapign
     data = {'username': u'Jean-Frédéric'}
@@ -229,6 +234,7 @@ def full_run(url_base):
     data = {'entry_id': entry_id,
             'task_id': task_id,
             'rating': '0.8'}
+
     resp_dict = fetch_json(url_base + '/juror/submit/rating', data)
 
     print '.. submitted rating on task #%s' % task_id
@@ -237,6 +243,27 @@ def full_run(url_base):
     pprint(resp_dict)
     print '.. previewed results for round #%s' % round_id3
 
+    '''
+    resp_dict = fetch_json(url_base + '/juror/round/%s/tasks' % round_id)
+
+    print '.. loaded more tasks'
+    
+    data = {'ratings': []}
+    for task in resp_dict['data']:
+        bulk_rating = {'entry_id': task['round_entry_id'],
+                       'task_id': resp_dict['data'][0]['id'],
+                       'rating': '1.0'}
+        data['ratings'].append(bulk_rating)
+        
+    entry_id = resp_dict['data'][0]['round_entry_id']
+    task_id = resp_dict['data'][0]['id']
+    
+    import pdb; pdb.set_trace()
+
+    resp_dict = fetch_json(url_base + '/juror/bulk_submit/rating', data)
+
+    print '.. submitted %s ratings on task #%s' % (len(data), task_id)
+    '''
 
     # TODO:
     #
@@ -254,6 +281,7 @@ def add_votes(domain, round_id):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
+    
     pass
 
 

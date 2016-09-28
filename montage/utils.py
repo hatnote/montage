@@ -43,7 +43,10 @@ class InvalidAction(BadRequest):
 def encode_dict_to_bytes(query):
     if hasattr(query, 'items'):
         query = query.items()
+
     for key, value in query:
+        if isinstance(value, list):
+            yield (encode_value_to_bytes(key), [encode_value_to_bytes(v) for v in value])
         yield (encode_value_to_bytes(key), encode_value_to_bytes(value))
 
 
@@ -65,6 +68,7 @@ def get_mw_userid(username):
     resp = urlopen(api_url + urlencode(list(encode_dict_to_bytes(params))))
     data = json.loads(resp.read())
     user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
+
     if not user_id:
         raise DoesNotExist('user %s does not exist' % username)
     return user_id

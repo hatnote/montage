@@ -13,7 +13,8 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/tasks', get_tasks),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
-           POST('/juror/submit/rating', submit_rating)]
+           POST('/juror/submit/rating', submit_rating),
+           POST('/juror/bulk_submit/rating', bulk_submit_rating)]
     # TODO: submission for rank style votes
     # TODO: bulk rating submission
     return ret
@@ -303,6 +304,23 @@ def submit_rating(rdb_session, user, request_dict):
 
     # What should this return?
     return {'data': {'task_id': task_id, 'rating': rating}}
+
+def bulk_submit_rating(rdb_session, user, request):
+    # TODO: Check permissions
+    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    ratings = request.form.get('ratings')
+    ret = []
+
+    for rating in ratings:
+        task_id = rating['task_id']
+        rating_val = rating['rating']
+        task = rating['task']
+
+        juror_dao.apply_rating(task, rating)
+        
+        ret.append({'task_id': task_id, 'rating': rating})
+    
+    return {'data': ret}
 
 
 JUROR_ROUTES = get_juror_routes()

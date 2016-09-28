@@ -13,9 +13,9 @@
   - Send notifications to coordinators & jurors (?)
  - Jurors
   x See a list of campaigns and rounds
-  - See the next vote
-  - Submit a vote
-  - Skip a vote
+  x See the next vote
+  x Submit a vote
+  x Skip a vote
   - Expoert their own votes (?)
   - Change a vote for an open round (?)
 

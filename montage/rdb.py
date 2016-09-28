@@ -647,11 +647,6 @@ class CoordinatorDAO(UserDAO):
 
     def create_round(self, campaign, name, quorum,
                      vote_method, jurors, deadline_date):
-        rnd_jurors = []
-
-        for juror_name in jurors:
-            juror = self.add_juror(juror_name)
-            rnd_jurors.append(juror)
 
         rnd = Round(name=name,
                     campaign=campaign,
@@ -660,7 +655,7 @@ class CoordinatorDAO(UserDAO):
                     quorum=quorum,
                     deadline_date=deadline_date,
                     vote_method=vote_method,
-                    jurors=rnd_jurors)
+                    jurors=jurors)
 
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
@@ -826,15 +821,17 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.commit()
         return rnd
 
-    def add_juror(self, username):
+    def get_or_create_user(self, username):
         user = lookup_user(self.rdb_session, username=username)
+
         if not user:
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
                         created_by=self.user.id)
+
             self.rdb_session.add(user)
-            self.rdb_session.commit()
+
         return user
 
     def cancel_round(self, rnd):
@@ -962,12 +959,15 @@ class OrganizerDAO(CoordinatorDAO):
                         message=msg)
         return user
 
-    def create_campaign(self, name, open_date, close_date):
+    def create_campaign(self, name, open_date, close_date, coords):
         # TODO: Check if campaign with this name already exists?
+
         campaign = Campaign(name=name,
-                            open_date=open_date, close_date=close_date)
+                            open_date=open_date, 
+                            close_date=close_date,
+                            coords=coords)
+
         self.rdb_session.add(campaign)
-        campaign.coords.append(self.user)
         self.rdb_session.commit()
 
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
@@ -1094,7 +1094,8 @@ def lookup_user(rdb_session, username=None, userid=None):
     if username and not userid:
         userid = get_mw_userid(username)
 
-    user = rdb_session.query(User).filter(User.id == userid).one_or_none()
+    user = rdb_session.query(User).filter((User.id == userid) | (User.username == username)).one_or_none()
+
     return user
 
 

@@ -77,10 +77,20 @@ def create_campaign(user, rdb_session, request_dict):
     new_camp_name = request_dict.get('name')
     open_date = request_dict.get('open_date')
     close_date = request_dict.get('close_date')
+    coord_names = request_dict.get('coordinators')
+
+    coords = []
+
+    if coord_names:
+
+        for coord_name in coord_names:
+            coord = org_dao.get_or_create_user(coord_name)
+            coords.append(coord)
 
     campaign = org_dao.create_campaign(name=new_camp_name,
                                        open_date=open_date,
-                                       close_date=close_date)
+                                       close_date=close_date,
+                                       coords=coords)
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
 
@@ -197,11 +207,21 @@ def create_round(rdb_session, user, campaign_id, request_dict):
             raise InvalidAction('%s is an invalid vote method' % val)
         if column is 'deadline_date':
             val = isoparse(val)
+        if column is 'jurors':
+            juror_names = val
         rnd_dict[column] = val
 
     default_quorum = len(rnd_dict['jurors'])
     rnd_dict['quorum'] = request_dict.get('quorum', default_quorum)
     rnd_dict['campaign'] = campaign
+    rnd_dict['jurors'] = []
+
+
+    for juror_name in juror_names:
+        juror = coord_dao.get_or_create_user(juror_name)
+
+        rnd_dict['jurors'].append(juror)
+
     rnd = coord_dao.create_round(**rnd_dict)
 
     data = rnd.to_details_dict()
