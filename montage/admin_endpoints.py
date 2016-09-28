@@ -250,10 +250,15 @@ def get_round_results_preview(rdb_session, user, round_id):
     rating_map = coord_dao.get_round_average_rating_map(rnd)
     thresh_map = get_threshold_map(rating_map)
 
-    return {'data': {'counts': round_counts,
+    return {'data': {'round': rnd.to_info_dict(),
+                     'counts': round_counts,
                      'ratings': rating_map,
                      'thresholds': thresh_map,
                      'is_closeable': is_closeable}}
+
+
+def finalize_round(rdb_session, user, round_id, request_dict):
+    pass
 
 
 def get_index(rdb_session, user):

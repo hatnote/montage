@@ -1,4 +1,6 @@
-from datetime import datetime
+
+import random
+import datetime
 
 from montage.rdb import (make_rdb_session,
                          JurorDAO,
@@ -7,8 +9,6 @@ from montage.rdb import (make_rdb_session,
                          CoordinatorDAO,
                          lookup_user)
 from montage.utils import PermissionDenied, get_threshold_map
-
-import random
 
 random.seed('badidea')
 
@@ -59,8 +59,8 @@ def main():
 
     # should automatically add the creator as coordinator
     campaign = org_dao.create_campaign(name='Test Campaign 2016',
-                                       open_date=datetime(2015, 9, 10),
-                                       close_date=datetime(2015, 10, 1))
+                                       open_date=datetime.datetime(2015, 9, 10),
+                                       close_date=datetime.datetime(2015, 10, 1))
 
     org_dao.add_coordinator(campaign, username='Yarl')
     org_dao.add_coordinator(campaign, 'Slaporte')
@@ -121,7 +121,7 @@ def main():
     avg_ratings_map = coord_dao.get_round_average_rating_map(rnd)
     threshold_map = get_threshold_map(avg_ratings_map)
 
-    # coord_dao.finalize_round(rnd)
+    # coord_dao.finalize_rating_round(rnd)
 
     # org_dao.close_round(rnd)
 

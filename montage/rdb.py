@@ -3,8 +3,8 @@
 # Relational database models for Montage
 import json
 import random
+import datetime
 import itertools
-from datetime import datetime
 from collections import Counter
 from math import ceil
 
@@ -784,7 +784,7 @@ class CoordinatorDAO(UserDAO):
         tasks = create_initial_tasks(self.rdb_session, rnd)
 
         rnd.status = 'active'
-        rnd.open_date = rnd.open_date or datetime.now()
+        rnd.open_date = rnd.open_date or datetime.utcnow()
 
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
         self.log_action('activate_round', round=rnd, message=msg)
@@ -821,9 +821,6 @@ class CoordinatorDAO(UserDAO):
 
         self.rdb_session.commit()
         return rnd
-
-    def reassign(self, rnd, active_jurors):
-        pass
 
     def add_juror(self, username):
         user = lookup_user(self.rdb_session, username=username)
@@ -872,13 +869,14 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def get_round_average_rating_map(self, rnd):
-        # round_counts = self.get_round_task_counts(rnd)
-        # if round_counts['total_open_tasks']:
-        #    raise InvalidAction('cannot close round with open tasks'
-        #                        ' (%r outstanding)'
-        #                        % round_counts['total_open_tasks'])
+    def finalize_rating_round(self, rnd, threshold):
+        assert rnd.vote_method == 'rating'
+        # TODO: assert all tasks complete
 
+        rnd.close_date = datetime.utcnow()
+
+
+    def get_round_average_rating_map(self, rnd):
         results = self.query(Rating, func.avg(Rating.value).label('average'))\
                       .join(RoundEntry)\
                       .filter(Rating.round_entry.has(round_id=rnd.id))\
@@ -1067,7 +1065,7 @@ class JurorDAO(UserDAO):
                         round_entry_id=task.round_entry_id,
                         value=rating)
         self.rdb_session.add(rating)
-        task.complete_date = datetime.now()
+        task.complete_date = datetime.utcnow()
         return
 
 
