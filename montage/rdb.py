@@ -528,15 +528,13 @@ class UserDAO(object):
         # allow overriding with _role attribute
         return getattr(self, '_role', cn_role)
 
-    # TODO: def is_admin ?
-
     def query(self, *a, **kw):
         "a call-through to the underlying session.query"
         return self.rdb_session.query(*a, **kw)
 
     def log_action(self, action, **kw):
         # TODO: file logging here too
-        user_id = self.user.id
+        user_id = self.user.id if self.user else None
         round_entry = kw.pop('round_entry', None)
         round_entry_id = kw.pop('round_entry_id',
                                 round_entry.id if round_entry else None)
@@ -829,13 +827,14 @@ class CoordinatorDAO(UserDAO):
         user = lookup_user(self.rdb_session, username=username)
 
         if not user:
+            creator = self.user if user else None
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
-                        created_by=self.user.id)
+                        created_by=creator.id if creator else None)
             self.rdb_session.add(user)
             msg = ('%s created user %s while adding them as a %s'
-                   % (self.user.username, username, role))
+                   % (creator.username if creator else '', username, role))
             self.log_action('create_user', message=msg, **kw)
 
         return user

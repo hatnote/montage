@@ -10,9 +10,9 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 
 sys.path.append(PROJ_PATH)
 
-from sqlalchemy import create_engine
+from sqlalchemy import MetaData, create_engine
 
-from montage.rdb import Base
+# from montage.rdb import Base  # might not drop tables which were removed
 from montage.utils import load_env_config
 
 
@@ -20,7 +20,9 @@ def drop_schema(db_url, echo=True):
 
     # echo="debug" also prints results of selects, etc.
     engine = create_engine(db_url, echo=echo)
-    Base.metadata.drop_all(engine)
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    metadata.drop_all(engine)
 
     return
 

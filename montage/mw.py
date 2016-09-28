@@ -1,5 +1,6 @@
 
 import json
+import time
 
 from clastic import Middleware, BaseResponse
 from clastic.route import NullRoute
@@ -118,9 +119,6 @@ class UserMiddleware(Middleware):
         ret = next(user=user, user_dao=user_dao)
 
         return ret
-
-
-import time
 
 
 class TimingMiddleware(Middleware):
