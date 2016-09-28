@@ -23,6 +23,8 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/edit', edit_round),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
+           POST('/admin/round/<round_id:int>/finalize',
+                finalize_round),
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/add_coordinator/campaign/<campaign_id:int>',
                 add_coordinator),
@@ -110,7 +112,7 @@ def import_entries(rdb_session, user, round_id, request_dict):
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    # TODO: Confirm if round exists
+
     import_method = request_dict.get('import_method')
     if import_method == 'gistcsv':
         gist_url = request_dict.get('gist_url')
@@ -180,8 +182,8 @@ def create_round(rdb_session, user, campaign_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
-        raise Forbidden('not allowed to create rounds')
+    coord_dao = CoordinatorDAO(rdb_session, user)
+    campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
     req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
@@ -191,21 +193,17 @@ def create_round(rdb_session, user, campaign_id, request_dict):
         val = request_dict.get(column)
         if not val:
             raise InvalidAction('%s is required to create a round' % val)
-            # TODO: raise http error
         if column is 'jurors':
             val = val.split(',')
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
-            # TODO: raise http error
         if column is 'deadline_date':
             val = isoparse(val)
         rnd_dict[column] = val
 
     default_quorum = len(rnd_dict['jurors'])
     rnd_dict['quorum'] = request_dict.get('quorum', default_quorum)
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd_dict['campaign'] = coord_dao.get_campaign(campaign_id)
-    # TODO: Confirm if campaign exists
+    rnd_dict['campaign'] = campaign
     rnd = coord_dao.create_round(**rnd_dict)
 
     data = rnd.to_details_dict()
@@ -225,7 +223,7 @@ def edit_round(rdb_session, user, round_id, request_dict):
     Response model: AdminCampaignDetails
     """
     rnd_dict = {}
-    column_names = ['name', 'description', 'directions', 'config_json']
+    column_names = ['name', 'description', 'directions', 'config']
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
     #  - quorum: [requires reallocation]
@@ -258,7 +256,15 @@ def get_round_results_preview(rdb_session, user, round_id):
 
 
 def finalize_round(rdb_session, user, round_id, request_dict):
-    pass
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    if rnd.voting_method in ('rating', 'yesno'):
+        threshold = request_dict['threshold']
+        coord_dao.finalize_rating_round(rnd, threshold=threshold)
+    else:
+        raise NotImplementedError()
+    return {}
 
 
 def get_index(rdb_session, user):

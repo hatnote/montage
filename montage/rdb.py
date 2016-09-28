@@ -23,27 +23,26 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from boltons.strutils import slugify
-from boltons.iterutils import chunked
+from boltons.iterutils import chunked, first
 from boltons.statsutils import mean
 
-from simple_serdes import DictableBase, JSONEncodedDict
 from utils import (format_date,
                    get_mw_userid,
                    weighted_choice,
-                   get_threshold_map,
                    PermissionDenied, DoesNotExist, InvalidAction)
 from imgutils import make_mw_img_url
 from loaders import get_csv_from_gist
+from simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
 
 # Some basic display settings for now
-DEFAULT_ROUND_CONFIG = json.dumps({'show_link': True,
-                                   'show_filename': True,
-                                   'show_resolution': True})
+DEFAULT_ROUND_CONFIG = {'show_link': True,
+                        'show_filename': True,
+                        'show_resolution': True}
 
-DEFAULT_MIN_RESOLUTION = 2097152
+DEFAULT_MIN_RESOLUTION = 2097152  # 2 megapixel
 
 """
 Column ordering and groupings:
@@ -144,6 +143,11 @@ class Campaign(Base):
     coords = association_proxy('campaign_coords', 'user',
                                creator=lambda user: CampaignCoord(coord=user))
 
+    @property
+    def active_round(self):
+        return first([r for r in self.rounds
+                      if r.status in ('active', 'paused')], None)
+
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
@@ -154,6 +158,7 @@ class Campaign(Base):
         ret = self.to_info_dict()
         ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds]
         ret['coordinators'] = [user.to_info_dict() for user in self.coords]
+        ret['active_round'] = self.active_round.to_info_dict()
         return ret
 
 
@@ -188,17 +193,16 @@ class Round(Base):
     status = Column(String(255))
     vote_method = Column(String(255))
     quorum = Column(Integer)
-    # Should we just have some settings in json? yes. -mh
-    config_json = Column(Text, default=DEFAULT_ROUND_CONFIG)
+
+    config = Column(JSONEncodedDict, default=DEFAULT_ROUND_CONFIG)
     deadline_date = Column(TIMESTAMP)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     campaign_id = Column(Integer, ForeignKey('campaigns.id'))
-    # increments for higher rounds within the same campaign
-    # doesn't need to be in the db prolly
-    campaign_seq = Column(Integer, default=1)
+    campaign_seq = Column(Integer)
+
     campaign = relationship('Campaign', back_populates='rounds')
 
     round_jurors = relationship('RoundJuror')
@@ -411,20 +415,11 @@ class Task(Base):
         return ret
 
 
-class ResultsSummary(Base):
+class RoundResultsSummary(Base):
     """# Results modeling
 
     This is more like a persistent cache. Results could be recomputed from
     the ratings/rankings.
-
-    ## Campaign results
-
-    (Same as last round results?)
-
-    * Ranked winners
-    * Total number of entries
-    * Total number of votes
-    * Credits (organizers, coordinators, jurors)
 
     ## Round results
 
@@ -447,12 +442,37 @@ class ResultsSummary(Base):
 
     id = Column(Integer, primary_key=True)
 
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     round_id = Column(Integer, ForeignKey('rounds.id'))
 
     summary = Column(JSONEncodedDict)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
+
+'''
+class CampaignResults(Base):
+    """
+    (Same as last round results?)
+
+    On the frontend I'd like to see:
+
+    * Ranked winners
+    * Total number of entries
+    * Total number of votes
+    * Summary of each round (with jurors)
+    * Organizers and coordinators
+    * Dates
+
+    """
+    __tablename__ = 'campaign_results'
+
+    id = Column(Integer, primary_key=True)
+
+    campaign_id = Column(Integer, ForeignKey('campaign.id'))
+
+    summary = Column(JSONEncodedDict)
+
+    create_date = Column(TIMESTAMP, server_default=func.now())
+'''
 
 
 class AuditLogEntry(Base):
@@ -617,7 +637,6 @@ class CoordinatorDAO(UserDAO):
 
     # write methods
     def edit_campaign(self, campaign_id, campaign_dict):
-        # TODO: confirm permissions in this query
         ret = self.rdb_session.query(Campaign)\
                               .filter_by(id=campaign_id)\
                               .update(campaign_dict)
@@ -625,33 +644,18 @@ class CoordinatorDAO(UserDAO):
 
         return ret
 
-    def create_round(self,
-                     name,
-                     quorum,
-                     vote_method,
-                     jurors,
-                     deadline_date,
-                     campaign=None,
-                     campaign_id=None):
-        if not campaign and campaign_id:
-            raise DoesNotExist('missing campaign object or campaign_id')
-
-        if not campaign and campaign_id:
-            campaign = self.get_campaign(campaign_id)
-
-        if not campaign:
-            raise DoesNotExist('campaign does not exist')
-
+    def create_round(self, campaign, name, quorum,
+                     vote_method, jurors, deadline_date):
         rnd_jurors = []
 
         for juror_name in jurors:
             juror = self.add_juror(juror_name)
             rnd_jurors.append(juror)
 
-        # TODO: campaign_seq, ie the rounds position within the campaign
-
         rnd = Round(name=name,
                     campaign=campaign,
+                    campaign_seq=len(campaign.rounds),
+                    status='paused',
                     quorum=quorum,
                     deadline_date=deadline_date,
                     vote_method=vote_method,
@@ -781,10 +785,13 @@ class CoordinatorDAO(UserDAO):
         self.log_action('pause_round', round=rnd, message=msg)
 
     def activate_round(self, rnd):
+        if rnd.status != 'paused':
+            raise InvalidAction('can only activate round in a paused state,'
+                                ' not %r' % (rnd.status,))
         tasks = create_initial_tasks(self.rdb_session, rnd)
 
         rnd.status = 'active'
-        rnd.open_date = rnd.open_date or datetime.utcnow()
+        rnd.open_date = rnd.open_date or datetime.datetime.utcnow()
 
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
         self.log_action('activate_round', round=rnd, message=msg)
@@ -797,7 +804,6 @@ class CoordinatorDAO(UserDAO):
     def add_entries_from_csv_gist(self, rnd, gist_url):
         entries = get_csv_from_gist(gist_url)
 
-        commit_objs = []
         entry_chunks = chunked(entries, 200)
 
         for entry_chunk in entry_chunks:
@@ -808,12 +814,9 @@ class CoordinatorDAO(UserDAO):
                 db_entry = db_entries.get(entry.name)
 
                 if db_entry:
-                    entry = db_entry  # commit_objs.append(db_entry)
-                else:
-                    commit_objs.append(entry)
+                    entry = db_entry
 
-                round_entry = RoundEntry(entry=entry, round=rnd)
-                commit_objs.append(round_entry)
+                RoundEntry(entry=entry, round=rnd)
 
         # self.rdb_session.bulk_save_objects(commit_objs)
         # Mystery: Why does this lead to a unique constraint failure
@@ -838,7 +841,7 @@ class CoordinatorDAO(UserDAO):
                     .filter(Task.round_entry.has(round_id=rnd.id),
                             Task.complete_date == None)\
                     .all()
-        cancel_date = datetime.utcnow()
+        cancel_date = datetime.datetime.utcnow()
 
         rnd.status = 'cancelled'
         rnd.close_date = cancel_date
@@ -852,29 +855,46 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def finalize_round(self, rnd):
-        # TODO TODO TODO
-        tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=rnd.id),
-                            Task.complete_date == None)\
-                    .all()
-        complete_date = datetime.utcnow()
-
-        rnd.status = 'complete'
-        rnd.close_date = complete_date
-
-        msg = '%s finalized round "%s"' %\
-              (self.user.username, rnd.name)
-        self.log_action('cancel_round', round=rnd, message=msg)
-
-        return rnd
-
     def finalize_rating_round(self, rnd, threshold):
-        assert rnd.vote_method == 'rating'
+        assert rnd.vote_method in ('rating', 'yesno')
         # TODO: assert all tasks complete
 
-        rnd.close_date = datetime.utcnow()
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = 'finalized'
+        rnd.config['final_threshold'] = threshold
 
+        advance_count = len(self.get_rating_advancing_group(rnd, threshold))
+
+        msg = ('%s finalized rating round "%s" at threshold %s'
+               ' with %s entries advancing.'
+               % (self.user.username, rnd.name, threshold, advance_count))
+        self.log_action('finalize_round', round=rnd, message=msg)
+
+        return
+
+    def get_rating_advancing_group(self, rnd, threshold=None):
+        assert rnd.vote_method in ('rating', 'yesno')
+
+        if threshold is None:
+            threshold = self.config.get('final_threshold')
+        if threshold is None:
+            raise ValueError('expected threshold or finalized round')
+
+        assert 0.0 <= threshold <= 1.0
+
+        avg = func.avg(Rating.value).label('average')
+
+        results = self.query(RoundEntry, Rating, avg)\
+                      .options(joinedload('entry'))\
+                      .filter_by(round_id=rnd.id)\
+                      .join(Rating)\
+                      .group_by(Rating.round_entry_id)\
+                      .having(avg >= threshold)\
+                      .all()
+
+        entries = [res[0].entry for res in results]
+
+        return entries
 
     def get_round_average_rating_map(self, rnd):
         results = self.query(Rating, func.avg(Rating.value).label('average'))\
@@ -1065,7 +1085,7 @@ class JurorDAO(UserDAO):
                         round_entry_id=task.round_entry_id,
                         value=rating)
         self.rdb_session.add(rating)
-        task.complete_date = datetime.utcnow()
+        task.complete_date = datetime.datetime.utcnow()
         return
 
 
@@ -1209,9 +1229,6 @@ def reassign_tasks(session, rnd, new_jurors):
         task = reassg_queue.pop()
         task.user = choose_eligible(elig_map[task.round_entry])
         target_work_map[task.user].append(task)
-
-    if len(reassg_tasks) == 0:
-        import pdb;pdb.set_trace()
 
     task_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
     return {'incomplete_task_count': len(incomp_tasks),

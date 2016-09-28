@@ -71,7 +71,7 @@ def main():
     rnd = coord_dao.create_round(name='Test Round 1',
                                  quorum=3,
                                  vote_method='rating',
-                                 deadline_date=datetime(2015, 10, 15),
+                                 deadline_date=datetime.datetime(2015, 10, 15),
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
                                  campaign=campaign)
     # returns successful, disqualified, total counts
@@ -104,7 +104,7 @@ def main():
     rnd = coord_dao.create_round(name='Test Round 2',
                                  quorum=2,
                                  vote_method='rating',
-                                 deadline_date=datetime(2015, 10, 15),
+                                 deadline_date=datetime.datetime(2015, 10, 15),
                                  jurors=['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat'],
                                  campaign=campaign)
     coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
@@ -121,7 +121,16 @@ def main():
     avg_ratings_map = coord_dao.get_round_average_rating_map(rnd)
     threshold_map = get_threshold_map(avg_ratings_map)
 
-    # coord_dao.finalize_rating_round(rnd)
+    # let at least 100 through
+    cur_thresh = [t for t, c in sorted(threshold_map.items()) if c >= 100][-1]
+
+    adv_group = coord_dao.get_rating_advancing_group(rnd, cur_thresh)
+    coord_dao.finalize_rating_round(rnd, cur_thresh)
+    campaign = coord_dao.get_campaign(campaign.id)
+
+    assert campaign.active_round is None
+
+
 
     # org_dao.close_round(rnd)
 

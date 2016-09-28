@@ -57,6 +57,7 @@ A bit of space for dev bookkeeping.
 * Switch request_dict to Werkzeug MultiDict for BadRequest behavior
 * get rid of comma splitting
 * frontend must not be able to pass floats
+* fix `one_or_none` getters
 ...
 
 * DAO.add_juror doesn't add jurors really
