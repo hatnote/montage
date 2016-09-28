@@ -612,6 +612,9 @@ class CoordinatorDAO(UserDAO):
         return round
 
     def get_round_task_counts(self, rnd):
+        # the fact that these are identical for two DAOs shows it
+        # should be on the Round model or somewhere else shared
+        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
         total_tasks = self.query(Task)\
                           .filter(Task.round_entry.has(round_id=rnd.id),
                                   Task.cancel_date == None)\
@@ -625,7 +628,8 @@ class CoordinatorDAO(UserDAO):
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
         else:
             percent_open = 0.0
-        return {'total_tasks': total_tasks,
+        return {'total_round_entries': re_count,
+                'total_tasks': total_tasks,
                 'total_open_tasks': total_open_tasks,
                 'percent_tasks_open': percent_open}
 
@@ -1062,9 +1066,14 @@ class JurorDAO(UserDAO):
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
+        if total_tasks:
+            percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
+        else:
+            percent_open = 0.0
         return {'total_round_entries': re_count,
                 'total_tasks': total_tasks,
-                'total_open_tasks': total_open_tasks}
+                'total_open_tasks': total_open_tasks,
+                'percent_tasks_open': percent_open}
 
     def apply_rating(self, task, rating):
         if not task.user == self.user:

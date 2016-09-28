@@ -49,6 +49,7 @@ from sqlalchemy.orm import sessionmaker
 from mwoauth import ConsumerToken
 
 from mw import (UserMiddleware,
+                TimingMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
 from rdb import Base
@@ -115,6 +116,7 @@ def create_app(env_name='prod'):
         scm_mw.data_expiry = NEVER
 
     middlewares = [MessageMiddleware(),
+                   TimingMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(session_type),
                    UserMiddleware()]

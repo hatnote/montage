@@ -83,10 +83,13 @@ class MessageMiddleware(Middleware):
 class UserMiddleware(Middleware):
     endpoint_provides = ('user', 'user_dao')
 
-    def endpoint(self, next, cookie, response_dict, rdb_session, _route):
+    def endpoint(self, next, cookie, rdb_session, _route,
+                 response_dict, timings_dict):
         # endpoints are default non-public
+        # TODO: last_activity_date?
         response_dict['user'] = None
-
+        start_time = time.time()
+        timings_dict['lookup_user'] = 0.0
         ep_is_public = (getattr(_route.endpoint, 'is_public', False)
                         or getattr(_route, 'is_public', False)
                         or '/static/' in _route.pattern
@@ -111,9 +114,27 @@ class UserMiddleware(Middleware):
             return {}
 
         user_dao = UserDAO(rdb_session=rdb_session, user=user)
-
+        timings_dict['lookup_user'] = time.time() - start_time
         ret = next(user=user, user_dao=user_dao)
 
+        return ret
+
+
+import time
+
+
+class TimingMiddleware(Middleware):
+    provides = ('timings_dict',)
+
+    def request(self, next, response_dict):
+        response_dict['timings'] = timings_dict = {}
+        ret = next(timings_dict=timings_dict)
+        return ret
+
+    def endpoint(self, next, timings_dict):
+        start_time = time.time()
+        ret = next()
+        timings_dict['endpoint'] = round(time.time() - start_time, 3)
         return ret
 
 
