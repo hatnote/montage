@@ -57,6 +57,7 @@ from rdb import Base, bootstrap_maintainers
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
 
+from meta_endpoints import META_ROUTES
 from juror_endpoints import JUROR_ROUTES
 from admin_endpoints import ADMIN_ROUTES
 from public_endpoints import PUBLIC_ROUTES
@@ -70,7 +71,7 @@ STATIC_PATH = os.path.join(CUR_PATH, 'static')
 
 def create_app(env_name='prod'):
     # rendering is handled by MessageMiddleware
-    routes = PUBLIC_ROUTES + JUROR_ROUTES + ADMIN_ROUTES
+    routes = PUBLIC_ROUTES + JUROR_ROUTES + ADMIN_ROUTES + META_ROUTES
 
     print '==  creating WSGI app using env name: %s' % (env_name,)
 
@@ -131,6 +132,8 @@ def create_app(env_name='prod'):
     if api_log_path:
         log_mw = LoggingMiddleware(api_log_path)
         middlewares.insert(0, log_mw)
+        # hack
+        config['api_exc_log_path'] = getattr(log_mw, 'exc_log_path', None)
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
