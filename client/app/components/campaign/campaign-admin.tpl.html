@@ -29,9 +29,10 @@
     <div class="campaign__rounds-description"
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
+        <span class="md-body-1" flex="10">Deadline Date</span>
         <span class="md-body-1" flex="30">Round Date</span>
-        <span class="md-body-1" flex="15">No. of Jurors</span>
-        <span class="md-body-1" flex="15">Vote Method</span>
+        <span class="md-body-1" flex="10">No. of Jurors</span>
+        <span class="md-body-1" flex="10">Vote Method</span>
         <span flex></span>
     </div>
     <md-card class="campaign__rounds">
@@ -45,20 +46,36 @@
                       ng-show="round.status"
                       ng-class="'tag--{{round.status}}'">{{round.status}}</span>
             </span>
+            <span class="md-body-1" flex="10" layout="row" layout-align="start center">
+                <span ng-show="round.deadline_date">
+                    {{round.deadline_date | date}}<br />
+                    <small class="muted">{{round.deadline_date | fromNow}}</small>
+                </span>
+                <span class="muted" ng-show="!round.deadline_date">
+                    No deadline date provided
+                </span>
+            </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
                 <span ng-show="round.open_date">
                     {{round.open_date | date}}<br />
                     <small class="muted">{{round.open_date | fromNow}}</small>
                 </span>
-                <span class="campaign__dash"
-                      ng-show="round.open_date || round.close_date">–</span>
+                <span class="muted"
+                      ng-show="!round.open_date">
+                    Round not started
+                </span>
+                <span class="campaign__dash">–</span>
                 <span ng-show="round.close_date">
                     {{round.close_date | date}}<br />
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>
+                <span class="muted"
+                      ng-show="!round.close_date">
+                    Round not ended
+                </span>
             </span>
-            <span class="md-body-1" flex="15">{{round.jurors.length || "0"}} jurors</span>
-            <span class="md-body-1" flex="15">
+            <span class="md-body-1" flex="10">{{round.jurors.length || "0"}} jurors</span>
+            <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
                 <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon> Ranking</span>
