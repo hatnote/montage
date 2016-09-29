@@ -9,12 +9,14 @@ from montage.rdb import (make_rdb_session,
                          MaintainerDAO,
                          CoordinatorDAO,
                          lookup_user)
-from montage.utils import PermissionDenied, get_threshold_map
+
+from montage.utils import PermissionDenied, get_threshold_map, load_env_config
 
 random.seed('badidea')
 
 GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
 
+config = load_env_config()
 
 def cross_complete(rdb_session, rnd):
     juror1, juror2 = rnd.jurors[0], rnd.jurors[1]
@@ -77,8 +79,15 @@ def main():
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
 
+<<<<<<< Updated upstream
     entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     coord_dao.add_round_entries(rnd, entries)
+=======
+    if config.get('labs_db'):
+        coord_dao.add_entries_from_cat(rnd, 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan')
+    else:
+        coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+>>>>>>> Stashed changes
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)
