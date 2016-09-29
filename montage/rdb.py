@@ -783,10 +783,14 @@ class CoordinatorDAO(UserDAO):
         if rnd.status != 'paused':
             raise InvalidAction('can only activate round in a paused state,'
                                 ' not %r' % (rnd.status,))
-        tasks = create_initial_tasks(self.rdb_session, rnd)
+        if not rnd.open_date:
+            tasks = create_initial_tasks(self.rdb_session, rnd)
+            rnd.open_date = datetime.datetime.utcnow()
+
+            msg = '%s opened round %s' % (self.user.username, rnd.name)
+            self.log_action('open_round', round=rnd, message=msg)
 
         rnd.status = 'active'
-        rnd.open_date = rnd.open_date or datetime.datetime.utcnow()
 
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
         self.log_action('activate_round', round=rnd, message=msg)
