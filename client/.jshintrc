@@ -2,7 +2,7 @@
   "curly": true,
   "eqeqeq": true,
   "bitwise": true,
-  "camelcase": true,
+  "camelcase": false,
   "esnext": true,
   "expr": true,
   "forin": true,
