@@ -43,9 +43,9 @@ class MessageMiddleware(Middleware):
             request_dict = None
         if request.args:
             if request_dict:
-                request_dict.update(request.args)
+                request_dict.update(request.args.items())
             else:
-                request_dict = dict(request.args)
+                request_dict = dict(request.args.items())
 
         return next(response_dict=response_dict, request_dict=request_dict)
 
@@ -82,10 +82,19 @@ class MessageMiddleware(Middleware):
 
 
 class UserMiddleware(Middleware):
+    """The UserMiddleware looks up the logged in user and provides a
+    database interface (UserDAO). Sessions are authenticated through
+    signed cookies.
+
+    * "superuser" feature. If there is a configured superuser, they can
+    pass the user they'd like to act as, assuming they can provide a
+    valid signed cookie.
+
+    """
     endpoint_provides = ('user', 'user_dao')
 
-    def endpoint(self, next, cookie, rdb_session, _route,
-                 response_dict, timings_dict):
+    def endpoint(self, next, cookie, rdb_session, _route, config,
+                 request_dict, response_dict, timings_dict):
         # endpoints are default non-public
         # TODO: last_activity_date?
         response_dict['user'] = None
@@ -107,13 +116,21 @@ class UserMiddleware(Middleware):
             return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
-        response_dict['user'] = user.to_dict() if user else user
 
         if user is None and not ep_is_public:
             err = 'unknown cookie userid, try logging in again'
             response_dict['errors'].append(err)
             return {}
 
+        superuser = config.get('superuser')
+        if superuser and user.username == superuser:
+            su_to = request_dict and request_dict.get('su_to')
+            if su_to:
+                user = (rdb_session.query(User)
+                        .filter(User.username == su_to)
+                        .first())
+
+        response_dict['user'] = user.to_dict() if user else user
         user_dao = UserDAO(rdb_session=rdb_session, user=user)
         timings_dict['lookup_user'] = time.time() - start_time
         ret = next(user=user, user_dao=user_dao)
