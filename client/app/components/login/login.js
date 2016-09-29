@@ -1,12 +1,17 @@
 import './login.scss';
 import template from './login.tpl.html';
 
+import logo from '../../images/logo_1.png';
+
 const LoginComponent = {
     bindings: {
         data: '<'
     },
     controller: function ($state, $window, versionService) {
         var vm = this;
+        vm.img = {
+            logo: logo
+        },
         vm.loading = false;
         vm.login = login;
 

@@ -22,7 +22,7 @@ const VersionService = function($timeout, $mdTheming, themeProvider) {
 
   function setVersion(version) {
       themeProvider.theme(version)
-        .primaryPalette(versions[version][0])
+        .primaryPalette(versions[version][0]) //{default: '900'}
         .accentPalette(versions[version][1]);
       $mdTheming.generateTheme(version);
       themeProvider.setDefaultTheme(version);
