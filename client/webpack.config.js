@@ -8,6 +8,7 @@ var config = {
   entry: './index.js',
   output: {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
+    publicPath: 'assets' + path.sep,
     filename: 'bundle.js'
   },
   plugins: [new HtmlWebpackPlugin({
@@ -39,7 +40,12 @@ var config = {
         test: /\.scss$/, loader: 'style!css!sass'
       },
       {
-        test: /\.(png|woff|woff2|eot|ttf|svg)$/, loader: 'url-loader?limit=100000'
+        test: /\.(woff|woff2|ttf|eot)$/,
+        loader: 'file?name=fonts/[name].[ext]'
+      },
+      {
+        test: /\.(jpe?g|png|gif|svg)$/i,
+        loader: 'file?name=images/[name].[ext]'
       },
       {
         test: /\.json$/, loader: 'json'
