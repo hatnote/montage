@@ -30,7 +30,7 @@ from utils import (format_date,
                    weighted_choice,
                    PermissionDenied, DoesNotExist, InvalidAction)
 from imgutils import make_mw_img_url
-from loaders import get_entries_from_gist_csv, get_entries_from_cat
+from loaders import get_entries_from_gist_csv, load_category
 from simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
@@ -43,7 +43,7 @@ DEFAULT_ROUND_CONFIG = {'show_link': True,
 
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
-ENTRY_CHUNK_SIZE = 200
+IMPORT_CHUNK_SIZE = 200
 
 
 """
@@ -807,25 +807,35 @@ class CoordinatorDAO(UserDAO):
 
     def add_entries_from_cat(self, rnd, cat_name):
         entries = load_category(cat_name)
-        
+
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
-        
-        ret = self.add_entries(rnd, entry_chunks)
-        return ret
+
+        entries, new_entry_count = self.add_entries(rnd, entry_chunks)
+
+        msg = ('%s loaded %s entries from category (%s), %s new entries added'
+               % (self.user.username, len(entries), cat_name, new_entry_count))
+        self.log_action('add_entries', message=msg, round=rnd)
+
+        return entries
 
     def add_entries_from_csv_gist(self, rnd, gist_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
-        ret = []
 
         entries = get_entries_from_gist_csv(gist_url)
 
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
 
-        ret = self.add_entries(rnd, entry_chunks)
-        return ret
+        entries, new_entries_count = self.add_entries(rnd, entry_chunks)
 
-    def add_entries_chunked(self, rnd, entry_chunks):
+        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
+               % (self.user.username, len(entries), gist_url, new_entry_count))
+        self.log_action('add_entries', message=msg, round=rnd)
+
+        return entries
+
+   def add_entries(self, rnd, entry_chunks):
+        ret = []
         new_entry_count = 0
         for entry_chunk in entry_chunks:
             entry_names = [e.name for e in entry_chunk]
@@ -842,11 +852,7 @@ class CoordinatorDAO(UserDAO):
 
                 ret.append(entry)
 
-        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
-               % (self.user.username, len(entries), gist_url, new_entry_count))
-        self.log_action('add_entries', message=msg, round=rnd)
-
-        return ret
+        return ret, new_entry_count
 
     def add_round_entries(self, rnd, entries, source=''):
         if rnd.status != 'paused':

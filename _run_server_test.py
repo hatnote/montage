@@ -55,7 +55,7 @@ def fetch_json(url, data=None, act=None, **kw):
     return data_dict
 
 
-def full_run(url_base):
+def full_run(url_base, remote):
     # load home
     # resp = fetch(url_base).read()
 
@@ -179,8 +179,12 @@ def full_run(url_base):
     gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
 
     # import the initial set of images to the round
-    data = {'import_method': 'gistcsv',
-            'gist_url': gist_url}
+    if remote:
+        data = {'import_method': 'category',
+                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
+    else:
+        data = {'import_method': 'gistcsv',
+                'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id, data)
 
     print '.. loaded %s entries into round #%s' % ('_', round_id)
@@ -188,8 +192,12 @@ def full_run(url_base):
     # activate the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
 
-    data = {'import_method': 'gistcsv',
-            'gist_url': gist_url}
+    if remote:
+        data = {'import_method': 'category',
+                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
+    else:
+        data = {'import_method': 'gistcsv',
+                'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id2, data)
 
     print '.. loaded %s entries into round #%s' % ('_', round_id2)
@@ -197,8 +205,13 @@ def full_run(url_base):
     # active the round
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id2, {'post': True})
 
-    data = {'import_method': 'gistcsv',
-            'gist_url': gist_url}
+
+    if remote:
+        data = {'import_method': 'category',
+                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
+    else:
+        data = {'import_method': 'gistcsv',
+                'gist_url': gist_url}
     resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id3, data)
 
     print '.. loaded %s entries into round #%s' % ('_', round_id3)
