@@ -4,6 +4,7 @@ import './campaign.scss';
 import templateAdmin from './campaign-admin.tpl.html';
 import templateJury from './campaign-jury.tpl.html';
 import templateNewRound from './new-round.tpl.html';
+import templateEditRound from './edit-round.tpl.html';
 
 const CampaignComponent = {
     bindings: {
@@ -11,7 +12,7 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, alertService, userService) {
+    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, alertService, dialogService, userService) {
         let vm = this;
         vm.activateRound = activateRound;
         vm.addRound = addRound;
@@ -26,6 +27,22 @@ const CampaignComponent = {
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
+        const voteMethods = [
+            {
+                label: 'Yes/No',
+                value: 'yesno'
+            },
+            {
+                label: 'Rating',
+                value: 'rating'
+            },
+            {
+                label: 'Ranking',
+                value: 'ranking'
+            }
+        ];
+
+
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
 
         // functions
@@ -38,57 +55,36 @@ const CampaignComponent = {
             });
         }
 
+        function createRound(newRound, loading) {
+            let round = angular.copy(newRound);
+            round = angular.extend(round, {
+                jurors: round.jurors.map((element) => element.name),
+                deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
+            });
+
+            loading.window = true;
+            userService.admin.addRound(vm.campaign.id, round).then((response) => {
+                $mdDialog.hide(true);
+                $state.reload();
+
+                response.error ?
+                    alertService.error(response.error) :
+                    alertService.success('New round added');
+            });
+        }
+
         function addRound(event) {
-            $mdDialog.show({
+            dialogService.show({
                 template: templateNewRound,
-                parent: angular.element(document.body),
-                targetEvent: event,
-                clickOutsideToClose: false,
-                controller: ($scope, $mdDialog, $timeout, dataService) => {
-                    $scope.round = {
+                scope: {
+                    round: {
                         name: 'Round ' + (vm.campaign.rounds.length + 1),
                         vote_method: 'rating',
                         quorum: 2,
-                        jurors: [],
-                        status: 'paused'
-                    };
-                    $scope.voteMethods = [
-                        {
-                            label: 'Yes/No',
-                            value: 'yesno'
-                        },
-                        {
-                            label: 'Rating',
-                            value: 'rating'
-                        },
-                        {
-                            label: 'Ranking',
-                            value: 'ranking'
-                        }
-                    ];
-                    $scope.hide = function () {
-                        $mdDialog.hide();
-                    };
-                    $scope.cancel = function () {
-                        $mdDialog.cancel();
-                    };
-                    $scope.create = function () {
-                        let round = angular.copy($scope.round);
-                        round = angular.extend(round, {
-                            jurors: round.jurors.map((element) => element.name),
-                            deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
-                        });
-
-                        $scope.loading = true;
-                        userService.admin.addRound(vm.campaign.id, round).then((response) => {
-                            $scope.loading = false;
-                            $mdDialog.hide(true);
-                            $state.reload();
-                        }, (response) => {
-                            $scope.loading = false;
-                            console.log('err', response);
-                        });
-                    };
+                        jurors: []
+                    },
+                    createRound: createRound,
+                    voteMethods: voteMethods
                 }
             });
         }
@@ -108,7 +104,13 @@ const CampaignComponent = {
         }
 
         function editRound(round) {
-
+            dialogService.show({
+                template: templateEditRound,
+                scope: {
+                    round: round,
+                    voteMethods: voteMethods
+                }
+            });
         }
 
         function isAdmin() {

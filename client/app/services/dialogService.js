@@ -12,8 +12,9 @@ const DialogService = function ($mdDialog) {
             clickOutsideToClose: false,
             controller: ($scope, $mdDialog) => {
                 angular.extend($scope, data.scope);
-                $scope.hide = () => $mdDialog.hide();
                 $scope.cancel = () => $mdDialog.cancel();
+                $scope.hide = () => $mdDialog.hide();
+                $scope.loading = {};
             }
         });
     }
