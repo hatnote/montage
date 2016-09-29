@@ -12,7 +12,8 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache, $timeout, alertService, dialogService, userService) {
+    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache,
+        $timeout, alertService, dataService, dialogService, userService) {
         let vm = this;
         vm.activateRound = activateRound;
         vm.addRound = addRound;
@@ -27,20 +28,25 @@ const CampaignComponent = {
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
-        const voteMethods = [
-            {
+        const voteMethods = {
+            'yesno': {
                 label: 'Yes/No',
-                value: 'yesno'
+                value: 'yesno',
+                icon: 'thumbs_up_down'
             },
-            {
+            'rating': {
                 label: 'Rating',
-                value: 'rating'
-            },
-            {
-                label: 'Ranking',
-                value: 'ranking'
+                value: 'rating',
+                icon: 'star_border'
             }
-        ];
+            /*
+            'ranking': {
+                label: 'Ranking',
+                value: 'ranking',
+                icon: 'sort'
+            }
+            */
+        };
 
 
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
@@ -55,21 +61,63 @@ const CampaignComponent = {
             });
         }
 
-        function createRound(newRound, loading) {
-            let round = angular.copy(newRound);
-            round = angular.extend(round, {
+        function createRound(round, loading) {
+            let round_ = angular.copy(round);
+            round_ = angular.extend(round_, {
                 jurors: round.jurors.map((element) => element.name),
                 deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
             });
 
-            loading.window = true;
-            userService.admin.addRound(vm.campaign.id, round).then((response) => {
-                $mdDialog.hide(true);
-                $state.reload();
+            console.log(round_);
+            if (!round_.name) {
+                alertService.error({
+                    message: 'Error',
+                    detail: 'Name cannot be empty'
+                });
+                return;
+            }
+            if (!round_.deadline_date) {
+                alertService.error({
+                    message: 'Error',
+                    detail: 'Deadline date cannot be empty'
+                });
+                return;
+            }
+            if (!round_.jurors.length) {
+                alertService.error({
+                    message: 'Error',
+                    detail: 'Jurors must be added'
+                });
+                return;
+            }
+            if (!round_.quorum) {
+                alertService.error({
+                    message: 'Error',
+                    detail: 'Quorum value is empty on invalid'
+                });
+                return;
+            }
 
-                response.error ?
-                    alertService.error(response.error) :
+            loading.window = true;
+            userService.admin.addRound(vm.campaign.id, round_).then((response) => {
+                if(response.error) {
+                    loading.window = false;
+                    alertService.error(response.error);
+                    return;
+                }
+
+                const id = response.data.id;
+                userService.admin.populateRound(id, round_.imports).then((response) => {
+                    if(response.error) {
+                        loading.window = false;
+                        alertService.error(response.error);
+                        return;
+                    }
+
                     alertService.success('New round added');
+                    $mdDialog.hide(true);
+                    $state.reload();
+                });
             });
         }
 
@@ -81,10 +129,18 @@ const CampaignComponent = {
                         name: 'Round ' + (vm.campaign.rounds.length + 1),
                         vote_method: 'rating',
                         quorum: 2,
-                        jurors: []
+                        jurors: [],
+                        imports: {
+                            import_method: 'category',
+                            category: ''
+                        }
                     },
                     createRound: createRound,
-                    voteMethods: voteMethods
+                    searchCategory: (name) => dataService.searchCategory(name).then((response) => {
+                        return response.data[1].map((element) => element.substring(9));
+                    }),
+                    voteMethods: voteMethods,
+                    today: new Date()
                 }
             });
         }
@@ -104,10 +160,14 @@ const CampaignComponent = {
         }
 
         function editRound(round) {
+            let round_ = angular.extend(angular.copy(round), {
+                deadline_date: new Date(round.deadline_date)
+            });
+
             dialogService.show({
                 template: templateEditRound,
                 scope: {
-                    round: round,
+                    round: round_,
                     voteMethods: voteMethods
                 }
             });

@@ -1,4 +1,4 @@
-<md-dialog style="min-width: 400px;">
+<md-dialog class="dialog__edit">
     <div class="spinner__container" layout="row" layout-align="center center"
             ng-show="loading.window">
         <md-progress-circular md-diameter="40"></md-progress-circular>
@@ -6,28 +6,60 @@
     <form ng-cloak>
         <md-dialog-content>
             <div class="md-dialog-content" layout="column" layout-align="start stretch">
-                <h2 class="md-title no-margin">Add new round</h2>
-                <md-input-container>
+                <h2 class="md-title no-margin dialog__title">Add Round</h2>
+                <md-input-container class="dialog__name">
                     <label>Round Name</label>
-                    <input ng-model="round.name" type="text">
+                    <input type="text" ng-model="round.name" required>
                 </md-input-container>
-                <div layout="row" layout-align="start start">
-                    <md-input-container flex="50">
-                        <label>Vote Method</label>
-                        <md-select ng-model="round.vote_method">
-                            <md-option ng-repeat="method in voteMethods" ng-value="method.value">
-                                {{method.label}}
-                            </md-option>
-                        </md-select>
-                    </md-input-container>
-                    <md-input-container flex="50">
-                        <label>Quorum</label>
-                        <input ng-model="round.quorum" type="number">
-                    </md-input-container>
-                </div>
-                <md-datepicker ng-model="round.deadline_date"
-                               md-placeholder="Deadline Date"></md-datepicker>
-
+                <md-list flex>
+                    <md-list-item class="md-2-line">
+                        <md-icon>{{voteMethods[round.vote_method].icon}}</md-icon>
+                        <div class="md-list-item-text">
+                            <md-select class="dialog__input" ng-model="round.vote_method">
+                                <md-option ng-repeat="method in voteMethods" ng-value="method.value">
+                                    {{method.label}}
+                                </md-option>
+                            </md-select>
+                            <p>Vote Method</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <md-icon>cloud_download</md-icon>
+                        <div class="md-list-item-text">
+                        <md-autocomplete flex
+                            md-input-name="autocomplete"
+                            md-input-minlength="2"
+                            md-input-maxlength="1000"
+                            md-autoselect="true"
+                            md-selected-item="round.imports.category"
+                            md-search-text="searchText"
+                            md-items="item in searchCategory(searchText)"
+                            md-item-text="item">
+                            <md-item-template>
+                                <span md-highlight-text="searchText">{{item}}</span>
+                            </md-item-template>
+                        </md-autocomplete>
+                            <p>Wikimedia Commons Source Category</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <md-icon>date_range</md-icon>
+                        <div class="md-list-item-text">
+                            <md-datepicker ng-model="round.deadline_date"
+                                           md-min-date="today"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Deadline Date</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <div class="md-list-item-text md-offset">
+                            <md-input-container class="dialog__input">
+                                <input ng-model="round.quorum" type="number" ng-min="1" ng-max="round.jurors.length">
+                            </md-input-container>
+                            <p>Quorum</p>
+                        </div>
+                    </md-list-item>
+                </md-list>
                 <strong class="md-subhead">Jurors</strong>
                 <mont-user-list ng-model="round.jurors"></mont-user-list>
             </div>

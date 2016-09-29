@@ -45,6 +45,7 @@ footer {
 
 .no-margin {
     margin: 0;
+    padding: 0;
 }
 
 .md-button.active {
@@ -106,4 +107,40 @@ strong {
 
 .toast__top {
     top: 64px !important;
+}
+
+.dialog__edit {
+    width: 400px;
+
+   .dialog__title {
+        margin-bottom: 10px;
+   }
+
+   .dialog__name {
+        margin-bottom: 0;
+   }
+
+   .dialog__input {
+        margin: 0;
+        height: 30px;
+        width: 100%;
+   } 
+
+   md-datepicker {
+        padding-right: 0;
+        display: block;
+
+        .md-datepicker-input {
+            font-size: 16px;
+        }
+   }
+}
+
+// calendar border fixes
+.md-datepicker-calendar-pane.md-pane-open {
+    border-width: 0;
+
+    md-calendar-month-body {
+        border-top: 2px solid #eee;
+    }
 }
