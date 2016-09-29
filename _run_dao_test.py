@@ -79,15 +79,12 @@ def main():
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
 
-<<<<<<< Updated upstream
-    entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
-    coord_dao.add_round_entries(rnd, entries)
-=======
+
     if config.get('labs_db'):
-        coord_dao.add_entries_from_cat(rnd, 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan')
+        entries = coord_dao.add_entries_from_cat(rnd, 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan')
     else:
+        entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
         coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
->>>>>>> Stashed changes
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)

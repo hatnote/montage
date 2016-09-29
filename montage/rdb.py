@@ -41,13 +41,10 @@ DEFAULT_ROUND_CONFIG = {'show_link': True,
                         'show_filename': True,
                         'show_resolution': True}
 
-<<<<<<< Updated upstream
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
-=======
-DEFAULT_MIN_RESOLUTION = 2097152  # 2 megapixel
 ENTRY_CHUNK_SIZE = 200
->>>>>>> Stashed changes
+
 
 """
 Column ordering and groupings:
@@ -828,11 +825,8 @@ class CoordinatorDAO(UserDAO):
         ret = self.add_entries(rnd, entry_chunks)
         return ret
 
-<<<<<<< Updated upstream
-        new_entry_count = 0
-=======
     def add_entries_chunked(self, rnd, entry_chunks):
->>>>>>> Stashed changes
+        new_entry_count = 0
         for entry_chunk in entry_chunks:
             entry_names = [e.name for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
