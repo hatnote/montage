@@ -6,13 +6,12 @@
     <form ng-cloak>
         <md-dialog-content>
             <div class="md-dialog-content" layout="column" layout-align="start stretch">
-                <h2 class="md-title no-margin">Edit Round</h2>
-                <md-input-container>
+                <h2 class="md-title no-margin dialog__title">Edit Round</h2>
+                <md-input-container class="dialog__name">
                     <label>Round Name</label>
-                    <input type="text" ng-model="round.name">
+                    <input type="text" ng-model="round.name" required>
                 </md-input-container>
                 <md-list flex>
-                    <md-subheader class="md-no-sticky">Options</md-subheader>
                     <md-list-item class="md-2-line">
                         <md-icon>{{voteMethods[round.vote_method].icon}}</md-icon>
                         <div class="md-list-item-text">
@@ -23,13 +22,13 @@
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <h3><md-datepicker ng-model="round.deadline_date" md-hide-icons="calendar"></md-datepicker></h3>
+                            <md-datepicker ng-model="round.deadline_date"
+                                           md-min-date="today"
+                                           md-hide-icons="calendar"></md-datepicker>
                             <p>Deadline Date</p>
                         </div>
                     </md-list-item>
                 </md-list>
-                <strong class="md-subhead">Jurors</strong>
-                <mont-user-list ng-model="round.jurors"></mont-user-list>
             </div>
         </md-dialog-content>
 
