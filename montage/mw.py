@@ -2,6 +2,7 @@
 import json
 import time
 
+import clastic
 from clastic import Middleware, BaseResponse
 from clastic.route import NullRoute
 from clastic.render import render_basic
@@ -43,9 +44,9 @@ class MessageMiddleware(Middleware):
             request_dict = None
         if request.args:
             if request_dict:
-                request_dict.update(request.args)
+                request_dict.update(request.args.items())
             else:
-                request_dict = dict(request.args)
+                request_dict = dict(request.args.items())
 
         return next(response_dict=response_dict, request_dict=request_dict)
 
@@ -82,10 +83,19 @@ class MessageMiddleware(Middleware):
 
 
 class UserMiddleware(Middleware):
+    """The UserMiddleware looks up the logged in user and provides a
+    database interface (UserDAO). Sessions are authenticated through
+    signed cookies.
+
+    * "superuser" feature. If there is a configured superuser, they can
+    pass the user they'd like to act as, assuming they can provide a
+    valid signed cookie.
+
+    """
     endpoint_provides = ('user', 'user_dao')
 
-    def endpoint(self, next, cookie, rdb_session, _route,
-                 response_dict, timings_dict):
+    def endpoint(self, next, cookie, rdb_session, _route, config,
+                 request_dict, response_dict, timings_dict):
         # endpoints are default non-public
         # TODO: last_activity_date?
         response_dict['user'] = None
@@ -107,13 +117,21 @@ class UserMiddleware(Middleware):
             return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
-        response_dict['user'] = user.to_dict() if user else user
 
         if user is None and not ep_is_public:
             err = 'unknown cookie userid, try logging in again'
             response_dict['errors'].append(err)
             return {}
 
+        superuser = config.get('superuser')
+        if superuser and user.username == superuser:
+            su_to = request_dict and request_dict.get('su_to')
+            if su_to:
+                user = (rdb_session.query(User)
+                        .filter(User.username == su_to)
+                        .first())
+
+        response_dict['user'] = user.to_dict() if user else user
         user_dao = UserDAO(rdb_session=rdb_session, user=user)
         timings_dict['lookup_user'] = time.time() - start_time
         ret = next(user=user, user_dao=user_dao)
@@ -154,3 +172,80 @@ class DBSessionMiddleware(Middleware):
         finally:
             rdb_session.close()
         return ret
+
+
+import os.path
+
+from lithoxyl import (Logger,
+                      StreamEmitter,
+                      SensibleSink,
+                      SensibleFilter,
+                      SensibleFormatter)
+
+API_LOG_FMT = (' {status_char} - {process_id:>5} - {iso_end_notz}'
+               ' - {duration_ms:>8.3f}ms - {end_message}')
+
+
+class LoggingMiddleware(Middleware):
+    provides = ('api_log', 'api_act',)
+
+    def __init__(self, log_path, act_name='API'):
+        self.log_path = os.path.abspath(log_path)
+        root, ext = os.path.splitext(self.log_path)
+        self.exc_log_path = '%s.exc%s' % (root, ext)
+        self.act_name = act_name
+
+        self._setup_api_log()
+
+    def request(self, next, request, _route):
+        try:
+            with self.api_log.critical(_route.pattern) as api_act:
+                # basic redacted url
+                api_act['path'] = request.path
+                api_act.data_map.update(request.args.items())
+                try:
+                    ret = next(api_act=api_act, api_log=self.api_log)
+                except clastic.errors.BadRequest as br:
+                    api_act.data_map.update(br.to_dict())
+                    api_act.failure()
+                    ret = br
+                api_act['code'] = ret.status_code
+        except Exception:
+            exc_info = ExceptionInfo.from_current()
+            text = u'\n\n' + exc_info.get_formatted() + '\n\n'
+            self.exc_log_file_obj.write(text.encode('utf8'))
+            self.exc_log_file_obj.flush()
+            raise
+        return ret
+
+    def endpoint(self, next, api_act):
+        ret = next()
+        try:
+            api_act['username'] = ret['user'].username
+        except Exception:
+            pass
+        return ret
+
+    def _setup_api_log(self):
+        self.log_file_obj = open(self.log_path, 'ab')
+        self.exc_log_file_obj = open(self.exc_log_path, 'ab')
+
+        self.api_log = Logger(self.act_name.lower() + '_log')
+        self._api_fmtr = SensibleFormatter(API_LOG_FMT)
+        self._api_emtr = StreamEmitter(self.log_file_obj)
+        self._api_fltr = SensibleFilter(success='info',
+                                        failure='debug',
+                                        exception='debug')
+        self._api_sink = SensibleSink(formatter=self._api_fmtr,
+                                      emitter=self._api_emtr,
+                                      filters=[self._api_fltr])
+        self.api_log.add_sink(self._api_sink)
+
+        self._exc_emtr = StreamEmitter(self.exc_log_file_obj)
+        self._exc_fltr = SensibleFilter(success=None,
+                                        failure=None,
+                                        exception='info')
+        self._exc_sink = SensibleSink(formatter=self._api_fmtr,
+                                      emitter=self._exc_emtr,
+                                      filters=[self._exc_fltr])
+        self.api_log.add_sink(self._exc_sink)

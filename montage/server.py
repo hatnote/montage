@@ -50,6 +50,7 @@ from mwoauth import ConsumerToken
 
 from mw import (UserMiddleware,
                 TimingMiddleware,
+                LoggingMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
 from rdb import Base
@@ -120,6 +121,10 @@ def create_app(env_name='prod'):
                    scm_mw,
                    DBSessionMiddleware(session_type),
                    UserMiddleware()]
+    api_log_path = config.get('api_log_path')
+    if api_log_path:
+        log_mw = LoggingMiddleware(api_log_path)
+        middlewares.insert(0, log_mw)
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
