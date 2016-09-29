@@ -44,6 +44,13 @@ def fetch(url, data=None):
 
 @script_log.wrap('info', inject_as='act')
 def fetch_json(url, data=None, act=None, **kw):
+    su_to = kw.get('su_to')
+    if su_to:
+        url_su_to = urllib.quote_plus(su_to)
+        if '?' in url:
+            url += '&su_to=' + url_su_to
+        else:
+            url += '?su_to=' + url_su_to
     act['url'] = url
     res = fetch(url, data=data)
     data_dict = json.load(res)
@@ -247,17 +254,17 @@ def full_run(url_base):
     resp_dict = fetch_json(url_base + '/juror/round/%s/tasks' % round_id)
 
     print '.. loaded more tasks'
-    
+
     data = {'ratings': []}
     for task in resp_dict['data']:
         bulk_rating = {'entry_id': task['round_entry_id'],
                        'task_id': resp_dict['data'][0]['id'],
                        'rating': '1.0'}
         data['ratings'].append(bulk_rating)
-        
+
     entry_id = resp_dict['data'][0]['round_entry_id']
     task_id = resp_dict['data'][0]['id']
-    
+
     import pdb; pdb.set_trace()
 
     resp_dict = fetch_json(url_base + '/juror/bulk_submit/rating', data)
@@ -281,7 +288,7 @@ def add_votes(domain, round_id):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
-    
+
     pass
 
 
