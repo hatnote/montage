@@ -683,6 +683,9 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
+    def edit_round(self, rnd_id, rnd_dict):
+        pass
+
     def autodisqualify_by_date(self, rnd):
         campaign = rnd.campaign
         min_date = campaign.open_date
@@ -976,6 +979,10 @@ class CoordinatorDAO(UserDAO):
         # TODO: check to make sure only certain round actions can happen
         # when paused, others only when active, basically none when the
         # round is complete or cancelled.
+        if not getattr(new_jurors, 'username', None):
+            new_jurors = [self.get_or_create_user(j, 'juror', round=rnd)
+                           for j in new_jurors]
+
         if rnd.quorum > len(new_jurors):
             raise InvalidAction('expected at least %s jurors to make quorum'
                                 ' (%s) for round #%s'
@@ -985,9 +992,17 @@ class CoordinatorDAO(UserDAO):
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
-        # TODO: set old_jurors to inactive in RoundJuror table
-        # TODO: add new jurors to RoundJuror table
         res = reassign_tasks(self.rdb_session, rnd, new_jurors)
+
+        for juror in new_jurors:
+            if juror.username not in old_juror_names:
+                rnd.jurors.append(juror)
+
+        for round_juror in rnd.round_jurors:
+            if round_juror.user.username in new_juror_names:
+                round_juror.is_active = 1
+            else:
+                round_juror.is_active = 0
 
         msg = ('%s changed round #%s jurors (%r -> %r), reassigned %s tasks'
                ' (average juror task queue now at %s)'

@@ -4,7 +4,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import format_date, get_threshold_map, InvalidAction
+from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
@@ -19,8 +19,10 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/new/round', create_round),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
+           POST('/admin/round/<round_id:int>/pause', pause_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
+           POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/finalize',
@@ -163,6 +165,16 @@ def activate_round(rdb_session, user, round_id, request_dict):
     ret_data['round_id'] = round_id
     return {'data': ret_data}
 
+def pause_round(rdb_session, user, round_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+    if not rnd:
+        raise DoesNotExist()
+    
+    coord_dao.pause_round(rnd)
+
+    return {'data': rnd}
+
 
 def edit_campaign(rdb_session, user, campaign_id, request_dict):
     """
@@ -256,6 +268,38 @@ def edit_round(rdb_session, user, round_id, request_dict):
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.edit_round(round_id, rnd_dict)
+    return {'data': rnd_dict}
+
+
+def modify_jurors(rdb_session, user, round_id, request_dict):
+    """
+    Summary: Post a new campaign
+
+    Request model:
+        campaign_name:
+            type: string
+
+    Response model: AdminCampaignDetails
+    """
+    rnd_dict = {}
+    new_jurors = request_dict.get('new_jurors')
+
+    if not new_jurors:
+        raise InvalidAction()
+
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    # TODO: Check if the number of jurors is valid (eg more than quorum)?
+
+    if not rnd:
+        raise DoesNotExist()
+
+    if rnd.status != 'paused':
+        raise InvalidAction('round must be paused to edit jurors')
+
+    rnd = coord_dao.modify_jurors(rnd, new_jurors)
+    
     return {'data': rnd_dict}
 
 
