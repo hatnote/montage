@@ -1,6 +1,7 @@
 
 import random
 import datetime
+from pprint import pprint
 
 from montage.rdb import (make_rdb_session,
                          JurorDAO,
@@ -101,7 +102,7 @@ def main():
     # # should fail, quorum must be <= # of jurors
     # coord_dao.reassign(active_jurors=['Slaporte'])
 
-    rnd = coord_dao.create_round(name='Test Round 2',
+    rnd = coord_dao.create_round(name='Test Round 1.1',
                                  quorum=2,
                                  vote_method='rating',
                                  deadline_date=datetime.datetime(2015, 10, 15),
@@ -131,13 +132,49 @@ def main():
 
     assert campaign.active_round is None
 
-    # # start new round
+    #
+    # Time for Round 2
+    #
+
+    rnd2 = coord_dao.create_round(campaign,
+                                  name='Test Round 2',
+                                  vote_method='rating',
+                                  quorum=2,
+                                  jurors=juror_usernames,
+                                  deadline_date=datetime.datetime(2015, 11, 1))
+    final_rnds = [r for r in campaign.rounds if r.status == 'finalized']
+    last_successful_rnd = final_rnds[-1]  # TODO: these are ordered by date?
+    advancing_group = coord_dao.get_rating_advancing_group(last_successful_rnd)
+
+    source = 'round(#%s)' % last_successful_rnd.id
+    coord_dao.add_round_entries(rnd2, advancing_group, source)
+    coord_dao.activate_round(rnd2)
+
+    rate_round_tasks(rdb_session, rnd2, limit_per=20)
+    coord_dao.pause_round(rnd2)
+    coord_dao.activate_round(rnd2)
+    rate_round_tasks(rdb_session, rnd2)
+    avg_ratings_map = coord_dao.get_round_average_rating_map(rnd2)
+    threshold_map = get_threshold_map(avg_ratings_map)
+
+    assert threshold_map == ROUND_2_THRESH
+
+    #
+    #
+    #
+
     # # close round
     # # close campaign
     # # download audit logs
 
     rdb_session.commit()
+    pprint(threshold_map)
+
     import pdb;pdb.set_trace()
+
+
+ROUND_2_THRESH = {0.0: 128, 0.125: 124, 0.25: 109, 0.375: 99,
+                  0.5: 81, 0.625: 59, 0.75: 33, 0.875: 14, 1.0: 3}
 
 
 if __name__ == '__main__':

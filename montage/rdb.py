@@ -652,6 +652,12 @@ class CoordinatorDAO(UserDAO):
 
     def create_round(self, campaign, name, quorum,
                      vote_method, jurors, deadline_date):
+        # TODO:
+        # if campaign.active_round:
+        #     raise InvalidAction('can only create one active/paused round at a'
+        #                         ' time. cancel or complete your existing'
+        #                         ' rounds before trying again')
+
         jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
                   for j in jurors]
         rnd = Round(name=name,
@@ -795,7 +801,7 @@ class CoordinatorDAO(UserDAO):
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
         self.log_action('activate_round', round=rnd, message=msg)
 
-        return tasks
+        return
 
     def add_entries_from_cat(self):
         pass
@@ -832,6 +838,8 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def add_round_entries(self, rnd, entries, source=''):
+        if rnd.status != 'paused':
+            raise InvalidAction('round must be paused to add new entries')
         existing_names = set(self.rdb_session.query(Entry.name).
                              join(RoundEntry).
                              filter_by(round=rnd).
@@ -913,7 +921,7 @@ class CoordinatorDAO(UserDAO):
         assert rnd.vote_method in ('rating', 'yesno')
 
         if threshold is None:
-            threshold = self.config.get('final_threshold')
+            threshold = rnd.config.get('final_threshold')
         if threshold is None:
             raise ValueError('expected threshold or finalized round')
 
@@ -1127,7 +1135,7 @@ def lookup_user(rdb_session, username):
     return user
 
 
-def create_initial_tasks(rdb_session, round):
+def create_initial_tasks(rdb_session, rnd):
     """this creates the initial tasks.
 
     there may well be a separate function for reassignment which reads
@@ -1138,8 +1146,10 @@ def create_initial_tasks(rdb_session, round):
     # TODO: deny quorum > number of jurors
     ret = []
 
-    quorum = round.quorum
-    jurors = [rj.user for rj in round.round_jurors if rj.is_active]
+    quorum = rnd.quorum
+    jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
     random.shuffle(jurors)
 
     rdb_type = rdb_session.bind.dialect.name
@@ -1151,7 +1161,7 @@ def create_initial_tasks(rdb_session, round):
 
     # this does the shuffling in the database
     shuffled_entries = rdb_session.query(RoundEntry)\
-                                  .filter(RoundEntry.round_id == round.id,
+                                  .filter(RoundEntry.round_id == rnd.id,
                                           RoundEntry.dq_user_id == None)\
                                   .order_by(rand_func).all()
 
@@ -1173,7 +1183,6 @@ def create_initial_tasks(rdb_session, round):
         task = Task(user=juror, round_entry=entry)
         ret.append(task)
 
-    rdb_session.commit()
     return ret
 
 

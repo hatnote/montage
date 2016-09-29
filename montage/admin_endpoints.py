@@ -152,11 +152,12 @@ def activate_round(rdb_session, user, round_id, request_dict):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    tasks = coord_dao.activate_round(rnd)
-    # TODO: Confirm round exists?
-    data = {'round_id': round_id,
-            'total_tasks': len(tasks)}
-    return {'data': data}
+
+    coord_dao.activate_round(rnd)
+
+    ret_data = coord_dao.get_round_task_counts(rnd)
+    ret_data['round_id'] = round_id
+    return {'data': ret_data}
 
 
 def edit_campaign(rdb_session, user, campaign_id, request_dict):
