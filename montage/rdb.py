@@ -26,6 +26,7 @@ from boltons.iterutils import chunked, first, unique_iter
 from boltons.statsutils import mean
 
 from utils import (format_date,
+                   to_unicode,
                    get_mw_userid,
                    weighted_choice,
                    PermissionDenied, DoesNotExist, InvalidAction)
@@ -836,12 +837,11 @@ class CoordinatorDAO(UserDAO):
         new_entry_count = 0
 
         for entry_chunk in entry_chunks:
-            entry_names = [e.name for e in entry_chunk]
+            entry_names = [to_unicode(e.name) for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
 
             for entry in entry_chunk:
-                db_entry = db_entries.get(entry.name)
-
+                db_entry = db_entries.get(to_unicode(entry.name))
                 if db_entry:
                     entry = db_entry
                 else:

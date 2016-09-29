@@ -40,6 +40,13 @@ class InvalidAction(BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
 
 
+def to_unicode(obj):
+    try:
+        return unicode(obj)
+    except UnicodeDecodeError:
+        return unicode(obj, encoding='utf8')
+
+
 def encode_dict_to_bytes(query):
     if hasattr(query, 'items'):
         query = query.items()

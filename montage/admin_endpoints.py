@@ -125,16 +125,13 @@ def import_entries(rdb_session, user, round_id, request_dict):
         source = 'gistcsv(%s)' % gist_url
     elif import_method == 'category':
         cat_name = request_dict.get('category')
-        print cat_name
         entries = coord_dao.add_entries_from_cat(rnd, cat_name)
-        print entries
         source = 'category(%s)' % cat_name
-        print source
     else:
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
-    print new_entries
+
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
