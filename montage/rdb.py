@@ -834,7 +834,7 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-   def add_entries(self, rnd, entry_chunks):
+    def add_entries(self, rnd, entry_chunks):
         ret = []
         new_entry_count = 0
         for entry_chunk in entry_chunks:
