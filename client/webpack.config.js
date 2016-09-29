@@ -8,7 +8,7 @@ var config = {
   entry: './index.js',
   output: {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
-    publicPath: 'assets' + path.sep,
+    publicPath: 'assets/',
     filename: 'bundle.js'
   },
   plugins: [new HtmlWebpackPlugin({
