@@ -1,0 +1,46 @@
+<md-dialog style="min-width: 400px;">
+    <div class="spinner__container" layout="row" layout-align="center center"
+            ng-show="loading">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+    <form ng-cloak>
+        <md-dialog-content>
+            <div class="md-dialog-content" layout="column" layout-align="start stretch">
+                <h2 class="md-title no-margin">Edit round</h2>
+                <md-input-container>
+                    <label>Round Name</label>
+                    <input ng-model="round.name" type="text">
+                </md-input-container>
+                <div layout="row" layout-align="start start">
+                    <md-input-container flex="50">
+                        <label>Vote Method</label>
+                        <md-select ng-model="round.vote_method" disabled>
+                            <md-option ng-repeat="method in voteMethods" ng-value="method.value">
+                                {{method.label}}
+                            </md-option>
+                        </md-select>
+                    </md-input-container>
+                    <md-input-container flex="50">
+                        <label>Quorum</label>
+                        <input ng-model="round.quorum" type="number">
+                    </md-input-container>
+                </div>
+                <md-datepicker ng-model="round.deadline_date"
+                               md-placeholder="Deadline Date"></md-datepicker>
+
+                <strong class="md-subhead">Jurors</strong>
+                <mont-user-list ng-model="round.jurors"></mont-user-list>
+            </div>
+        </md-dialog-content>
+
+        <md-dialog-actions layout="row">
+            <span flex></span>
+            <md-button ng-click="cancel()">
+                Cancel
+            </md-button>
+            <md-button class="md-primary" ng-click="create()">
+                Create
+            </md-button>
+        </md-dialog-actions>
+    </form>
+</md-dialog>

@@ -71,7 +71,13 @@
                 </md-button>
                 <md-menu-content width="3">
                     <md-menu-item>
-                        <md-button ng-click="$ctrl.activateRound(round)">
+                        <md-button ng-click="$ctrl.editRound(round)">
+                            Edit Round
+                        </md-button>
+                    </md-menu-item>
+                    <md-menu-item>
+                        <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
+                                   ng-click="$ctrl.activateRound(round)">
                             Activate Round
                         </md-button>
                     </md-menu-item>
