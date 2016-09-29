@@ -267,10 +267,16 @@ def edit_round(rdb_session, user, round_id, request_dict):
     new_val_map = {}
 
     for column_name in column_names:
+        # val = request_dict.pop(column_name, None)  # see note below
         val = request_dict.get(column_name)
         if val is not None:
             setattr(rnd, column_name, val)
             new_val_map[column_name] = val
+
+    # can't do this yet because stuff like su_to is hanging out in there.
+    # if request_dict:
+    #     raise InvalidAction('unable to modify round attributes: %r'
+    #                         % request_dict.keys())
 
     return {'data': new_val_map}
 
