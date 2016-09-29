@@ -1,29 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Relational database models for Montage
-import json
 import random
 import datetime
 import itertools
-from collections import Counter
+from collections import Counter, defaultdict
 from math import ceil
 
-from sqlalchemy import (Column,
+from sqlalchemy import (Text,
+                        Column,
                         String,
                         Integer,
                         Float,
                         Boolean,
                         DateTime,
                         TIMESTAMP,
-                        Text,
                         ForeignKey)
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from boltons.strutils import slugify
-from boltons.iterutils import chunked, first
+from boltons.iterutils import chunked, first, unique_iter
 from boltons.statsutils import mean
 
 from utils import (format_date,
@@ -42,7 +41,8 @@ DEFAULT_ROUND_CONFIG = {'show_link': True,
                         'show_filename': True,
                         'show_resolution': True}
 
-DEFAULT_MIN_RESOLUTION = 2097152  # 2 megapixel
+ONE_MEGAPIXEL = 1e6
+DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 
 """
 Column ordering and groupings:
@@ -666,9 +666,10 @@ class CoordinatorDAO(UserDAO):
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
 
+        j_names = [j.username for j in jurors]
         msg = ('%s created %s round "%s" (#%s) with jurors %r for'
                ' campaign "%s"' % (self.user.username, vote_method,
-                                   rnd.name, rnd.id, jurors, campaign.name))
+                                   rnd.name, rnd.id, j_names, campaign.name))
         self.log_action('create_round', round=rnd, message=msg)
 
         return rnd
@@ -686,34 +687,37 @@ class CoordinatorDAO(UserDAO):
                             .all()
 
         for round_entry in round_entries:
-            dq_reason = ('upload date %s is out of campaign range %s - %s'
+            dq_reason = ('upload date %s is out of campaign date range %s - %s'
                          % (round_entry.entry.upload_date, min_date, max_date))
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-        msg = ('%s disqualified %s entries outside of %s - %s'
+        msg = ('%s disqualified %s entries outside of date range %s - %s'
                % (self.user.username, len(round_entries), min_date, max_date))
         self.log_action('autodisqualify_by_date', round=rnd, message=msg)
 
         return round_entries
 
     def autodisqualify_by_resolution(self, rnd):
-        min_resolution = DEFAULT_MIN_RESOLUTION
+        # TODO: get from config
+        min_res = rnd.config.get('min_resolution', DEFAULT_MIN_RESOLUTION)
 
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
                             .filter(RoundEntry.round_id == rnd.id)\
-                            .filter(Entry.resolution < min_resolution)\
+                            .filter(Entry.resolution < min_res)\
                             .all()
 
-        for round_entry in round_entries:
+        min_res_str = round(min_res / ONE_MEGAPIXEL, 2)
+        for r_ent in round_entries:
+            entry_res_str = round(r_ent.entry.resolution / ONE_MEGAPIXEL, 2)
             dq_reason = ('resolution %s is less than %s minimum '
-                         % (round_entry.entry.resolution, min_resolution))
-            round_entry.dq_reason = dq_reason
-            round_entry.dq_user_id = self.user.id
+                         % (entry_res_str, min_res_str))
+            r_ent.dq_reason = dq_reason
+            r_ent.dq_user_id = self.user.id
 
-        msg = ('%s disqualified %s entries smaller than %s pixels'
-               % (self.user.username, len(round_entries), min_resolution))
+        msg = ('%s disqualified %s entries smaller than %s megapixels'
+               % (self.user.username, len(round_entries), min_res_str))
         self.log_action('autodisqualify_by_resolution', round=rnd, message=msg)
 
         return round_entries
@@ -793,10 +797,15 @@ class CoordinatorDAO(UserDAO):
         pass
 
     def add_entries_from_csv_gist(self, rnd, gist_url):
+        # NOTE: this no longer creates RoundEntries, use
+        # add_round_entries to do this.
+        ret = []
+
         entries = get_entries_from_gist_csv(gist_url)
 
         entry_chunks = chunked(entries, 200)
 
+        new_entry_count = 0
         for entry_chunk in entry_chunks:
             entry_names = [e.name for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
@@ -806,15 +815,36 @@ class CoordinatorDAO(UserDAO):
 
                 if db_entry:
                     entry = db_entry
+                else:
+                    new_entry_count += 1
+                    self.rdb_session.add(entry)
 
-                RoundEntry(entry=entry, round=rnd)
+                ret.append(entry)
 
-        # self.rdb_session.bulk_save_objects(commit_objs)
-        # Mystery: Why does this lead to a unique constraint failure
-        # when adding new files?
+        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
+               % (self.user.username, len(entries), gist_url, new_entry_count))
+        self.log_action('add_entries', message=msg, round=rnd)
 
-        self.rdb_session.commit()
-        return rnd
+        return ret
+
+    def add_round_entries(self, rnd, entries, source=''):
+        existing_names = set(self.rdb_session.query(Entry.name).
+                             join(RoundEntry).
+                             filter_by(round=rnd).
+                             all())
+        new_entries = [e for e
+                       in unique_iter(entries, key=lambda e: e.name)
+                       if e.name not in existing_names]
+
+        rnd.entries.extend(new_entries)
+
+        msg = ('%s added %s round entries, %s new'
+               % (self.user.username, len(entries), len(new_entries)))
+        if source:
+            msg += ' (from %s)' % (source,)
+        self.log_action('add_round_entries', message=msg, round=rnd)
+
+        return new_entries
 
     def get_or_create_user(self, user, role, **kw):
         # kw is for including round/round_id/campaign/campaign_id
@@ -827,7 +857,7 @@ class CoordinatorDAO(UserDAO):
         user = lookup_user(self.rdb_session, username=username)
 
         if not user:
-            creator = self.user if user else None
+            creator = self.user
             user_id = get_mw_userid(username)
             user = User(id=user_id,
                         username=username,
@@ -868,8 +898,8 @@ class CoordinatorDAO(UserDAO):
 
         advance_count = len(self.get_rating_advancing_group(rnd, threshold))
 
-        msg = ('%s finalized rating round "%s" at threshold %s'
-               ' with %s entries advancing.'
+        msg = ('%s finalized rating round "%s" at threshold %s,'
+               ' with %s entries advancing'
                % (self.user.username, rnd.name, threshold, advance_count))
         self.log_action('finalize_round', round=rnd, message=msg)
 
@@ -1141,10 +1171,6 @@ def create_initial_tasks(rdb_session, round):
 
     rdb_session.commit()
     return ret
-
-
-from collections import defaultdict
-from sqlalchemy.orm import joinedload
 
 
 def reassign_tasks(session, rnd, new_jurors):

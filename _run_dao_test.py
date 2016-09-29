@@ -52,9 +52,7 @@ def main():
     mahm_user = lookup_user(rdb_session, 'MahmoudHashemi')  # maintainer
 
     maint_dao = MaintainerDAO(rdb_session, mahm_user)
-    maint_dao.add_organizer('LilyOfTheWest')
-
-    org_user = lookup_user(rdb_session, 'LilyOfTheWest')
+    org_user = maint_dao.add_organizer('LilyOfTheWest')
     org_dao = OrganizerDAO(rdb_session, org_user)
 
     # should automatically add the creator as coordinator
@@ -78,7 +76,8 @@ def main():
     # returns successful, disqualified, total counts
     # coord_dao.add_entries_from_cat(rnd, 'Wiki Loves Monuments France 2015')
 
-    coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    coord_dao.add_round_entries(rnd, entries)
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)
@@ -108,7 +107,8 @@ def main():
                                  deadline_date=datetime.datetime(2015, 10, 15),
                                  jurors=juror_usernames,
                                  campaign=campaign)
-    coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    coord_dao.add_round_entries(rnd, entries)
     coord_dao.activate_round(rnd)
 
     rate_round_tasks(rdb_session, rnd, limit_per=50)
@@ -130,8 +130,6 @@ def main():
     campaign = coord_dao.get_campaign(campaign.id)
 
     assert campaign.active_round is None
-
-    # org_dao.close_round(rnd)
 
     # # start new round
     # # close round

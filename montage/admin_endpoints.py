@@ -120,12 +120,17 @@ def import_entries(rdb_session, user, round_id, request_dict):
     import_method = request_dict.get('import_method')
     if import_method == 'gistcsv':
         gist_url = request_dict.get('gist_url')
-        rnd = coord_dao.add_entries_from_csv_gist(rnd, gist_url)
+        entries = coord_dao.add_entries_from_csv_gist(rnd, gist_url)
+        source = 'gistcsv(%s)' % gist_url
     else:
         # TODO: Support category based input via labs
         #       (other import methods too?)
-        pass
+        raise NotImplementedError()
+    new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
+
     data = {'round_id': rnd.id,
+            'new_entry_count': len(entries),
+            'new_round_entry_count': len(new_entries),
             'total_entries': len(rnd.entries)}
     return {'data': data}
 
