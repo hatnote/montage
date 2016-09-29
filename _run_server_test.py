@@ -261,7 +261,7 @@ def full_run(url_base, remote):
 
     # pause round
     resp_dict = fetch_json(url_base + '/admin/round/%s/pause' % round_id, {'post': True})
-    
+
     print '.. paused round %s' % round_id
 
     # edit jurors
@@ -273,12 +273,12 @@ def full_run(url_base, remote):
 
     resp_dict = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id, data)
 
-    print '.. edited jurors for round #%s' % round_id    
+    print '.. edited jurors for round #%s' % round_id
 
     # reassign tasks
 
     resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
-    
+
     print '.. reactivated round %s' % round_id
 
     resp_dict = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id3)
@@ -361,7 +361,7 @@ def main():
                           rfc2109=False)
     cookies.set_cookie(ck)
 
-    full_run(url_base, args.remote)
+    full_run(url_base, remote=args.remote)
 
 
 if __name__ == '__main__':

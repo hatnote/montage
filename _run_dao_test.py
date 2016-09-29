@@ -172,7 +172,6 @@ def main():
     #
     #
 
-    # # close round
     # # close campaign
     # # download audit logs
 

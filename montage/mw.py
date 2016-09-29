@@ -199,7 +199,8 @@ class LoggingMiddleware(Middleware):
 
     def request(self, next, request, _route):
         try:
-            with self.api_log.critical(_route.pattern) as api_act:
+            act_name = '%s%s' % (request.method, _route.pattern)
+            with self.api_log.critical(act_name) as api_act:
                 # basic redacted url
                 api_act['path'] = request.path
                 api_act.data_map.update(request.args.items())

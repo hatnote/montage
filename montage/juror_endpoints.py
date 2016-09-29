@@ -319,5 +319,77 @@ def bulk_submit_rating(rdb_session, user, request):
 
     return {'data': ret}
 
+from itertools import groupby
+MAX_RATINGS_SUBMIT = 100
+
+
+def submit_ratings(rdb_session, user, request_dict):
+    """message format:
+
+    {"ratings": [{"task_id": 10, "value": 0.0}, {"task_id": 11, "value": 1.0}]}
+
+    this function is used to submit ratings _and_ rankings. when
+    submitting rankings does not support ranking ties at the moment
+    """
+    # TODO: can jurors change their vote?
+    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+
+    r_dicts = request_dict['ratings']
+    if len(r_dicts) > MAX_RATINGS_SUBMIT:
+        raise InvalidAction('can submit up to 100 ratings at once, not %r'
+                            % len(r_dicts))
+    id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
+    if not len(id_map) == len(r_dicts):
+        pass  # duplicate values
+
+    tasks = juror_dao.get_tasks_by_id(id_map.keys())
+    task_map = dict([(t.id, t) for t in tasks])
+    round_id_set = set([t.round_entry.round_id for t in tasks])
+    if not len(round_id_set) == 1:
+        raise InvalidAction('can only submit ratings for one round at a time')
+    rnd = juror_dao.get_round(list(round_id_set)[0])
+    style = rnd.vote_method
+
+    # validation
+    if style == 'rating':
+        invalid = [r not in VALID_RATINGS for r in id_map.values()]
+        if invalid:
+            raise InvalidAction('rating expected one of %s, not %r'
+                                % (VALID_RATINGS, sorted(set(invalid))))
+    elif style == 'yesno':
+        invalid = [r not in VALID_YESNO for r in id_map.values()]
+        if not all([r in VALID_YESNO for r in id_map.values()]):
+            raise InvalidAction('yes/no rating expected one of %s, not %r'
+                                % (VALID_YESNO, sorted(set(invalid))))
+    elif style == 'ranking':
+        invalid = [r for r in id_map.values() if r != int(r) or r < 0]
+        if invalid:
+            raise InvalidAction('ranking expects round numbers >= 0, not %r'
+                                % (sorted(set(invalid))))
+        ranks = sorted([int(v) for v in id_map.values()])
+        if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
+            raise InvalidAction('ranking expects contiguous unique numbers,'
+                                ' 0 - %s, not %r' % (len(rnd.entries), ranks))
+
+    if style in ('rating', 'yesno'):
+        for t in tasks:
+            juror_dao.apply_rating(t, id_map[t.id])
+    elif style == 'ranking':
+        # This part is designed to support ties ok though
+        sorted_rs = sorted(r_dicts, key=lambda r: r['value'])
+        sorted_rank_task_pairs = [(int(r['value']), task_map[r['task_id']])
+                                  for r in sorted_rs]
+        rank_items = [tuple(t) for r, t in
+                      groupby(sorted_rank_task_pairs, key=lambda rt: rt[0])]
+        #  rank_map = dict(rank_items)  # might be clearer
+
+        juror_dao.apply_ranking(rank_items)
+
+    return {}  # TODO?
 
 JUROR_ROUTES = get_juror_routes()
+
+# TODO: Cave -> key-value store
+# TODO: flag RoundEntries (only applicable on ratings rounds?)
+# TODO: entry ID lookup by filename (should also return uploader, etc.)
+# TODO: manual disqualificatin for coordinators

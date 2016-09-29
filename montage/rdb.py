@@ -1012,6 +1012,35 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_jurors', round=rnd, message=msg)
         return res
 
+    def create_ranking_tasks(self, rnd, round_entries):
+        jurors = rnd.jurors
+        ret = []
+        for juror in jurors:
+            ret.extend([Task(user=juror, round_entry=re)
+                        for re in round_entries])
+        return ret
+
+    def create_ranking_round(self, campaign, name, jurors, deadline_date):
+        # TODO: there might be some cases where they want to jump straight to the final round?
+        # TODO: directions, other round params?
+        assert campaign.active_round is None
+        final_rnds = [r for r in campaign.rounds if r.status == 'finalized']
+        prev_finalized_rnd = final_rnds[-1]  # TODO: these are ordered by date?
+        assert prev_finalized_rnd.vote_method != 'ranking'
+
+        advancing_group = self.get_rating_advancing_group(prev_finalized_rnd)
+
+        assert 1 < len(advancing_group) <= 40  # TODO: configurable max
+
+        rnd = self.create_round(campaign,
+                                name=name,
+                                jurors=jurors,
+                                quorum=len(jurors),
+                                vote_method='ranking',
+                                deadline_date=deadline_date)
+        source = 'round(#%s)' % prev_finalized_rnd.id
+        self.add_round_entries(rnd, advancing_group, source=source)
+
 
 class OrganizerDAO(CoordinatorDAO):
     def add_coordinator(self, campaign, username):
@@ -1114,6 +1143,17 @@ class JurorDAO(UserDAO):
                     .all()
         return tasks
 
+    def get_tasks_by_id(self, task_ids):
+        if isinstance(task_ids, int):
+            task_ids = [task_ids]
+
+        ret = (self.query(Task)
+               .options(joinedload('round_entry'))
+               .filter(Task.id.in_(task_ids),
+                       Task.user == self.user)
+               .all())
+        return ret
+
     def get_tasks_from_round(self, rnd, num=1, offset=0):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
@@ -1158,6 +1198,17 @@ class JurorDAO(UserDAO):
         self.rdb_session.add(rating)
         task.complete_date = datetime.datetime.utcnow()
         return
+
+    def apply_ranking(self, ranked_tasks):
+        """format: [(task1,),
+                 (task3,),
+                 (task4, task6),
+                 (task5,)]
+
+        with task1 being the highest rank. this format is designed to
+        support ties.
+        """
+        pass
 
 
 def lookup_user(rdb_session, username):
