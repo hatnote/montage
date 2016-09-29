@@ -75,10 +75,10 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     user = rdb_session.query(User).filter(User.id == userid).first()
     now = datetime.datetime.utcnow()
     if user is None:
-        user = User(id=userid, username=username, last_login_date=now)
+        user = User(id=userid, username=username, last_active_date=now)
         rdb_session.add(user)
     else:
-        user.last_login_date = now
+        user.last_active_date = now
 
     # These would be useful when we have oauth beyond simple ID, but
     # they should be stored in the database along with expiration times.

@@ -491,7 +491,7 @@ def add_organizer(rdb_session, user, request_dict):
     Response model:
         username:
             type: string
-        last_login_date:
+        last_active_date:
             type: date-time
 
     Errors:
@@ -504,7 +504,7 @@ def add_organizer(rdb_session, user, request_dict):
     new_user_name = request_dict.get('username')
     new_organizer = maint_dao.add_organizer(new_user_name)
     data = {'username': new_organizer.username,
-            'last_login_date': format_date(new_organizer.last_login_date)}
+            'last_active_date': format_date(new_organizer.last_active_date)}
     return {'data': data}
 
 
@@ -521,7 +521,7 @@ def add_coordinator(rdb_session, user, campaign_id, request_dict):
     Response model:
         username:
             type: string
-        last_login_date:
+        last_active_date:
             type: date-time
         campaign_id:
             type: int64
@@ -539,7 +539,7 @@ def add_coordinator(rdb_session, user, campaign_id, request_dict):
     new_coord = org_dao.add_coordinator(campaign, new_user_name)
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
-            'last_login_date': format_date(new_coord.last_login_date)}
+            'last_active_date': format_date(new_coord.last_active_date)}
     return {'data': data}
 
 

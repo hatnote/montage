@@ -85,12 +85,12 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
+
     username = Column(String(255))
-
-    last_login_date = Column(DateTime)
-    create_date = Column(TIMESTAMP, server_default=func.now())
     is_organizer = Column(Boolean, default=False)
+    last_active_date = Column(DateTime)
 
+    create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     created_by = Column(Integer, ForeignKey('users.id'))
@@ -122,7 +122,7 @@ class User(Base):
 
     def to_details_dict(self):
         ret = self.to_info_dict()
-        ret['last_login_date'] = self.last_login_date
+        ret['last_active_date'] = self.last_active_date
         ret['created_by'] = self.created_by
         return ret
 
@@ -1098,6 +1098,23 @@ class MaintainerDAO(OrganizerDAO):
         self.rdb_session.add(user)
         self.rdb_session.commit()
         return user
+
+
+def bootstrap_maintainers(rdb_session):
+    # returns created users
+    ret = []
+    for username in MAINTAINERS:
+        user = lookup_user(rdb_session, username=username)
+
+        if not user:
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=None)
+            rdb_session.add(user)
+            ret.append(user)
+    return ret
+
 
 
 class JurorDAO(UserDAO):

@@ -53,7 +53,7 @@ from mw import (UserMiddleware,
                 LoggingMiddleware,
                 MessageMiddleware,
                 DBSessionMiddleware)
-from rdb import Base
+from rdb import Base, bootstrap_maintainers
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
 
@@ -97,6 +97,12 @@ def create_app(env_name='prod'):
             print '!! ', err
         print '!!  recreate the database and update the code, then try again'
         sys.exit(2)
+
+    # create maintainer users if they don't exist yet
+    musers = bootstrap_maintainers(tmp_rdb_session)
+    if musers:
+        print '++ created new users for maintainers: %r' % (musers,)
+    tmp_rdb_session.commit()
 
     engine.echo = config.get('db_echo', False)
 

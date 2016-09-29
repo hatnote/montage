@@ -1,6 +1,7 @@
 
 import json
 import time
+import datetime
 
 import clastic
 from clastic import Middleware, BaseResponse
@@ -130,6 +131,12 @@ class UserMiddleware(Middleware):
                 user = (rdb_session.query(User)
                         .filter(User.username == su_to)
                         .first())
+
+        now = datetime.datetime.utcnow()
+        last_minute = now - datetime.timedelta(seconds=60)
+        if not user.last_active_date or user.last_active_date < last_minute:
+            # updates only up to once a minute
+            user.last_active_date = now
 
         response_dict['user'] = user.to_dict() if user else user
         user_dao = UserDAO(rdb_session=rdb_session, user=user)
