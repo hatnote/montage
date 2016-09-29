@@ -30,8 +30,13 @@
                     {{round.deadline_date | date}}<br />
                     <small class="muted">{{round.deadline_date | fromNow}}</small>
                 </span>
+                <span class="muted" ng-show="!round.deadline_date">
+                    No deadline date provided
+                </span>
             </span>
-            <span class="md-body-1" flex="20" layout="column" layout-align="start start">
+            <span class="md-body-1" flex="20"
+                  layout="column" layout-align="start start"
+                  ng-if="round.total_tasks">
                 <md-progress-linear md-mode="determinate"
                                     value="{{100 - round.percent_tasks_open}}"></md-progress-linear>
                 <div class="campaign__progress" layout="row" layout-align="space-between center">
@@ -39,6 +44,10 @@
                     <span flex></span>
                     <span class="muted">{{100 - round.percent_tasks_open | number: 0}}%</span>
                 </div>
+            </span>
+            <span class="muted" flex="20"
+                  ng-if="!round.total_tasks">
+                No tasks assigned
             </span>
             <span flex></span>
             <span class="md-body-1" flex="10">

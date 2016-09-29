@@ -122,7 +122,7 @@ const CampaignComponent = {
         }
 
         function isRoundActive(round) {
-            return round.status === 'active';
+            return round.status === 'active' && round.total_tasks;
         }
 
         function openRound(round) {
