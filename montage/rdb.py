@@ -808,9 +808,7 @@ class CoordinatorDAO(UserDAO):
     def add_entries_from_cat(self, rnd, cat_name):
         entries = load_category(cat_name)
 
-        entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
-
-        entries, new_entry_count = self.add_entries(rnd, entry_chunks)
+        entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from category (%s), %s new entries added'
                % (self.user.username, len(entries), cat_name, new_entry_count))
@@ -824,9 +822,7 @@ class CoordinatorDAO(UserDAO):
 
         entries = get_entries_from_gist_csv(gist_url)
 
-        entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
-
-        entries, new_entries_count = self.add_entries(rnd, entry_chunks)
+        entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
                % (self.user.username, len(entries), gist_url, new_entry_count))
@@ -834,9 +830,11 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-   def add_entries(self, rnd, entry_chunks):
+    def add_entries(self, rnd, entries):
+        entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
         new_entry_count = 0
+
         for entry_chunk in entry_chunks:
             entry_names = [e.name for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)

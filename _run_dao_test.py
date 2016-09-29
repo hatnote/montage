@@ -84,7 +84,8 @@ def main():
         entries = coord_dao.add_entries_from_cat(rnd, 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan')
     else:
         entries = coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
-        coord_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+
+    coord_dao.add_round_entries(rnd, entries)
 
     coord_dao.autodisqualify_by_date(rnd)
     coord_dao.autodisqualify_by_resolution(rnd)
@@ -162,9 +163,11 @@ def main():
     rate_round_tasks(rdb_session, rnd2)
     avg_ratings_map = coord_dao.get_round_average_rating_map(rnd2)
     threshold_map = get_threshold_map(avg_ratings_map)
-
-    assert threshold_map == ROUND_2_THRESH
-
+    if config.get('labs_db'):
+        # Assumign the category stays the same
+        assert threshold_map == ROUND_2_CAT_THRESH
+    else:
+        assert threshold_map == ROUND_2_THRESH
     #
     #
     #
@@ -182,6 +185,8 @@ def main():
 ROUND_2_THRESH = {0.0: 128, 0.125: 124, 0.25: 109, 0.375: 99,
                   0.5: 81, 0.625: 59, 0.75: 33, 0.875: 14, 1.0: 3}
 
+ROUND_2_CAT_THRESH = {0.25: 109, 0.5: 81, 0.625: 59, 1.0: 3, 0.0: 128,
+                     0.125: 124, 0.375: 99, 0.75: 33, 0.875: 14}
 
 if __name__ == '__main__':
     main()
