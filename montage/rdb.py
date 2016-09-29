@@ -683,9 +683,6 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def edit_round(self, rnd_id, rnd_dict):
-        pass
-
     def autodisqualify_by_date(self, rnd):
         campaign = rnd.campaign
         min_date = campaign.open_date

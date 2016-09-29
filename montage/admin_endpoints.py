@@ -170,7 +170,7 @@ def pause_round(rdb_session, user, round_id, request_dict):
     rnd = coord_dao.get_round(round_id)
     if not rnd:
         raise DoesNotExist()
-    
+
     coord_dao.pause_round(rnd)
 
     return {'data': rnd}
@@ -255,20 +255,24 @@ def edit_round(rdb_session, user, round_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    rnd_dict = {}
     column_names = ['name', 'description', 'directions', 'config']
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
     #  - quorum: [requires reallocation]
     #  - active_jurors: [requires reallocation]
 
-    for column_name in column_names:
-        if request_dict.get(column_name):
-            rnd_dict[column_name] = request_dict.get(column_name)
-
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.edit_round(round_id, rnd_dict)
-    return {'data': rnd_dict}
+    rnd = coord_dao.get_round(round_id)
+
+    new_val_map = {}
+
+    for column_name in column_names:
+        val = request_dict.get(column_name)
+        if val is not None:
+            setattr(rnd, column_name, val)
+            new_val_map[column_name] = val
+
+    return {'data': new_val_map}
 
 
 def modify_jurors(rdb_session, user, round_id, request_dict):
@@ -299,7 +303,7 @@ def modify_jurors(rdb_session, user, round_id, request_dict):
         raise InvalidAction('round must be paused to edit jurors')
 
     rnd = coord_dao.modify_jurors(rnd, new_jurors)
-    
+
     return {'data': rnd_dict}
 
 
