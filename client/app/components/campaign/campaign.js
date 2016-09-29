@@ -20,11 +20,12 @@ const CampaignComponent = {
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
-        vm.nameEdit = '';
         vm.isNameEdited = false;
         vm.isLastRoundCompleted = isLastRoundCompleted;
         vm.isRoundActive = isRoundActive;
+        vm.nameEdit = '';
         vm.openRound = openRound;
+        vm.pauseRound = pauseRound;
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
@@ -197,6 +198,14 @@ const CampaignComponent = {
             } else {
                 $state.go(isAdmin() ? 'main.admin.round' : 'main.juror.round', { id: round.id });
             }
+        }
+
+        function pauseRound(round) {
+            userService.admin.pauseRound(round.id).then((response) => {
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
+            });
         }
 
         function saveEditRound(round, loading) {

@@ -98,6 +98,12 @@
                             Activate Round
                         </md-button>
                     </md-menu-item>
+                    <md-menu-item>
+                        <md-button ng-disabled="round.status === 'paused' || round.status === 'completed'"
+                                   ng-click="$ctrl.pauseRound(round)">
+                            Pause Round
+                        </md-button>
+                    </md-menu-item>
                 </md-menu-content>
             </md-menu>
         </div>
