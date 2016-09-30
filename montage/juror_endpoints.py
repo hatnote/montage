@@ -1,10 +1,14 @@
 
+from itertools import groupby
+
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from rdb import JurorDAO
 from utils import format_date, PermissionDenied, InvalidAction
+
+MAX_RATINGS_SUBMIT = 100
 
 
 def get_juror_routes():
@@ -351,9 +355,6 @@ def bulk_submit_rating(rdb_session, user, request_dict):
 
     return {'data': ret}
 """
-
-from itertools import groupby
-MAX_RATINGS_SUBMIT = 100
 
 
 def submit_ratings(rdb_session, user, request_dict):
