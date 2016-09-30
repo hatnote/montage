@@ -20,7 +20,7 @@ const RoundComponent = {
 
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
-        vm.images = vm.tasks.data;
+        vm.images = vm.tasks.data.tasks;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.round = vm.data.data;
         vm.openImage = openImage;
@@ -117,11 +117,10 @@ const RoundComponent = {
             const rating = (rate - 1) / 4;
             vm.loading = true;
 
-            userService.juror.setRating({
-                'entry_id': current.entry.id,
+            userService.juror.setRating(vm.round.id, {'ratings': [{
                 'task_id': current.id,
-                'rating': rating
-            }).then(() => {
+                'value': rating
+            }]}).then(() => {
                 _.pull(vm.images, current);
                 getCounter++;
                 vm.rating.all = vm.images.length;

@@ -29,7 +29,7 @@ const UserService = function ($http, $q, $window) {
     getRound: (id) => $http.get(base + 'juror/round/' + id).then(getData, getData),
     getRoundTasks: (id) => $http.get(base + 'juror/round/' + id + '/tasks').then(getData, getData),
 
-    setRating: (data) => $http.post(base + 'juror/submit/rating', data).then(getData, getData)
+    setRating: (id, data) => $http.post(base + 'juror/round/' + id + '/tasks/submit', data).then(getData, getData)
   };
 
   const service = {
