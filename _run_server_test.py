@@ -87,8 +87,8 @@ def full_run(url_base, remote):
                              u'Slaporte',
                              u'Yarl']}
 
-    resp = fetch_json(url_base + '/admin/new/campaign',
-                      data, su_to='Yarl')
+    resp = fetch_json(url_base + '/admin/add_campaign', data,
+                      su_to='Yarl')
 
     # Get an admin view with a list of all campaigns and rounds
     # - as coordinator
@@ -111,7 +111,7 @@ def full_run(url_base, remote):
     # - as organizer
     # note: you can also add coordinators when the round is created
     data = {'username': 'Effeietsanders'}
-    resp = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id,
+    resp = fetch_json(url_base + '/admin/campaign/%s/add_coordinator' % campaign_id,
                       data, su_to='Yarl')
 
     # for date inputs (like deadline_date below), the default format
@@ -129,7 +129,7 @@ def full_run(url_base, remote):
                        u'Jean-Frédéric',
                        u'LilyOfTheWest']}
 
-    resp = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id,
+    resp = fetch_json(url_base + '/admin/campaign/%s/add_round' % campaign_id,
                       data, su_to='LilyOfTheWest')
 
     round_id = resp['data']['id']

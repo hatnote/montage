@@ -11,7 +11,7 @@ from rdb import (CoordinatorDAO,
                  OrganizerDAO)
 
 
-def get_admin_routes():
+def get_old_admin_routes():
     ret = [GET('/admin', get_index),
            POST('/admin/new/campaign', create_campaign),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
@@ -34,7 +34,7 @@ def get_admin_routes():
     return ret
 
 
-def get_new_admin_routes():
+def get_admin_routes():
     """
     /role/(object/id/object/id/...)verb is the guiding principle
     """
@@ -44,7 +44,8 @@ def get_new_admin_routes():
            POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
-           POST('/admin/campaign/<campaign_id:int>/add_round', create_round),
+           POST('/admin/campaign/<campaign_id:int>/add_round',
+                create_round),  # was ../new/round
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),  # was /admin/add_coordinator/campaign/...',
            POST('/admin/round/<round_id:int>/import', import_entries),

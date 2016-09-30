@@ -175,7 +175,6 @@ class DBSessionMiddleware(Middleware):
         try:
             ret = next(rdb_session=rdb_session)
         except:
-            import pdb;pdb.post_mortem()
             rdb_session.rollback()
             raise
         else:
