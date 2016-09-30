@@ -112,12 +112,12 @@ def import_entries(rdb_session, user, round_id, request_dict):
         total_entries:
             type: int64
     """
-
-    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
-        raise Forbidden('not allowed to import entries')
-
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+    coords = rnd.campaign.coords
+
+    if not user.is_maintainer and user not in coords:
+        raise Forbidden('not allowed to import entries')
 
     import_method = request_dict.get('import_method')
 
@@ -168,12 +168,13 @@ def activate_round(rdb_session, user, round_id, request_dict):
 def pause_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+
     if not rnd:
         raise DoesNotExist()
 
     coord_dao.pause_round(rnd)
 
-    return {'data': rnd}
+    return {'data': 'paused'}
 
 
 def edit_campaign(rdb_session, user, campaign_id, request_dict):
@@ -466,15 +467,16 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
-def get_audit_logs(rdb_session, user, request_dict):
+def get_audit_logs(rdb_session, user, request):
     if not user.is_maintainer:
         raise Forbidden('not allowed to view the audit log')
 
-    limit = request_dict.get('limit', 10)
-    offset = request_dict.get('offset', 0)
+    limit = request.values.get('limit', 10)
+    offset = request.values.get('offset', 0)
 
     main_dao = MaintainerDAO(rdb_session, user)
     audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
+
     data = [l.to_info_dict() for l in audit_logs]
 
     return {'data': data}

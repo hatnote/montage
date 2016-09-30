@@ -302,18 +302,19 @@ def submit_rating(rdb_session, user, request_dict):
     # What should this return?
     return {'data': {'task_id': task_id, 'rating': rating}}
 
-def bulk_submit_rating(rdb_session, user, request):
+def bulk_submit_rating(rdb_session, user, request_dict):
     # TODO: Check permissions
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    ratings = request.form.get('ratings')
+    ratings = request_dict.get('ratings')
     ret = []
 
     for rating in ratings:
         task_id = rating['task_id']
         rating_val = rating['rating']
-        task = rating['task']
+        
+        task = juror_dao.get_task(task_id)
 
-        juror_dao.apply_rating(task, rating)
+        juror_dao.apply_rating(task, rating_val)
 
         ret.append({'task_id': task_id, 'rating': rating})
 
@@ -331,6 +332,7 @@ def submit_ratings(rdb_session, user, request_dict):
     this function is used to submit ratings _and_ rankings. when
     submitting rankings does not support ranking ties at the moment
     """
+
     # TODO: can jurors change their vote?
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
 

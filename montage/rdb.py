@@ -788,6 +788,8 @@ class CoordinatorDAO(UserDAO):
         msg = '%s paused round "%s"' % (self.user.username, rnd.name)
         self.log_action('pause_round', round=rnd, message=msg)
 
+        return rnd
+
     def activate_round(self, rnd):
         if rnd.status != 'paused':
             raise InvalidAction('can only activate round in a paused state,'

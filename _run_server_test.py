@@ -57,74 +57,70 @@ def fetch_json(url, data=None, act=None, **kw):
     if kw.get('assert_success', True):
         try:
             assert data_dict['status'] == 'success'
+            print '.. loaded %s' % url
         except AssertionError:
+            print '!! did not successfully load %s' % url
             import pdb;pdb.set_trace()
     return data_dict
 
 
 def full_run(url_base, remote):
-    # load home
-    # resp = fetch(url_base).read()
+    # Admin endpoints
+    # ---------------
 
-    print '.. loaded the home page'
+    # Get the home page
+    # - as maintainer
+    resp = fetch(url_base).read()
 
-    # login as a maintainer
-    # resp = fetch(url_base + '/complete_login').read()
-    # resp_dict = json.loads(resp)
-    # assert resp_dict['cookie']['username'] == 'Slaporte'
+    # Login
+    # - as maintainer
+    resp = fetch(url_base + '/complete_login').read()
 
-    # print '.. logged in'
+    # Add an organizer
+    # - as maintainer
+    data = {'username': 'Yarl'}
+    resp = fetch_json(url_base + '/admin/add_organizer', data)
 
-    # add an organizer
-    data = {'username': 'Slaporte'}
-    resp_dict = fetch_json(url_base + '/admin/add_organizer', data)
-
-    print '.. added %s as organizer' % data['username']
-
-    # create a campaign
+    # Create a campaign
+    # - as organizer
+    # TODO: check the required inputs
     data = {'name': 'Another Test Campaign 2016',
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
-                             u'Jimbo Wales']}
+                             u'Yarl']}
 
-    resp_dict = fetch_json(url_base + '/admin/new/campaign', data)
+    resp = fetch_json(url_base + '/admin/new/campaign', 
+                      data, su_to='Yarl')
 
-    campaign_id = resp_dict['data']['id']
+    # Get an admin view with a list of all campaigns and rounds
+    # - as coordinator
+    resp = fetch_json(url_base + '/admin', su_to='LilyOfTheWest')
 
-    print '.. created campaign #%s' % campaign_id
+    campaign_id = resp['data'][-1]['id']
 
-    # edit campaign
+    # Get a detailed view of a campaign
+    # - as coordinator
+    resp = fetch_json(url_base + '/admin/campaign/%s' % campaign_id, 
+                      su_to='LilyOfTheWest')
+
+    # Edit a campaign
+    # - as organizer
     data = {'name': 'A demo campaign 2016'}
-    resp_dict = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, data)
+    resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, 
+                      data, su_to='Yarl')
 
-    print '.. edited campaign #%s' % campaign_id
-
-    # add a coordinator to this new camapign
+    # Add a coordinator to a camapign
+    # - as organizer
+    # note: you can also add coordinators when the round is created
     data = {'username': 'Effeietsanders'}
-    resp_dict = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
-
-    # add a coordinator to this new camapign
-    data = {'username': u'Jean-Frédéric'}
-    resp_dict = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, data)
-
-    print '.. added %s as coordinator for campaign #%s' % (data['username'], campaign_id)
-
-    # get the coordinator's index
-    resp_dict = fetch_json(url_base + '/admin')
-
-    print '.. loaded the coordinators index'
-
-    campaign_id = resp_dict['data'][-1]['id']
-
-    # get coordinator's view of the first campaign
-    resp_dict = fetch_json(url_base + '/admin/campaign/%s' % campaign_id)
-
-    print '.. loaded the coordinator view of campaign #%s' % campaign_id
+    resp = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, 
+                      data, su_to='Yarl')
 
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S
 
-    # add a round to that campaign
+    # Add a round to a campaign
+    # - as coordinator
     data = {'name': 'Test yes/no round',
             'vote_method': 'yesno',
             'quorum': 4,
@@ -135,177 +131,145 @@ def full_run(url_base, remote):
                        u'Jean-Frédéric',
                        u'LilyOfTheWest']}
 
-    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
+    resp = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id,
+                      data, su_to='LilyOfTheWest')
 
-    round_id = resp_dict['data']['id']
+    round_id = resp['data']['id']
 
-    print '.. added round #%s to campaign #%s' % (round_id, campaign_id)
-
-    # add a round to that campaign
-    data = {'name': 'Test rating round',
-            'vote_method': 'rating',
-            'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15).isoformat(),
-            'jurors': [u'Slaporte',
-                       u'MahmoudHashemi',
-                       u'Effeietsanders',
-                       u'Jean-Frédéric',
-                       u'LilyOfTheWest']}
-
-    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
-
-    round_id2 = resp_dict['data']['id']
-
-    print '.. added round #%s to campaign #%s' % (round_id2, campaign_id)
-
-    # add a round to that campaign
-    data = {'name': 'Test ranking round',
-            'vote_method': 'ranking',
-            'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15).isoformat(),
-            'jurors': [u'Slaporte',
-                       u'MahmoudHashemi',
-                       u'Effeietsanders',
-                       u'Jean-Frédéric',
-                       u'LilyOfTheWest']}
-
-
-    resp_dict = fetch_json(url_base + '/admin/campaign/%s/new/round' % campaign_id, data)
-
-    round_id3 = resp_dict['data']['id']
-
-    print '.. added round #%s to campaign #%s' % (round_id3, campaign_id)
-    '''
-    # edit the round description
+    # Get detailed view of a round
+    # - as coordinator
+    resp = fetch_json(url_base + '/admin/round/%s' % round_id, 
+                      su_to='LilyOfTheWest')
+    
+    # Edit a round
+    # - as coordinator
     data = {'directions': 'these are new directions'}
-    resp_dict = fetch_json(url_base + '/admin/round/%s/edit' % round_id, data)
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id, 
+                      data, su_to='LilyOfTheWest')
 
-    print '.. edited the directions of round #%s' % round_id
-    '''
-
+    # Import entries to a round from a gistcsv
+    # - as coordinator
     gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+    data = {'import_method': 'gistcsv',
+            'gist_url': gist_url}
+    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id, 
+                      data, su_to='LilyOfTheWest')
 
-    # import the initial set of images to the round
-    if remote:
-        data = {'import_method': 'category',
-                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
-    else:
-        data = {'import_method': 'gistcsv',
-                'gist_url': gist_url}
-    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id, data)
+    """
+    # Import entries to a round from a category
+    # - as coordinator
+    data = {'import_method': 'category',
+            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
+    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id, 
+                      data, su_to='LilyOfTheWest')
+    """
 
-    print '.. loaded %s entries into round #%s' % ('_', round_id)
+    # Activate a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
+                      data, su_to='LilyOfTheWest')
 
-    # activate the round
-    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
-
-    if remote:
-        data = {'import_method': 'category',
-                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
-    else:
-        data = {'import_method': 'gistcsv',
-                'gist_url': gist_url}
-    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id2, data)
-
-    print '.. loaded %s entries into round #%s' % ('_', round_id2)
-
-    # active the round
-    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id2, {'post': True})
-
-
-    if remote:
-        data = {'import_method': 'category',
-                'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
-    else:
-        data = {'import_method': 'gistcsv',
-                'gist_url': gist_url}
-    resp_dict = fetch_json(url_base + '/admin/round/%s/import' % round_id3, data)
-
-    print '.. loaded %s entries into round #%s' % ('_', round_id3)
-
-    # active the round
-    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id3, {'post': True})
-    # TODO: check results?
-
-    print '.. activated round #%s' % round_id
-
-    # get the juror's index
-    resp_dict = fetch_json(url_base + '/juror')
-
-    round_id = resp_dict['data'][-1]['id']
-
-    print '.. loaded the jurors index'
-
-    # get the juror's view of the last round
-    resp_dict = fetch_json(url_base + '/juror/round/%s' % round_id)
-
-    print '.. loaded juror view of round #%s' % round_id
-
-    # get the juror's next task
-    # (optional count and offset params)
-    resp_dict = fetch_json(url_base + '/juror/round/%s/tasks' % round_id)
-
-    entry_id = resp_dict['data'][0]['round_entry_id']
-    task_id = resp_dict['data'][0]['id']
-
-    print '.. loaded task(s) from round #%s' % round_id
-
-    # submit the juror's rating
-    data = {'entry_id': entry_id,
-            'task_id': task_id,
-            'rating': '0.8'}
-
-    resp_dict = fetch_json(url_base + '/juror/submit/rating', data)
-
-    print '.. submitted rating on task #%s' % task_id
-
-    # pause round
-    resp_dict = fetch_json(url_base + '/admin/round/%s/pause' % round_id, {'post': True})
-
-    print '.. paused round %s' % round_id
-
-    # edit jurors
+    # Pause a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
+                      data, su_to='LilyOfTheWest')
+    
+    # Edit jurors in a round
+    # - as coordinator
     data = {'new_jurors': [u'Slaporte',
                            u'MahmoudHashemi',
                            u'Effeietsanders',
                            u'Jean-Frédéric',
                            u'Jimbo Wales']}
 
-    resp_dict = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id, data)
+    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id, 
+                      data, su_to='LilyOfTheWest')
+    
 
-    print '.. edited jurors for round #%s' % round_id
+    # Reactivate a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
+                      data, su_to='LilyOfTheWest')
+    
+    # Get the audit logs
+    # - as maintainer
+    resp = fetch_json(url_base + '/admin/audit_logs')
+    
+    # Jury endpoints
+    # --------------
 
-    # reassign tasks
+    # Get the jury index
+    # - as juror
+    resp = fetch_json(url_base + '/juror', su_to='Jimbo Wales')
 
-    resp_dict = fetch_json(url_base + '/admin/round/%s/activate' % round_id, {'post': True})
+    round_id = resp['data'][-1]['id']
+    
+    """
+    # TODO: Jurors only see a list of rounds at this point, so there
+    # is no need to get the detailed view of  campaign.
 
-    print '.. reactivated round %s' % round_id
+    # Get a detailed view of a campaign
+    resp = fetch_json(url_base + '/juror/campaign/' + campaign_id, 
+                      su_to='Jimbo Wales')
+    """
 
-    resp_dict = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id3)
+    # Get a detailed view of a round
+    # - as juror
+    resp = fetch_json(url_base + '/juror/round/%s' % round_id, 
+                      su_to='Jimbo Wales')
 
-    print '.. previewed results for round #%s' % round_id3
+    # Get the open tasks in any round
+    # - as juror
+    resp = fetch_json(url_base + '/juror/tasks',
+                      su_to='Jimbo Wales')
 
-    '''
-    resp_dict = fetch_json(url_base + '/juror/round/%s/tasks' % round_id)
+    # Get the open tasks in a round
+    # - as juror
+    resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
+                      su_to='Jimbo Wales')
 
-    print '.. loaded more tasks'
+    # note: will return a default of 15 tasks, but you can request 
+    # more or fewer with the count parameter, or can skip tasks with
+    # an offset paramter
 
+    entry_id = resp['data'][0]['round_entry_id']
+    task_id = resp['data'][0]['id']
+
+    # Submit a rating task
+    # - as juror
+    data = {'entry_id': entry_id,
+            'task_id': task_id,
+            'rating': '1.0'}
+    resp = fetch_json(url_base + '/juror/submit/rating', 
+                           data, su_to='Jimbo Wales')
+
+    # Get more tasks
+    # - as juror
+    resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
+                      su_to='Jimbo Wales')
+    import pdb;pdb.set_trace()
+    # Submit bulk rating tasks
+    # - as juror
     data = {'ratings': []}
-    for task in resp_dict['data']:
+    for task in resp['data']:
         bulk_rating = {'entry_id': task['round_entry_id'],
-                       'task_id': resp_dict['data'][0]['id'],
+                       'task_id': task['id'],
                        'rating': '1.0'}
         data['ratings'].append(bulk_rating)
 
-    entry_id = resp_dict['data'][0]['round_entry_id']
-    task_id = resp_dict['data'][0]['id']
+    resp = fetch_json(url_base + '/juror/bulk_submit/rating', data,
+                      su_to='Jimbo Wales')
 
-    import pdb; pdb.set_trace()
+    # Admin endpoints (part 2)
+    # --------------- --------
 
-    resp_dict = fetch_json(url_base + '/juror/bulk_submit/rating', data)
-
-    print '.. submitted %s ratings on task #%s' % (len(data), task_id)
-    '''
+    # Get a preview of results from a round
+    # - as coordinator
+    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
+                      su_to='LilyOfTheWest')
 
     # TODO:
     #

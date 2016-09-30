@@ -132,9 +132,12 @@ class UserMiddleware(Middleware):
                         .filter(User.username == su_to)
                         .first())
 
+        if not user:
+            import pdb;pdb.set_trace()
+
         now = datetime.datetime.utcnow()
         last_minute = now - datetime.timedelta(seconds=60)
-        if not user.last_active_date or user.last_active_date < last_minute:
+        if user.last_active_date and user.last_active_date < last_minute:
             # updates only up to once a minute
             user.last_active_date = now
 
