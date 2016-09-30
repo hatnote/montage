@@ -63,6 +63,11 @@ def make_admin_round_details(rnd, rnd_stats):
     return ret
 
 
+# TODO: (clastic) some way to mark arguments as injected from the
+# request_dict such that the signature can be expanded here. the goal
+# being that create_campaign can be a standalone function without any
+# special middleware dependencies, to achieve a level of testing
+# between the dao and server tests.
 def create_campaign(user, rdb_session, request_dict):
     """
     Summary: Post a new campaign
@@ -79,8 +84,8 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     new_camp_name = request_dict.get('name')
-    open_date = request_dict.get('open_date')
-    close_date = request_dict.get('close_date')
+    open_date = isoparse(request_dict.get('open_date'))
+    close_date = isoparse(request_dict.get('close_date'))
     coord_names = request_dict.get('coordinators') or []
 
     coords = []

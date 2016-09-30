@@ -81,8 +81,9 @@ def full_run(url_base, remote):
 
     # Create a campaign
     # - as organizer
-    # TODO: check the required inputs
     data = {'name': 'Another Test Campaign 2016',
+            'open_date': "2016-09-01 17:07:52",  # UTC times
+            'close_date': "2016-09-30 20:00:00",
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl']}
@@ -103,7 +104,9 @@ def full_run(url_base, remote):
 
     # Edit a campaign
     # - as organizer
-    data = {'name': 'A demo campaign 2016'}
+    data = {'name': 'A demo campaign 2016',
+            'open_date': "2016-09-01 17:00:00",  # UTC times,
+            'close_date': "2016-09-30 20:00:00"}
     resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id,
                       data, su_to='Yarl')
 
@@ -122,7 +125,7 @@ def full_run(url_base, remote):
     data = {'name': 'Test yes/no round',
             'vote_method': 'yesno',
             'quorum': 4,
-            'deadline_date': datetime(2016, 10, 15).isoformat(),
+            'deadline_date': "2016-10-15T00:00:00",
             'jurors': [u'Slaporte',
                        u'MahmoudHashemi',
                        u'Effeietsanders',
@@ -270,7 +273,7 @@ def full_run(url_base, remote):
     import pdb;pdb.set_trace()
 
 
-def add_votes(domain, round_id):
+def submit_ratings(domain, round_id):
 
     # get all the jurors that have open tasks in a round
     # get juror's tasks
