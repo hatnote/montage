@@ -13,7 +13,8 @@ then create a new virtualenv with something like `mkvirtualenv
 montage`. Then, with the virtualenv activated:
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Fill out the configuration, using `config.default.yaml` as a base
+2. Create `config.dev.yaml`, using `config.default.yaml` as a base, or
+   get a working version from maintainers
 3. Create the schema in your configured database using `python tools/create_schema.py`
 4. The application can be started with `python montage/server.py`
 
