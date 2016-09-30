@@ -117,7 +117,7 @@ class User(Base):
         ret = {'id': self.id,
                'username': self.username,
                'is_organizer': self.is_organizer,
-               'is_maintainer': self.is_maintainer}
+               'is_maintainer': self.is_maintainer,}
         return ret
 
     def to_details_dict(self):
@@ -269,15 +269,16 @@ class Round(Base):
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
                'deadline_date': format_date(self.deadline_date),
+               'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status}
-               #'stats': self.get_count_map()}
         return ret
 
     def to_details_dict(self):
         ret = self.to_info_dict()
         ret['quorum'] = self.quorum
-        ret['jurors'] = [rj.to_details_dict() for rj in self.round_jurors]
         ret['total_round_entries'] = len(self.round_entries)
+        ret['stats'] = self.get_count_map()
+        ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors],
         return ret
 
 
@@ -300,12 +301,50 @@ class RoundJuror(Base):
         if user is not None:
             self.user = user
 
-    def to_details_dict(self):
+    def get_count_map(self):
+        from sqlalchemy import inspect
+        rdb_session = inspect(self).session
+        if not rdb_session:
+            # TODO: just make a session
+            raise RuntimeError('cannot get counts for detached Round')
+        task_count = rdb_session.query(Task)\
+                                .filter(Task.round_entry.has(round_id=self.round_id),
+                                        Task.user_id == self.user_id,
+                                        Task.cancel_date == None)\
+                                .count()
+        open_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.round_id),
+                                             Task.user_id == self.user_id,
+                                             Task.complete_date == None,
+                                             Task.cancel_date == None)\
+                                     .count()
+        cancelled_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.round_id),
+                                             Task.user_id == self.user_id,
+                                             Task.complete_date == None,
+                                             Task.cancel_date != None)\
+                                     .count()
+        if task_count:
+            percent_open = round((100.0 * open_task_count) / task_count, 3)
+        else:
+            percent_open = 0.0
+
+        return {'total_tasks': task_count,
+                'total_open_tasks': open_task_count,
+                'percent_tasks_open': percent_open,
+                'total_cancelled_tasks': cancelled_task_count}
+
+    def to_info_dict(self):
         ret = {'id': self.user.id,
                'username': self.user.username,
                'is_active': self.is_active}
         if self.flags:
             ret['flags'] = self.flags
+        return ret
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['stats'] = self.get_count_map()
         return ret
 
 
