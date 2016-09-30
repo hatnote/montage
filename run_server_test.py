@@ -10,6 +10,8 @@ import argparse
 import cookielib
 from pprint import pprint
 
+from lithoxyl import DEBUG
+
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 sys.path.append(PROJ_PATH)
@@ -40,9 +42,10 @@ def fetch(url, data=None):
 
 @script_log.wrap('info', inject_as='act')
 def fetch_json(url, data=None, act=None, **kw):
+    act.level = kw.get('log_level', act.level)
     su_to = kw.get('su_to')
     if su_to:
-        url_su_to = urllib.quote_plus(su_to)
+        url_su_to = urllib.quote_plus(su_to.encode('utf8'))
         if '?' in url:
             url += '&su_to=' + url_su_to
         else:
@@ -53,7 +56,7 @@ def fetch_json(url, data=None, act=None, **kw):
     if kw.get('assert_success', True):
         try:
             assert data_dict['status'] == 'success'
-            print '.. loaded %s' % url
+            # print '.. loaded %s' % url
         except AssertionError:
             print '!! did not successfully load %s' % url
             import pdb;pdb.set_trace()
@@ -260,24 +263,69 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
                       su_to='LilyOfTheWest')
 
+    # submit all remaining tasks for the round
+
+    submit_ratings(url_base, round_id)
+
     # TODO:
     #
-    # submit random results for all open tasks in a round
     # close out the round the round
     # load the results of this round into the next
 
+    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
+                      su_to='LilyOfTheWest')
+    pprint(resp['data'])
     print cookies
 
     import pdb;pdb.set_trace()
 
 
-def submit_ratings(domain, round_id):
+@script_log.wrap('critical', verbose=True)
+def submit_ratings(url_base, round_id):
+    """
+    A reminder of our key players:
+
+      * Maintainer: Slaporte
+      * Organizer: Yarl
+      * Coordinators: LilyOfTheWest, Slaporte, Yarl, Effeietsanders
+      * Jurors: (coordinators) + "Jean-Frédéric" + "Jimbo Wales"
+    """
+    r_dict = fetch_json(url_base + '/admin/round/%s' % round_id,
+                        su_to='Yarl')['data']
+    j_dicts = r_dict['jurors']
+
+    per_fetch = 100  # max value
+
+    for j_dict in j_dicts:
+        j_username = j_dict['username']
+        for i in xrange(100):  # don't go on forever
+            t_dicts = fetch_json(url_base + '/juror/round/%s/tasks?count=%s'
+                                 % (round_id, per_fetch), log_level=DEBUG,
+                                 su_to=j_username)['data']['tasks']
+            if not t_dicts:
+                break  # right?
+            ratings = []
+            for t_dict in t_dicts:
+                task_id = t_dict['id']
+
+                # arb scoring
+                if r_dict['vote_method'] == 'yesno':
+                    value = len(j_username + t_dict['entry']['name']) % 2
+                elif r_dict['vote_method'] == 'rating':
+                    value = len(j_username + t_dict['entry']['name']) % 2
+                else:
+                    raise NotImplementedError()
+                ratings.append({'task_id': task_id, "value": value})
+
+            data = {'ratings': ratings}
+            t_resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
+                                data=data, su_to=j_username, log_level=DEBUG)
+
+    return
 
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
-
-    pass
 
 
 def main():

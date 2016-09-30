@@ -175,6 +175,7 @@ def activate_round(rdb_session, user, round_id, request_dict):
     ret_data['round_id'] = round_id
     return {'data': ret_data}
 
+
 def pause_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
