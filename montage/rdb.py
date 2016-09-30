@@ -228,15 +228,37 @@ class Round(Base):
         if not rdb_session:
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
-        rdb_session.query(Task)  # etc.
+        re_count = len(self.round_entries)
+        task_count = rdb_session.query(Task)\
+                                .filter(Task.round_entry.has(round_id=self.id),
+                                        Task.cancel_date == None)\
+                                .count()
+        open_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.id),
+                                             Task.complete_date == None,
+                                             Task.cancel_date == None)\
+                                     .count()
+        cancelled_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.id),
+                                             Task.complete_date == None,
+                                             Task.cancel_date != None)\
+                                     .count()
+        dq_entry_count = rdb_session.query(RoundEntry)\
+                                    .filter_by(round_id=self.id)\
+                                    .filter(RoundEntry.dq_reason != None)\
+                                    .count()
+        if task_count:
+            percent_open = round((100.0 * open_task_count) / task_count, 3)
+        else:
+            percent_open = 0.0
 
-        """
-        interesting counts:
-          * entries
-          * disqualified entries
-          * open tasks
-          * total tasks
-        """
+        return {'total_round_entries': re_count,
+                'total_tasks': task_count,
+                'total_open_tasks': open_task_count,
+                'percent_tasks_open': percent_open,
+                'total_cancelled_tasks': cancelled_task_count,
+                'total_disqualified_entries': dq_entry_count}
+
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -248,12 +270,14 @@ class Round(Base):
                'close_date': format_date(self.close_date),
                'deadline_date': format_date(self.deadline_date),
                'status': self.status}
+               #'stats': self.get_count_map()}
         return ret
 
     def to_details_dict(self):
         ret = self.to_info_dict()
         ret['quorum'] = self.quorum
         ret['jurors'] = [rj.to_details_dict() for rj in self.round_jurors]
+        ret['total_round_entries'] = len(self.round_entries)
         return ret
 
 
