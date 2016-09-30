@@ -19,7 +19,10 @@ const MainComponent = {
     // functions 
 
     function goToDashboard() {
-      $state.go('main.juror.dashboard', {}, {reload: true});
+      const target = $state.current.name.includes('admin') ?
+        'main.admin.dashboard' :
+        'main.juror.dashboard';
+      $state.go(target, {}, { reload: true });
     }
 
     function logout() {
