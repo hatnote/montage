@@ -12,15 +12,13 @@ from pprint import pprint
 
 from datetime import datetime
 
-import argparse
-
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 sys.path.append(PROJ_PATH)
 
 from montage import utils
 from montage.log import script_log
-from montage.utils import encode_dict_to_bytes
+
 
 cookies = cookielib.LWPCookieJar()
 
@@ -72,9 +70,9 @@ def full_run(url_base, remote):
     # - as maintainer
     resp = fetch(url_base).read()
 
-    # Login
+    # Login - TODO: this approach does not work
     # - as maintainer
-    resp = fetch(url_base + '/complete_login').read()
+    # resp = fetch(url_base + '/complete_login').read()
 
     # Add an organizer
     # - as maintainer
@@ -89,7 +87,7 @@ def full_run(url_base, remote):
                              u'Slaporte',
                              u'Yarl']}
 
-    resp = fetch_json(url_base + '/admin/new/campaign', 
+    resp = fetch_json(url_base + '/admin/new/campaign',
                       data, su_to='Yarl')
 
     # Get an admin view with a list of all campaigns and rounds
@@ -100,20 +98,20 @@ def full_run(url_base, remote):
 
     # Get a detailed view of a campaign
     # - as coordinator
-    resp = fetch_json(url_base + '/admin/campaign/%s' % campaign_id, 
+    resp = fetch_json(url_base + '/admin/campaign/%s' % campaign_id,
                       su_to='LilyOfTheWest')
 
     # Edit a campaign
     # - as organizer
     data = {'name': 'A demo campaign 2016'}
-    resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id, 
+    resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id,
                       data, su_to='Yarl')
 
     # Add a coordinator to a camapign
     # - as organizer
     # note: you can also add coordinators when the round is created
     data = {'username': 'Effeietsanders'}
-    resp = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id, 
+    resp = fetch_json(url_base + '/admin/add_coordinator/campaign/%s' % campaign_id,
                       data, su_to='Yarl')
 
     # for date inputs (like deadline_date below), the default format
@@ -138,13 +136,13 @@ def full_run(url_base, remote):
 
     # Get detailed view of a round
     # - as coordinator
-    resp = fetch_json(url_base + '/admin/round/%s' % round_id, 
+    resp = fetch_json(url_base + '/admin/round/%s' % round_id,
                       su_to='LilyOfTheWest')
-    
+
     # Edit a round
     # - as coordinator
     data = {'directions': 'these are new directions'}
-    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id, 
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
                       data, su_to='LilyOfTheWest')
 
     # Import entries to a round from a gistcsv
@@ -152,7 +150,7 @@ def full_run(url_base, remote):
     gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
     data = {'import_method': 'gistcsv',
             'gist_url': gist_url}
-    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id, 
+    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id,
                       data, su_to='LilyOfTheWest')
 
     """
@@ -160,7 +158,7 @@ def full_run(url_base, remote):
     # - as coordinator
     data = {'import_method': 'category',
             'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
-    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id, 
+    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id,
                       data, su_to='LilyOfTheWest')
     """
 
@@ -175,7 +173,7 @@ def full_run(url_base, remote):
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
                       data, su_to='LilyOfTheWest')
-    
+
     # Edit jurors in a round
     # - as coordinator
     data = {'new_jurors': [u'Slaporte',
@@ -184,20 +182,20 @@ def full_run(url_base, remote):
                            u'Jean-Frédéric',
                            u'Jimbo Wales']}
 
-    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id, 
+    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id,
                       data, su_to='LilyOfTheWest')
-    
+
 
     # Reactivate a round
     # - as coordinator
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
                       data, su_to='LilyOfTheWest')
-    
+
     # Get the audit logs
     # - as maintainer
     resp = fetch_json(url_base + '/admin/audit_logs')
-    
+
     # Jury endpoints
     # --------------
 
@@ -206,19 +204,19 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/juror', su_to='Jimbo Wales')
 
     round_id = resp['data'][-1]['id']
-    
+
     """
     # TODO: Jurors only see a list of rounds at this point, so there
     # is no need to get the detailed view of  campaign.
 
     # Get a detailed view of a campaign
-    resp = fetch_json(url_base + '/juror/campaign/' + campaign_id, 
+    resp = fetch_json(url_base + '/juror/campaign/' + campaign_id,
                       su_to='Jimbo Wales')
     """
 
     # Get a detailed view of a round
     # - as juror
-    resp = fetch_json(url_base + '/juror/round/%s' % round_id, 
+    resp = fetch_json(url_base + '/juror/round/%s' % round_id,
                       su_to='Jimbo Wales')
 
     # Get the open tasks in any round
@@ -231,7 +229,7 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
                       su_to='Jimbo Wales')
 
-    # note: will return a default of 15 tasks, but you can request 
+    # note: will return a default of 15 tasks, but you can request
     # more or fewer with the count parameter, or can skip tasks with
     # an offset paramter
 
@@ -243,7 +241,7 @@ def full_run(url_base, remote):
     data = {'entry_id': entry_id,
             'task_id': task_id,
             'rating': '1.0'}
-    resp = fetch_json(url_base + '/juror/submit/rating', 
+    resp = fetch_json(url_base + '/juror/submit/rating',
                            data, su_to='Jimbo Wales')
 
     # Get more tasks
