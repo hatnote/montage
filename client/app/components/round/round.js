@@ -27,6 +27,7 @@ const RoundComponent = {
         vm.openURL = openURL;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
+        vm.stats = vm.tasks.data.stats;
         vm.user = angular.extend(vm.user, vm.data.user);
 
         // rating exclusives
@@ -123,6 +124,7 @@ const RoundComponent = {
             }]}).then(() => {
                 _.pull(vm.images, current);
                 getCounter++;
+                vm.stats.total_open_tasks--;
                 vm.rating.all = vm.images.length;
                 vm.rating.getNext();
 
