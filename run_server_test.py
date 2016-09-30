@@ -10,8 +10,6 @@ import argparse
 import cookielib
 from pprint import pprint
 
-from datetime import datetime
-
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 sys.path.append(PROJ_PATH)

@@ -197,16 +197,20 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    campaign_dict = {}
-    column_names = ['name', 'open_date', 'close_date']
-
-    for column_name in column_names:
-        if request_dict.get(column_name):
-            campaign_dict[column_name] = request_dict.get(column_name)
+    edit_dict = {}
+    name = request_dict.get('name')
+    if name:
+        edit_dict['name'] = name
+    open_date = request_dict.get('open_date')
+    if open_date:
+        edit_dict['open_date'] = isoparse(open_date)
+    close_date = request_dict.get('close_date')
+    if close_date:
+        edit_dict['close_date'] = isoparse(close_date)
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.edit_campaign(campaign_id, campaign_dict)
-    return {'data': campaign_dict}
+    coord_dao.edit_campaign(campaign_id, edit_dict)
+    return {'data': edit_dict}
 
 
 def create_round(rdb_session, user, campaign_id, request_dict):
