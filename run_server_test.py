@@ -83,8 +83,6 @@ def full_run(url_base, remote):
     # Create a campaign
     # - as organizer
     data = {'name': 'Another Test Campaign 2016',
-            'open_date': "2016-09-01 17:07:52",  # UTC times
-            'close_date': "2016-09-30 20:00:00",
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl']}

@@ -1,3 +1,4 @@
+import datetime
 
 from clastic import GET, POST
 from clastic.errors import Forbidden
@@ -84,8 +85,13 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     new_camp_name = request_dict.get('name')
-    open_date = isoparse(request_dict.get('open_date'))
-    close_date = isoparse(request_dict.get('close_date'))
+    now = datetime.datetime.now().isoformat()
+    open_date = request_dict.get('open_date', now)
+    if open_date:
+        open_date = isoparse(open_date)
+    close_date = request_dict.get('close_date')
+    if close_date:
+        close_date = isoparse(close_date)
     coord_names = request_dict.get('coordinators') or []
 
     coords = []
