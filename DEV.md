@@ -13,8 +13,15 @@ then create a new virtualenv with something like `mkvirtualenv
 montage`. Then, with the virtualenv activated:
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Some initial data can be loaded by running `python run_data_test.py`
-3. The application can be started with `python montage/server.py`
+2. Fill out the configuration, using `config.default.yaml` as a base
+3. Create the schema in your configured database using `python tools/create_schema.py`
+4. The application can be started with `python montage/server.py`
+
+Feel free to run `run_server_test.py` while the application server is
+running to generate some test data. By default, the application server
+runs on localhost port 5000, visit
+[http://localhost:5000/meta](http://localhost:5000/meta) to see a list
+of valid URL patterns and other details.
 
 Almost all endpoints (except for OAuth and `/static/`) return JSON as
 long as the proper Accept header is set (done by most libraries) or

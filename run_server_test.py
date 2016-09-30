@@ -251,9 +251,6 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
 
-    import pdb;pdb.set_trace()
-
-
     # Admin endpoints (part 2)
     # --------------- --------
 
