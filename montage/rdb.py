@@ -1153,11 +1153,20 @@ class JurorDAO(UserDAO):
     def get_tasks(self, num=1, offset=0):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
-                            Task.complete_date == None)\
+                            Task.complete_date == None,
+                            Task.cancel_date == None)\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
+
+    def get_total_tasks(self):
+        task_count = self.query(Task)\
+                         .filter(Task.user == self.user,
+                                 Task.complete_date == None,
+                                 Task.cancel_date == None)\
+                         .count()
+        return task_count
 
     def get_tasks_by_id(self, task_ids):
         if isinstance(task_ids, int):
@@ -1174,11 +1183,32 @@ class JurorDAO(UserDAO):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
                             Task.complete_date == None,
+                            Task.cancel_date == None,
                             Task.round_entry.has(round_id=rnd.id))\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
+
+    def get_task_counts(self):
+        re_count = self.query(RoundEntry).count()
+        total_tasks = self.query(Task)\
+                          .filter(Task.user_id == self.user.id,
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.user_id == self.user.id,
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        if total_tasks:
+            percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
+        else:
+            percent_open = 0.0
+        return {'total_round_entries': re_count,
+                'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks,
+                'percent_tasks_open': percent_open}
 
     def get_round_task_counts(self, rnd):
         re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()

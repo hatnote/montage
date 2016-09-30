@@ -205,10 +205,12 @@ def get_tasks(rdb_session, user, request):
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     tasks = juror_dao.get_tasks(num=count, offset=offset)
-    data = []
+    stats = juror_dao.get_task_counts()
+    data = {'stats': stats,
+            'tasks': []}
 
     for task in tasks:
-        data.append(task.to_details_dict())
+        data['tasks'].append(task.to_details_dict())
 
     return {'data': data}
 
@@ -244,10 +246,12 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     tasks = juror_dao.get_tasks_from_round(rnd=rnd,
                                            num=count,
                                            offset=offset)
-    data = []
+    stats = juror_dao.get_round_task_counts(rnd)
+    data = {'stats': stats,
+            'tasks': []}
 
     for task in tasks:
-        data.append(task.to_details_dict())
+        data['tasks'].append(task.to_details_dict())
 
     return {'data': data}
 
