@@ -16,6 +16,8 @@ const RoundComponent = {
     },
     controller: function ($state, $mdDialog, $templateCache, $window, userService, versionService) {
         let vm = this;
+        let getCounter = 0;
+
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
         vm.images = vm.tasks.data;
@@ -56,9 +58,9 @@ const RoundComponent = {
         }
 
         function getTemplate() {
-            if(vm.isVoting('rating')) return templateRating;
-            if(vm.isVoting('yesno')) return templateYesNo;
-            if(vm.isVoting('ranking')) return templateMultiple;
+            if (vm.isVoting('rating')) return templateRating;
+            if (vm.isVoting('yesno')) return templateYesNo;
+            if (vm.isVoting('ranking')) return templateMultiple;
             return '';
         }
 
@@ -121,9 +123,21 @@ const RoundComponent = {
                 'rating': rating
             }).then(() => {
                 _.pull(vm.images, current);
+                getCounter++;
                 vm.rating.all = vm.images.length;
                 vm.rating.getNext();
-                vm.loading = false;
+
+                if (getCounter === 5) {
+                    getCounter = 0;
+                    userService.juror.getRoundTasks(vm.round.id).then((response) => {
+                        let newImages = response.data;
+                        [].push.apply(vm.images, newImages);
+                        vm.images = _.uniqBy(vm.images, 'round_entry_id');
+                        vm.loading = false;
+                    });
+                } else {
+                    vm.loading = false;
+                }
             });
         }
     },

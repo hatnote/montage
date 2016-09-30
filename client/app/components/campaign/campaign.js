@@ -20,11 +20,12 @@ const CampaignComponent = {
         vm.cancelCampaignName = cancelCampaignName;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
-        vm.nameEdit = '';
         vm.isNameEdited = false;
         vm.isLastRoundCompleted = isLastRoundCompleted;
         vm.isRoundActive = isRoundActive;
+        vm.nameEdit = '';
         vm.openRound = openRound;
+        vm.pauseRound = pauseRound;
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
@@ -68,7 +69,6 @@ const CampaignComponent = {
                 deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
             });
 
-            console.log(round_);
             if (!round_.name) {
                 alertService.error({
                     message: 'Error',
@@ -168,7 +168,8 @@ const CampaignComponent = {
                 template: templateEditRound,
                 scope: {
                     round: round_,
-                    voteMethods: voteMethods
+                    voteMethods: voteMethods,
+                    saveEditRound: saveEditRound,
                 }
             });
         }
@@ -197,6 +198,29 @@ const CampaignComponent = {
             } else {
                 $state.go(isAdmin() ? 'main.admin.round' : 'main.juror.round', { id: round.id });
             }
+        }
+
+        function pauseRound(round) {
+            userService.admin.pauseRound(round.id).then((response) => {
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
+            });
+        }
+
+        function saveEditRound(round, loading) {
+            loading.window = true;
+            userService.admin.editRound(round.id, round).then((response) => {
+                if(response.error) {
+                    loading.window = false;
+                    alertService.error(response.error);
+                    return;
+                }
+
+                alertService.success('Round settings saved');
+                $mdDialog.hide(true);
+                $state.reload();
+            });
         }
 
         function saveCampaignName() {

@@ -24,7 +24,8 @@ CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 
 USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
-                'tools.montage': 'prod'}
+                'tools.montage': 'prod',
+                'tools.montage-beta': 'beta'}
 DEFAULT_ENV_NAME = 'dev'
 
 

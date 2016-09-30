@@ -235,8 +235,8 @@ def full_run(url_base, remote):
     # more or fewer with the count parameter, or can skip tasks with
     # an offset paramter
 
-    entry_id = resp['data'][0]['round_entry_id']
-    task_id = resp['data'][0]['id']
+    entry_id = resp['data']['tasks'][0]['round_entry_id']
+    task_id = resp['data']['tasks'][0]['id']
 
     # Submit a rating task
     # - as juror
@@ -250,11 +250,11 @@ def full_run(url_base, remote):
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
                       su_to='Jimbo Wales')
-    import pdb;pdb.set_trace()
+
     # Submit bulk rating tasks
     # - as juror
     data = {'ratings': []}
-    for task in resp['data']:
+    for task in resp['data']['tasks']:
         bulk_rating = {'entry_id': task['round_entry_id'],
                        'task_id': task['id'],
                        'rating': '1.0'}

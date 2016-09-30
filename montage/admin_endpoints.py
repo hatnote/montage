@@ -34,6 +34,33 @@ def get_admin_routes():
     return ret
 
 
+def get_new_admin_routes():
+    """
+    /role/(object/id/object/id/...)verb is the guiding principle
+    """
+    16
+    ret = [GET('/admin', get_index),
+           POST('/admin/add_organizer', add_organizer),
+           POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
+           GET('/admin/campaign/<campaign_id:int>', get_campaign),
+           POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
+           POST('/admin/campaign/<campaign_id:int>/add_round', create_round),
+           POST('/admin/campaign/<campaign_id:int>/add_coordinator',
+                add_coordinator),  # was /admin/add_coordinator/campaign/...',
+           POST('/admin/round/<round_id:int>/import', import_entries),
+           POST('/admin/round/<round_id:int>/activate', activate_round),
+           POST('/admin/round/<round_id:int>/pause', pause_round),
+           GET('/admin/round/<round_id:int>', get_round),
+           POST('/admin/round/<round_id:int>/edit', edit_round),
+           POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
+           GET('/admin/round/<round_id:int>/preview_results',
+               get_round_results_preview),
+           POST('/admin/round/<round_id:int>/finalize', finalize_round),
+           # TODO: split out into round/campaign log endpoints
+           GET('/admin/audit_logs', get_audit_logs)]
+    return ret
+
+
 def make_admin_round_details(rnd, rnd_stats):
     """
     Same as juror, but with: quorum, total_entries, jurors

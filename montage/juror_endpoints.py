@@ -14,9 +14,30 @@ def get_juror_routes():
            GET('/juror/tasks', get_tasks),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/submit/rating', submit_rating),
-           POST('/juror/bulk_submit/rating', bulk_submit_rating)]
+           POST('/juror/bulk_submit/rating', lambda: {})]
     # TODO: submission for rank style votes
     # TODO: bulk rating submission
+    return ret
+
+
+def get_new_juror_routes():
+    """\
+    The refactored routes for jurors, coming soon.
+
+    * removed GET('/juror/round/<round_id:int>/tasks', get_tasks)
+      because requests for tasks must be interpreted in the context of
+      an active round. Specifically, ranking rounds must get and
+      submit all tasks at once.
+
+    * removed POST('/juror/bulk_submit/rating', bulk_submit_rating)
+      and POST('/juror/submit/rating', submit_rating) in favor of the
+      unified submission URL which includes the round_id
+    """
+    ret = [GET('/juror', get_index),
+           GET('/juror/campaign/<campaign_id:int>', get_campaign),
+           GET('/juror/round/<round_id:int>', get_round),
+           GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
+           POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings)]
     return ret
 
 
@@ -180,7 +201,7 @@ def get_campaign_info(rdb_session, user, campaign_id):
 
 def get_tasks(rdb_session, user, request):
     """
-    Summary: Get the next tasks for a juror
+    Summary: Get the next tasks for a juror.
 
     Request model:
         count:
@@ -200,7 +221,10 @@ def get_tasks(rdb_session, user, request):
     Errors:
        403: User does not have permission to access any tasks
        404: Tasks not found
+
     """
+    # TODO: this needs a round. a given user can be participating in
+    # multiple campaigns at once.
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
@@ -306,7 +330,10 @@ def submit_rating(rdb_session, user, request_dict):
     # What should this return?
     return {'data': {'task_id': task_id, 'rating': rating}}
 
+
+"""
 def bulk_submit_rating(rdb_session, user, request_dict):
+
     # TODO: Check permissions
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
     ratings = request_dict.get('ratings')
@@ -323,6 +350,7 @@ def bulk_submit_rating(rdb_session, user, request_dict):
         ret.append({'task_id': task_id, 'rating': rating})
 
     return {'data': ret}
+"""
 
 from itertools import groupby
 MAX_RATINGS_SUBMIT = 100

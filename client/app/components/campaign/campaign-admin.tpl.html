@@ -21,6 +21,7 @@
         </md-button>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Edit"
+                   ng-show="false"
                    ng-click="$ctrl.editCampaign()">
             <md-icon>settings</md-icon>
         </md-button>
@@ -96,6 +97,12 @@
                         <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
                                    ng-click="$ctrl.activateRound(round)">
                             Activate Round
+                        </md-button>
+                    </md-menu-item>
+                    <md-menu-item>
+                        <md-button ng-disabled="round.status === 'paused' || round.status === 'completed'"
+                                   ng-click="$ctrl.pauseRound(round)">
+                            Pause Round
                         </md-button>
                     </md-menu-item>
                 </md-menu-content>
