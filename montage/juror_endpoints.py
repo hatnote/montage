@@ -12,19 +12,6 @@ MAX_RATINGS_SUBMIT = 100
 
 
 def get_juror_routes():
-    ret = [GET('/juror', get_index),
-           GET('/juror/campaign/<campaign_id:int>', get_campaign),
-           GET('/juror/round/<round_id:int>', get_round),
-           GET('/juror/tasks', get_tasks),
-           GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
-           POST('/juror/submit/rating', submit_rating),
-           POST('/juror/bulk_submit/rating', lambda: {})]
-    # TODO: submission for rank style votes
-    # TODO: bulk rating submission
-    return ret
-
-
-def get_new_juror_routes():
     """\
     The refactored routes for jurors, coming soon.
 
@@ -346,7 +333,7 @@ def bulk_submit_rating(rdb_session, user, request_dict):
     for rating in ratings:
         task_id = rating['task_id']
         rating_val = rating['rating']
-        
+
         task = juror_dao.get_task(task_id)
 
         juror_dao.apply_rating(task, rating_val)

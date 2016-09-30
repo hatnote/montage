@@ -219,11 +219,6 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/juror/round/%s' % round_id,
                       su_to='Jimbo Wales')
 
-    # Get the open tasks in any round
-    # - as juror
-    resp = fetch_json(url_base + '/juror/tasks',
-                      su_to='Jimbo Wales')
-
     # Get the open tasks in a round
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
@@ -233,33 +228,31 @@ def full_run(url_base, remote):
     # more or fewer with the count parameter, or can skip tasks with
     # an offset paramter
 
-    entry_id = resp['data']['tasks'][0]['round_entry_id']
+    # entry_id = resp['data']['tasks'][0]['round_entry_id']
     task_id = resp['data']['tasks'][0]['id']
 
-    # Submit a rating task
+    # Submit a single rating task
     # - as juror
-    data = {'entry_id': entry_id,
-            'task_id': task_id,
-            'rating': '1.0'}
-    resp = fetch_json(url_base + '/juror/submit/rating',
-                           data, su_to='Jimbo Wales')
+    data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
+    resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
+                      data, su_to='Jimbo Wales')
 
     # Get more tasks
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
                       su_to='Jimbo Wales')
 
-    # Submit bulk rating tasks
-    # - as juror
-    data = {'ratings': []}
+    rating_dicts = []
     for task in resp['data']['tasks']:
-        bulk_rating = {'entry_id': task['round_entry_id'],
-                       'task_id': task['id'],
-                       'rating': '1.0'}
-        data['ratings'].append(bulk_rating)
+        val = float(task['id'] % 2)  # deterministic but arbitrary
+        rating_dicts.append({'task_id': task['id'], 'value': val})
+    data = {'ratings': rating_dicts}
 
-    resp = fetch_json(url_base + '/juror/bulk_submit/rating', data,
-                      su_to='Jimbo Wales')
+    resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
+                      data, su_to='Jimbo Wales')
+
+    import pdb;pdb.set_trace()
+
 
     # Admin endpoints (part 2)
     # --------------- --------
