@@ -3,7 +3,7 @@ import datetime
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
-from boltons.timeutils import isoparse
+from boltons.timeutils import isoparse as boltons_isoparse
 
 from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
 
@@ -37,6 +37,16 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
            # TODO: split out into round/campaign log endpoints
            GET('/admin/audit_logs', get_audit_logs)]
+    return ret
+
+def isoparse(date_str):
+    try:
+        ret = boltons_isoparse(date_str)
+    except ValueError:
+        # It may be a javascript Date object printed with toISOString()
+        if date_str[-1] == 'Z':
+            date_str = date_str[:-1]
+        ret = boltons_isoparse(date_str)
     return ret
 
 
