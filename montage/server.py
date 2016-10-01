@@ -52,6 +52,7 @@ from mw import (UserMiddleware,
                 TimingMiddleware,
                 LoggingMiddleware,
                 MessageMiddleware,
+                ReplayLogMiddleware,
                 DBSessionMiddleware)
 from rdb import Base, bootstrap_maintainers
 from utils import get_env_name
@@ -134,6 +135,11 @@ def create_app(env_name='prod'):
         middlewares.insert(0, log_mw)
         # hack
         config['api_exc_log_path'] = getattr(log_mw, 'exc_log_path', None)
+
+    replay_log_path = config.get('replay_log_path')
+    if replay_log_path:
+        replay_log_mw = ReplayLogMiddleware(replay_log_path)
+        middlewares.append(replay_log_mw)
 
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
