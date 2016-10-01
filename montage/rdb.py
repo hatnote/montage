@@ -16,8 +16,9 @@ from sqlalchemy import (Text,
                         DateTime,
                         TIMESTAMP,
                         ForeignKey)
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, asc
 from sqlalchemy.orm import relationship, joinedload
+from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -165,6 +166,8 @@ class Campaign(Base):
         ret['active_round'] = active_rnd.to_info_dict() if active_rnd else None
         return ret
 
+campaigns_t = Campaign.__table__
+
 
 class CampaignCoord(Base):  # Coordinator, not Coordinate
     __tablename__ = 'campaign_coords'
@@ -256,6 +259,8 @@ class Round(Base):
         ret['jurors'] = [rj.to_details_dict() for rj in self.round_jurors]
         return ret
 
+rounds_t = Round.__table__
+
 
 class RoundJuror(Base):
     __tablename__ = 'round_jurors'
@@ -283,6 +288,8 @@ class RoundJuror(Base):
         if self.flags:
             ret['flags'] = self.flags
         return ret
+
+round_jurors_t = RoundJuror.__table__
 
 
 class Entry(Base):
@@ -359,6 +366,8 @@ class RoundEntry(Base):
             self.round = round
         return
 
+round_entries_t = RoundEntry.__table__
+
 
 class Rating(Base):
     __tablename__ = 'ratings'
@@ -418,6 +427,9 @@ class Task(Base):
         ret = self.to_info_dict()
         ret['entry'] = self.entry.to_details_dict()
         return ret
+
+
+tasks_t = Task.__table__
 
 
 class RoundResultsSummary(Base):
@@ -1178,19 +1190,10 @@ class JurorDAO(UserDAO):
                     .all()
         return tasks
 
-    def get_round_task_counts(self, rnd):
-        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
-        total_tasks = self.query(Task)\
-                          .filter(Task.round_entry.has(round_id=rnd.id),
-                                  Task.user_id == self.user.id,
-                                  Task.cancel_date == None)\
-                          .count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.round_entry.has(round_id=rnd.id),
-                                       Task.user_id == self.user.id,
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
-                               .count()
+    def _build_round_stats(self,
+                           re_count,
+                           total_tasks,
+                           total_open_tasks):
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
         else:
@@ -1199,6 +1202,110 @@ class JurorDAO(UserDAO):
                 'total_tasks': total_tasks,
                 'total_open_tasks': total_open_tasks,
                 'percent_tasks_open': percent_open}
+
+    def get_round_task_counts(self, rnd):
+        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
+        total_tasks = self.query(Task)\
+                          .filter(Task.round_entry.has(round_id=rnd.id),
+                                  Task.user_id == self.user.id,
+                                  Task.cancel_date == None)
+        total_tasks = total_tasks.count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.round_entry.has(round_id=rnd.id),
+                                       Task.user_id == self.user.id,
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return self._build_round_stats(re_count, total_tasks, total_open_tasks)
+
+    def get_all_rounds_task_counts(self):
+        entry_count = 'entry_count'
+        task_count = 'task_count'
+        campaign_id = '_campaign_id'
+        campaign_name = '_campaign_name'
+
+        user_rounds_join = rounds_t.join(
+                round_jurors_t,
+                onclause=((rounds_t.c.id == round_jurors_t.c.round_id)
+                          & (round_jurors_t.c.user_id == self.user.id))
+            )
+
+        users_rounds_query = select(
+            list(rounds_t.c) +
+            [
+                campaigns_t.c.id.label(campaign_id),
+                campaigns_t.c.name.label(campaign_name),
+            ] +
+            [
+                func.count(round_entries_t.c.id).label(entry_count),
+            ]).select_from(
+                user_rounds_join.join(
+                    campaigns_t,
+                    onclause=(campaigns_t.c.id == rounds_t.c.campaign_id),
+                ).outerjoin(
+                    round_entries_t,
+                    onclause=(rounds_t.c.id == round_entries_t.c.round_id),
+                ),
+            ).group_by(
+                rounds_t.c.id,
+            ).order_by(
+                campaign_id,
+            )
+
+        all_user_rounds = self.rdb_session.execute(
+            users_rounds_query,
+        )
+
+        def tasks_query(where):
+            return select(
+                [rounds_t.c.id, func.count(tasks_t.c.id).label(task_count)],
+            ).select_from(
+                user_rounds_join.outerjoin(
+                    round_entries_t,
+                    onclause=(rounds_t.c.id == round_entries_t.c.round_id),
+                ).outerjoin(
+                    tasks_t,
+                    onclause=(round_entries_t.c.id == tasks_t.c.round_entry_id)
+                )
+            ).where(
+                (tasks_t.c.user_id.in_([self.user.id, None])) & where
+            ).group_by(
+                rounds_t.c.id
+            ).order_by(
+                asc("id")
+            )
+
+        rounds_all_tasks_query = tasks_query(tasks_t.c.cancel_date == None)
+        rounds_all_tasks = self.rdb_session.execute(rounds_all_tasks_query)
+        rounds_open_tasks_query = tasks_query(
+            (tasks_t.c.cancel_date == None) &
+            (tasks_t.c.complete_date == None))
+        rounds_open_tasks = self.rdb_session.execute(rounds_open_tasks_query)
+
+        rounds_to_total_tasks = {row['id']: row[task_count]
+                                 for row in rounds_all_tasks}
+        rounds_to_total_open_tasks = {row['id']: row[task_count]
+                                      for row in rounds_open_tasks}
+        results = []
+        for row in all_user_rounds:
+            round_kwargs = dict(row)
+
+            re_count = round_kwargs.pop(entry_count)
+            campaign = Campaign(id=round_kwargs.pop(campaign_id),
+                                name=round_kwargs.pop(campaign_name))
+
+            round = Round(**round_kwargs)
+            round.campaign = campaign
+
+            total_tasks = rounds_to_total_tasks.get(round.id, 0)
+            total_open_tasks = rounds_to_total_open_tasks.get(round.id, 0)
+
+            results.append(
+                (round,
+                 self._build_round_stats(
+                     re_count, total_tasks, total_open_tasks)),
+            )
+        return results
 
     def apply_rating(self, task, rating):
         if not task.user == self.user:
@@ -1381,6 +1488,7 @@ def reassign_tasks(session, rnd, new_jurors):
 
 
 def make_rdb_session(echo=True):
+    echo = True
     from utils import load_env_config
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker

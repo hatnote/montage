@@ -1,4 +1,3 @@
-
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
@@ -33,7 +32,9 @@ def make_juror_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
-           'campaign': rnd.campaign.to_info_dict()}
+           # 'campaign': {},
+           'campaign': rnd.campaign.to_info_dict()
+    }
     return ret
 
 
@@ -54,15 +55,12 @@ def get_index(rdb_session, user):
        403: User does not have permission to access any rounds
     """
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    rounds = juror_dao.get_all_rounds()
-    if len(rounds) == 0:
-        raise Forbidden('not a juror for any rounds')
-    data = []
-    for rnd in rounds:
-        rnd_stats = juror_dao.get_round_task_counts(rnd)
-        rnd_details = make_juror_round_details(rnd, rnd_stats)
-        data.append(rnd_details)
-    return {'data': data}
+    stats = [make_juror_round_details(rnd, rnd_stats)
+             for rnd, rnd_stats
+             in juror_dao.get_all_rounds_task_counts()]
+    if not stats:
+        raise Forbidden("not a juror for any rounds")
+    return stats
 
 
 def get_campaign(rdb_session, user, campaign_id):
