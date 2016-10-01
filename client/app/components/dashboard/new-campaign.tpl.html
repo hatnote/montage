@@ -1,6 +1,6 @@
-<md-dialog style="width: 400px;">
+<md-dialog class="dialog__edit">
     <div class="spinner__container" layout="row" layout-align="center center"
-            ng-show="loading">
+            ng-show="loading.window">
         <md-progress-circular md-diameter="40"></md-progress-circular>
     </div>
     <form ng-cloak>
@@ -11,12 +11,26 @@
                     <label>Name</label>
                     <input ng-model="campaign.name" type="text">
                 </md-input-container>
-                <!--
-                <div layout="row" layout-align="start start">
-                    <md-datepicker ng-model="campaign.open_date" md-placeholder="Open Date"></md-datepicker>
-                    <md-datepicker ng-model="campaign.close_date" md-placeholder="Close Date"></md-datepicker>
-                </div>
-                -->
+                <md-list flex>
+                    <md-list-item class="md-2-line">
+                        <md-icon>date_range</md-icon>
+                        <div class="md-list-item-text">
+                            <md-datepicker ng-model="campaign.open_date"
+                                           md-max-date="campaign.close_date"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Open Date</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <md-icon>date_range</md-icon>
+                        <div class="md-list-item-text">
+                            <md-datepicker ng-model="campaign.close_date"
+                                           md-min-date="campaign.open_date"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Close Date</p>
+                        </div>
+                    </md-list-item>
+                </md-list>
                 <strong class="md-subhead">Campaign coordinators</strong>
                 <mont-user-list ng-model="campaign.coordinators"></mont-user-list>
             </div>
@@ -27,7 +41,7 @@
             <md-button ng-click="cancel()">
                 Cancel
             </md-button>
-            <md-button class="md-primary" ng-click="create()">
+            <md-button class="md-primary" ng-click="create(campaign, loading)">
                 Create
             </md-button>
         </md-dialog-actions>

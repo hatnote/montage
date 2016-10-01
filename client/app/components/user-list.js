@@ -2,11 +2,13 @@ import _ from 'lodash';
 
 const UserListComponent = {
     bindings: {
-        ngModel: '='
+        ngModel: '=',
+        max: '<'
     },
     controller: function (dataService) {
         var vm = this;
         vm.addUser = addUser;
+        vm.maxUsers = vm.max || 999;
         vm.removeUser = (user) => _.pull(vm.ngModel, user);
         vm.searchText = '';
         vm.searchUser = searchUser;
@@ -37,7 +39,8 @@ const UserListComponent = {
             <md-icon class="link" ng-click="$ctrl.removeUser(user)">close</md-icon>
         </span>
         <md-autocomplete flex
-            md-input-name="autocomplete"
+            ng-disabled="$ctrl.ngModel.length === $ctrl.maxUsers"
+            md-input-name="autocompleteField"
             md-input-minlength="2"
             md-input-maxlength="100"
             md-autoselect="true"

@@ -31,7 +31,7 @@
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
         <span class="md-body-1" flex="10">Deadline Date</span>
-        <span class="md-body-1" flex="30">Round Date</span>
+        <span class="md-body-1" flex="30">Round Timeline</span>
         <span class="md-body-1" flex="10">No. of Jurors</span>
         <span class="md-body-1" flex="10">Vote Method</span>
         <span flex></span>
@@ -41,11 +41,17 @@
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
              ng-class="'campaign__round--inactive'">
-            <span class="md-body-2" flex="30">
-                {{round.name}}
-                <span class="tag tag--pill"
-                      ng-show="round.status"
-                      ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+            <span class="md-body-1" flex="30"
+                  layout="column" layout-align="start start">
+                <span class="md-body-2">
+                    {{round.name}}
+                    <span class="tag tag--pill"
+                        ng-show="round.status"
+                        ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+                </span>
+                <strong class="campaign__directions">Directions</strong>
+                <span ng-show="round.directions">{{round.directions}}</span>
+                <span class="muted" ng-show="!round.directions">No directions provided</span>
             </span>
             <span class="md-body-1" flex="10" layout="row" layout-align="start center">
                 <span ng-show="round.deadline_date">
@@ -75,7 +81,10 @@
                     Round not ended
                 </span>
             </span>
-            <span class="md-body-1" flex="10">{{round.jurors.length || "0"}} jurors</span>
+            <span class="md-body-1" flex="10">
+                {{round.jurors.length || "0"}}
+                {{round.jurors.length === 1 ? "juror" : "jurors"}}
+            </span>
             <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
@@ -113,8 +122,9 @@
         <md-button ng-click="$ctrl.addRound($event)"
                    ng-disabled="!$ctrl.isLastRoundCompleted()">
             <md-tooltip md-direction="right">Add new round</md-tooltip>
-            <md-icon>add_circle</md-icon>
-            <span>Add round</span>
+            <md-icon>add</md-icon>
+            <span ng-show="!$ctrl.campaign.rounds.length">Add initial round</span>
+            <span ng-show="$ctrl.campaign.rounds.length">Add next round</span>
         </md-button>
         <span class="muted" ng-show="!$ctrl.isLastRoundCompleted()">Previous round needs to be completed first</span>
         <span flex></span>

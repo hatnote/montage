@@ -3,6 +3,7 @@ import _ from 'lodash';
 import './dashboard.scss';
 import template from './dashboard.tpl.html';
 import templateNewCampaign from './new-campaign.tpl.html';
+import templateNewOrganizer from './new-organizer.tpl.html';
 
 const DashboardComponent = {
     bindings: {
@@ -10,10 +11,12 @@ const DashboardComponent = {
         user: '=',
         type: '<'
     },
-    controller: function ($filter, $state, $mdDialog, userService, versionService) {
+    controller: function ($filter, $state, $mdDialog, alertService, dialogService, userService, versionService) {
         let vm = this;
         vm.addCampaign = addCampaign;
+        vm.addOrganizer = addOrganizer;
         vm.isAdmin = isAdmin;
+        vm.isMaintainer = () => vm.user.is_maintainer;
         vm.isOrganizer = () => vm.user.is_organizer;
         vm.campaigns = isAdmin() ? vm.data.data : _.groupBy(vm.data.data, 'campaign.id');
         vm.logout = logout;
@@ -26,38 +29,65 @@ const DashboardComponent = {
         // functions 
 
         function addCampaign(event) {
-            $mdDialog.show({
+            dialogService.show({
                 template: templateNewCampaign,
-                parent: angular.element(document.body),
-                targetEvent: event,
-                clickOutsideToClose: false,
-                controller: ($scope, $mdDialog, $timeout, dataService) => {
-                    $scope.campaign = {
+                scope: {
+                    campaign: {
                         name: '',
                         coordinators: []
-                    };
-                    $scope.create = function () {
-                        let campaign = angular.copy($scope.campaign);
+                    },
+                    today: new Date(),
+                    create: (campaign_, loading) => {
+                        let campaign = angular.copy(campaign_);
                         campaign = angular.extend(campaign, {
                             coordinators: campaign.coordinators.map((element) => element.name)
                         });
-                        
-                        $scope.loading = true;
+
+                        loading.window = true;
                         userService.admin.addCampaign(campaign).then((response) => {
-                            $scope.loading = false;
+                            if (response.error) {
+                                loading.window = false;
+                                alertService.error(response.error);
+                                return;
+                            }
+
+                            loading.window = false;
                             $mdDialog.hide(true);
                             $state.reload();
-                        }, (response) => {
-                            $scope.loading = false;
-                            console.log('err', response);
                         });
-                    };
-                    $scope.hide = function () {
-                        $mdDialog.hide();
-                    };
-                    $scope.cancel = function () {
-                        $mdDialog.cancel();
-                    };
+                    }
+                }
+            });
+        }
+
+        function addOrganizer(event) {
+            dialogService.show({
+                template: templateNewOrganizer,
+                scope: {
+                    organizers: [],
+                    add: (data, loading) => {
+                        if (!data[0]) {
+                            alertService.error({
+                                message: 'Error',
+                                detail: 'Provide organizer name'
+                            });
+                            return;
+                        }
+
+                        loading.window = true;
+                        const userName = data[0].name;
+                        userService.admin.addOrganizer({ username: userName }).then((response) => {
+                            if (response.error) {
+                                loading.window = false;
+                                alertService.error(response.error);
+                                return;
+                            }
+
+                            alertService.success(userName + ' added as an organizer');
+                            $mdDialog.hide(true);
+                            $state.reload();
+                        });
+                    }
                 }
             });
         }

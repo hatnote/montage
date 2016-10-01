@@ -1,6 +1,8 @@
 @import '../../variables';
 
 mont-dashboard {
+    min-height: calc(100vh - 64px - 30px);
+    
     & > div {
         width: 100%;
     }

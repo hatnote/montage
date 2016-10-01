@@ -130,6 +130,7 @@ const CampaignComponent = {
                         vote_method: 'rating',
                         quorum: 2,
                         jurors: [],
+                        config: {show_link: true},
                         imports: {
                             import_method: 'category',
                             category: ''
