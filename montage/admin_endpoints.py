@@ -84,7 +84,10 @@ def create_campaign(user, rdb_session, request_dict):
 
     org_dao = OrganizerDAO(rdb_session, user)
 
-    new_camp_name = request_dict.get('name')
+    name = request_dict.get('name')
+    if not name:
+        raise InvalidAction('name is required to create a campaign, got %r'
+                            % name)
     now = datetime.datetime.utcnow().isoformat()
     open_date = request_dict.get('open_date', now)
     if open_date:
@@ -92,14 +95,17 @@ def create_campaign(user, rdb_session, request_dict):
     close_date = request_dict.get('close_date')
     if close_date:
         close_date = isoparse(close_date)
-    coord_names = request_dict.get('coordinators') or []
+    coord_names = request_dict.get('coordinators')
+    if not coord_names:
+        raise InvalidAction('coordinators is required to create a campaign, got %r'
+                            % (coord_names,))
 
     coords = []
     for coord_name in coord_names:
         coord = org_dao.get_or_create_user(coord_name, 'coordinator')
         coords.append(coord)
 
-    campaign = org_dao.create_campaign(name=new_camp_name,
+    campaign = org_dao.create_campaign(name=name,
                                        open_date=open_date,
                                        close_date=close_date,
                                        coords=coords)
