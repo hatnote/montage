@@ -166,7 +166,9 @@ class Campaign(Base):
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
-               'url_name': slugify(self.name, '-')}
+               'url_name': slugify(self.name, '-'),
+               'open_date': format_date(self.open_date),
+               'close_date':format_date(self.close_date)}
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
