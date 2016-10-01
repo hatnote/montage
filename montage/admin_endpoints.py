@@ -85,8 +85,7 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     new_camp_name = request_dict.get('name')
-    now = datetime.datetime.now().isoformat()
-    open_date = request_dict.get('open_date', now)
+    open_date = request_dict.get('open_date')
     if open_date:
         open_date = isoparse(open_date)
     close_date = request_dict.get('close_date')
