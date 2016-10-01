@@ -29,38 +29,33 @@ const DashboardComponent = {
         // functions 
 
         function addCampaign(event) {
-            $mdDialog.show({
+            dialogService.show({
                 template: templateNewCampaign,
-                parent: angular.element(document.body),
-                targetEvent: event,
-                clickOutsideToClose: false,
-                controller: ($scope, $mdDialog, $timeout, dataService) => {
-                    $scope.campaign = {
+                scope: {
+                    campaign: {
                         name: '',
                         coordinators: []
-                    };
-                    $scope.create = function () {
-                        let campaign = angular.copy($scope.campaign);
+                    },
+                    today: new Date(),
+                    create: (campaign_, loading) => {
+                        let campaign = angular.copy(campaign_);
                         campaign = angular.extend(campaign, {
                             coordinators: campaign.coordinators.map((element) => element.name)
                         });
-                        
-                        $scope.loading = true;
+
+                        loading.window = true;
                         userService.admin.addCampaign(campaign).then((response) => {
-                            $scope.loading = false;
+                            if (response.error) {
+                                loading.window = false;
+                                alertService.error(response.error);
+                                return;
+                            }
+
+                            loading.window = false;
                             $mdDialog.hide(true);
                             $state.reload();
-                        }, (response) => {
-                            $scope.loading = false;
-                            console.log('err', response);
                         });
-                    };
-                    $scope.hide = function () {
-                        $mdDialog.hide();
-                    };
-                    $scope.cancel = function () {
-                        $mdDialog.cancel();
-                    };
+                    }
                 }
             });
         }
@@ -78,11 +73,11 @@ const DashboardComponent = {
                             });
                             return;
                         }
-                        
+
                         loading.window = true;
                         const userName = data[0].name;
-                        userService.admin.addOrganizer({username: userName}).then((response) => {
-                            if(response.error) {
+                        userService.admin.addOrganizer({ username: userName }).then((response) => {
+                            if (response.error) {
                                 loading.window = false;
                                 alertService.error(response.error);
                                 return;
