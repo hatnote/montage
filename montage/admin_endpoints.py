@@ -149,24 +149,32 @@ def import_entries(rdb_session, user, round_id, request_dict):
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
-
-    if rnd.config.get('dq_by_upload_date'):
-        coord_dao.autodisqualify_by_date(rnd)
-
-    if rnd.config.get('dq_by_resolution'):
-        min_resolution = rnd.config.get('min_resolution')
-        coord_dao.autodisqualify_by_resolution(rnd)
-    
-    if rnd.config.get('dq_by_uploader'):
-        coord_dao.autodisqualify_by_uploader(rnd)
-
-    if rnd.config.get('dq_by_filetype'):
-        coord_dao.autodisqualify_by_filetype(rnd)
-
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries)}
+            'total_entries': len(rnd.entries),
+            'dq_upload_date': 0,
+            'dq_resolution': 0,
+            'dq_uploader': 0,
+            'dq_filetype': 0}
+
+    if rnd.config.get('dq_by_upload_date'):
+        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)        
+        data['dq_upload_date'] = len(dq_upload_date) 
+        
+    if rnd.config.get('dq_by_resolution'):
+        min_resolution = rnd.config.get('min_resolution')
+        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
+        data['dq_resolution'] = len(dq_resolution)
+    
+    if rnd.config.get('dq_by_uploader'):
+        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
+        data['dq_uploader'] = len(dq_uploader)
+
+    if rnd.config.get('dq_by_filetype'):
+        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
+        data['dq_filetype'] = len(dq_filetype)
+
     return {'data': data}
 
 
