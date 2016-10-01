@@ -260,3 +260,11 @@ class LoggingMiddleware(Middleware):
                                       emitter=self._exc_emtr,
                                       filters=[self._exc_fltr])
         self.api_log.add_sink(self._exc_sink)
+
+
+class ReplayLogMiddleware(Middleware):
+    def __init__(self, log_path):
+        self.log_path = os.path.abspath(log_path)
+
+    def endpoint(self, user, request_dict, request):
+        pass

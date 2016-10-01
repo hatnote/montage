@@ -255,14 +255,15 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date',
-                   'config', 'directions']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
+    extra_columns = ['description', 'config', 'directions']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
-    for column in req_columns:
+    for column in req_columns + extra_columns:
         val = request_dict.get(column)
-        if not val:
-            raise InvalidAction('%s is required to create a round' % val)
+        if not val and column in req_columns:
+            raise InvalidAction('%s is required to create a round (got %r)'
+                                % (column, val))
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
         if column is 'deadline_date':

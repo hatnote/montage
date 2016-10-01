@@ -727,7 +727,7 @@ class CoordinatorDAO(UserDAO):
 
         return ret
 
-    def create_round(self, campaign, name, quorum,
+    def create_round(self, campaign, name, description, directions, quorum,
                      vote_method, jurors, deadline_date, config={}):
         # TODO:
         # if campaign.active_round:
@@ -737,11 +737,16 @@ class CoordinatorDAO(UserDAO):
 
         jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
                   for j in jurors]
-        
+
         for (k, v) in DEFAULT_ROUND_CONFIG.items():
             config[k] = config.get(k, v)
 
+        full_config = dict(DEFAULT_ROUND_CONFIG)
+        full_config.update(config)
+
         rnd = Round(name=name,
+                    description=description,
+                    directions=directions,
                     campaign=campaign,
                     campaign_seq=len(campaign.rounds),
                     status='paused',
@@ -749,7 +754,7 @@ class CoordinatorDAO(UserDAO):
                     deadline_date=deadline_date,
                     vote_method=vote_method,
                     jurors=jurors,
-                    config=config)
+                    config=full_config)
 
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
@@ -817,7 +822,7 @@ class CoordinatorDAO(UserDAO):
                             .filter(RoundEntry.round_id == rnd.id)\
                             .filter(~Entry.mime_minor.in_(allowed_filetypes))\
                             .all()
-        
+
         for r_ent in round_entries:
             dq_reason = ('mime %s is not in %s' % (r_ent.entry.mime_minor,
                                                    allowed_filetypes))
