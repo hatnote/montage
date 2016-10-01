@@ -1,13 +1,26 @@
 @import url(https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&subset=latin,latin-ext);
 @import 'variables';
 
-html, body {
+html {
     width: 100%;
-    height: auto !important;
-    min-height: 100vh !important;
+    height: 100%;
+    overflow: scroll;
+    overflow-x: hidden;
+    background-color: #eee;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.54);
 }
 
 body {
+    width: 100%;
+    height: auto !important;
+    min-height: 100vh !important;
     background-color: #eee;
     color: $darkGrey;
     font: 14px Roboto, Arial, sans-serif; 
@@ -114,7 +127,7 @@ strong {
 }
 
 .toast__top {
-    top: 64px !important;
+    position: fixed;
 }
 
 .dialog__edit {

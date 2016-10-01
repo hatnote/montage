@@ -262,9 +262,48 @@ class LoggingMiddleware(Middleware):
         self.api_log.add_sink(self._exc_sink)
 
 
+import os
+import sys
+import json
+import uuid
+import socket
+
+
 class ReplayLogMiddleware(Middleware):
     def __init__(self, log_path):
         self.log_path = os.path.abspath(log_path)
+        self.log_file = open(self.log_path, 'ab')
+        self.start_timestamp = datetime.datetime.utcnow().isoformat()
+        self.hostname = socket.gethostname()
 
-    def endpoint(self, user, request_dict, request):
-        pass
+    def endpoint(self, next, user, request_dict, request):
+        cur_id = str(uuid.uuid4())
+        log_file = self.log_file
+        data = {'id': cur_id,
+                'timestamp': datetime.datetime.utcnow().isoformat(),
+                'start_timestamp': self.start_timestamp,
+                'host': self.hostname,
+                'pid': os.getpid(),
+                'path': request.path,
+                'method': request.method,
+                'request_dict': request_dict,
+                'user': user.username}
+        try:
+            log_file.write(json.dumps(data, sort_keys=True) + '\n')
+            log_file.flush()
+        except Exception:
+            sys.stderr.write('failed to write replay log in %s\n'
+                             % os.getpid())
+            sys.stderr.flush()
+        try:
+            ret = next()
+        except Exception as e:
+            exc_data = {'id': cur_id, 'exception': repr(e)}
+            try:
+                log_file.write(json.dumps(exc_data, sort_keys=True) + '\n')
+            except Exception:
+                sys.stderr.write('failed to write replay log exc in %s\n'
+                                 % os.getpid())
+                sys.stderr.flush()
+            raise
+        return ret
