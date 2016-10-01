@@ -98,7 +98,7 @@ def create_campaign(user, rdb_session, request_dict):
     coord_names = request_dict.get('coordinators')
     if not coord_names:
         raise InvalidAction('coordinators is required to create a campaign,'
-                            ' got %r' % (coord_names,))
+                            ' got %r '% (coord_names,))
 
     coords = []
     for coord_name in coord_names:
