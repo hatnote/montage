@@ -32,7 +32,6 @@ def make_juror_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
-           # 'campaign': {},
            'campaign': rnd.campaign.to_info_dict()
     }
     return ret
