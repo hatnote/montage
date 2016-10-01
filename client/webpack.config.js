@@ -15,6 +15,7 @@ var config = {
     template: 'index_local.ejs',
     filename: path.join('..', 'index.html')
   })],
+  devtool: 'source-map',
   module: {
     loaders: [
       {
