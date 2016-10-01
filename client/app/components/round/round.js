@@ -131,7 +131,7 @@ const RoundComponent = {
                 if (getCounter === 5) {
                     getCounter = 0;
                     userService.juror.getRoundTasks(vm.round.id).then((response) => {
-                        let newImages = response.data;
+                        let newImages = response.data.tasks;
                         [].push.apply(vm.images, newImages);
                         vm.images = _.uniqBy(vm.images, 'round_entry_id');
                         vm.loading = false;
