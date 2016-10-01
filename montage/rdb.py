@@ -900,7 +900,6 @@ class CoordinatorDAO(UserDAO):
         return rnd
 
     def activate_round(self, rnd):
-        import pdb;pdb.set_trace()
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
