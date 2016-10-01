@@ -41,11 +41,17 @@
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
              ng-class="'campaign__round--inactive'">
-            <span class="md-body-2" flex="30">
-                {{round.name}}
-                <span class="tag tag--pill"
-                      ng-show="round.status"
-                      ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+            <span class="md-body-1" flex="30"
+                  layout="column" layout-align="start start">
+                <span class="md-body-2">
+                    {{round.name}}
+                    <span class="tag tag--pill"
+                        ng-show="round.status"
+                        ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+                </span>
+                <strong class="campaign__directions">Directions</strong>
+                <span ng-show="round.directions">{{round.directions}}</span>
+                <span class="muted" ng-show="!round.directions">No directions provided</span>
             </span>
             <span class="md-body-1" flex="10" layout="row" layout-align="start center">
                 <span ng-show="round.deadline_date">

@@ -45,7 +45,7 @@ mont-campaign {
         outline: none;
         border-bottom: 1px solid rgba(0,0,0,0.12);
 
-        & > * {
+        & > *:not(:last-child) {
             padding-right: 25px;
         }
 
@@ -73,6 +73,10 @@ mont-campaign {
     
     .campaign__rounds-add {
         color: $lightGrey;
+    }
+
+    .campaign__directions {
+        margin-top: 10px;
     }
 
     .tag--completed {
