@@ -13,7 +13,7 @@ import services from './services';
 
 angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
   .config(function ($mdThemingProvider, $mdDateLocaleProvider, $provide, $httpProvider, $stateProvider, $urlRouterProvider) {
-    $mdThemingProvider.generateThemesOnDemand(true);
+    //$mdThemingProvider.generateThemesOnDemand(true);
     $mdThemingProvider.alwaysWatchTheme(true);
     $provide.value('themeProvider', $mdThemingProvider);
 

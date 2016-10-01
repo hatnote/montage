@@ -5,13 +5,18 @@
                    user="$ctrl.user">
 </div>
 <div flex></div>
-<div layout="row" layout-align="end center"
-      ng-if="$ctrl.isAdmin() && $ctrl.isOrganizer()">
+<div layout="row" layout-align="end end"
+      ng-if="$ctrl.isAdmin() && ($ctrl.isOrganizer() || $ctrl.isMaintainer())">
     <span flex></span>
+    <md-button class="md-fab md-primary md-mini" aria-label="Add campaign organizer"
+               ng-click="$ctrl.addOrganizer($event)">
+        <md-icon>person_add</md-icon>
+        <md-tooltip md-direction="left">Add campaign organizer</md-tooltip>
+    </md-button>
     <md-button class="md-fab" aria-label="Add new campaign"
                ng-click="$ctrl.addCampaign($event)">
         <md-icon>assignment</md-icon>
-        <md-tooltip md-direction="left">Add new campaign</md-tooltip>
+        <md-tooltip md-direction="top">Add new campaign</md-tooltip>
     </md-button>
 </div>
 <div class="central-error" layout="column" layout-align="center center"
