@@ -86,7 +86,6 @@ def full_run(url_base, remote):
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl']}
-
     resp = fetch_json(url_base + '/admin/add_campaign', data,
                       su_to='Yarl')
 
@@ -104,8 +103,8 @@ def full_run(url_base, remote):
     # Edit a campaign
     # - as organizer
     data = {'name': 'A demo campaign 2016',
-            'open_date': "2016-09-01 17:00:00",  # UTC times,
-            'close_date': "2016-09-30 20:00:00"}
+            'open_date': "2015-09-01 17:00:00",  # UTC times,
+            'close_date': "2015-09-30 20:00:00"}
     resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id,
                       data, su_to='Yarl')
 
@@ -122,14 +121,28 @@ def full_run(url_base, remote):
     # Add a round to a campaign
     # - as coordinator
     data = {'name': 'Test yes/no round',
-            'vote_method': 'yesno',
+            'vote_method': 'rating',
             'quorum': 4,
             'deadline_date': "2016-10-15T00:00:00",
             'jurors': [u'Slaporte',
                        u'MahmoudHashemi',
                        u'Effeietsanders',
                        u'Jean-Frédéric',
-                       u'LilyOfTheWest']}
+                       u'LilyOfTheWest'],
+            # a round will have these config settings by default
+            'config': {'show_link': True,
+                       'show_filename': True,
+                       'show_resolution': True,
+                       'dq_by_upload_date': True,
+                       'dq_by_resolution': True,
+                       'dq_by_uploader': True,
+                       'dq_by_filetype': True,
+                       'allowed_filetypes': ['jpeg', 'png', 'gif'],
+                       'min_resolution': 2000000, #2 megapixels
+                       'dq_coords': True,
+                       'dq_organizers': True,
+                       'dq_maintainers': True}}
+
 
     resp = fetch_json(url_base + '/admin/campaign/%s/add_round' % campaign_id,
                       data, su_to='LilyOfTheWest')
@@ -238,7 +251,7 @@ def full_run(url_base, remote):
     data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
-
+    import pdb;pdb.set_trace()
     # Get more tasks
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,

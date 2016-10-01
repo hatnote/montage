@@ -85,7 +85,8 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     new_camp_name = request_dict.get('name')
-    open_date = request_dict.get('open_date')
+    now = datetime.datetime.utcnow().isoformat()
+    open_date = request_dict.get('open_date', now)
     if open_date:
         open_date = isoparse(open_date)
     close_date = request_dict.get('close_date')
@@ -148,6 +149,19 @@ def import_entries(rdb_session, user, round_id, request_dict):
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
+
+    if rnd.config.get('dq_by_upload_date'):
+        coord_dao.autodisqualify_by_date(rnd)
+
+    if rnd.config.get('dq_by_resolution'):
+        min_resolution = rnd.config.get('min_resolution')
+        coord_dao.autodisqualify_by_resolution(rnd)
+    
+    if rnd.config.get('dq_by_uploader'):
+        coord_dao.autodisqualify_by_uploader(rnd)
+
+    if rnd.config.get('dq_by_filetype'):
+        coord_dao.autodisqualify_by_filetype(rnd)
 
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
@@ -233,7 +247,7 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date', 'config']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns:
