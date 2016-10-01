@@ -68,7 +68,7 @@ const CampaignComponent = {
             let round_ = angular.copy(round);
             round_ = angular.extend(round_, {
                 jurors: round.jurors.map((element) => element.name),
-                deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
+                deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC')
             });
 
             if (!round_.name) {
@@ -248,5 +248,5 @@ export default () => {
     angular
         .module('montage')
         .component('montCampaign', CampaignComponent)
-        .filter('fromNow', () => (input) => moment(input).fromNow());
+        .filter('fromNow', () => (input) => moment.utc(input).fromNow());
 };
