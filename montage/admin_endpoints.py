@@ -1,3 +1,4 @@
+import datetime
 
 from clastic import GET, POST
 from clastic.errors import Forbidden
@@ -12,11 +13,19 @@ from rdb import (CoordinatorDAO,
 
 
 def get_admin_routes():
+    """
+    /role/(object/id/object/id/...)verb is the guiding principle
+    """
+    16
     ret = [GET('/admin', get_index),
-           POST('/admin/new/campaign', create_campaign),
+           POST('/admin/add_organizer', add_organizer),
+           POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
-           POST('/admin/campaign/<campaign_id:int>/new/round', create_round),
+           POST('/admin/campaign/<campaign_id:int>/add_round',
+                create_round),  # was ../new/round
+           POST('/admin/campaign/<campaign_id:int>/add_coordinator',
+                add_coordinator),  # was /admin/add_coordinator/campaign/...',
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -25,11 +34,8 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
-           POST('/admin/round/<round_id:int>/finalize',
-                finalize_round),
-           POST('/admin/add_organizer', add_organizer),
-           POST('/admin/add_coordinator/campaign/<campaign_id:int>',
-                add_coordinator),
+           POST('/admin/round/<round_id:int>/finalize', finalize_round),
+           # TODO: split out into round/campaign log endpoints
            GET('/admin/audit_logs', get_audit_logs)]
     return ret
 
@@ -58,6 +64,11 @@ def make_admin_round_details(rnd, rnd_stats):
     return ret
 
 
+# TODO: (clastic) some way to mark arguments as injected from the
+# request_dict such that the signature can be expanded here. the goal
+# being that create_campaign can be a standalone function without any
+# special middleware dependencies, to achieve a level of testing
+# between the dao and server tests.
 def create_campaign(user, rdb_session, request_dict):
     """
     Summary: Post a new campaign
@@ -74,8 +85,13 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     new_camp_name = request_dict.get('name')
-    open_date = request_dict.get('open_date')
+    now = datetime.datetime.utcnow().isoformat()
+    open_date = request_dict.get('open_date', now)
+    if open_date:
+        open_date = isoparse(open_date)
     close_date = request_dict.get('close_date')
+    if close_date:
+        close_date = isoparse(close_date)
     coord_names = request_dict.get('coordinators') or []
 
     coords = []
@@ -112,12 +128,12 @@ def import_entries(rdb_session, user, round_id, request_dict):
         total_entries:
             type: int64
     """
-
-    if not user.is_maintainer:  # TODO: check if user is an organizer or coord
-        raise Forbidden('not allowed to import entries')
-
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+    coords = rnd.campaign.coords
+
+    if not user.is_maintainer and user not in coords:
+        raise Forbidden('not allowed to import entries')
 
     import_method = request_dict.get('import_method')
 
@@ -133,11 +149,32 @@ def import_entries(rdb_session, user, round_id, request_dict):
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
-
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries)}
+            'total_entries': len(rnd.entries),
+            'dq_upload_date': 0,
+            'dq_resolution': 0,
+            'dq_uploader': 0,
+            'dq_filetype': 0}
+
+    if rnd.config.get('dq_by_upload_date'):
+        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)        
+        data['dq_upload_date'] = len(dq_upload_date) 
+        
+    if rnd.config.get('dq_by_resolution'):
+        min_resolution = rnd.config.get('min_resolution')
+        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
+        data['dq_resolution'] = len(dq_resolution)
+    
+    if rnd.config.get('dq_by_uploader'):
+        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
+        data['dq_uploader'] = len(dq_uploader)
+
+    if rnd.config.get('dq_by_filetype'):
+        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
+        data['dq_filetype'] = len(dq_filetype)
+
     return {'data': data}
 
 
@@ -165,15 +202,17 @@ def activate_round(rdb_session, user, round_id, request_dict):
     ret_data['round_id'] = round_id
     return {'data': ret_data}
 
+
 def pause_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
+
     if not rnd:
         raise DoesNotExist()
 
     coord_dao.pause_round(rnd)
 
-    return {'data': rnd}
+    return {'data': 'paused'}
 
 
 def edit_campaign(rdb_session, user, campaign_id, request_dict):
@@ -186,16 +225,20 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    campaign_dict = {}
-    column_names = ['name', 'open_date', 'close_date']
-
-    for column_name in column_names:
-        if request_dict.get(column_name):
-            campaign_dict[column_name] = request_dict.get(column_name)
+    edit_dict = {}
+    name = request_dict.get('name')
+    if name:
+        edit_dict['name'] = name
+    open_date = request_dict.get('open_date')
+    if open_date:
+        edit_dict['open_date'] = isoparse(open_date)
+    close_date = request_dict.get('close_date')
+    if close_date:
+        edit_dict['close_date'] = isoparse(close_date)
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.edit_campaign(campaign_id, campaign_dict)
-    return {'data': campaign_dict}
+    coord_dao.edit_campaign(campaign_id, edit_dict)
+    return {'data': edit_dict}
 
 
 def create_round(rdb_session, user, campaign_id, request_dict):
@@ -212,7 +255,7 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date', 'config']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns:
@@ -466,15 +509,16 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
-def get_audit_logs(rdb_session, user, request_dict):
+def get_audit_logs(rdb_session, user, request):
     if not user.is_maintainer:
         raise Forbidden('not allowed to view the audit log')
 
-    limit = request_dict.get('limit', 10)
-    offset = request_dict.get('offset', 0)
+    limit = request.values.get('limit', 10)
+    offset = request.values.get('offset', 0)
 
     main_dao = MaintainerDAO(rdb_session, user)
     audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
+
     data = [l.to_info_dict() for l in audit_logs]
 
     return {'data': data}

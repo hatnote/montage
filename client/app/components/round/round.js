@@ -20,13 +20,14 @@ const RoundComponent = {
 
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
-        vm.images = vm.tasks.data;
+        vm.images = vm.tasks.data.tasks;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.round = vm.data.data;
         vm.openImage = openImage;
         vm.openURL = openURL;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.size = 1;
+        vm.stats = vm.tasks.data.stats;
         vm.user = angular.extend(vm.user, vm.data.user);
 
         // rating exclusives
@@ -117,13 +118,13 @@ const RoundComponent = {
             const rating = (rate - 1) / 4;
             vm.loading = true;
 
-            userService.juror.setRating({
-                'entry_id': current.entry.id,
+            userService.juror.setRating(vm.round.id, {'ratings': [{
                 'task_id': current.id,
-                'rating': rating
-            }).then(() => {
+                'value': rating
+            }]}).then(() => {
                 _.pull(vm.images, current);
                 getCounter++;
+                vm.stats.total_open_tasks--;
                 vm.rating.all = vm.images.length;
                 vm.rating.getNext();
 

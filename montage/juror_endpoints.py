@@ -1,3 +1,6 @@
+
+from itertools import groupby
+
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
@@ -5,17 +8,27 @@ from boltons.strutils import slugify
 from rdb import JurorDAO
 from utils import format_date, PermissionDenied, InvalidAction
 
+MAX_RATINGS_SUBMIT = 100
+
 
 def get_juror_routes():
+    """\
+    The refactored routes for jurors, coming soon.
+
+    * removed GET('/juror/round/<round_id:int>/tasks', get_tasks)
+      because requests for tasks must be interpreted in the context of
+      an active round. Specifically, ranking rounds must get and
+      submit all tasks at once.
+
+    * removed POST('/juror/bulk_submit/rating', bulk_submit_rating)
+      and POST('/juror/submit/rating', submit_rating) in favor of the
+      unified submission URL which includes the round_id
+    """
     ret = [GET('/juror', get_index),
            GET('/juror/campaign/<campaign_id:int>', get_campaign),
            GET('/juror/round/<round_id:int>', get_round),
-           GET('/juror/tasks', get_tasks),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
-           POST('/juror/submit/rating', submit_rating),
-           POST('/juror/bulk_submit/rating', bulk_submit_rating)]
-    # TODO: submission for rank style votes
-    # TODO: bulk rating submission
+           POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings)]
     return ret
 
 
@@ -32,8 +45,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
-           'campaign': rnd.campaign.to_info_dict()
-    }
+           'campaign': rnd.campaign.to_info_dict()}
     return ret
 
 
@@ -177,7 +189,7 @@ def get_campaign_info(rdb_session, user, campaign_id):
 
 def get_tasks(rdb_session, user, request):
     """
-    Summary: Get the next tasks for a juror
+    Summary: Get the next tasks for a juror.
 
     Request model:
         count:
@@ -197,15 +209,20 @@ def get_tasks(rdb_session, user, request):
     Errors:
        403: User does not have permission to access any tasks
        404: Tasks not found
+
     """
+    # TODO: this needs a round. a given user can be participating in
+    # multiple campaigns at once.
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     tasks = juror_dao.get_tasks(num=count, offset=offset)
-    data = []
+    stats = juror_dao.get_task_counts()
+    data = {'stats': stats,
+            'tasks': []}
 
     for task in tasks:
-        data.append(task.to_details_dict())
+        data['tasks'].append(task.to_details_dict())
 
     return {'data': data}
 
@@ -241,10 +258,12 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     tasks = juror_dao.get_tasks_from_round(rnd=rnd,
                                            num=count,
                                            offset=offset)
-    data = []
+    stats = juror_dao.get_round_task_counts(rnd)
+    data = {'stats': stats,
+            'tasks': []}
 
     for task in tasks:
-        data.append(task.to_details_dict())
+        data['tasks'].append(task.to_details_dict())
 
     return {'data': data}
 
@@ -299,25 +318,27 @@ def submit_rating(rdb_session, user, request_dict):
     # What should this return?
     return {'data': {'task_id': task_id, 'rating': rating}}
 
-def bulk_submit_rating(rdb_session, user, request):
+
+"""
+def bulk_submit_rating(rdb_session, user, request_dict):
+
     # TODO: Check permissions
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    ratings = request.form.get('ratings')
+    ratings = request_dict.get('ratings')
     ret = []
 
     for rating in ratings:
         task_id = rating['task_id']
         rating_val = rating['rating']
-        task = rating['task']
 
-        juror_dao.apply_rating(task, rating)
+        task = juror_dao.get_task(task_id)
+
+        juror_dao.apply_rating(task, rating_val)
 
         ret.append({'task_id': task_id, 'rating': rating})
 
     return {'data': ret}
-
-from itertools import groupby
-MAX_RATINGS_SUBMIT = 100
+"""
 
 
 def submit_ratings(rdb_session, user, request_dict):
@@ -328,6 +349,7 @@ def submit_ratings(rdb_session, user, request_dict):
     this function is used to submit ratings _and_ rankings. when
     submitting rankings does not support ranking ties at the moment
     """
+
     # TODO: can jurors change their vote?
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
 
@@ -349,8 +371,9 @@ def submit_ratings(rdb_session, user, request_dict):
 
     # validation
     if style == 'rating':
-        invalid = [r not in VALID_RATINGS for r in id_map.values()]
+        invalid = [r for r in id_map.values() if r not in VALID_RATINGS]
         if invalid:
+            import pdb;pdb.set_trace()
             raise InvalidAction('rating expected one of %s, not %r'
                                 % (VALID_RATINGS, sorted(set(invalid))))
     elif style == 'yesno':

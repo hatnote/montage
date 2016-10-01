@@ -38,14 +38,25 @@ from simple_serdes import DictableBase, JSONEncodedDict
 Base = declarative_base(cls=DictableBase)
 
 
-# Some basic display settings for now
-DEFAULT_ROUND_CONFIG = {'show_link': True,
-                        'show_filename': True,
-                        'show_resolution': True}
-
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
+
+DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif']
+
+# Some basic config settings
+DEFAULT_ROUND_CONFIG = {'show_link': True,
+                        'show_filename': True,
+                        'show_resolution': True,
+                        'dq_by_upload_date': True,
+                        'dq_by_resolution': True,
+                        'dq_by_uploader': True,
+                        'dq_by_filetype': True,
+                        'allowed_filetypes': DEFAULT_ALLOWED_FILETYPES,
+                        'min_resolution': DEFAULT_MIN_RESOLUTION,
+                        'dq_coords': True,
+                        'dq_organizers': True,
+                        'dq_maintainers': True}
 
 
 """
@@ -118,7 +129,7 @@ class User(Base):
         ret = {'id': self.id,
                'username': self.username,
                'is_organizer': self.is_organizer,
-               'is_maintainer': self.is_maintainer}
+               'is_maintainer': self.is_maintainer,}
         return ret
 
     def to_details_dict(self):
@@ -231,15 +242,37 @@ class Round(Base):
         if not rdb_session:
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
-        rdb_session.query(Task)  # etc.
+        re_count = len(self.round_entries)
+        task_count = rdb_session.query(Task)\
+                                .filter(Task.round_entry.has(round_id=self.id),
+                                        Task.cancel_date == None)\
+                                .count()
+        open_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.id),
+                                             Task.complete_date == None,
+                                             Task.cancel_date == None)\
+                                     .count()
+        cancelled_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.id),
+                                             Task.complete_date == None,
+                                             Task.cancel_date != None)\
+                                     .count()
+        dq_entry_count = rdb_session.query(RoundEntry)\
+                                    .filter_by(round_id=self.id)\
+                                    .filter(RoundEntry.dq_reason != None)\
+                                    .count()
+        if task_count:
+            percent_open = round((100.0 * open_task_count) / task_count, 3)
+        else:
+            percent_open = 0.0
 
-        """
-        interesting counts:
-          * entries
-          * disqualified entries
-          * open tasks
-          * total tasks
-        """
+        return {'total_round_entries': re_count,
+                'total_tasks': task_count,
+                'total_open_tasks': open_task_count,
+                'percent_tasks_open': percent_open,
+                'total_cancelled_tasks': cancelled_task_count,
+                'total_disqualified_entries': dq_entry_count}
+
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -250,13 +283,16 @@ class Round(Base):
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
                'deadline_date': format_date(self.deadline_date),
+               'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status}
         return ret
 
     def to_details_dict(self):
         ret = self.to_info_dict()
         ret['quorum'] = self.quorum
-        ret['jurors'] = [rj.to_details_dict() for rj in self.round_jurors]
+        ret['total_round_entries'] = len(self.round_entries)
+        ret['stats'] = self.get_count_map()
+        ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors],
         return ret
 
 rounds_t = Round.__table__
@@ -281,13 +317,52 @@ class RoundJuror(Base):
         if user is not None:
             self.user = user
 
-    def to_details_dict(self):
+    def get_count_map(self):
+        from sqlalchemy import inspect
+        rdb_session = inspect(self).session
+        if not rdb_session:
+            # TODO: just make a session
+            raise RuntimeError('cannot get counts for detached Round')
+        task_count = rdb_session.query(Task)\
+                                .filter(Task.round_entry.has(round_id=self.round_id),
+                                        Task.user_id == self.user_id,
+                                        Task.cancel_date == None)\
+                                .count()
+        open_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.round_id),
+                                             Task.user_id == self.user_id,
+                                             Task.complete_date == None,
+                                             Task.cancel_date == None)\
+                                     .count()
+        cancelled_task_count = rdb_session.query(Task)\
+                                     .filter(Task.round_entry.has(round_id=self.round_id),
+                                             Task.user_id == self.user_id,
+                                             Task.complete_date == None,
+                                             Task.cancel_date != None)\
+                                     .count()
+        if task_count:
+            percent_open = round((100.0 * open_task_count) / task_count, 3)
+        else:
+            percent_open = 0.0
+
+        return {'total_tasks': task_count,
+                'total_open_tasks': open_task_count,
+                'percent_tasks_open': percent_open,
+                'total_cancelled_tasks': cancelled_task_count}
+
+    def to_info_dict(self):
         ret = {'id': self.user.id,
                'username': self.user.username,
                'is_active': self.is_active}
         if self.flags:
             ret['flags'] = self.flags
         return ret
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['stats'] = self.get_count_map()
+        return ret
+
 
 round_jurors_t = RoundJuror.__table__
 
@@ -666,7 +741,7 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def create_round(self, campaign, name, quorum,
-                     vote_method, jurors, deadline_date):
+                     vote_method, jurors, deadline_date, config={}):
         # TODO:
         # if campaign.active_round:
         #     raise InvalidAction('can only create one active/paused round at a'
@@ -675,6 +750,10 @@ class CoordinatorDAO(UserDAO):
 
         jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
                   for j in jurors]
+
+        for (k, v) in DEFAULT_ROUND_CONFIG.items():
+            config[k] = config.get(k, v)
+
         rnd = Round(name=name,
                     campaign=campaign,
                     campaign_seq=len(campaign.rounds),
@@ -682,7 +761,8 @@ class CoordinatorDAO(UserDAO):
                     quorum=quorum,
                     deadline_date=deadline_date,
                     vote_method=vote_method,
-                    jurors=jurors)
+                    jurors=jurors,
+                    config=config)
 
         self.rdb_session.add(rnd)
         self.rdb_session.commit()
@@ -743,23 +823,39 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_uploader(self,
-                                   rnd,
-                                   dq_coords=True,
-                                   dq_organizers=True,
-                                   dq_maintainers=False):
+    def autodisqualify_by_filetype(self, rnd):
+        allowed_filetypes = rnd.config.get('allowed_filetypes')
+        round_entries = self.query(RoundEntry)\
+                            .join(Entry)\
+                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(~Entry.mime_minor.in_(allowed_filetypes))\
+                            .all()
+
+        for r_ent in round_entries:
+            dq_reason = ('mime %s is not in %s' % (r_ent.entry.mime_minor,
+                                                   allowed_filetypes))
+            r_ent.dq_reason = dq_reason
+            r_ent.dq_user_id = self.user.id
+
+        msg = ('%s disqualified %s entries by filetype not in %s'
+               % (self.user.username, len(round_entries), allowed_filetypes))
+        self.log_action('autodisqualify_by_filetype', round=rnd, message=msg)
+
+        return round_entries
+
+    def autodisqualify_by_uploader(self, rnd):
         dq_group = {}
         dq_usernames = [j.username for j in rnd.jurors]
         for username in dq_usernames:
             dq_group[username] = 'juror'
 
-        if dq_coords:
+        if rnd.config.get('dq_coords'):
             coord_usernames = [c.username for c in rnd.campaign.coords]
             dq_usernames += coord_usernames
             for username in coord_usernames:
                 dq_group[username] = 'coordinator'
 
-        if dq_organizers:
+        if rnd.config.get('dq_organizers'):
             organizers = self.query(User)\
                              .filter_by(is_organizer=True)\
                              .all()
@@ -768,7 +864,7 @@ class CoordinatorDAO(UserDAO):
             for username in organizer_usernames:
                 dq_group[username] = 'organizer'
 
-        if dq_maintainers:
+        if rnd.config.get('dq_maintainers'):
             dq_usernames += MAINTAINERS
             for username in MAINTAINERS:
                 dq_group[username] = 'maintainer'
@@ -799,6 +895,8 @@ class CoordinatorDAO(UserDAO):
 
         msg = '%s paused round "%s"' % (self.user.username, rnd.name)
         self.log_action('pause_round', round=rnd, message=msg)
+
+        return rnd
 
     def activate_round(self, rnd):
         if rnd.status != 'paused':
@@ -1163,11 +1261,20 @@ class JurorDAO(UserDAO):
     def get_tasks(self, num=1, offset=0):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
-                            Task.complete_date == None)\
+                            Task.complete_date == None,
+                            Task.cancel_date == None)\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
+
+    def get_total_tasks(self):
+        task_count = self.query(Task)\
+                         .filter(Task.user == self.user,
+                                 Task.complete_date == None,
+                                 Task.cancel_date == None)\
+                         .count()
+        return task_count
 
     def get_tasks_by_id(self, task_ids):
         if isinstance(task_ids, int):
@@ -1184,6 +1291,7 @@ class JurorDAO(UserDAO):
         tasks = self.query(Task)\
                     .filter(Task.user == self.user,
                             Task.complete_date == None,
+                            Task.cancel_date == None,
                             Task.round_entry.has(round_id=rnd.id))\
                     .limit(num)\
                     .offset(offset)\
@@ -1202,6 +1310,19 @@ class JurorDAO(UserDAO):
                 'total_tasks': total_tasks,
                 'total_open_tasks': total_open_tasks,
                 'percent_tasks_open': percent_open}
+
+    def get_task_counts(self):
+        re_count = self.query(RoundEntry).count()
+        total_tasks = self.query(Task)\
+                          .filter(Task.user_id == self.user.id,
+                                  Task.cancel_date == None)\
+                          .count()
+        total_open_tasks = self.query(Task)\
+                               .filter(Task.user_id == self.user.id,
+                                       Task.complete_date == None,
+                                       Task.cancel_date == None)\
+                               .count()
+        return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
     def get_round_task_counts(self, rnd):
         re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
@@ -1488,7 +1609,6 @@ def reassign_tasks(session, rnd, new_jurors):
 
 
 def make_rdb_session(echo=True):
-    echo = True
     from utils import load_env_config
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
