@@ -5,12 +5,12 @@ const AlertService = function ($mdToast) {
             .textContent(text)
             .highlightClass('md-accent')
             .toastClass('toast__top')
-            .position('top right')),
+            .position('bottom left')),
         error: (error) => $mdToast.show($mdToast.simple()
             .textContent(error.message + ': ' + error.detail)
             .highlightClass('md-accent')
             .toastClass('toast__top')
-            .position('top right'))
+            .position('bottom left'))
     };
 
     return service;
