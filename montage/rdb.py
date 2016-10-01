@@ -729,11 +729,11 @@ class CoordinatorDAO(UserDAO):
 
     def create_round(self, campaign, name, description, directions, quorum,
                      vote_method, jurors, deadline_date, config={}):
-        # TODO:
-        # if campaign.active_round:
-        #     raise InvalidAction('can only create one active/paused round at a'
-        #                         ' time. cancel or complete your existing'
-        #                         ' rounds before trying again')
+
+        if campaign.active_round:
+            raise InvalidAction('can only create one active/paused round at a'
+                                ' time. cancel or complete your existing'
+                                ' rounds before trying again')
 
         jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
                   for j in jurors]
@@ -771,6 +771,15 @@ class CoordinatorDAO(UserDAO):
         campaign = rnd.campaign
         min_date = campaign.open_date
         max_date = campaign.close_date
+
+        if not min_date or not max_date:
+            round_entries = []
+            
+            msg = ('%s disqualified 0 entries by date due to missing, '
+                   'campaign open or close date' % (self.user.username,))
+            self.log_action('autodisqualify_by_date', round=rnd, message=msg)
+
+            return round_entries
 
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
@@ -891,9 +900,15 @@ class CoordinatorDAO(UserDAO):
         return rnd
 
     def activate_round(self, rnd):
+        import pdb;pdb.set_trace()
+        if not rnd.entries:
+            raise InvalidAction('can not activate empty round, try importing'
+                                ' entries first')
+        
         if rnd.status != 'paused':
             raise InvalidAction('can only activate round in a paused state,'
                                 ' not %r' % (rnd.status,))
+
         if not rnd.open_date:
             tasks = create_initial_tasks(self.rdb_session, rnd)
             rnd.open_date = datetime.datetime.utcnow()
