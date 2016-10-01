@@ -159,14 +159,14 @@ def import_entries(rdb_session, user, round_id, request_dict):
             'dq_filetype': 0}
 
     if rnd.config.get('dq_by_upload_date'):
-        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)        
-        data['dq_upload_date'] = len(dq_upload_date) 
-        
+        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)
+        data['dq_upload_date'] = len(dq_upload_date)
+
     if rnd.config.get('dq_by_resolution'):
         min_resolution = rnd.config.get('min_resolution')
         dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
         data['dq_resolution'] = len(dq_resolution)
-    
+
     if rnd.config.get('dq_by_uploader'):
         dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
         data['dq_uploader'] = len(dq_uploader)
@@ -255,7 +255,8 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date', 'config']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date',
+                   'config', 'directions']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns:
