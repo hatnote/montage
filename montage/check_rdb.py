@@ -68,8 +68,10 @@ def get_schema_errors(base_type, session):
 
 
 def ping_connection(connection, branch):
-    # from: http://docs.sqlalchemy.org/en/latest/core/pooling.html#disconnect-handling-pessimistic
-
+    # from:
+    # http://docs.sqlalchemy.org/en/latest/core/pooling.html#disconnect-handling-pessimistic
+    # post-hoc hack: recipe caused/didn't catch ResourceClosedError,
+    # ironically enough, trying a modification to fix this.
     if branch:
         # "branch" refers to a sub-connection of a connection,
         # we don't want to bother pinging on these.
@@ -85,13 +87,13 @@ def ping_connection(connection, branch):
         # the SELECT of a scalar value without a table is
         # appropriately formatted for the backend
         connection.scalar(select([1]))
-    except exc.DBAPIError as err:
+    except (exc.DBAPIError, exc.ResourceClosedError) as err:
         # catch SQLAlchemy's DBAPIError, which is a wrapper
         # for the DBAPI's exception.  It includes a .connection_invalidated
         # attribute which specifies if this connection is a "disconnect"
         # condition, which is based on inspection of the original exception
         # by the dialect in use.
-        if err.connection_invalidated:
+        if getattr(err, 'connection_invalidated', True):
             # run the same SELECT again - the connection will re-validate
             # itself and establish a new connection.  The disconnect detection
             # here also causes the whole connection pool to be invalidated
