@@ -75,8 +75,7 @@
                     Round not ended
                 </span>
             </span>
-            <span class="md-body-1" flex="10" ng-show="false">{{round.jurors.length || "0"}} jurors</span>
-            <span class="md-body-1 muted" flex="10">no data</span>
+            <span class="md-body-1" flex="10">{{round.jurors.length || "0"}} jurors</span>
             <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
