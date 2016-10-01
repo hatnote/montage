@@ -31,7 +31,7 @@
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
         <span class="md-body-1" flex="10">Deadline Date</span>
-        <span class="md-body-1" flex="30">Round Date</span>
+        <span class="md-body-1" flex="30">Round Timeline</span>
         <span class="md-body-1" flex="10">No. of Jurors</span>
         <span class="md-body-1" flex="10">Vote Method</span>
         <span flex></span>
@@ -75,7 +75,10 @@
                     Round not ended
                 </span>
             </span>
-            <span class="md-body-1" flex="10">{{round.jurors.length || "0"}} jurors</span>
+            <span class="md-body-1" flex="10">
+                {{round.jurors.length || "0"}}
+                {{round.jurors.length === 1 ? "juror" : "jurors"}}
+            </span>
             <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
                 <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
