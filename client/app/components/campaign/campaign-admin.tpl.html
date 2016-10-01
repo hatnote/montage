@@ -41,6 +41,10 @@
              layout="row" layout-align="space-between center"
              ng-repeat="round in $ctrl.campaign.rounds"
              ng-class="'campaign__round--inactive'">
+            <div class="spinner__container" layout="row" layout-align="center center"
+                 ng-show="round.loading">
+                <md-progress-circular md-diameter="40"></md-progress-circular>
+            </div>
             <span class="md-body-1" flex="30"
                   layout="column" layout-align="start start">
                 <span class="md-body-2">

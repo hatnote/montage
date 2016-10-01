@@ -55,7 +55,9 @@ const CampaignComponent = {
         // functions
 
         function activateRound(round) {
+            round.loading = true;
             userService.admin.activateRound(round.id).then((response) => {
+                round.loading = false;
                 response.error ?
                     alertService.error(response.error) :
                     $state.reload();
@@ -202,7 +204,9 @@ const CampaignComponent = {
         }
 
         function pauseRound(round) {
+            round.loading = true;
             userService.admin.pauseRound(round.id).then((response) => {
+                round.loading = false;
                 response.error ?
                     alertService.error(response.error) :
                     $state.reload();
