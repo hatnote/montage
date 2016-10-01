@@ -79,12 +79,15 @@ def create_campaign(user, rdb_session, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    if not user.is_maintainer or not user.is_organizer:
+    if not (user.is_maintainer or user.is_organizer):
         raise Forbidden('must be a designated organizer to create campaigns')
 
     org_dao = OrganizerDAO(rdb_session, user)
 
-    new_camp_name = request_dict.get('name')
+    name = request_dict.get('name')
+    if not name:
+        raise InvalidAction('name is required to create a campaign, got %r'
+                            % name)
     now = datetime.datetime.utcnow().isoformat()
     open_date = request_dict.get('open_date', now)
     if open_date:
@@ -92,14 +95,17 @@ def create_campaign(user, rdb_session, request_dict):
     close_date = request_dict.get('close_date')
     if close_date:
         close_date = isoparse(close_date)
-    coord_names = request_dict.get('coordinators') or []
+    coord_names = request_dict.get('coordinators')
+    if not coord_names:
+        raise InvalidAction('coordinators is required to create a campaign, got %r'
+                            % (coord_names,))
 
     coords = []
     for coord_name in coord_names:
         coord = org_dao.get_or_create_user(coord_name, 'coordinator')
         coords.append(coord)
 
-    campaign = org_dao.create_campaign(name=new_camp_name,
+    campaign = org_dao.create_campaign(name=name,
                                        open_date=open_date,
                                        close_date=close_date,
                                        coords=coords)
@@ -159,14 +165,14 @@ def import_entries(rdb_session, user, round_id, request_dict):
             'dq_filetype': 0}
 
     if rnd.config.get('dq_by_upload_date'):
-        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)        
-        data['dq_upload_date'] = len(dq_upload_date) 
-        
+        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)
+        data['dq_upload_date'] = len(dq_upload_date)
+
     if rnd.config.get('dq_by_resolution'):
         min_resolution = rnd.config.get('min_resolution')
         dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
         data['dq_resolution'] = len(dq_resolution)
-    
+
     if rnd.config.get('dq_by_uploader'):
         dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
         data['dq_uploader'] = len(dq_uploader)
@@ -255,13 +261,15 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     campaign = coord_dao.get_campaign(campaign_id)
 
     rnd_dict = {}
-    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date', 'config']
+    req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
+    extra_columns = ['description', 'config', 'directions']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
-    for column in req_columns:
+    for column in req_columns + extra_columns:
         val = request_dict.get(column)
-        if not val:
-            raise InvalidAction('%s is required to create a round' % val)
+        if not val and column in req_columns:
+            raise InvalidAction('%s is required to create a round (got %r)'
+                                % (column, val))
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
         if column is 'deadline_date':

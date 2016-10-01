@@ -51,7 +51,12 @@ def fetch_json(url, data=None, act=None, **kw):
         else:
             url += '?su_to=' + url_su_to
     act['url'] = url
-    res = fetch(url, data=data)
+    try:
+        res = fetch(url, data=data)
+    except urllib2.HTTPError as he:
+        print '!! ', he.read()
+        print
+        raise
     data_dict = json.load(res)
     if kw.get('assert_success', True):
         try:
@@ -251,7 +256,7 @@ def full_run(url_base, remote):
     data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
-    import pdb;pdb.set_trace()
+
     # Get more tasks
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
