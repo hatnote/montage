@@ -122,8 +122,9 @@
         <md-button ng-click="$ctrl.addRound($event)"
                    ng-disabled="!$ctrl.isLastRoundCompleted()">
             <md-tooltip md-direction="right">Add new round</md-tooltip>
-            <md-icon>add_circle</md-icon>
-            <span>Add round</span>
+            <md-icon>add</md-icon>
+            <span ng-show="!$ctrl.campaign.rounds.length">Add initial round</span>
+            <span ng-show="$ctrl.campaign.rounds.length">Add next round</span>
         </md-button>
         <span class="muted" ng-show="!$ctrl.isLastRoundCompleted()">Previous round needs to be completed first</span>
         <span flex></span>
