@@ -79,7 +79,7 @@ def create_campaign(user, rdb_session, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    if not user.is_maintainer or not user.is_organizer:
+    if not (user.is_maintainer or user.is_organizer):
         raise Forbidden('must be a designated organizer to create campaigns')
 
     org_dao = OrganizerDAO(rdb_session, user)
