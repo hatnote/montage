@@ -55,7 +55,7 @@ var config = {
 };
 
 var ENV = process.env.NODE_ENV;
-if (ENV === 'prod' || ENV === 'dev') {
+if (ENV === 'prod' || ENV === 'dev' || ENV === 'beta') {
   config.output = {
     path: path.join(__dirname, '..', 'montage', 'static', 'dist'),
     publicPath: 'dist/',
@@ -63,7 +63,7 @@ if (ENV === 'prod' || ENV === 'dev') {
   };
   config.plugins = [
     new HtmlWebpackPlugin({
-      template: ENV === 'dev' ? 'index_dev.ejs' : 'index_prod.ejs',
+      template: ENV === 'dev' ? 'index_dev.ejs' : ENV === 'beta' ? 'index_beta.ejs' : 'index_prod.ejs',
       filename: path.join('..', 'index.html')
     }),
     new ngAnnotatePlugin({
