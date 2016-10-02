@@ -86,7 +86,12 @@ def create_app(env_name='prod'):
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
-    engine = create_engine(config.get('db_url', DEFAULT_DB_URL))
+    # Recycle connections after 5 minutes, since MySQL is usually configed to kill
+    # long running idle connections at some interval. 5 is perhaps too aggressive,
+    # but eh. See http://docs.sqlalchemy.org/en/rel_1_0/core/pooling.html#setting-pool-recycle
+    # for more details
+    # FIXME: Make this configurable
+    engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=300)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
     tmp_rdb_session = session_type()
