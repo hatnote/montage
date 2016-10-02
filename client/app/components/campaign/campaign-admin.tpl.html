@@ -19,6 +19,7 @@
                    ng-click="$ctrl.cancelCampaignName()">
             <md-icon>cancel</md-icon>
         </md-button>
+        <small class="md-headline muted">{{$ctrl.campaign.open_date | date}} – {{$ctrl.campaign.close_date | date}}</small>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Edit"
                    ng-show="false"
