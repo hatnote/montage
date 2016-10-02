@@ -36,7 +36,7 @@ def get_admin_routes():
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
            # TODO: split out into round/campaign log endpoints
-           GET('/admin/audit_logs', geta_audit_logs)]
+           GET('/admin/audit_logs', get_audit_logs)]
     return ret
 
 def isoparse(date_str):
