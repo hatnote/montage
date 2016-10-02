@@ -3,7 +3,10 @@
         <md-button class="md-icon-button" aria-label="Settings" ng-disabled="true">
             <md-icon>menu</md-icon>
         </md-button>
-        <h2 class="link" ng-click="$ctrl.goToDashboard()">montage</h2>
+        <h2 class="link" ng-click="$ctrl.goToDashboard()">
+            montage
+            <sup>{{$ctrl.config.env.name.toUpperCase()}}</sup>
+        </h2>
         <span flex></span>
         <md-menu md-position-mode="target-right target">
             <md-button ng-show="$ctrl.user.username" ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)">
@@ -40,10 +43,13 @@
 <div class="container" layout="column" layout-align="space-between stretch" flex>
     <ui-view></ui-view>
     <footer layout="row" layout-align="space-between center">
-        <span>&copy; 2016 <a href="https://github.com/hatnote">Hatnote</a></span>
+        <span>&copy; 2016
+            <a href="https://github.com/hatnote">Hatnote</a> &bull;
+            <a href="https://github.com/hatnote/montage/blob/master/README.md">About</a>
+        </span>
         <span flex></span>
         <span>
             version <strong>{{$ctrl.config.package.version}}</strong> &bull;
-            env <strong>{{$ctrl.config.env.name}}</strong></span>
+            env <strong><a href="meta/">{{$ctrl.config.env.name}}</a></strong></span>
     </footer>
 </div>

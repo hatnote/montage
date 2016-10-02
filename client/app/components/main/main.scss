@@ -1,7 +1,10 @@
 @import '../../variables';
 
 .toolbar {
-
+    h2 sup {
+        font-size: 10px;
+        opacity: .8;
+    }
 }
 
 .toolbar__userinfo {
