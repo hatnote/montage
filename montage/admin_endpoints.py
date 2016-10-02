@@ -36,7 +36,7 @@ def get_admin_routes():
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
            # TODO: split out into round/campaign log endpoints
-           GET('/admin/audit_logs', get_audit_logs)]
+           GET('/admin/audit_logs', geta_udit_logs)]
     return ret
 
 def isoparse(date_str):
@@ -528,7 +528,7 @@ def get_round(rdb_session, user, round_id):
 
 
 def get_audit_logs(rdb_session, user, request):
-    if not user.is_maintainer:
+    if not user.is_maintainer and not user.is_organizer:
         raise Forbidden('not allowed to view the audit log')
 
     limit = request.values.get('limit', 10)
