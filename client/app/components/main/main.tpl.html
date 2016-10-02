@@ -9,12 +9,12 @@
         </h2>
         <span flex></span>
         <md-menu md-position-mode="target-right target">
-            <md-button ng-show="$ctrl.user.username" ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)">
+            <md-button ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)">
                 <md-icon>face</md-icon>
                 {{$ctrl.user.username}}
             </md-button>
             <md-menu-content width="4">
-                <md-menu-item>
+                <md-menu-item ng-show="$ctrl.user.username">
                     <div class="md-title toolbar__userinfo" layout="row" layout-align="start center">
                         <md-icon>face</md-icon>
                         <span flex>{{$ctrl.user.username}}</span>
