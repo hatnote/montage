@@ -167,10 +167,18 @@ class TimingMiddleware(Middleware):
 class DBSessionMiddleware(Middleware):
     provides = ('rdb_session',)
 
-    def __init__(self, session_type):
+    def __init__(self, session_type, get_engine):
         self.session_type = session_type
+        self.get_engine = get_engine
+
+        self.engine = None
 
     def request(self, next):
+        if not self.engine:
+            # lazy initialization because uwsgi config
+            self.engine = self.get_engine()
+            self.session_type.configure(bind=self.engine)
+
         rdb_session = self.session_type()
         try:
             ret = next(rdb_session=rdb_session)
