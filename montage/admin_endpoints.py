@@ -417,8 +417,11 @@ def get_index(rdb_session, user):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaigns = coord_dao.get_all_campaigns()
+    if user.is_organizer:
+        user_dao = OrganizerDAO(rdb_session=rdb_session, user=user)
+    else:
+        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    campaigns = user_dao.get_all_campaigns()
 
     if len(campaigns) == 0:
         raise Forbidden('not a coordinator on any campaigns')
