@@ -88,9 +88,15 @@
                     Round not ended
                 </span>
             </span>
-            <span class="md-body-1" flex="10">
-                {{round.jurors.length || "0"}}
-                {{round.jurors.length === 1 ? "juror" : "jurors"}}
+            <span class="md-body-1" flex="10"
+                  layout="column" layout-align="center start">
+                <span>
+                    {{round.jurors.length || "0"}}
+                    {{round.jurors.length === 1 ? "juror" : "jurors"}}
+                </span>
+                <small class="muted" ng-show="round.jurors.length">
+                    <span ng-repeat="juror in round.jurors">{{juror.username}}<span ng-hide="{{$last}}">, </span></span>
+                </small>
             </span>
             <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
