@@ -1203,12 +1203,34 @@ class OrganizerDAO(CoordinatorDAO):
 
         return campaign
 
-    # Read methods
-    def get_all_campaigns(self):
-        # Organizers can see everything, including rounds with which
-        # they are not connected
-        pass
+    def cancel_campaign(self, campaign):
+        cancel_date = datetime.datetime.utcnow()
 
+        campaign.close_date = cancel_date
+        
+        for rnd in campaign.rounds:
+            self.cancel_round(rnd)
+
+        msg = ('%s cancelled campaign %s (%s) and %s rounds'
+               % (self.user.username, campaign.id, campaign.name, 
+                  len(campaign.rounds)))
+        self.log_action('cancel_campaign', campaign=campaign, message=msg)
+        self.rdb_session.commit()
+
+        return campaign
+
+    # Read methods
+    def get_campaign(self, campaign_id):
+        campaign = self.query(Campaign)\
+                       .filter_by(id=campaign_id)\
+                       .one_or_none()
+        return campaign
+
+    def get_round(self, round_id):
+        round = self.query(Round)\
+                    .filter_by(id=round_id)\
+                    .one_or_none()
+        return round
 
 class MaintainerDAO(OrganizerDAO):
     def get_audit_log(self, limit=100, offset=0):
@@ -1228,6 +1250,13 @@ class MaintainerDAO(OrganizerDAO):
         self.rdb_session.add(user)
         self.rdb_session.commit()
         return user
+
+    # Read methods
+    def get_all_campaigns(self):
+        # TODO: Show campaigns where the maintainer is also a coordinator
+        campaigns = self.query(Campaign)\
+                        .all()
+        return campaigns
 
 
 def bootstrap_maintainers(rdb_session):
