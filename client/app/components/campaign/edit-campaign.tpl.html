@@ -1,0 +1,49 @@
+<md-dialog class="dialog__edit">
+    <div class="spinner__container" layout="row" layout-align="center center"
+            ng-show="loading.window">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+    <form ng-cloak>
+        <md-dialog-content>
+            <div class="md-dialog-content" layout="column" layout-align="start stretch">
+                <h2 class="md-title no-margin">Edit campaign</h2>
+                <md-input-container>
+                    <label>Name</label>
+                    <input ng-model="campaign.name" type="text">
+                </md-input-container>
+                <md-list flex>
+                    <md-list-item class="md-2-line">
+                        <md-icon>date_range</md-icon>
+                        <div class="md-list-item-text">
+                            <md-datepicker ng-model="campaign.open_date"
+                                           md-max-date="campaign.close_date"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Open Date</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <md-icon>date_range</md-icon>
+                        <div class="md-list-item-text">
+                            <md-datepicker ng-model="campaign.close_date"
+                                           md-min-date="campaign.open_date"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Close Date</p>
+                        </div>
+                    </md-list-item>
+                </md-list>
+                <strong class="md-subhead">Campaign coordinators</strong>
+                <mont-user-list ng-model="campaign.coordinators" ng-disabled="true"></mont-user-list>
+            </div>
+        </md-dialog-content>
+
+        <md-dialog-actions layout="row">
+            <span flex></span>
+            <md-button ng-click="cancel()">
+                Cancel
+            </md-button>
+            <md-button class="md-primary" ng-click="saveEditCampaign(campaign, loading)">
+                Save
+            </md-button>
+        </md-dialog-actions>
+    </form>
+</md-dialog>
