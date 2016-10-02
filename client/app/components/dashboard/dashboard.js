@@ -35,8 +35,8 @@ const DashboardComponent = {
                     campaign: {
                         name: '',
                         coordinators: [],
-                        open_date: new Date(Date.UTC(2016, 9, 1)),
-                        close_date: new Date(Date.UTC(2016, 9, 30))
+                        open_date: new Date(Date.UTC(2016, 8, 1)),
+                        close_date: new Date(Date.UTC(2016, 8, 30))
                     },
                     today: new Date(),
                     create: (campaign_, loading) => {
