@@ -183,7 +183,7 @@ const CampaignComponent = {
 
         function isLastRoundCompleted() {
             const rounds = vm.campaign.rounds;
-            const isCompleted = rounds.length && rounds[rounds.length - 1].status === 'completed';
+            const isCompleted = rounds.length && (rounds[rounds.length - 1].status === 'completed' || rounds[rounds.length - 1].status === 'cancelled');
             return !rounds.length || isCompleted;
         }
 
