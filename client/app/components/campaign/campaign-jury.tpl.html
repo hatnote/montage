@@ -2,6 +2,9 @@
     <h2 class="campaign__title md-display-1"
         layout="row" layout-align="start center">
         <span>{{$ctrl.campaign[0].campaign.name}}</span>
+        <small class="md-headline muted">
+            {{$ctrl.campaign[0].campaign.open_date | date: 'd MMM yyyy'}} – {{$ctrl.campaign[0].campaign.close_date | date: 'd MMM yyyy'}}
+        </small>
         <span flex></span>
     </h2>
 
@@ -33,7 +36,7 @@
             </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
                 <span ng-show="round.deadline_date">
-                    {{round.deadline_date | date}}<br />
+                    {{round.deadline_date | date: 'd MMM yyyy'}}<br />
                     <small class="muted">{{round.deadline_date | fromNow}}</small>
                 </span>
                 <span class="muted" ng-show="!round.deadline_date">
