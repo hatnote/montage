@@ -13,6 +13,7 @@ const MainComponent = {
       package: pack
     };
     vm.goToDashboard = goToDashboard;
+    vm.isCurrentState = (name) => $state.current.name === name;
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 

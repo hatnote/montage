@@ -9,7 +9,8 @@
         </h2>
         <span flex></span>
         <md-menu md-position-mode="target-right target">
-            <md-button ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)">
+            <md-button ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)"
+                       ng-hide="$ctrl.isCurrentState('main.login')">
                 <md-icon>face</md-icon>
                 {{$ctrl.user.username}}
             </md-button>
