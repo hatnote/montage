@@ -168,7 +168,7 @@ class Campaign(Base):
                'name': self.name,
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
-               'close_date':format_date(self.close_date)}
+               'close_date': format_date(self.close_date)}
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
@@ -256,7 +256,6 @@ class Round(Base):
                                      .count()
         cancelled_task_count = rdb_session.query(Task)\
                                      .filter(Task.round_entry.has(round_id=self.id),
-                                             Task.complete_date == None,
                                              Task.cancel_date != None)\
                                      .count()
         dq_entry_count = rdb_session.query(RoundEntry)\
@@ -1029,8 +1028,7 @@ class CoordinatorDAO(UserDAO):
 
     def cancel_round(self, rnd):
         tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=rnd.id),
-                            Task.complete_date == None)\
+                    .filter(Task.round_entry.has(round_id=rnd.id))\
                     .all()
         cancel_date = datetime.datetime.utcnow()
 
@@ -1043,6 +1041,7 @@ class CoordinatorDAO(UserDAO):
         msg = '%s cancelled round "%s" and %s open tasks' %\
               (self.user.username, rnd.name, len(tasks))
         self.log_action('cancel_round', round=rnd, message=msg)
+        self.rdb_session.commit()
 
         return rnd
 
@@ -1365,6 +1364,8 @@ class JurorDAO(UserDAO):
         task_count = 'task_count'
         campaign_id = '_campaign_id'
         campaign_name = '_campaign_name'
+        campaign_open_date = '_campaign_open_date'
+        campaign_close_date = '_campaign_close_date'
 
         user_rounds_join = rounds_t.join(
                 round_jurors_t,
@@ -1377,6 +1378,8 @@ class JurorDAO(UserDAO):
             [
                 campaigns_t.c.id.label(campaign_id),
                 campaigns_t.c.name.label(campaign_name),
+                campaigns_t.c.open_date.label(campaign_open_date),
+                campaigns_t.c.close_date.label(campaign_close_date),
             ] +
             [
                 func.count(round_entries_t.c.id).label(entry_count),
@@ -1434,7 +1437,9 @@ class JurorDAO(UserDAO):
 
             re_count = round_kwargs.pop(entry_count)
             campaign = Campaign(id=round_kwargs.pop(campaign_id),
-                                name=round_kwargs.pop(campaign_name))
+                                name=round_kwargs.pop(campaign_name),
+                                open_date=round_kwargs.pop(campaign_open_date),
+                                close_date=round_kwargs.pop(campaign_close_date))
 
             round = Round(**round_kwargs)
             round.campaign = campaign
