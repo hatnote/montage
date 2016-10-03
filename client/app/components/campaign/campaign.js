@@ -147,7 +147,7 @@ const CampaignComponent = {
                     voteMethods: voteMethods,
                     today: new Date()
                 }
-            });
+            }, event);
         }
 
         function cancelCampaignName() {
@@ -155,7 +155,7 @@ const CampaignComponent = {
             vm.nameEdit = '';
         }
 
-        function editCampaign() {
+        function editCampaign(event) {
             let campaign = angular.extend(angular.copy(vm.campaign), {
                 open_date: new Date(vm.campaign.open_date),
                 close_date: new Date(vm.campaign.close_date),
@@ -168,7 +168,7 @@ const CampaignComponent = {
                     campaign: campaign,
                     saveEditCampaign: saveEditCampaign,
                 }
-            });
+            }, event);
         }
 
         function editCampaignName($event) {
@@ -180,9 +180,10 @@ const CampaignComponent = {
             });
         }
 
-        function editRound(round) {
+        function editRound(round, event) {
             let round_ = angular.extend(angular.copy(round), {
-                deadline_date: new Date(round.deadline_date)
+                deadline_date: new Date(round.deadline_date),
+                jurors: round.jurors.map((user) => ({ name: user.username }))
             });
 
             dialogService.show({
@@ -192,7 +193,7 @@ const CampaignComponent = {
                     voteMethods: voteMethods,
                     saveEditRound: saveEditRound,
                 }
-            });
+            }, event);
         }
 
         function isAdmin() {

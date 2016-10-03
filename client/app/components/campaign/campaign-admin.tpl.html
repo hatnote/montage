@@ -24,7 +24,7 @@
         </small>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Edit"
-                   ng-click="$ctrl.editCampaign()">
+                   ng-click="$ctrl.editCampaign($event)">
             <md-icon>settings</md-icon>
         </md-button>
     </h2>
@@ -111,7 +111,7 @@
                 </md-button>
                 <md-menu-content width="3">
                     <md-menu-item>
-                        <md-button ng-click="$ctrl.editRound(round)">
+                        <md-button ng-click="$ctrl.editRound(round, $event)">
                             Edit Round
                         </md-button>
                     </md-menu-item>
