@@ -13,7 +13,7 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache,
+    controller: function ($filter, $mdDialog, $mdToast, $q, $state, $templateCache,
         $timeout, alertService, dataService, dialogService, userService) {
         let vm = this;
         vm.activateRound = activateRound;
@@ -256,10 +256,15 @@ const CampaignComponent = {
 
         function saveEditRound(round, loading) {
             loading.window = true;
-            userService.admin.editRound(round.id, round).then((response) => {
-                if (response.error) {
+
+            const jurors = round.jurors.map((user) => user.name);
+            $q.all({
+                round: userService.admin.editRound(round.id, round),
+                jurors: userService.admin.editJurors(round.id, {new_jurors: jurors})
+            }).then((response) => {
+                if (response.round.error) {
                     loading.window = false;
-                    alertService.error(response.error);
+                    alertService.error(response.round.error);
                     return;
                 }
 

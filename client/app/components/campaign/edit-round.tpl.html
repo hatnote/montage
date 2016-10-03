@@ -29,6 +29,9 @@
                         </div>
                     </md-list-item>
                 </md-list>
+                <strong class="md-subhead">Round jurors</strong>
+                <mont-user-list ng-model="round.jurors"
+                                ng-disabled="round.status !== 'paused'"></mont-user-list>
             </div>
         </md-dialog-content>
 
