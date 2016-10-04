@@ -25,9 +25,11 @@ const CampaignComponent = {
         vm.isNameEdited = false;
         vm.isLastRoundCompleted = isLastRoundCompleted;
         vm.isRoundActive = isRoundActive;
+        vm.loadRoundDetails = loadRoundDetails;
         vm.nameEdit = '';
         vm.openRound = openRound;
         vm.pauseRound = pauseRound;
+        vm.roundDetails = {};
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
@@ -210,6 +212,14 @@ const CampaignComponent = {
             return round.status === 'active' && round.total_tasks;
         }
 
+        function loadRoundDetails(round) {
+            const id = round.id;
+            vm.roundDetails[id] = 'loading';
+            userService.admin.getRound(id).then((response) => {
+                vm.roundDetails[id] = response.data;
+            });
+        }
+
         function openRound(round) {
             if (!isRoundActive(round)) {
                 return;
@@ -260,7 +270,7 @@ const CampaignComponent = {
             const jurors = round.jurors.map((user) => user.name);
             $q.all({
                 round: userService.admin.editRound(round.id, round),
-                jurors: userService.admin.editJurors(round.id, {new_jurors: jurors})
+                jurors: userService.admin.editJurors(round.id, { new_jurors: jurors })
             }).then((response) => {
                 if (response.round.error) {
                     loading.window = false;

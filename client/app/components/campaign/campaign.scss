@@ -50,13 +50,27 @@ mont-campaign {
         outline: none;
         border-bottom: 1px solid rgba(0,0,0,0.12);
 
-        & > *:not(:last-child) {
+        & > div > *:not(:last-child) {
             padding-right: 25px;
         }
 
         .md-body-2 {
             font-size: 16px;
         }
+    }
+
+    .campaign__round-details {
+        position: relative;
+        padding: 16px;
+        background: #eee;
+        margin-bottom: -10px;
+        margin-left: -16px;
+        margin-right: -6px;
+        margin-top: 5px;
+    }
+
+    .campaign__juror-progress {
+        margin-top: 10px;
     }
 
     .campaign__round--active {

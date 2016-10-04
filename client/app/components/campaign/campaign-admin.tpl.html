@@ -41,94 +41,127 @@
     </div>
     <md-card class="campaign__rounds">
         <div class="campaign__round md-primary md-hue-1"
-             layout="row" layout-align="space-between center"
+             layout="column" layout-align="start stretch"
              ng-repeat="round in $ctrl.campaign.rounds"
              ng-class="'campaign__round--inactive'">
             <div class="spinner__container" layout="row" layout-align="center center"
                  ng-show="round.loading">
                 <md-progress-circular md-diameter="40"></md-progress-circular>
             </div>
-            <span class="md-body-1" flex="30"
-                  layout="column" layout-align="start start">
-                <span class="md-body-2">
-                    {{round.name}}
-                    <span class="tag tag--pill"
-                        ng-show="round.status"
-                        ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+            <div class="link"
+                 layout="row" layout-align="space-between center"
+                 ng-click="$ctrl.loadRoundDetails(round)">
+                <span class="md-body-1" flex="30"
+                    layout="column" layout-align="start start">
+                    <span class="md-body-2">
+                        {{round.name}}
+                        <span class="tag tag--pill"
+                            ng-show="round.status"
+                            ng-class="'tag--{{round.status}}'">{{round.status}}</span>
+                    </span>
+                    <strong class="campaign__directions">Directions</strong>
+                    <span ng-show="round.directions">{{round.directions}}</span>
+                    <span class="muted" ng-show="!round.directions">No directions provided</span>
                 </span>
-                <strong class="campaign__directions">Directions</strong>
-                <span ng-show="round.directions">{{round.directions}}</span>
-                <span class="muted" ng-show="!round.directions">No directions provided</span>
-            </span>
-            <span class="md-body-1" flex="10" layout="row" layout-align="start center">
-                <span ng-show="round.deadline_date">
-                    {{round.deadline_date | date: 'd MMM yyyy'}}<br />
-                    <small class="muted">{{round.deadline_date | fromNow}}</small>
+                <span class="md-body-1" flex="10" layout="row" layout-align="start center">
+                    <span ng-show="round.deadline_date">
+                        {{round.deadline_date | date: 'd MMM yyyy'}}<br />
+                        <small class="muted">{{round.deadline_date | fromNow}}</small>
+                    </span>
+                    <span class="muted" ng-show="!round.deadline_date">
+                        No deadline date provided
+                    </span>
                 </span>
-                <span class="muted" ng-show="!round.deadline_date">
-                    No deadline date provided
+                <span class="md-body-1" flex="30" layout="row" layout-align="start center">
+                    <span ng-show="round.open_date">
+                        {{round.open_date | date: 'd MMM yyyy'}}<br />
+                        <small class="muted">{{round.open_date | fromNow}}</small>
+                    </span>
+                    <span class="muted"
+                        ng-show="!round.open_date">
+                        Round not started
+                    </span>
+                    <span class="campaign__dash">–</span>
+                    <span ng-show="round.close_date">
+                        {{round.close_date | date: 'd MMM yyyy'}}<br />
+                        <small class="muted">{{round.close_date | fromNow}}</small>
+                    </span>
+                    <span class="muted"
+                        ng-show="!round.close_date">
+                        Round not ended
+                    </span>
                 </span>
-            </span>
-            <span class="md-body-1" flex="30" layout="row" layout-align="start center">
-                <span ng-show="round.open_date">
-                    {{round.open_date | date: 'd MMM yyyy'}}<br />
-                    <small class="muted">{{round.open_date | fromNow}}</small>
+                <span class="md-body-1" flex="10"
+                    layout="column" layout-align="center start">
+                    <span>
+                        {{round.jurors.length || "0"}}
+                        {{round.jurors.length === 1 ? "juror" : "jurors"}}
+                    </span>
+                    <small class="muted" ng-show="round.jurors.length">
+                        <span ng-repeat="juror in round.jurors">{{juror.username}}<span ng-hide="{{$last}}">, </span></span>
+                    </small>
                 </span>
-                <span class="muted"
-                      ng-show="!round.open_date">
-                    Round not started
+                <span class="md-body-1" flex="10">
+                    <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
+                    <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
+                    <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon> Ranking</span>
                 </span>
-                <span class="campaign__dash">–</span>
-                <span ng-show="round.close_date">
-                    {{round.close_date | date: 'd MMM yyyy'}}<br />
-                    <small class="muted">{{round.close_date | fromNow}}</small>
-                </span>
-                <span class="muted"
-                      ng-show="!round.close_date">
-                    Round not ended
-                </span>
-            </span>
-            <span class="md-body-1" flex="10"
-                  layout="column" layout-align="center start">
-                <span>
-                    {{round.jurors.length || "0"}}
-                    {{round.jurors.length === 1 ? "juror" : "jurors"}}
-                </span>
-                <small class="muted" ng-show="round.jurors.length">
-                    <span ng-repeat="juror in round.jurors">{{juror.username}}<span ng-hide="{{$last}}">, </span></span>
-                </small>
-            </span>
-            <span class="md-body-1" flex="10">
-                <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
-                <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon> Rating</span>
-                <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon> Ranking</span>
-            </span>
-            <span flex></span>
-            <md-menu md-position-mode="target-right target">
-                <md-button class="md-icon-button" aria-label="Edit"
-                        ng-click="$event.stopPropagation(); $ctrl.showRoundMenu($mdOpenMenu, $event)">
-                    <md-icon>more_vert</md-icon>
-                </md-button>
-                <md-menu-content width="3">
-                    <md-menu-item>
-                        <md-button ng-click="$ctrl.editRound(round, $event)">
-                            Edit Round
-                        </md-button>
-                    </md-menu-item>
-                    <md-menu-item>
-                        <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
-                                   ng-click="$ctrl.activateRound(round)">
-                            Activate Round
-                        </md-button>
-                    </md-menu-item>
-                    <md-menu-item>
-                        <md-button ng-disabled="round.status === 'paused' || round.status === 'completed'"
-                                   ng-click="$ctrl.pauseRound(round)">
-                            Pause Round
-                        </md-button>
-                    </md-menu-item>
-                </md-menu-content>
-            </md-menu>
+                <span flex></span>
+                <md-menu md-position-mode="target-right target">
+                    <md-button class="md-icon-button" aria-label="Edit"
+                            ng-click="$event.stopPropagation(); $ctrl.showRoundMenu($mdOpenMenu, $event)">
+                        <md-icon>more_vert</md-icon>
+                    </md-button>
+                    <md-menu-content width="3">
+                        <md-menu-item>
+                            <md-button ng-click="$ctrl.editRound(round, $event)">
+                                Edit Round
+                            </md-button>
+                        </md-menu-item>
+                        <md-menu-item>
+                            <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
+                                    ng-click="$ctrl.activateRound(round)">
+                                Activate Round
+                            </md-button>
+                        </md-menu-item>
+                        <md-menu-item>
+                            <md-button ng-disabled="round.status === 'paused' || round.status === 'completed'"
+                                    ng-click="$ctrl.pauseRound(round)">
+                                Pause Round
+                            </md-button>
+                        </md-menu-item>
+                    </md-menu-content>
+                </md-menu>
+            </div>
+            <div class="campaign__round-details"
+                 ng-show="$ctrl.roundDetails[round.id]">
+                <div class="spinner__container" layout="row" layout-align="center center"
+                    ng-show="$ctrl.roundDetails[round.id] === 'loading'">
+                    <md-progress-circular md-diameter="40"></md-progress-circular>
+                </div>
+                <strong class="campaign__directions">Progress</strong>
+                <div layout="column" layout-align="start stretch" flex="50">
+                    <div class="campaign__juror-progress"
+                         layout="row" layout-align="space-between center"
+                         ng-repeat="juror in $ctrl.roundDetails[round.id].jurors">
+                        <span flex="40">{{juror.username}}</span>
+                        <span layout="column" layout-align="start start" flex
+                            ng-if="juror.stats.total_tasks">
+                            <md-progress-linear md-mode="determinate"
+                                                value="{{100 - juror.stats.percent_tasks_open}}"></md-progress-linear>
+                            <div class="campaign__progress" layout="row" layout-align="space-between center">
+                                <span>{{juror.stats.total_tasks - juror.stats.total_open_tasks}} / {{juror.stats.total_tasks}} reviewed</span>
+                                <span flex></span>
+                                <span class="muted">{{100 - juror.stats.percent_tasks_open | number: 0}}%</span>
+                            </div>
+                        </span>
+                        <span class="muted" flex
+                            ng-if="!juror.stats.total_tasks">
+                            No tasks assigned
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
     </md-card>
     <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
