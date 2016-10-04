@@ -20,6 +20,7 @@ const RoundComponent = {
 
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
+        vm.getImageName = getImageName;
         vm.images = vm.tasks.data.tasks;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.round = vm.data.data;
@@ -48,6 +49,20 @@ const RoundComponent = {
 
         function encodeName(image) {
             return encodeURI(image.entry.name);
+        }
+
+        function getImageName(image) {
+            const entry = image.entry;
+            const name = encodeURIComponent(entry.name);
+            const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
+            
+            if(entry.width < 800) {
+                return url + entry.width;
+            }
+            if(entry.width < 1024) {
+                return url + 800;
+            }
+            return url + 1024;
         }
 
         function getNextImage(next) {
