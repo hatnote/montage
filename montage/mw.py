@@ -295,7 +295,7 @@ class ReplayLogMiddleware(Middleware):
                 'path': request.path,
                 'method': request.method,
                 'request_dict': request_dict,
-                'user': user.username}
+                'user': getattr(user, 'username', None)}
         try:
             log_file.write(json.dumps(data, sort_keys=True) + '\n')
             log_file.flush()
