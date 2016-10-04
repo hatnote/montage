@@ -167,10 +167,18 @@ class TimingMiddleware(Middleware):
 class DBSessionMiddleware(Middleware):
     provides = ('rdb_session',)
 
-    def __init__(self, session_type):
+    def __init__(self, session_type, get_engine):
         self.session_type = session_type
+        self.get_engine = get_engine
+
+        self.engine = None
 
     def request(self, next):
+        if not self.engine:
+            # lazy initialization because uwsgi config
+            self.engine = self.get_engine()
+            self.session_type.configure(bind=self.engine)
+
         rdb_session = self.session_type()
         try:
             ret = next(rdb_session=rdb_session)
@@ -287,7 +295,7 @@ class ReplayLogMiddleware(Middleware):
                 'path': request.path,
                 'method': request.method,
                 'request_dict': request_dict,
-                'user': user.username}
+                'user': getattr(user, 'username', None)}
         try:
             log_file.write(json.dumps(data, sort_keys=True) + '\n')
             log_file.flush()

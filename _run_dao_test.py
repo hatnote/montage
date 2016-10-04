@@ -59,13 +59,14 @@ def main():
     org_dao = OrganizerDAO(rdb_session, org_user)
 
     # should automatically add the creator as coordinator
-    campaign = org_dao.create_campaign(name='Test Campaign 2016',
+    campaign = org_dao.create_campaign(name='Basic test campaign',
                                        open_date=datetime.datetime(2015, 9, 10),
                                        close_date=datetime.datetime(2015, 10, 1))
 
-    yarl_user = org_dao.add_coordinator(campaign, username='Yarl')
+    mahm_user = org_dao.add_coordinator(campaign, username='MahmoudHashemi')
     slap_user = org_dao.add_coordinator(campaign, 'Slaporte')
-
+    leila_user = org_dao.add_coordinator(campaign, 'LilyOfTheWest')
+    import pdb;pdb.set_trace()
     coord_dao = CoordinatorDAO(rdb_session, yarl_user)
 
     juror_usernames = ['Slaporte', 'MahmoudHashemi', 'Yarl', 'Erwmat']
