@@ -1220,6 +1220,12 @@ class OrganizerDAO(CoordinatorDAO):
         return campaign
 
     # Read methods
+    def get_all_campaigns(self):
+        # TODO: Show campaigns where the maintainer is also a coordinator
+        campaigns = self.query(Campaign)\
+                        .all()
+        return campaigns
+
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
                        .filter_by(id=campaign_id)\
@@ -1252,11 +1258,7 @@ class MaintainerDAO(OrganizerDAO):
         return user
 
     # Read methods
-    def get_all_campaigns(self):
-        # TODO: Show campaigns where the maintainer is also a coordinator
-        campaigns = self.query(Campaign)\
-                        .all()
-        return campaigns
+
 
 
 def bootstrap_maintainers(rdb_session):

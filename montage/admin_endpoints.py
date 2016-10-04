@@ -35,8 +35,11 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
+           GET('/maintainer', get_maint_index),
+           GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
+           GET('/maintainer/round/<round_id:int>', get_maint_round),
            # TODO: split out into round/campaign log endpoints
-           GET('/admin/audit_logs', get_audit_logs)]
+           GET('/organizer/audit_logs', get_audit_logs)]
     return ret
 
 def isoparse(date_str):
@@ -110,7 +113,7 @@ def create_campaign(user, rdb_session, request_dict):
         raise InvalidAction('coordinators is required to create a campaign,'
                             ' got %r '% (coord_names,))
 
-    coords = []
+    coords = [user]  # Organizer is included as a coordinator by default
     for coord_name in coord_names:
         coord = org_dao.get_or_create_user(coord_name, 'coordinator')
         coords.append(coord)
@@ -417,10 +420,7 @@ def get_index(rdb_session, user):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    if user.is_organizer:
-        user_dao = OrganizerDAO(rdb_session=rdb_session, user=user)
-    else:
-        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaigns = user_dao.get_all_campaigns()
 
     if len(campaigns) == 0:
@@ -520,12 +520,60 @@ def get_round(rdb_session, user, round_id):
     """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    rnd_stats = coord_dao.get_round_task_counts(rnd)
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
+
+    rnd_stats = coord_dao.get_round_task_counts(rnd)
     # entries_info = user_dao.get_entry_info(round_id) # TODO
 
     # TODO: joinedload if this generates too many queries
+    data = make_admin_round_details(rnd, rnd_stats)
+    return {'data': data}
+
+
+# Endpoints restricted to maintainers
+
+def get_maint_index(rdb_session, user, request_dict):
+    if not user.is_maintainer:
+        raise Forbidden('You are not logged in as a maintainer')
+
+    maint_dao = MaintainerDAO(rdb_session, user)
+    campaigns = maint_dao.get_all_campaigns()
+
+    data = []
+
+    for campaign in campaigns:
+        data.append(campaign.to_details_dict())
+
+    return {'data': data}
+
+
+def get_maint_campaign(rdb_session, user, campaign_id, request_dict):
+    if not user.is_maintainer:
+        raise Forbidden('You are not logged in as a maintainer')
+
+    maint_dao = MaintainerDAO(rdb_session, user)
+    campaign = maint_dao.get_campaign(campaign_id)
+    if campaign is None:
+        raise DoesNotExist('no campaigns available')
+
+    data = campaign.to_details_dict()
+    return {'data': data}
+
+
+def get_maint_round(rdb_session, user, round_id, request_dict):
+    if not user.is_maintainer:
+        raise Forbidden('You are not logged in as a maintainer')
+
+    maint_dao = MaintainerDAO(rdb_session, user)
+    rnd = maint_dao.get_round(round_id)
+
+    if rnd is None:
+        raise DoesNotExist('no rounds available')
+    # entries_info = user_dao.get_entry_info(round_id) # TODO
+
+    rnd_stats = maint_dao.get_round_task_counts(rnd)
+
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
