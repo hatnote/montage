@@ -66,18 +66,17 @@ def encode_value_to_bytes(value):
 
 def get_mw_userid(username):
     # Look up the central/global userid based on the username
-    # See also: https://commons.wikimedia.org//w/api.php?action=query&format=json&list=globalallusers&meta=&agufrom=Yarl
     api_url = 'https://commons.wikimedia.org/w/api.php?'
     params = {'action': 'query',
-              'list': 'users',
-              'usprop': 'centralids',
-              'ususers': username,
+              'list': 'globalallusers',
+              'agufrom': username,
               'format': 'json'}
     resp = urlopen(api_url + urlencode(list(encode_dict_to_bytes(params))))
     data = json.loads(resp.read())
-    user_id = data['query']['users'][0].get('centralids', {}).get('CentralAuth')
-
-    if not user_id:
+    user = data['query']['globalallusers'][0]
+    if user['name'] == username:
+        user_id = int(user['id'])
+    else:
         raise DoesNotExist('user %s does not exist' % username)
     return user_id
 

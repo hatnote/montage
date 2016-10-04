@@ -6,6 +6,10 @@ mont-campaign {
     .campaign__title {
         margin-bottom: 5px;
 
+        & > * {
+            padding: 0 10px;
+        }
+
         form {
             display: inline;
         }

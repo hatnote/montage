@@ -3,13 +3,15 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ngAnnotatePlugin = require('ng-annotate-webpack-plugin');
 
+var package = require('./package.json');
+
 var config = {
   context: path.join(__dirname, 'app'),
   entry: './index.js',
   output: {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
     publicPath: 'assets/',
-    filename: 'bundle.js'
+    filename: 'bundle.js?v=' + package.version,
   },
   plugins: [new HtmlWebpackPlugin({
     template: 'index_local.ejs',
@@ -60,7 +62,7 @@ if (ENV === 'prod' || ENV === 'dev' || ENV === 'beta') {
   config.output = {
     path: path.join(__dirname, '..', 'montage', 'static', 'dist'),
     publicPath: 'dist/',
-    filename: 'bundle.min.js'
+    filename: 'bundle.min.js?v=' + package.version,
   };
   config.plugins = [
     new HtmlWebpackPlugin({

@@ -19,17 +19,19 @@
                    ng-click="$ctrl.cancelCampaignName()">
             <md-icon>cancel</md-icon>
         </md-button>
-        <small class="md-headline muted">{{$ctrl.campaign.open_date | date}} – {{$ctrl.campaign.close_date | date}}</small>
+        <small class="md-headline muted">
+            {{$ctrl.campaign.open_date | date: 'd MMM yyyy'}} – {{$ctrl.campaign.close_date | date: 'd MMM yyyy'}}
+        </small>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Edit"
-                   ng-show="false"
-                   ng-click="$ctrl.editCampaign()">
+                   ng-click="$ctrl.editCampaign($event)">
             <md-icon>settings</md-icon>
         </md-button>
     </h2>
 
     <div class="campaign__rounds-description"
-         layout="row" layout-align="space-between center">
+         layout="row" layout-align="space-between center"
+         ng-show="$ctrl.campaign.rounds.length">
         <span class="md-body-1" flex="30">Name</span>
         <span class="md-body-1" flex="10">Deadline Date</span>
         <span class="md-body-1" flex="30">Round Timeline</span>
@@ -60,7 +62,7 @@
             </span>
             <span class="md-body-1" flex="10" layout="row" layout-align="start center">
                 <span ng-show="round.deadline_date">
-                    {{round.deadline_date | date}}<br />
+                    {{round.deadline_date | date: 'd MMM yyyy'}}<br />
                     <small class="muted">{{round.deadline_date | fromNow}}</small>
                 </span>
                 <span class="muted" ng-show="!round.deadline_date">
@@ -69,7 +71,7 @@
             </span>
             <span class="md-body-1" flex="30" layout="row" layout-align="start center">
                 <span ng-show="round.open_date">
-                    {{round.open_date | date}}<br />
+                    {{round.open_date | date: 'd MMM yyyy'}}<br />
                     <small class="muted">{{round.open_date | fromNow}}</small>
                 </span>
                 <span class="muted"
@@ -78,7 +80,7 @@
                 </span>
                 <span class="campaign__dash">–</span>
                 <span ng-show="round.close_date">
-                    {{round.close_date | date}}<br />
+                    {{round.close_date | date: 'd MMM yyyy'}}<br />
                     <small class="muted">{{round.close_date | fromNow}}</small>
                 </span>
                 <span class="muted"
@@ -86,9 +88,15 @@
                     Round not ended
                 </span>
             </span>
-            <span class="md-body-1" flex="10">
-                {{round.jurors.length || "0"}}
-                {{round.jurors.length === 1 ? "juror" : "jurors"}}
+            <span class="md-body-1" flex="10"
+                  layout="column" layout-align="center start">
+                <span>
+                    {{round.jurors.length || "0"}}
+                    {{round.jurors.length === 1 ? "juror" : "jurors"}}
+                </span>
+                <small class="muted" ng-show="round.jurors.length">
+                    <span ng-repeat="juror in round.jurors">{{juror.username}}<span ng-hide="{{$last}}">, </span></span>
+                </small>
             </span>
             <span class="md-body-1" flex="10">
                 <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
@@ -103,7 +111,7 @@
                 </md-button>
                 <md-menu-content width="3">
                     <md-menu-item>
-                        <md-button ng-click="$ctrl.editRound(round)">
+                        <md-button ng-click="$ctrl.editRound(round, $event)">
                             Edit Round
                         </md-button>
                     </md-menu-item>

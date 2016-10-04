@@ -4,6 +4,7 @@ import './campaign.scss';
 import templateAdmin from './campaign-admin.tpl.html';
 import templateJury from './campaign-jury.tpl.html';
 import templateNewRound from './new-round.tpl.html';
+import templateEditCampaign from './edit-campaign.tpl.html';
 import templateEditRound from './edit-round.tpl.html';
 
 const CampaignComponent = {
@@ -12,12 +13,13 @@ const CampaignComponent = {
         user: '<',
         type: '<'
     },
-    controller: function ($filter, $mdDialog, $mdToast, $state, $templateCache,
+    controller: function ($filter, $mdDialog, $mdToast, $q, $state, $templateCache,
         $timeout, alertService, dataService, dialogService, userService) {
         let vm = this;
         vm.activateRound = activateRound;
         vm.addRound = addRound;
         vm.cancelCampaignName = cancelCampaignName;
+        vm.editCampaign = editCampaign;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
         vm.isNameEdited = false;
@@ -102,7 +104,7 @@ const CampaignComponent = {
 
             loading.window = true;
             userService.admin.addRound(vm.campaign.id, round_).then((response) => {
-                if(response.error) {
+                if (response.error) {
                     loading.window = false;
                     alertService.error(response.error);
                     return;
@@ -110,7 +112,7 @@ const CampaignComponent = {
 
                 const id = response.data.id;
                 userService.admin.populateRound(id, round_.imports).then((response) => {
-                    if(response.error) {
+                    if (response.error) {
                         loading.window = false;
                         alertService.error(response.error);
                         return;
@@ -132,7 +134,7 @@ const CampaignComponent = {
                         vote_method: 'rating',
                         quorum: 2,
                         jurors: [],
-                        config: {show_link: true},
+                        config: { show_link: true },
                         imports: {
                             import_method: 'category',
                             category: ''
@@ -145,12 +147,28 @@ const CampaignComponent = {
                     voteMethods: voteMethods,
                     today: new Date()
                 }
-            });
+            }, event);
         }
 
         function cancelCampaignName() {
             vm.isNameEdited = false;
             vm.nameEdit = '';
+        }
+
+        function editCampaign(event) {
+            let campaign = angular.extend(angular.copy(vm.campaign), {
+                open_date: new Date(vm.campaign.open_date),
+                close_date: new Date(vm.campaign.close_date),
+                coordinators: vm.campaign.coordinators.map((user) => ({ name: user.username }))
+            });
+
+            dialogService.show({
+                template: templateEditCampaign,
+                scope: {
+                    campaign: campaign,
+                    saveEditCampaign: saveEditCampaign,
+                }
+            }, event);
         }
 
         function editCampaignName($event) {
@@ -162,9 +180,10 @@ const CampaignComponent = {
             });
         }
 
-        function editRound(round) {
+        function editRound(round, event) {
             let round_ = angular.extend(angular.copy(round), {
-                deadline_date: new Date(round.deadline_date)
+                deadline_date: new Date(round.deadline_date),
+                jurors: round.jurors.map((user) => ({ name: user.username }))
             });
 
             dialogService.show({
@@ -174,7 +193,7 @@ const CampaignComponent = {
                     voteMethods: voteMethods,
                     saveEditRound: saveEditRound,
                 }
-            });
+            }, event);
         }
 
         function isAdmin() {
@@ -213,12 +232,39 @@ const CampaignComponent = {
             });
         }
 
-        function saveEditRound(round, loading) {
+        function saveEditCampaign(campaign, loading) {
             loading.window = true;
-            userService.admin.editRound(round.id, round).then((response) => {
-                if(response.error) {
+
+            let campaign_ = angular.extend(angular.copy(campaign), {
+                coordinators: campaign.coordinators.map((element) => element.name),
+                open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC'),
+                close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC')
+            });
+
+            userService.admin.editCampaign(campaign_.id, campaign_).then((response) => {
+                if (response.error) {
                     loading.window = false;
                     alertService.error(response.error);
+                    return;
+                }
+
+                alertService.success('Campaign settings saved');
+                $mdDialog.hide(true);
+                $state.reload();
+            });
+        }
+
+        function saveEditRound(round, loading) {
+            loading.window = true;
+
+            const jurors = round.jurors.map((user) => user.name);
+            $q.all({
+                round: userService.admin.editRound(round.id, round),
+                jurors: userService.admin.editJurors(round.id, {new_jurors: jurors})
+            }).then((response) => {
+                if (response.round.error) {
+                    loading.window = false;
+                    alertService.error(response.round.error);
                     return;
                 }
 

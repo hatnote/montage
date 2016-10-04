@@ -6,32 +6,33 @@
     <form ng-cloak>
         <md-dialog-content>
             <div class="md-dialog-content" layout="column" layout-align="start stretch">
-                <h2 class="md-title no-margin dialog__title">Edit Round</h2>
-                <md-input-container class="dialog__name">
-                    <label>Round Name</label>
-                    <input type="text" ng-model="round.name" required>
+                <h2 class="md-title no-margin">Edit campaign</h2>
+                <md-input-container>
+                    <label>Name</label>
+                    <input ng-model="campaign.name" type="text">
                 </md-input-container>
                 <md-list flex>
                     <md-list-item class="md-2-line">
-                        <md-icon>{{voteMethods[round.vote_method].icon}}</md-icon>
+                        <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <h3>{{voteMethods[round.vote_method].label}}</h3>
-                            <p>Vote Method</p>
+                            <md-datepicker ng-model="campaign.open_date"
+                                           md-max-date="campaign.close_date"
+                                           md-hide-icons="calendar"></md-datepicker>
+                            <p>Open Date</p>
                         </div>
                     </md-list-item>
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <md-datepicker ng-model="round.deadline_date"
-                                           md-min-date="today"
+                            <md-datepicker ng-model="campaign.close_date"
+                                           md-min-date="campaign.open_date"
                                            md-hide-icons="calendar"></md-datepicker>
-                            <p>Deadline Date</p>
+                            <p>Close Date</p>
                         </div>
                     </md-list-item>
                 </md-list>
-                <strong class="md-subhead">Round jurors</strong>
-                <mont-user-list ng-model="round.jurors"
-                                ng-disabled="round.status !== 'paused'"></mont-user-list>
+                <strong class="md-subhead">Campaign coordinators</strong>
+                <mont-user-list ng-model="campaign.coordinators" ng-disabled="true"></mont-user-list>
             </div>
         </md-dialog-content>
 
@@ -40,7 +41,7 @@
             <md-button ng-click="cancel()">
                 Cancel
             </md-button>
-            <md-button class="md-primary" ng-click="saveEditRound(round, loading)">
+            <md-button class="md-primary" ng-click="saveEditCampaign(campaign, loading)">
                 Save
             </md-button>
         </md-dialog-actions>

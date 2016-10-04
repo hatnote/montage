@@ -4,11 +4,10 @@ const DialogService = function ($mdDialog) {
         show: show
     };
 
-    function show(data) {
-        $mdDialog.show({
+    function show(data, event) {
+        let dialog = {
             template: data.template,
             parent: angular.element(document.body),
-            targetEvent: event,
             clickOutsideToClose: false,
             controller: ($scope, $mdDialog) => {
                 angular.extend($scope, data.scope);
@@ -16,7 +15,13 @@ const DialogService = function ($mdDialog) {
                 $scope.hide = () => $mdDialog.hide();
                 $scope.loading = {};
             }
-        });
+        };
+
+        if (event) {
+            dialog.targetEvent = event;
+        }
+
+        $mdDialog.show(dialog);
     }
 
     return service;

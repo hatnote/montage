@@ -1,27 +1,39 @@
-<div>
-    <mont-campaign ng-repeat="campaign in $ctrl.campaigns"
-                   campaign="campaign"
-                   type="$ctrl.type"
-                   user="$ctrl.user">
+<div ng-show="!$ctrl.error">
+    <div>
+        <mont-campaign ng-repeat="campaign in $ctrl.campaigns"
+                       campaign="campaign" type="$ctrl.type" user="$ctrl.user">
+    </div>
+    <div flex></div>
+    <div layout="row" layout-align="end end"
+         ng-if="$ctrl.isAdmin() && ($ctrl.isOrganizer() || $ctrl.isMaintainer())">
+        <span flex></span>
+        <md-button class="md-fab md-primary md-mini" aria-label="Add campaign organizer"
+                ng-click="$ctrl.addOrganizer($event)">
+            <md-icon>person_add</md-icon>
+            <md-tooltip md-direction="left">Add campaign organizer</md-tooltip>
+        </md-button>
+        <md-button class="md-fab" aria-label="Add new campaign"
+                   ng-click="$ctrl.addCampaign($event)">
+            <md-icon>assignment</md-icon>
+            <md-tooltip md-direction="top">Add new campaign</md-tooltip>
+        </md-button>
+    </div>
 </div>
-<div flex></div>
-<div layout="row" layout-align="end end"
-      ng-if="$ctrl.isAdmin() && ($ctrl.isOrganizer() || $ctrl.isMaintainer())">
-    <span flex></span>
-    <md-button class="md-fab md-primary md-mini" aria-label="Add campaign organizer"
-               ng-click="$ctrl.addOrganizer($event)">
-        <md-icon>person_add</md-icon>
-        <md-tooltip md-direction="left">Add campaign organizer</md-tooltip>
-    </md-button>
-    <md-button class="md-fab" aria-label="Add new campaign"
-               ng-click="$ctrl.addCampaign($event)">
-        <md-icon>assignment</md-icon>
-        <md-tooltip md-direction="top">Add new campaign</md-tooltip>
-    </md-button>
-</div>
-<div class="central-error" layout="column" layout-align="center center"
+<div class="central-error" layout="column" layout-align="center center" flex="100"
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
     <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
-    <md-button class="md-primary" ng-click="$ctrl.logout()">Logout</md-button>
+    <div layout="row" layout-align="center center">
+        <md-button class="md-primary"
+                   ui-sref="main.admin.dashboard"
+                   ng-show="!$ctrl.isAdmin()">
+            Are you an admin?
+        </md-button>
+        <md-button class="md-primary"
+                   ui-sref="main.juror.dashboard"
+                   ng-show="$ctrl.isAdmin()">
+            Are you a juror?
+        </md-button>
+        <md-button ng-click="$ctrl.logout()">Logout</md-button>
+    </div>
 </div>
