@@ -23,6 +23,11 @@ const UserService = function ($http, $q, $window) {
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
     editJurors: (id, data) => $http.post(base + 'admin/round/' + id + '/edit_jurors', data).then(getData, getData),
     editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
+
+    importCSV: (id) => $http.post(base + 'admin/round/' + id + '/import', {
+      import_method: 'gistcsv',
+      gist_url: 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+    }).then(getData, getData)
   };
 
   const juror = {
