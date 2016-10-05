@@ -87,7 +87,7 @@ def full_run(url_base, remote):
 
     # Create a campaign
     # - as organizer
-    data = {'name': 'Another Test Campaign 2016',
+    data = {'name': 'Another Test Campaign 2016 - again',
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl']}
@@ -164,6 +164,16 @@ def full_run(url_base, remote):
     data = {'directions': 'these are new directions'}
     resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
                       data, su_to='LilyOfTheWest')
+
+    # Change the config for a round
+    # - as coordinator
+    rnd = fetch_json(url_base + '/admin/round/%s' % round_id,
+                     su_to='LilyOfTheWest')
+    config = rnd['data']['config']
+    config['show_filename'] = False
+    data = {'config': config}
+    resp = fetch_json (url_base + '/admin/round/%s/edit' % round_id,
+                       data, su_to='LilyOfTheWest')
 
     # Import entries to a round from a gistcsv
     # - as coordinator
@@ -254,7 +264,7 @@ def full_run(url_base, remote):
 
     # Get the audit logs
     # - as maintainer
-    resp = fetch_json(url_base + '/admin/audit_logs')
+    resp = fetch_json(url_base + '/organizer/audit_logs')
 
     # Jury endpoints
     # --------------

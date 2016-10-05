@@ -285,7 +285,8 @@ class Round(Base):
                'close_date': format_date(self.close_date),
                'deadline_date': format_date(self.deadline_date),
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
-               'status': self.status}
+               'status': self.status,
+               'config': self.config}
         return ret
 
     def to_details_dict(self):
@@ -1252,9 +1253,10 @@ class MaintainerDAO(OrganizerDAO):
         if user.is_organizer:
             #raise Exception('organizer already exists')
             pass
-        user.is_organizer = True
-        self.rdb_session.add(user)
-        self.rdb_session.commit()
+        else:
+            user.is_organizer = True
+            self.rdb_session.add(user)
+            self.rdb_session.commit()
         return user
 
     # Read methods

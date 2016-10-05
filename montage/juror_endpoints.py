@@ -42,6 +42,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'deadline_date': format_date(rnd.deadline_date),
            'status': rnd.status,
            'canonical_url_name': slugify(rnd.name, '-'),
+           'config': rnd.config,
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],

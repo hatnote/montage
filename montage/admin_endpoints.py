@@ -64,6 +64,7 @@ def make_admin_round_details(rnd, rnd_stats):
            'vote_method': rnd.vote_method,
            'open_date': format_date(rnd.open_date),
            'close_date': format_date(rnd.close_date),
+           'config': rnd.config,
            'deadline_date': format_date(rnd.deadline_date),
            'status': rnd.status,
            'quorum': rnd.quorum,
@@ -121,7 +122,7 @@ def create_campaign(user, rdb_session, request_dict):
     campaign = org_dao.create_campaign(name=name,
                                        open_date=open_date,
                                        close_date=close_date,
-                                       coords=coords)
+                                       coords=set(coords))
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
 
