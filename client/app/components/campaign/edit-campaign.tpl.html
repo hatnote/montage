@@ -15,19 +15,31 @@
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <md-datepicker ng-model="campaign.open_date"
-                                           md-max-date="campaign.close_date"
-                                           md-hide-icons="calendar"></md-datepicker>
-                            <p>Open Date</p>
+                            <div layout="row" layout-align="space-between start">
+                                <md-datepicker ng-model="campaign.open_date"
+                                            md-max-date="campaign.close_date"
+                                            md-hide-icons="calendar"></md-datepicker>
+                                <md-input-container class="dialog__input--flat" flex>
+                                    <input name="hour" type="time"
+                                        ng-model="campaign.open_date">
+                                </md-input-container>
+                            </div>
+                            <p>Open Date and Time</p>
                         </div>
                     </md-list-item>
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <md-datepicker ng-model="campaign.close_date"
-                                           md-min-date="campaign.open_date"
-                                           md-hide-icons="calendar"></md-datepicker>
-                            <p>Close Date</p>
+                            <div layout="row" layout-align="space-between start">
+                                <md-datepicker ng-model="campaign.close_date"
+                                            md-min-date="campaign.open_date"
+                                            md-hide-icons="calendar"></md-datepicker>
+                                <md-input-container class="dialog__input--flat" flex>
+                                    <input name="hour" type="time"
+                                        ng-model="campaign.close_date">
+                                </md-input-container>
+                            </div>
+                            <p>Close Date and Time</p>
                         </div>
                     </md-list-item>
                 </md-list>
