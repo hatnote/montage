@@ -14,7 +14,7 @@ const RoundComponent = {
         tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, $templateCache, $window, userService, versionService) {
+    controller: function ($state, $mdDialog, $templateCache, $window, alertService, userService, versionService) {
         let vm = this;
         let getCounter = 0;
 
@@ -23,6 +23,7 @@ const RoundComponent = {
         vm.getImageName = getImageName;
         vm.images = vm.tasks.data.tasks;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
+        vm.keyDown = keyDown;
         vm.round = vm.data.data;
         vm.openImage = openImage;
         vm.openURL = openURL;
@@ -78,6 +79,20 @@ const RoundComponent = {
             if (vm.isVoting('yesno')) return templateYesNo;
             if (vm.isVoting('ranking')) return templateMultiple;
             return '';
+        }
+
+        function keyDown(event) {
+            const actions = {
+                ArrowUp: () => vm.rating.setRate(5),
+                ArrowDown: () => vm.rating.setRate(1),
+            };
+
+            if (vm.isVoting('yesno') && _.includes(['ArrowUp', 'ArrowDown'], event.key)) {
+                actions[event.key]();
+            } else if (vm.isVoting('rating') && _.includes(vm.rating.rates, parseInt(event.key))) {
+                alertService.success('Rated ' + event.key + '/5', 250);
+                vm.rating.setRate(parseInt(event.key));
+            }
         }
 
         function openImage(image, event) {
@@ -165,5 +180,19 @@ const RoundComponent = {
 export default () => {
     angular
         .module('montage')
-        .component('montRound', RoundComponent);
+        .component('montRound', RoundComponent)
+        .directive('montKeyActions', () => {
+            return {
+                scope: {
+                    actions: '=actions'
+                },
+                link: (scope, element, attrs) => {
+                    const b = document.getElementsByTagName('body');
+                    const body = angular.element(b);
+
+                    body.on('keydown', (data) => { scope.actions(data); });
+                    element.on('$destroy', () => { body.off('keydown'); });
+                }
+            };
+        });
 };

@@ -1,7 +1,8 @@
 <div class="image"
      layout="row" layout-align="center start"
      ng-if="!$ctrl.error && $ctrl.round.status === 'active' && $ctrl.images.length">
-    <div class="image__gallery" layout="row" layout-align="center center" flex>
+    <div class="image__gallery" layout="row" layout-align="center center" flex
+         mont-key-actions actions="$ctrl.keyDown">
         <img class="image__animation"
              ng-src="{{$ctrl.getImageName($ctrl.rating.current)}}"
              ng-animate-swap="$ctrl.rating.current.entry.name" >
