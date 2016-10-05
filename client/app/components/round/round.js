@@ -55,14 +55,14 @@ const RoundComponent = {
             const entry = image.entry;
             const name = encodeURIComponent(entry.name);
             const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
-            
-            if(entry.width < 800) {
-                return url + entry.width;
+
+            if (entry.width < 800) {
+                return url + (entry.width - 1);
             }
-            if(entry.width < 1024) {
+            if (entry.width < 1280) {
                 return url + 800;
             }
-            return url + 1024;
+            return url + 1280;
         }
 
         function getNextImage(next) {
@@ -133,10 +133,12 @@ const RoundComponent = {
             const rating = (rate - 1) / 4;
             vm.loading = true;
 
-            userService.juror.setRating(vm.round.id, {'ratings': [{
-                'task_id': current.id,
-                'value': rating
-            }]}).then(() => {
+            userService.juror.setRating(vm.round.id, {
+                'ratings': [{
+                    'task_id': current.id,
+                    'value': rating
+                }]
+            }).then(() => {
                 _.pull(vm.images, current);
                 getCounter++;
                 vm.stats.total_open_tasks--;
