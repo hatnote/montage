@@ -147,6 +147,16 @@ strong {
         width: 100%;
    } 
 
+   .dialog__input--flat {
+        margin-top: -5px;
+        margin-bottom: 0;
+        margin-left: 35px;
+        padding-top: 0;
+        .md-errors-spacer {
+            display: none;
+        }
+   } 
+
    md-datepicker {
         padding-right: 0;
         display: block;
