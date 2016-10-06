@@ -374,7 +374,6 @@ def submit_ratings(rdb_session, user, request_dict):
     if style == 'rating':
         invalid = [r for r in id_map.values() if r not in VALID_RATINGS]
         if invalid:
-            import pdb;pdb.set_trace()
             raise InvalidAction('rating expected one of %s, not %r'
                                 % (VALID_RATINGS, sorted(set(invalid))))
     elif style == 'yesno':

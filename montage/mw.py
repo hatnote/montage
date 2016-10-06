@@ -131,9 +131,10 @@ class UserMiddleware(Middleware):
                 user = (rdb_session.query(User)
                         .filter(User.username == su_to)
                         .first())
-
-        if not user:
-            import pdb;pdb.set_trace()
+            if not user:
+                err = 'unknown su_to user %r' % (su_to,)
+                response_dict['errors'].append(err)
+                return {}
 
         now = datetime.datetime.utcnow()
         last_minute = now - datetime.timedelta(seconds=60)
