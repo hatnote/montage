@@ -43,7 +43,7 @@ const RoundComponent = {
             setRate: setRate
         };
 
-        versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
+        versionService.setVersion(vm.type === 'admin' ? 'admin' : 'juror');
         $templateCache.put('round-template', getTemplate());
 
         // functions

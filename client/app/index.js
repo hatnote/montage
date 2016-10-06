@@ -17,6 +17,15 @@ angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
   .config(function ($mdThemingProvider, $mdDateLocaleProvider, $provide, $httpProvider, $stateProvider, $urlRouterProvider) {
     //$mdThemingProvider.generateThemesOnDemand(true);
     $mdThemingProvider.alwaysWatchTheme(true);
+
+    $mdThemingProvider.theme('juror')
+      .primaryPalette('blue')
+      .accentPalette('red');
+    $mdThemingProvider.theme('admin')
+      .primaryPalette('blue-grey')
+      .accentPalette('red');
+    $mdThemingProvider.setDefaultTheme('juror');
+
     $provide.value('themeProvider', $mdThemingProvider);
 
     $mdDateLocaleProvider.firstDayOfWeek = 1;
