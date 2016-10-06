@@ -18,7 +18,9 @@ const DashboardComponent = {
         vm.isAdmin = isAdmin;
         vm.isMaintainer = () => vm.user.is_maintainer;
         vm.isOrganizer = () => vm.user.is_organizer;
-        vm.campaigns = isAdmin() ? vm.data.data : _.groupBy(vm.data.data, 'campaign.id');
+        vm.campaigns = isAdmin() ?
+            vm.data.data :
+            _.groupBy(vm.data.data.filter((round) => round.status !== 'cancelled'), 'campaign.id');
         vm.logout = logout;
         vm.user = angular.extend(vm.user, vm.data.user);
         vm.error = vm.data.error;
