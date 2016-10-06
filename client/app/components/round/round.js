@@ -28,6 +28,7 @@ const RoundComponent = {
         vm.openImage = openImage;
         vm.openURL = openURL;
         vm.setGallerySize = (size) => { vm.size = size; };
+        vm.showSidebar = true;
         vm.size = 1;
         vm.stats = vm.tasks.data.stats;
         vm.user = angular.extend(vm.user, vm.data.user);

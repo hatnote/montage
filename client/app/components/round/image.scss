@@ -17,6 +17,12 @@ mont-round {
         }
     }
 
+    .image__sidebar-hide-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px; 
+    }
+
     .image__description {
         width: 300px;
         margin: 0 20px;
@@ -27,6 +33,14 @@ mont-round {
 
         md-list {
             padding-top: 0;
+        }
+    }
+
+    .image__description--small {
+        position: relative;
+        
+        .image__skip-btn {
+            margin-top: 20px;
         }
     }
 
