@@ -3,10 +3,7 @@
      ng-if="!$ctrl.error && $ctrl.round.status === 'active' && $ctrl.images.length">
     <div class="image__gallery" layout="row" layout-align="center center" flex
          mont-key-actions actions="$ctrl.keyDown">
-        <img class="image__animation"
-             ng-src="{{$ctrl.getImageName($ctrl.rating.current)}}"
-             ng-animate-swap="$ctrl.rating.current.entry.name" >
-        <img class="invisible" ng-src="{{$ctrl.getImageName($ctrl.rating.next)}}">
+        <img mont-src="{{$ctrl.getImageName($ctrl.rating.current)}}">
     </div>
     <div class="image__description">
         <div layout="row" layout-align="start center">
@@ -77,6 +74,7 @@
         </md-list>
     </div>
 </div>
+<img class="invisible" ng-src="{{$ctrl.getImageName($ctrl.rating.next)}}">
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>

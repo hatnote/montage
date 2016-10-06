@@ -194,5 +194,31 @@ export default () => {
                     element.on('$destroy', () => { body.off('keydown'); });
                 }
             };
+        })
+        .directive('montSrc', () => {
+            // http://stackoverflow.com/a/17449703/1418878
+            return {
+                link: (scope, element, attrs) => {
+                    let img = null;
+                    let loadImage;
+
+                    loadImage = function () {
+                        element[0].src = '//upload.wikimedia.org/wikipedia/commons/f/f8/Ajax-loader%282%29.gif';
+
+                        img = new Image();
+                        img.src = attrs.montSrc;
+                        img.onload = function () {
+                            element[0].src = attrs.montSrc;
+                        };
+                    };
+
+                    scope.$watch(() => attrs.montSrc, (newVal, oldVal) => {
+                        if (oldVal !== newVal) {
+                            loadImage();
+                        }
+                    });
+                    loadImage();
+                }
+            };
         });
 };
