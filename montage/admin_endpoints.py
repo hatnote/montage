@@ -34,7 +34,7 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
-           POST('/admin/round/<round_id:int>/finalize', finalize_round),
+           POST('/admin/round/<round_id:int>/advance', advance_round),
            GET('/maintainer', get_maint_index),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
@@ -179,11 +179,10 @@ def import_entries(rdb_session, user, round_id, request_dict):
             'dq_filetype': 0}
 
     if rnd.config.get('dq_by_upload_date'):
-        dq_upload_date= coord_dao.autodisqualify_by_date(rnd)
+        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
         data['dq_upload_date'] = len(dq_upload_date)
 
     if rnd.config.get('dq_by_resolution'):
-        min_resolution = rnd.config.get('min_resolution')
         dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
         data['dq_resolution'] = len(dq_resolution)
 
@@ -261,19 +260,7 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
     return {'data': edit_dict}
 
 
-def create_round(rdb_session, user, campaign_id, request_dict):
-    """
-    Summary: Post a new round
-
-    Request model:
-        campaign_id:
-            type: int64
-
-    Response model: AdminCampaignDetails
-    """
-    coord_dao = CoordinatorDAO(rdb_session, user)
-    campaign = coord_dao.get_campaign(campaign_id)
-
+def _prepare_round_params(coord_dao, request_dict):
     rnd_dict = {}
     req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
     extra_columns = ['description', 'config', 'directions']
@@ -294,7 +281,6 @@ def create_round(rdb_session, user, campaign_id, request_dict):
 
     default_quorum = len(rnd_dict['jurors'])
     rnd_dict['quorum'] = request_dict.get('quorum', default_quorum)
-    rnd_dict['campaign'] = campaign
     rnd_dict['jurors'] = []
 
     for juror_name in juror_names:
@@ -302,7 +288,25 @@ def create_round(rdb_session, user, campaign_id, request_dict):
 
         rnd_dict['jurors'].append(juror)
 
-    rnd = coord_dao.create_round(**rnd_dict)
+    return rnd_dict
+
+
+def create_round(rdb_session, user, campaign_id, request_dict):
+    """
+    Summary: Post a new round
+
+    Request model:
+        campaign_id:
+            type: int64
+
+    Response model: AdminCampaignDetails
+    """
+    coord_dao = CoordinatorDAO(rdb_session, user)
+    campaign = coord_dao.get_campaign(campaign_id)
+
+    rnd_params = _prepare_round_params(coord_dao, request_dict)
+    rnd_params['campaign'] = campaign
+    rnd = coord_dao.create_round(**rnd_params)
 
     data = rnd.to_details_dict()
     data['progress'] = coord_dao.get_round_task_counts(rnd)
@@ -395,16 +399,33 @@ def get_round_results_preview(rdb_session, user, round_id):
                      'is_closeable': is_closeable}}
 
 
-def finalize_round(rdb_session, user, round_id, request_dict):
+def advance_round(rdb_session, user, round_id, request_dict):
+    ret = {}
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
-    if rnd.voting_method in ('rating', 'yesno'):
+    if rnd.vote_method in ('rating', 'yesno'):
         threshold = request_dict['threshold']
+        nrp = request_dict['next_round']
+        next_round_params = _prepare_round_params(coord_dao, nrp)
+        next_round_params['campaign'] = rnd.campaign
+        # TODO: inherit round config from previous round?
         coord_dao.finalize_rating_round(rnd, threshold=threshold)
+        adv_group = coord_dao.get_rating_advancing_group(rnd, threshold)
+
+        next_rnd = coord_dao.create_round(**next_round_params)
+        source = 'round(#%s)' % rnd.id
+        coord_dao.add_round_entries(next_rnd, adv_group, source=source)
     else:
         raise NotImplementedError()
-    return {}
+
+    # NOTE: disqualifications are not repeated, as they should have
+    # been performed the first round.
+
+    next_rnd_dict = next_rnd.to_details_dict()
+    next_rnd_dict['progress'] = coord_dao.get_round_task_counts(next_rnd)
+
+    return {'data': next_rnd_dict}
 
 
 def get_index(rdb_session, user):

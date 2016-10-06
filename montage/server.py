@@ -86,7 +86,6 @@ def create_app(env_name='prod'):
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
-    """        
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
@@ -111,7 +110,7 @@ def create_app(env_name='prod'):
 
     if not config.get('db_disable_ping'):
         event.listen(engine, 'engine_connect', ping_connection)
-    """
+
     cookie_secret = config['cookie_secret']
     assert cookie_secret
 
@@ -124,7 +123,6 @@ def create_app(env_name='prod'):
                                     secure=scm_secure)
     if not scm_secure:
         scm_mw.data_expiry = NEVER
-
 
     def get_engine():
         engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)

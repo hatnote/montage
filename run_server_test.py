@@ -121,37 +121,36 @@ def full_run(url_base, remote):
                       data, su_to='Yarl')
 
     # for date inputs (like deadline_date below), the default format
-    # is %Y-%m-%d %H:%M:%S
+    # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
 
     # Add a round to a campaign
     # - as coordinator
-    data = {'name': 'Test yes/no round',
-            'vote_method': 'rating',
-            'quorum': 4,
-            'deadline_date': "2016-10-15T00:00:00",
-            'jurors': [u'Slaporte',
-                       u'MahmoudHashemi',
-                       u'Effeietsanders',
-                       u'Jean-Frédéric',
-                       u'LilyOfTheWest'],
-            # a round will have these config settings by default
-            'config': {'show_link': True,
-                       'show_filename': True,
-                       'show_resolution': True,
-                       'dq_by_upload_date': True,
-                       'dq_by_resolution': True,
-                       'dq_by_uploader': True,
-                       'dq_by_filetype': True,
-                       'allowed_filetypes': ['jpeg', 'png', 'gif'],
-                       'min_resolution': 2000000, #2 megapixels
-                       'dq_coords': True,
-                       'dq_organizers': True,
-                       'dq_maintainers': True}}
-
+    rnd_data = {'name': 'Test yes/no round',
+                'vote_method': 'yesno',
+                'quorum': 4,
+                'deadline_date': "2016-10-15T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'LilyOfTheWest'],
+                # a round will have these config settings by default
+                'config': {'show_link': True,
+                           'show_filename': True,
+                           'show_resolution': True,
+                           'dq_by_upload_date': True,
+                           'dq_by_resolution': True,
+                           'dq_by_uploader': True,
+                           'dq_by_filetype': True,
+                           'allowed_filetypes': ['jpeg', 'png', 'gif'],
+                           'min_resolution': 2000000,  # 2 megapixels
+                           'dq_coords': True,
+                           'dq_organizers': True,
+                           'dq_maintainers': True}}
 
     resp = fetch_json(url_base + '/admin/campaign/%s/add_round' % campaign_id,
-                      data, su_to='LilyOfTheWest')
-    
+                      rnd_data, su_to='LilyOfTheWest')
+
     round_id = resp['data']['id']
 
     # Get detailed view of a round
@@ -340,14 +339,35 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
                       su_to='LilyOfTheWest')
-    pprint(resp['data'])
-    print cookies
+    # pprint(resp['data'])
 
+    rnd_data = {'name': 'Test advance to rating round',
+                'vote_method': 'rating',
+                'quorum': 3,
+                'deadline_date': "2016-10-20T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'LilyOfTheWest']}
+    data = {'next_round': rnd_data,
+            'threshold': 0.5}
+
+    resp = fetch_json(url_base + '/admin/round/%s/advance' % round_id,
+                      data, su_to='LilyOfTheWest')
+    # pprint(resp['data'])
+
+    submit_ratings(url_base, resp['data']['id'])
+
+    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % resp['data']['id'],
+                      su_to='LilyOfTheWest')
+    pprint(resp['data'])
+
+    print cookies
     import pdb;pdb.set_trace()
 
 
 @script_log.wrap('critical', verbose=True)
-def submit_ratings(url_base, round_id):
+def submit_ratings(url_base, round_id, coord_user='Yarl'):
     """
     A reminder of our key players:
 
@@ -357,7 +377,7 @@ def submit_ratings(url_base, round_id):
       * Jurors: (coordinators) + "Jean-Frédéric" + "Jimbo Wales"
     """
     r_dict = fetch_json(url_base + '/admin/round/%s' % round_id,
-                        su_to='Yarl')['data']
+                        su_to=coord_user)['data']
     j_dicts = r_dict['jurors']
 
     per_fetch = 100  # max value
@@ -378,7 +398,7 @@ def submit_ratings(url_base, round_id):
                 if r_dict['vote_method'] == 'yesno':
                     value = len(j_username + t_dict['entry']['name']) % 2
                 elif r_dict['vote_method'] == 'rating':
-                    value = len(j_username + t_dict['entry']['name']) % 2
+                    value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                 else:
                     raise NotImplementedError()
                 ratings.append({'task_id': task_id, "value": value})

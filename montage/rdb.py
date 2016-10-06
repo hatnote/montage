@@ -743,13 +743,13 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def create_round(self, campaign, name, description, directions, quorum,
-                     vote_method, jurors, deadline_date, config={}):
+                     vote_method, jurors, deadline_date, config=None):
 
         if campaign.active_round:
             raise InvalidAction('can only create one active/paused round at a'
                                 ' time. cancel or complete your existing'
                                 ' rounds before trying again')
-
+        config = config or {}
         jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
                   for j in jurors]
 
@@ -789,7 +789,7 @@ class CoordinatorDAO(UserDAO):
 
         if not min_date or not max_date:
             round_entries = []
-            
+
             msg = ('%s disqualified 0 entries by date due to missing, '
                    'campaign open or close date' % (self.user.username,))
             self.log_action('autodisqualify_by_date', round=rnd, message=msg)
@@ -918,7 +918,7 @@ class CoordinatorDAO(UserDAO):
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
-        
+
         if rnd.status != 'paused':
             raise InvalidAction('can only activate round in a paused state,'
                                 ' not %r' % (rnd.status,))
@@ -1061,7 +1061,7 @@ class CoordinatorDAO(UserDAO):
                % (self.user.username, rnd.name, threshold, advance_count))
         self.log_action('finalize_round', round=rnd, message=msg)
 
-        return
+        return advance_count
 
     def get_rating_advancing_group(self, rnd, threshold=None):
         assert rnd.vote_method in ('rating', 'yesno')
@@ -1208,12 +1208,12 @@ class OrganizerDAO(CoordinatorDAO):
         cancel_date = datetime.datetime.utcnow()
 
         campaign.close_date = cancel_date
-        
+
         for rnd in campaign.rounds:
             self.cancel_round(rnd)
 
         msg = ('%s cancelled campaign %s (%s) and %s rounds'
-               % (self.user.username, campaign.id, campaign.name, 
+               % (self.user.username, campaign.id, campaign.name,
                   len(campaign.rounds)))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
         self.rdb_session.commit()
