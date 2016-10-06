@@ -1077,7 +1077,7 @@ class CoordinatorDAO(UserDAO):
 
         results = self.query(RoundEntry, Rating, avg)\
                       .options(joinedload('entry'))\
-                      .filter_by(round_id=rnd.id)\
+                      .filter_by(dq_user_id=None, round_id=rnd.id)\
                       .join(Rating)\
                       .group_by(Rating.round_entry_id)\
                       .having(avg >= threshold)\
