@@ -97,9 +97,7 @@
                         {{round.jurors.length || "0"}}
                         {{round.jurors.length === 1 ? "juror" : "jurors"}}
                     </span>
-                    <small class="muted" ng-show="round.jurors.length">
-                        <span ng-repeat="juror in round.jurors">{{juror.username}}<span ng-hide="{{$last}}">, </span></span>
-                    </small>
+                    <small class="muted">Click to see details</small>
                 </span>
                 <span class="md-body-1" flex="10">
                     <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon> Yes/No</span>
@@ -143,7 +141,7 @@
                 <div layout="column" layout-align="start stretch" flex="50">
                     <div class="campaign__juror-progress"
                          layout="row" layout-align="space-between center"
-                         ng-repeat="juror in $ctrl.roundDetails[round.id].jurors">
+                         ng-repeat="juror in $ctrl.roundDetails[round.id].jurors | orderBy : 'username'">
                         <span flex="40">{{juror.username}}</span>
                         <span layout="column" layout-align="start start" flex
                             ng-if="juror.stats.total_tasks">
