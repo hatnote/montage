@@ -425,6 +425,11 @@ def advance_round(rdb_session, user, round_id, request_dict):
     next_rnd_dict = next_rnd.to_details_dict()
     next_rnd_dict['progress'] = coord_dao.get_round_task_counts(next_rnd)
 
+    msg = ('%s advanced campaign %r (#%s) from %s round "%s" to %s round "%s"'
+           % (user.username, rnd.campaign.name, rnd.campaign.id,
+              rnd.vote_method, rnd.name, next_rnd.vote_method, next_rnd.name))
+    coord_dao.log_action('advance_round', campaign=rnd.campaign, message=msg)
+
     return {'data': next_rnd_dict}
 
 
