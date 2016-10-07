@@ -3,12 +3,48 @@
      ng-if="!$ctrl.error && $ctrl.round.status === 'active' && $ctrl.images.length">
     <div class="image__gallery" layout="row" layout-align="center center" flex
          mont-key-actions actions="$ctrl.keyDown">
-        <img class="image__animation"
-             ng-src="{{$ctrl.getImageName($ctrl.rating.current)}}"
-             ng-animate-swap="$ctrl.rating.current.entry.name" >
-        <img class="invisible" ng-src="{{$ctrl.getImageName($ctrl.rating.next)}}">
+        <img mont-src="{{$ctrl.getImageName($ctrl.rating.current)}}">
+        <md-button class="md-icon-button image__sidebar-hide-btn"
+                   ng-click="$ctrl.showSidebar = !$ctrl.showSidebar">
+            <md-icon ng-show="$ctrl.showSidebar">
+                keyboard_arrow_right
+                <md-tooltip>Hide panel</md-tooltip>
+            </md-icon>
+            <md-icon ng-show="!$ctrl.showSidebar">
+                keyboard_arrow_left
+                <md-tooltip>Show panel</md-tooltip>
+            </md-icon>
+        </md-button>
     </div>
-    <div class="image__description">
+    <div class="image__description--small" ng-show="!$ctrl.showSidebar"
+         layout="column" layout-align="start start">
+        <div class="spinner__container" layout="row" layout-align="center center"
+                ng-show="$ctrl.loading">
+            <md-progress-circular md-diameter="40"></md-progress-circular>
+        </div>
+        <md-button class="md-icon-button"
+                   ng-click="$ctrl.rating.setRate(5)">
+            <md-icon>
+                thumb_up
+                <md-tooltip>Accept</md-tooltip>
+            </md-icon>
+        </md-button>
+        <md-button class="md-icon-button"
+                   ng-click="$ctrl.rating.setRate(1)">
+            <md-icon>
+                thumb_down
+                <md-tooltip>Decline</md-tooltip>
+            </md-icon>
+        </md-button>
+        <md-button class="md-icon-button image__skip-btn"
+                   ng-click="$ctrl.rating.getNext(true)">
+            <md-icon>
+                skip_next
+                <md-tooltip>Skip voting on this file</md-tooltip>
+            </md-icon>
+        </md-button>
+    </div>
+    <div class="image__description" ng-show="$ctrl.showSidebar">
         <div layout="row" layout-align="start center">
             <h1>Image #{{$ctrl.rating.current.entry.id}}</h1>
             <span flex></span>
@@ -77,6 +113,7 @@
         </md-list>
     </div>
 </div>
+<img class="invisible" ng-src="{{$ctrl.getImageName($ctrl.rating.next)}}">
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.error">
     <h2 class="md-display-1">{{$ctrl.error.message}}</h2>

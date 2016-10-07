@@ -33,6 +33,10 @@ const CampaignComponent = {
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
+        if(isAdmin()) {
+            vm.campaign.rounds = vm.campaign.rounds.filter((round) => round.status !== 'cancelled');
+        }
+
         const voteMethods = {
             'yesno': {
                 label: 'Yes/No',

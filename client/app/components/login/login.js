@@ -7,15 +7,13 @@ const LoginComponent = {
     bindings: {
         data: '<'
     },
-    controller: function ($state, $window, versionService) {
+    controller: function ($state, $window) {
         var vm = this;
         vm.img = {
             logo: logo
         },
         vm.loading = false;
         vm.login = login;
-
-        versionService.setVersion('blue');
 
         // if ok, move to dashboard
         if(vm.data.status !== 'failure') {

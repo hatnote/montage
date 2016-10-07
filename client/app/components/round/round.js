@@ -28,6 +28,7 @@ const RoundComponent = {
         vm.openImage = openImage;
         vm.openURL = openURL;
         vm.setGallerySize = (size) => { vm.size = size; };
+        vm.showSidebar = true;
         vm.size = 1;
         vm.stats = vm.tasks.data.stats;
         vm.user = angular.extend(vm.user, vm.data.user);
@@ -43,7 +44,7 @@ const RoundComponent = {
             setRate: setRate
         };
 
-        versionService.setVersion(vm.type === 'admin' ? 'grey' : 'blue');
+        versionService.setVersion(vm.type === 'admin' ? 'admin' : 'juror');
         $templateCache.put('round-template', getTemplate());
 
         // functions
@@ -192,6 +193,32 @@ export default () => {
 
                     body.on('keydown', (data) => { scope.actions(data); });
                     element.on('$destroy', () => { body.off('keydown'); });
+                }
+            };
+        })
+        .directive('montSrc', () => {
+            // http://stackoverflow.com/a/17449703/1418878
+            return {
+                link: (scope, element, attrs) => {
+                    let img = null;
+                    let loadImage;
+
+                    loadImage = function () {
+                        element[0].src = '//upload.wikimedia.org/wikipedia/commons/f/f8/Ajax-loader%282%29.gif';
+
+                        img = new Image();
+                        img.src = attrs.montSrc;
+                        img.onload = function () {
+                            element[0].src = attrs.montSrc;
+                        };
+                    };
+
+                    scope.$watch(() => attrs.montSrc, (newVal, oldVal) => {
+                        if (oldVal !== newVal) {
+                            loadImage();
+                        }
+                    });
+                    loadImage();
                 }
             };
         });
