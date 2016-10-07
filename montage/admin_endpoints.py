@@ -3,7 +3,7 @@ import datetime
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
-from boltons.timeutils import isoparse as boltons_isoparse
+from boltons.timeutils import isoparse
 
 from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
 
@@ -16,7 +16,6 @@ def get_admin_routes():
     """
     /role/(object/id/object/id/...)verb is the guiding principle
     """
-    16
     ret = [GET('/admin', get_index),
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
@@ -42,14 +41,15 @@ def get_admin_routes():
            GET('/organizer/audit_logs', get_audit_logs)]
     return ret
 
-def isoparse(date_str):
+
+def js_isoparse(date_str):
     try:
-        ret = boltons_isoparse(date_str)
+        ret = isoparse(date_str)
     except ValueError:
         # It may be a javascript Date object printed with toISOString()
         if date_str[-1] == 'Z':
             date_str = date_str[:-1]
-        ret = boltons_isoparse(date_str)
+        ret = isoparse(date_str)
     return ret
 
 
@@ -105,14 +105,14 @@ def create_campaign(user, rdb_session, request_dict):
     now = datetime.datetime.utcnow().isoformat()
     open_date = request_dict.get('open_date', now)
     if open_date:
-        open_date = isoparse(open_date)
+        open_date = js_isoparse(open_date)
     close_date = request_dict.get('close_date')
     if close_date:
-        close_date = isoparse(close_date)
+        close_date = js_isoparse(close_date)
     coord_names = request_dict.get('coordinators')
     if not coord_names:
         raise InvalidAction('coordinators is required to create a campaign,'
-                            ' got %r '% (coord_names,))
+                            ' got %r ' % (coord_names,))
 
     coords = [user]  # Organizer is included as a coordinator by default
     for coord_name in coord_names:
@@ -250,10 +250,10 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
         edit_dict['name'] = name
     open_date = request_dict.get('open_date')
     if open_date:
-        edit_dict['open_date'] = isoparse(open_date)
+        edit_dict['open_date'] = js_isoparse(open_date)
     close_date = request_dict.get('close_date')
     if close_date:
-        edit_dict['close_date'] = isoparse(close_date)
+        edit_dict['close_date'] = js_isoparse(close_date)
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     coord_dao.edit_campaign(campaign_id, edit_dict)
@@ -274,7 +274,7 @@ def _prepare_round_params(coord_dao, request_dict):
         if column is 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
         if column is 'deadline_date':
-            val = isoparse(val)
+            val = js_isoparse(val)
         if column is 'jurors':
             juror_names = val
         rnd_dict[column] = val
@@ -400,24 +400,44 @@ def get_round_results_preview(rdb_session, user, round_id):
 
 
 def advance_round(rdb_session, user, round_id, request_dict):
-    ret = {}
+    """Technical there are four possibilities.
+
+    1. Advancing from yesno/rating to another yesno/rating
+    2. Advancing from yesno/rating to ranking
+    3. Advancing from ranking to yesno/rating
+    4. Advancing from ranking to another ranking
+
+    Especially for the first version of Montage, this function will
+    only be written to cover the first two cases. This is because
+    campaigns are designed to end with a single ranking round.
+
+    typical advancements are: "yesno -> rating -> ranking" or
+    "yesno -> rating -> yesno -> ranking"
+
+    """
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
-    if rnd.vote_method in ('rating', 'yesno'):
-        threshold = request_dict['threshold']
-        nrp = request_dict['next_round']
-        next_round_params = _prepare_round_params(coord_dao, nrp)
-        next_round_params['campaign'] = rnd.campaign
-        # TODO: inherit round config from previous round?
-        coord_dao.finalize_rating_round(rnd, threshold=threshold)
-        adv_group = coord_dao.get_rating_advancing_group(rnd, threshold)
+    if rnd.vote_method not in ('rating', 'yesno'):
+        raise NotImplementedError()  # see docstring above
+    threshold = float(request_dict['threshold'])
+    _next_round_params = request_dict['next_round']
+    nrp = _prepare_round_params(coord_dao, _next_round_params)
+    nrp['campaign'] = rnd.campaign
 
-        next_rnd = coord_dao.create_round(**next_round_params)
-        source = 'round(#%s)' % rnd.id
-        coord_dao.add_round_entries(next_rnd, adv_group, source=source)
-    else:
-        raise NotImplementedError()
+    if nrp['vote_method'] == 'ranking' \
+       and len(nrp['jurors']) != nrp.get('quorum'):
+        # TODO: log
+        # (ranking round quorum must match juror count)
+        nrp['quorum'] = len(nrp['jurors'])
+
+    # TODO: inherit round config from previous round?
+    coord_dao.finalize_rating_round(rnd, threshold=threshold)
+    adv_group = coord_dao.get_rating_advancing_group(rnd, threshold)
+
+    next_rnd = coord_dao.create_round(**nrp)
+    source = 'round(#%s)' % rnd.id
+    coord_dao.add_round_entries(next_rnd, adv_group, source=source)
 
     # NOTE: disqualifications are not repeated, as they should have
     # been performed the first round.

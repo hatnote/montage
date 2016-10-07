@@ -274,7 +274,6 @@ class Round(Base):
                 'total_cancelled_tasks': cancelled_task_count,
                 'total_disqualified_entries': dq_entry_count}
 
-
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
@@ -927,7 +926,8 @@ class CoordinatorDAO(UserDAO):
             tasks = create_initial_tasks(self.rdb_session, rnd)
             rnd.open_date = datetime.datetime.utcnow()
 
-            msg = '%s opened round %s' % (self.user.username, rnd.name)
+            msg = ('%s opened round %s with %s tasks'
+                   % (self.user.username, rnd.name, len(tasks)))
             self.log_action('open_round', round=rnd, message=msg)
 
         rnd.status = 'active'
@@ -1518,13 +1518,14 @@ def lookup_user(rdb_session, username):
 
 
 def create_initial_tasks(rdb_session, rnd):
-    """this creates the initial tasks.
+    if rnd.vote_method in ('yesno', 'rating'):
+        return create_initial_rating_tasks(rdb_session, rnd)
+    elif rnd.vote_method == 'ranking':
+        raise NotImplementedError()
+    raise ValueError('unrecognized round vote method: %r' % rnd.vote_method)
 
-    there may well be a separate function for reassignment which reads
-    from the incomplete Tasks table (that will have to ensure not to
-    assign a rating which has already been completed by the same
-    juror)
-    """
+
+def create_initial_rating_tasks(rdb_session, rnd):
     # TODO: deny quorum > number of jurors
     ret = []
 
@@ -1566,6 +1567,7 @@ def create_initial_tasks(rdb_session, rnd):
         ret.append(task)
 
     return ret
+
 
 
 def reassign_tasks(session, rnd, new_jurors):

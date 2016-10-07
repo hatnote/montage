@@ -354,12 +354,34 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/advance' % round_id,
                       data, su_to='LilyOfTheWest')
-    # pprint(resp['data'])
+    rnd_2_id = resp['data']['id']
 
-    submit_ratings(url_base, resp['data']['id'])
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_2_id,
+                      {'post': True}, su_to='LilyOfTheWest')
 
-    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % resp['data']['id'],
+    submit_ratings(url_base, rnd_2_id)
+
+    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_2_id,
                       su_to='LilyOfTheWest')
+    pprint(resp['data'])
+
+    thresh_map = resp['data']['thresholds']  # TODO
+    cur_thresh = [t for t, c in sorted(thresh_map.items()) if 0 < c <= 20][-1]
+
+    rnd_data = {'name': 'Test advance to ranking round',
+                'vote_method': 'ranking',
+                'directions': 'Final round, rank the images, best to worst.',
+                # note the lack of quorum. quorum is same as juror count
+                'deadline_date': "2016-10-25T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'MahmoudHashemi']}
+    data = {'next_round': rnd_data,
+            'threshold': cur_thresh}
+
+    resp = fetch_json(url_base + '/admin/round/%s/advance' % rnd_2_id,
+                      data, su_to='LilyOfTheWest')
     pprint(resp['data'])
 
     print cookies
@@ -378,6 +400,8 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
     """
     r_dict = fetch_json(url_base + '/admin/round/%s' % round_id,
                         su_to=coord_user)['data']
+    if not r_dict['status'] == 'active':
+        raise RuntimeError('round must be active to submit ratings')
     j_dicts = r_dict['jurors']
 
     per_fetch = 100  # max value
