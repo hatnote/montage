@@ -322,28 +322,6 @@ def submit_rating(rdb_session, user, request_dict):
     return {'data': {'task_id': task_id, 'rating': rating}}
 
 
-"""
-def bulk_submit_rating(rdb_session, user, request_dict):
-
-    # TODO: Check permissions
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    ratings = request_dict.get('ratings')
-    ret = []
-
-    for rating in ratings:
-        task_id = rating['task_id']
-        rating_val = rating['rating']
-
-        task = juror_dao.get_task(task_id)
-
-        juror_dao.apply_rating(task, rating_val)
-
-        ret.append({'task_id': task_id, 'rating': rating})
-
-    return {'data': ret}
-"""
-
-
 def submit_ratings(rdb_session, user, request_dict):
     """message format:
 
@@ -386,7 +364,7 @@ def submit_ratings(rdb_session, user, request_dict):
     elif style == 'ranking':
         invalid = [r for r in id_map.values() if r != int(r) or r < 0]
         if invalid:
-            raise InvalidAction('ranking expects round numbers >= 0, not %r'
+            raise InvalidAction('ranking expects whole numbers >= 0, not %r'
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
         if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
@@ -403,9 +381,8 @@ def submit_ratings(rdb_session, user, request_dict):
                                   for r in sorted_rs]
         rank_items = [tuple(t) for r, t in
                       groupby(sorted_rank_task_pairs, key=lambda rt: rt[0])]
-        #  rank_map = dict(rank_items)  # might be clearer
-
-        juror_dao.apply_ranking(rank_items)
+        ranked_tasks = [tuple([p[1] for p in rt]) for rt in rank_items]
+        juror_dao.apply_ranking(ranked_tasks)
 
     return {}  # TODO?
 
