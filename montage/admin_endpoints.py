@@ -38,7 +38,7 @@ def get_admin_routes():
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
            # TODO: split out into round/campaign log endpoints
-           GET('/organizer/audit_logs', get_audit_logs)]
+           GET('/maintainer/audit_logs', get_audit_logs)]
     return ret
 
 

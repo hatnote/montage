@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+from datetime import datetime
 from pprint import pprint
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,10 @@ from montage.rdb import (make_rdb_session,
                          CoordinatorDAO,
                          lookup_user)
 
+
+GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+
+
 def warn(msg, force=False):
     if not force:
         confirmed = raw_input('??  %s. Type yes to confirm: ' % msg)
@@ -24,6 +29,68 @@ def warn(msg, force=False):
     return
 
 
+def create_campaign(maint_dao, username):
+    coord_user = maint_dao.get_or_create_user(username, 'coordinator')
+    camp_name = raw_input('?? Campaign name: ')
+    if not camp_name:
+        print '-- campaign name required, aborting'
+        sys.exit(0)
+    open_date_str = raw_input('?? Open date: ')
+    open_date = datetime.strptime(open_date_str, '%Y-%m-%d')
+    close_date_str = raw_input('?? Close date: ')
+    close_date = datetime.strptime(close_date_str, '%Y-%m-%d')
+    campaign = maint_dao.create_campaign(name=camp_name,
+                                         open_date=open_date,
+                                         close_date=close_date,
+                                         coords=[coord_user])
+    rdb_session.commit()
+    pprint(campaign.to_info_dict())
+    print ('++ campaign %s (%r) created with %r as coordinator' 
+           % (campaign.id, campaign.name, coord_user.username))
+    return campaign
+
+
+def create_round(maint_dao, campaign_id):
+    campaign = maint_dao.get_campaign(campaign_id)
+    rnd_name = raw_input('?? Round name: ')
+    if not rnd_name:
+        print '-- round name required, aborting'
+        sys.exit(0)
+    juror_names_str = raw_input('?? Juror names (comma separated): ')
+    juror_names = [j.strip() for j in juror_names_str.split(',')]
+    quorum = raw_input('?? Voting quorum: ')
+    vote_method = raw_input('?? Vote method (rating or yesno): ')
+    if vote_method not in ['rating', 'yesno']:
+        print '-- vote method must be `rating` or `yesno`, aborting'
+        sys.exit(0)
+    deadline_date_str = raw_input('?? Deadline date: ')
+    deadline_date = datetime.strptime(deadline_date_str, '%Y-%m-%d')
+    description = raw_input('?? Description: ')
+    directions = raw_input('?? Directions: ')
+    category_name = raw_input('?? Category: ')
+    rnd = maint_dao.create_round(name=rnd_name,
+                                 quorum=quorum,
+                                 vote_method=vote_method,
+                                 deadline_date=deadline_date,
+                                 jurors=juror_names,
+                                 directions=directions,
+                                 description=description,
+                                 campaign=campaign)
+
+    rdb_session.commit()
+    pprint(rnd.to_info_dict())
+    print ('++ round %s (%r) created in campaign %s (%r)' 
+           % (rnd.id, rnd.name, campaign.id, campaign.name))
+    entries = coord_dao.add_entries_from_cat(rnd, category_name)
+    source = category_name
+    #entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+    #source = GIST_URL
+    print ('++ prepared %s entries from %r' %
+           (len(entries), source))
+    maint_dao.add_round_entries(rnd, entries)
+    print ('++ added entries from %s to round %s (%r)'
+           % (source, rnd.id, rnd.name))
+    return rnd
 
 def add_organizer(maint_dao, new_org_name, debug=False):
     org_user = maint_dao.add_organizer(new_org_name)
@@ -34,11 +101,11 @@ def add_organizer(maint_dao, new_org_name, debug=False):
 
 def cancel_campaign(maint_dao, camp_id, debug, force=False):
     campaign = maint_dao.get_campaign(camp_id)
-    msg = ('this will cancel campaign %s (%s) and %s rounds, including tasks.'
+    msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks.'
            % (camp_id, campaign.name, len(campaign.rounds)))
     warn(msg, force)
     maint_dao.cancel_campaign(campaign)
-    print ('++ cancelled campaign %s (%s) and %s rounds' 
+    print ('++ cancelled campaign %s (%r) and %s rounds' 
            % (camp_id, campaign.name, len(campaign.rounds)))
     pass
 
@@ -104,6 +171,12 @@ if __name__ == '__main__':
     #                    help=('remove a coordinator by username from a '
     #                          'campaign (not implemented'), 
     #                    type=str)
+    parser.add_argument('--create-campaign',
+                        help=('create a new campaign with a  specified coordiantor'),
+                        type=str)
+    parser.add_argument('--create-round',
+                        help=('create a new round in a specified campaign'),
+                        type=int)
     parser.add_argument('--campaign', help='campaign id', type=int)
     parser.add_argument('--force', action='store_true', 
                         help='Use with caution when cancelling things')
@@ -137,6 +210,14 @@ if __name__ == '__main__':
         username = args.add_coordinator
         camp_id = args.campaign
         add_coordinator(maint_dao, camp_id, username, args.debug)
+
+    if args.create_campaign:
+        coord_name = args.create_campaign
+        create_campaign(maint_dao, coord_name)
+    
+    if args.create_round:
+        campaign_id = args.create_round
+        create_round(maint_dao, campaign_id)
 
     #if args.remove_coordinator:
     #    username = args.remove_coordinator
