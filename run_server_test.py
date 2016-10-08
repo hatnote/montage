@@ -263,7 +263,7 @@ def full_run(url_base, remote):
 
     # Get the audit logs
     # - as maintainer
-    resp = fetch_json(url_base + '/organizer/audit_logs')
+    resp = fetch_json(url_base + '/maintainer/audit_logs')
 
     # Jury endpoints
     # --------------

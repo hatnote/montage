@@ -338,6 +338,9 @@ def submit_ratings(rdb_session, user, request_dict):
     if len(r_dicts) > MAX_RATINGS_SUBMIT:
         raise InvalidAction('can submit up to 100 ratings at once, not %r'
                             % len(r_dicts))
+    elif not r_dicts:
+        return {}  # submitting no ratings = immediate return
+
     id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
@@ -370,6 +373,12 @@ def submit_ratings(rdb_session, user, request_dict):
         if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
             raise InvalidAction('ranking expects contiguous unique numbers,'
                                 ' 0 - %s, not %r' % (len(rnd.entries), ranks))
+        all_rnd_tasks = juror_dao.get_tasks_from_round(rnd,
+                                                       num=MAX_RATINGS_SUBMIT)
+        if len(all_rnd_tasks) != len(id_map):
+            raise InvalidAction('must submit all rankings at once.'
+                                ' (expected %s submissions, got %s.)'
+                                % (len(id_map), len(all_rnd_tasks)))
 
     if style in ('rating', 'yesno'):
         for t in tasks:
