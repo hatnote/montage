@@ -1279,7 +1279,6 @@ def bootstrap_maintainers(rdb_session):
     return ret
 
 
-
 class JurorDAO(UserDAO):
     """A Data Access Object for the Juror's view"""
     # Read methods
@@ -1519,10 +1518,40 @@ def lookup_user(rdb_session, username):
 
 def create_initial_tasks(rdb_session, rnd):
     if rnd.vote_method in ('yesno', 'rating'):
-        return create_initial_rating_tasks(rdb_session, rnd)
+        ret = create_initial_rating_tasks(rdb_session, rnd)
     elif rnd.vote_method == 'ranking':
-        raise NotImplementedError()
-    raise ValueError('unrecognized round vote method: %r' % rnd.vote_method)
+        ret = create_initial_ranking_tasks(rdb_session, rnd)
+    else:
+        raise ValueError('invalid round vote method: %r' % rnd.vote_method)
+    return ret
+
+
+def create_initial_ranking_tasks(rdb_session, rnd):
+    ret = []
+
+    jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
+
+    rdb_type = rdb_session.bind.dialect.name
+
+    if rdb_type == 'mysql':
+        rand_func = func.rand()
+    else:
+        rand_func = func.random()
+
+    # this does the shuffling in the database
+    shuffled_entries = rdb_session.query(RoundEntry)\
+                                  .filter(RoundEntry.round_id == rnd.id,
+                                          RoundEntry.dq_user_id == None)\
+                                  .order_by(rand_func).all()
+
+    for juror in jurors:
+        for entry in shuffled_entries:
+            task = Task(user=juror, round_entry=entry)
+            ret.append(task)
+
+    return ret
 
 
 def create_initial_rating_tasks(rdb_session, rnd):

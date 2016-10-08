@@ -254,6 +254,8 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     offset = request.values.get('offset', 0)
     juror_dao = JurorDAO(rdb_session, user)
     rnd = juror_dao.get_round(round_id)
+    if rnd.vote_method == 'ranking':
+        count = MAX_RATINGS_SUBMIT  # TODO: better constant
     if not rnd:
         raise PermissionDenied()
     tasks = juror_dao.get_tasks_from_round(rnd=rnd,

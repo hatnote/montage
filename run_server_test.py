@@ -383,9 +383,24 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/advance' % rnd_2_id,
                       data, su_to='LilyOfTheWest')
     pprint(resp['data'])
+    rnd_3_id = resp['data']['id']
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
+                      {'post': True}, su_to='LilyOfTheWest')
+    pprint(resp['data'])
+
+    t_dicts = fetch_json(url_base + '/juror/round/%s/tasks?count=%s'
+                         % (rnd_3_id, 10), log_level=DEBUG,
+                         su_to='MahmoudHashemi')['data']['tasks']
+    print len(t_dicts)
+    print t_dicts
 
     print cookies
     import pdb;pdb.set_trace()
+
+
+@script_log.wrap('critical', verbose=True)
+def submit_rankings(url_base, round_id, coord_user='Yarl'):
+    pass
 
 
 @script_log.wrap('critical', verbose=True)
@@ -430,6 +445,8 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
             data = {'ratings': ratings}
             t_resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                                 data=data, su_to=j_username, log_level=DEBUG)
+        else:
+            raise RuntimeError('task list did not terminate')
 
     return
 
