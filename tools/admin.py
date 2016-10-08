@@ -77,17 +77,17 @@ def create_round(maint_dao, campaign_id):
                                  description=description,
                                  campaign=campaign)
 
-    rdb_session.commit()
     pprint(rnd.to_info_dict())
     print ('++ round %s (%r) created in campaign %s (%r)' 
            % (rnd.id, rnd.name, campaign.id, campaign.name))
-    entries = coord_dao.add_entries_from_cat(rnd, category_name)
+    entries = maint_dao.add_entries_from_cat(rnd, category_name)
     source = category_name
     #entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
     #source = GIST_URL
     print ('++ prepared %s entries from %r' %
            (len(entries), source))
     maint_dao.add_round_entries(rnd, entries)
+    rdb_session.commit()
     print ('++ added entries from %s to round %s (%r)'
            % (source, rnd.id, rnd.name))
     return rnd
@@ -112,12 +112,12 @@ def cancel_campaign(maint_dao, camp_id, debug, force=False):
 
 def cancel_round(maint_dao, rnd_id, debug, force=False):
     rnd = maint_dao.get_round(rnd_id)
-    msg = ('this will cancel round %s (%s) and its tasks'
+    msg = ('this will cancel round %s (%r) and its tasks'
            % (rnd_id, rnd.name))
     warn(msg, force)
     ret = maint_dao.cancel_round(rnd)
     stats = rnd.get_count_map()
-    print ('++ cancelled round %s (%s), with %s tasks'
+    print ('++ cancelled round %s (%r), with %s tasks'
            % (rnd.id, rnd.name, stats['total_cancelled_tasks']))
     if debug:
         import pdb; pdb.set_trace()
@@ -128,7 +128,7 @@ def add_coordinator(maint_dao, camp_id, username, debug):
     camp = maint_dao.get_campaign(camp_id)
     import pdb;pdb.set_trace()
     maint_dao.add_coordinator(camp, username=username)
-    print ('++ added %s as coordinator for campaign %s (%s)'
+    print ('++ added %r as coordinator for campaign %s (%r)'
            % (username, camp_id, camp.name))
     if debug:
         import pdb;pdb.set_trace()

@@ -263,7 +263,7 @@ def full_run(url_base, remote):
 
     # Get the audit logs
     # - as maintainer
-    resp = fetch_json(url_base + '/organizer/audit_logs')
+    resp = fetch_json(url_base + '/maintainer/audit_logs')
 
     # Jury endpoints
     # --------------
@@ -388,19 +388,14 @@ def full_run(url_base, remote):
                       {'post': True}, su_to='LilyOfTheWest')
     pprint(resp['data'])
 
-    t_dicts = fetch_json(url_base + '/juror/round/%s/tasks?count=%s'
-                         % (rnd_3_id, 10), log_level=DEBUG,
-                         su_to='MahmoudHashemi')['data']['tasks']
-    print len(t_dicts)
-    print t_dicts
+    submit_ratings(url_base, rnd_3_id)
+
+    resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_3_id,
+                      su_to='LilyOfTheWest')
+    pprint(resp['data'])
 
     print cookies
     import pdb;pdb.set_trace()
-
-
-@script_log.wrap('critical', verbose=True)
-def submit_rankings(url_base, round_id, coord_user='Yarl'):
-    pass
 
 
 @script_log.wrap('critical', verbose=True)
@@ -430,7 +425,7 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
             if not t_dicts:
                 break  # right?
             ratings = []
-            for t_dict in t_dicts:
+            for i, t_dict in enumerate(t_dicts):
                 task_id = t_dict['id']
 
                 # arb scoring
@@ -438,6 +433,8 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
                     value = len(j_username + t_dict['entry']['name']) % 2
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
+                elif r_dict['vote_method'] == 'ranking':
+                    value = i
                 else:
                     raise NotImplementedError()
                 ratings.append({'task_id': task_id, "value": value})

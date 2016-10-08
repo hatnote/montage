@@ -322,28 +322,6 @@ def submit_rating(rdb_session, user, request_dict):
     return {'data': {'task_id': task_id, 'rating': rating}}
 
 
-"""
-def bulk_submit_rating(rdb_session, user, request_dict):
-
-    # TODO: Check permissions
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
-    ratings = request_dict.get('ratings')
-    ret = []
-
-    for rating in ratings:
-        task_id = rating['task_id']
-        rating_val = rating['rating']
-
-        task = juror_dao.get_task(task_id)
-
-        juror_dao.apply_rating(task, rating_val)
-
-        ret.append({'task_id': task_id, 'rating': rating})
-
-    return {'data': ret}
-"""
-
-
 def submit_ratings(rdb_session, user, request_dict):
     """message format:
 
@@ -360,6 +338,9 @@ def submit_ratings(rdb_session, user, request_dict):
     if len(r_dicts) > MAX_RATINGS_SUBMIT:
         raise InvalidAction('can submit up to 100 ratings at once, not %r'
                             % len(r_dicts))
+    elif not r_dicts:
+        return {}  # submitting no ratings = immediate return
+
     id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
@@ -386,12 +367,18 @@ def submit_ratings(rdb_session, user, request_dict):
     elif style == 'ranking':
         invalid = [r for r in id_map.values() if r != int(r) or r < 0]
         if invalid:
-            raise InvalidAction('ranking expects round numbers >= 0, not %r'
+            raise InvalidAction('ranking expects whole numbers >= 0, not %r'
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
         if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
             raise InvalidAction('ranking expects contiguous unique numbers,'
                                 ' 0 - %s, not %r' % (len(rnd.entries), ranks))
+        all_rnd_tasks = juror_dao.get_tasks_from_round(rnd,
+                                                       num=MAX_RATINGS_SUBMIT)
+        if len(all_rnd_tasks) != len(id_map):
+            raise InvalidAction('must submit all rankings at once.'
+                                ' (expected %s submissions, got %s.)'
+                                % (len(id_map), len(all_rnd_tasks)))
 
     if style in ('rating', 'yesno'):
         for t in tasks:
@@ -403,9 +390,8 @@ def submit_ratings(rdb_session, user, request_dict):
                                   for r in sorted_rs]
         rank_items = [tuple(t) for r, t in
                       groupby(sorted_rank_task_pairs, key=lambda rt: rt[0])]
-        #  rank_map = dict(rank_items)  # might be clearer
-
-        juror_dao.apply_ranking(rank_items)
+        ranked_tasks = [tuple([p[1] for p in rt]) for rt in rank_items]
+        juror_dao.apply_ranking(ranked_tasks)
 
     return {}  # TODO?
 

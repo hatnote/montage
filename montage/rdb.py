@@ -1502,12 +1502,13 @@ class JurorDAO(UserDAO):
             # belt and suspenders until server test covers the cross
             # complete case
             raise PermissionDenied()
+        now = datetime.datetime.utcnow()
         rating = Rating(user_id=self.user.id,
                         task_id=task.id,
                         round_entry_id=task.round_entry_id,
                         value=rating)
         self.rdb_session.add(rating)
-        task.complete_date = datetime.datetime.utcnow()
+        task.complete_date = now
         return
 
     def apply_ranking(self, ranked_tasks):
@@ -1519,7 +1520,16 @@ class JurorDAO(UserDAO):
         with task1 being the highest rank. this format is designed to
         support ties.
         """
-        pass
+        now = datetime.datetime.utcnow()
+        for rank_i, rank_tasks in enumerate(ranked_tasks):
+            for task in rank_tasks:
+                ranking = Ranking(user_id=self.user.id,
+                                  task_id=task.id,
+                                  round_entry_id=task.round_entry.id,
+                                  value=rank_i)
+                self.rdb_session.add(ranking)
+                task.complete_date = now
+        return
 
 
 def lookup_user(rdb_session, username):
@@ -1607,7 +1617,6 @@ def create_initial_rating_tasks(rdb_session, rnd):
         ret.append(task)
 
     return ret
-
 
 
 def reassign_tasks(session, rnd, new_jurors):
