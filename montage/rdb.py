@@ -1099,6 +1099,17 @@ class CoordinatorDAO(UserDAO):
 
         return dict(rating_ctr)
 
+    def get_all_ratings(self, rnd):
+        results = self.query(Task, Rating, Entry)\
+                      .options(joinedload('user'))\
+                      .join(RoundEntry)\
+                      .join(Rating)\
+                      .join(Entry)\
+                      .filter(RoundEntry.round_id == rnd.id,
+                              RoundEntry.dq_user_id == None)\
+                      .all()
+        return results
+
     def modify_jurors(self, rnd, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with
         # changing the quorum, which would remove tasks, but carries the

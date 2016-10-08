@@ -1,6 +1,10 @@
+import unicodecsv
+import io
 import datetime
 
-from clastic import GET, POST
+from collections import defaultdict
+
+from clastic import GET, POST, Response
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
@@ -35,6 +39,7 @@ def get_admin_routes():
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
            GET('/maintainer', get_maint_index),
+           GET('/admin/round/<round_id:int>/download', download_results),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
            # TODO: split out into round/campaign log endpoints
@@ -577,6 +582,52 @@ def get_round(rdb_session, user, round_id):
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
+
+def download_results(rdb_session, user, round_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
+
+    if rnd.status != 'finalized':
+        raise DoesNotExist('round results not yet finalized')
+
+    all_ratings = coord_dao.get_all_ratings(rnd)
+
+    results_by_name = defaultdict(dict)
+
+    for row in all_ratings:
+        filename = row[2].name
+        username = row[0].user.username
+        if row[0].complete_date:
+            results_by_name[filename][username] = row[1].value
+        else:
+            # tbv = to be voted
+            # there should be no empty tasks in a fully finalized round
+            results_by_name[filename][username] = 'tbv'
+
+    output = io.BytesIO()
+    csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames, 
+                                       restval=None)
+    # na means this entry wasn't assigned
+
+    csv_writer.writeheader()
+    
+    for filename, ratings in results_by_name.items():
+        csv_row = {'filename': filename}
+        valid_ratings = [r for r in ratings.values() if type(r) is not str]
+        # TODO: catch if there are more than a quorum of votes
+        ratings['average'] = sum(valid_ratings) / len(valid_ratings)
+        csv_row.update(ratings)
+        csv_writer.writerow(csv_row)
+
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')                                                                                         
+    resp.mimetype_params['charset'] = 'utf-8'                                                                                               
+    resp.headers["Content-Disposition"] = "attachment; filename=montage_vote_report.csv"
+    return resp
 
 # Endpoints restricted to maintainers
 
