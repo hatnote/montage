@@ -35,6 +35,7 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
            POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
+           POST('/admin/round/<round_id:int>/cancel', cancel_round),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
@@ -108,20 +109,22 @@ def create_campaign(user, rdb_session, request_dict):
     org_dao = OrganizerDAO(rdb_session, user)
 
     name = request_dict.get('name')
+
     if not name:
         raise InvalidAction('name is required to create a campaign, got %r'
                             % name)
     now = datetime.datetime.utcnow().isoformat()
     open_date = request_dict.get('open_date', now)
+
     if open_date:
         open_date = js_isoparse(open_date)
+
     close_date = request_dict.get('close_date')
+
     if close_date:
         close_date = js_isoparse(close_date)
+
     coord_names = request_dict.get('coordinators')
-    if not coord_names:
-        raise InvalidAction('coordinators is required to create a campaign,'
-                            ' got %r ' % (coord_names,))
 
     coords = [user]  # Organizer is included as a coordinator by default
     for coord_name in coord_names:
@@ -133,6 +136,7 @@ def create_campaign(user, rdb_session, request_dict):
                                        close_date=close_date,
                                        coords=set(coords))
     # TODO: need completion info for each round
+    rdb_session.commit()
     data = campaign.to_details_dict()
 
     return {'data': data}
@@ -172,6 +176,8 @@ def import_entries(rdb_session, user, round_id, request_dict):
         source = 'gistcsv(%s)' % gist_url
     elif import_method == 'category':
         cat_name = request_dict.get('category')
+        if not cat_name:
+            raise InvalidAction('needs category name for import')
         entries = coord_dao.add_entries_from_cat(rnd, cat_name)
         source = 'category(%s)' % cat_name
     else:
@@ -246,6 +252,9 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     coord_dao.edit_campaign(campaign_id, edit_dict)
+
+    rdb_session.commit()
+
     return {'data': edit_dict}
 
 
@@ -297,6 +306,8 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     rnd_params['campaign'] = campaign
     rnd = coord_dao.create_round(**rnd_params)
 
+    rdb_session.commit()
+
     data = rnd.to_details_dict()
     data['progress'] = coord_dao.get_round_task_counts(rnd)
 
@@ -337,6 +348,19 @@ def edit_round(rdb_session, user, round_id, request_dict):
     #                         % request_dict.keys())
 
     return {'data': new_val_map}
+
+
+def cancel_round(rdb_session, user, round_id):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+    
+    if not rnd:
+        raise Forbidden('cannot access round')
+        
+    coord_dao.cancel_round(rnd)
+
+    stats = rnd.get_count_map()
+    return {'data': stats}
 
 
 def modify_jurors(rdb_session, user, round_id, request_dict):

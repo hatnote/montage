@@ -187,7 +187,10 @@ class DBSessionMiddleware(Middleware):
             rdb_session.rollback()
             raise
         else:
-            rdb_session.commit()
+            if ret.status_code >= 400:
+                rdb_session.rollback()
+            else:
+                rdb_session.commit()
         finally:
             rdb_session.close()
         return ret

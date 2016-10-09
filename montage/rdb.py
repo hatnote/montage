@@ -174,7 +174,8 @@ class Campaign(Base):
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
         ret = self.to_info_dict()
-        ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds]
+        ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds] 
+        # should this exclude cancelled rounds?
         ret['coordinators'] = [user.to_info_dict() for user in self.coords]
         active_rnd = self.active_round
         ret['active_round'] = active_rnd.to_info_dict() if active_rnd else None
@@ -765,7 +766,6 @@ class CoordinatorDAO(UserDAO):
         ret = self.rdb_session.query(Campaign)\
                               .filter_by(id=campaign_id)\
                               .update(campaign_dict)
-        self.rdb_session.commit()
 
         return ret
 
@@ -799,7 +799,6 @@ class CoordinatorDAO(UserDAO):
                     config=full_config)
 
         self.rdb_session.add(rnd)
-        self.rdb_session.commit()
 
         j_names = [j.username for j in jurors]
         msg = ('%s created %s round "%s" (#%s) with jurors %r for'
@@ -1174,7 +1173,9 @@ class CoordinatorDAO(UserDAO):
             all_inputs.append(cur_input)
 
         snpr = SchulzeNPR(all_inputs,
-                          ballot_notation=SchulzeNPR.BALLOT_NOTATION_GROUPING)
+                          ballot_notation='grouping')
+        # Note: attribute error on SchulzeNPR.BALLOT_NOTATION_GROUPING
+        # Is this a version issue on python-vote-core?
         snpr_res = snpr.as_dict()
 
         ret = []
@@ -1311,7 +1312,6 @@ class OrganizerDAO(CoordinatorDAO):
                             coords=coords)
 
         self.rdb_session.add(campaign)
-        self.rdb_session.commit()
 
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
         self.log_action('create_campaign', campaign=campaign, message=msg)
@@ -1336,8 +1336,8 @@ class OrganizerDAO(CoordinatorDAO):
 
     # Read methods
     def get_all_campaigns(self):
-        # TODO: Show campaigns where the maintainer is also a coordinator
         campaigns = self.query(Campaign)\
+                        .option(joinedload('round'))\
                         .all()
         return campaigns
 

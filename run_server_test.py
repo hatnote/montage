@@ -196,6 +196,13 @@ def full_run(url_base, remote):
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
                       data, su_to='LilyOfTheWest')
+    '''
+    # Cancel a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/cancel' % round_id,
+                      data, su_to='LilyOfTheWest')
+    '''
 
     # Pause a round
     # - as coordinator
