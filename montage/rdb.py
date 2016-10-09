@@ -83,7 +83,7 @@ with a dict, brand new flags-having objects will have None for the
 flags attribute.
 """
 
-MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl']
+MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest']
 
 
 """
@@ -830,11 +830,16 @@ class CoordinatorDAO(UserDAO):
                                     (Entry.upload_date > max_date))\
                             .all()
 
+        cancel_date = datetime.datetime.utcnow()
+
         for round_entry in round_entries:
             dq_reason = ('upload date %s is out of campaign date range %s - %s'
                          % (round_entry.entry.upload_date, min_date, max_date))
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
+            
+            for task in round_entry.tasks:
+                task.cancel_date = cancel_date
 
         msg = ('%s disqualified %s entries outside of date range %s - %s'
                % (self.user.username, len(round_entries), min_date, max_date))
@@ -853,12 +858,17 @@ class CoordinatorDAO(UserDAO):
                             .all()
 
         min_res_str = round(min_res / ONE_MEGAPIXEL, 2)
+        cancel_date = datetime.datetime.utcnow()
+
         for r_ent in round_entries:
             entry_res_str = round(r_ent.entry.resolution / ONE_MEGAPIXEL, 2)
             dq_reason = ('resolution %s is less than %s minimum '
                          % (entry_res_str, min_res_str))
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
+
+            for task in r_ent.tasks:
+                task.cancel_date = cancel_date
 
         msg = ('%s disqualified %s entries smaller than %s megapixels'
                % (self.user.username, len(round_entries), min_res_str))
@@ -874,11 +884,16 @@ class CoordinatorDAO(UserDAO):
                             .filter(~Entry.mime_minor.in_(allowed_filetypes))\
                             .all()
 
+        cancel_date = datetime.datetime.utcnow()
+
         for r_ent in round_entries:
             dq_reason = ('mime %s is not in %s' % (r_ent.entry.mime_minor,
                                                    allowed_filetypes))
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
+
+            for task in r_ent.tasks:
+                task.cancel_date = cancel_date
 
         msg = ('%s disqualified %s entries by filetype not in %s'
                % (self.user.username, len(round_entries), allowed_filetypes))
@@ -889,6 +904,7 @@ class CoordinatorDAO(UserDAO):
     def autodisqualify_by_uploader(self, rnd):
         dq_group = {}
         dq_usernames = [j.username for j in rnd.jurors]
+
         for username in dq_usernames:
             dq_group[username] = 'juror'
 
@@ -920,12 +936,17 @@ class CoordinatorDAO(UserDAO):
                             .filter(Entry.upload_user_text.in_(dq_usernames))\
                             .all()
 
+        cancel_date = datetime.datetime.utcnow()
+
         for round_entry in round_entries:
             upload_user = round_entry.entry.upload_user_text
             dq_reason = 'upload user %s is %s'\
                         % (upload_user, dq_group[upload_user])
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
+
+            for task in round_entry.tasks:
+                task.cancel_date = cancel_date
 
         msg = ('%s disqualified %s entries based on upload user'
                % (self.user.username, len(round_entries)))

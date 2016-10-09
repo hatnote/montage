@@ -629,6 +629,12 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
+
+    if rnd.status != 'paused':
+        raise InvalidAction('round must be paused to disqualify entries')
+
     dq_by_upload_date = request_dict.get('dq_by_upload_date')
     dq_by_resolution = request_dict.get('dq_by_resolution')
     dq_by_uploader = request_dict.get('dq_by_uploader')

@@ -191,6 +191,18 @@ def full_run(url_base, remote):
                       data, su_to='LilyOfTheWest')
     """
 
+    # Activate a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
+                      data, su_to='LilyOfTheWest')
+
+    # Pause a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
+                      data, su_to='LilyOfTheWest')
+
     # Disqualify by resolution
 
     data = {'dq_by_resolution': True}
