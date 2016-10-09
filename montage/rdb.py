@@ -482,16 +482,14 @@ class FinalEntryRanking(object):
     """This is just for organizing ranking information as calculated at
     the end of a ranking round.
     """
-    def __init__(self, rank, entry, points, ranking_map):
+    def __init__(self, rank, entry, ranking_map):
         self.rank = rank
         self.entry = entry
-        self.points = points  # points are made up/don't matter
         self.ranking_map = ranking_map
 
     def to_dict(self):
         return {'ranking': self.rank,
                 'entry': self.entry.to_dict(),
-                'points': self.points,
                 'ranking_map': self.ranking_map}
 
     def __repr__(self):
@@ -1158,9 +1156,8 @@ class CoordinatorDAO(UserDAO):
         for i, entry_id in enumerate(snpr_res['order']):
             entry = self.query(Entry).get(entry_id)
             ranking_map = entry_rank_user_map[entry_id]
-            points = entry_count * juror_count - sum([int(k) * len(v) for k, v in ranking_map.items()])
 
-            fer = FinalEntryRanking(i, entry, points, ranking_map)
+            fer = FinalEntryRanking(i, entry, ranking_map)
             ret.append(fer)
         return ret
 
