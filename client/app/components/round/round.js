@@ -58,10 +58,10 @@ const RoundComponent = {
             const name = encodeURIComponent(entry.name);
             const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
 
-            if (entry.width < 800) {
+            if (entry.width <= 800) {
                 return url + (entry.width - 1);
             }
-            if (entry.width < 1280) {
+            if (entry.width <= 1280) {
                 return url + 800;
             }
             return url + 1280;
