@@ -434,7 +434,7 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                 elif r_dict['vote_method'] == 'ranking':
-                    value = i
+                    value = (i + len(j_username)) % len(t_dicts)
                 else:
                     raise NotImplementedError()
                 ratings.append({'task_id': task_id, "value": value})

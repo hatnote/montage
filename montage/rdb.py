@@ -7,6 +7,7 @@ import itertools
 from collections import Counter, defaultdict
 from math import ceil
 
+from pyvotecore.schulze_npr import SchulzeNPR
 from sqlalchemy import (Text,
                         Column,
                         String,
@@ -23,7 +24,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from boltons.strutils import slugify
-from boltons.iterutils import chunked, first, unique_iter
+from boltons.iterutils import chunked, first, unique_iter, bucketize
 from boltons.statsutils import mean
 
 from utils import (format_date,
@@ -475,6 +476,27 @@ class Ranking(Base):
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
+
+
+class FinalEntryRanking(object):
+    """This is just for organizing ranking information as calculated at
+    the end of a ranking round.
+    """
+    def __init__(self, rank, entry, points, ranking_map):
+        self.rank = rank
+        self.entry = entry
+        self.points = points  # points are made up/don't matter
+        self.ranking_map = ranking_map
+
+    def to_dict(self):
+        return {'ranking': self.rank,
+                'entry': self.entry.to_dict(),
+                'points': self.points,
+                'ranking_map': self.ranking_map}
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '<%s #%r %r>' % (cn, self.ranking, self.entry)
 
 
 class Task(Base):
@@ -1098,6 +1120,49 @@ class CoordinatorDAO(UserDAO):
         rating_ctr = Counter([r[1] for r in results])
 
         return dict(rating_ctr)
+
+    def get_round_ranking_list(self, rnd):
+        res = (self.query(Ranking)
+               .options(joinedload('round_entry'))
+               .filter(Ranking.round_entry.has(round_id=rnd.id))
+               .all())
+        all_inputs = []
+        by_juror_id = bucketize(res, lambda r: r.user_id)
+        entry_rank_user_map = {}
+        for user_id, rankings in by_juror_id.items():
+            cur_ballot = []
+            cur_input = {'count': 1, 'ballot': cur_ballot}
+
+            r_by_val = bucketize(rankings, lambda r: r.value)
+            lowest_rank = max(r_by_val.keys())
+            for rank in range(0, lowest_rank + 1):
+                ranking_objs = r_by_val.get(rank, [])
+                cur_ballot.append([r.round_entry.entry_id
+                                   for r in ranking_objs])
+                for r in ranking_objs:
+                    (entry_rank_user_map.setdefault(r.round_entry.entry_id, {})
+                     .setdefault(rank, [])
+                     .append(self.query(User).get(user_id).username))
+
+            all_inputs.append(cur_input)
+
+        snpr = SchulzeNPR(all_inputs,
+                          ballot_notation=SchulzeNPR.BALLOT_NOTATION_GROUPING)
+        snpr_res = snpr.as_dict()
+
+        ret = []
+        entry_count = self.query(RoundEntry).filter_by(round_id=rnd.id,
+                                                       dq_user_id=None).count()
+        juror_count = len(by_juror_id)
+
+        for i, entry_id in enumerate(snpr_res['order']):
+            entry = self.query(Entry).get(entry_id)
+            ranking_map = entry_rank_user_map[entry_id]
+            points = entry_count * juror_count - sum([int(k) * len(v) for k, v in ranking_map.items()])
+
+            fer = FinalEntryRanking(i, entry, points, ranking_map)
+            ret.append(fer)
+        return ret
 
     def modify_jurors(self, rnd, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with

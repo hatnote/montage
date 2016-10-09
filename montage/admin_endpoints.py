@@ -389,14 +389,25 @@ def get_round_results_preview(rdb_session, user, round_id):
     round_counts = coord_dao.get_round_task_counts(rnd)
     is_closeable = round_counts['total_open_tasks'] == 0
 
-    rating_map = coord_dao.get_round_average_rating_map(rnd)
-    thresh_map = get_threshold_map(rating_map)
+    data = {'round': rnd.to_info_dict(),
+            'counts': round_counts,
+            'is_closeable': is_closeable}
 
-    return {'data': {'round': rnd.to_info_dict(),
-                     'counts': round_counts,
-                     'ratings': rating_map,
-                     'thresholds': thresh_map,
-                     'is_closeable': is_closeable}}
+    if rnd.vote_method in ('yesno', 'rating'):
+        data['ratings'] = coord_dao.get_round_average_rating_map(rnd)
+        data['thresholds'] = get_threshold_map(data['ratings'])
+    elif rnd.vote_method == 'ranking':
+        if not is_closeable:
+            # TODO: should this sort of check apply to ratings as well?
+            raise InvalidAction('round must be closeable to preview results')
+        rankings = coord_dao.get_round_ranking_list(rnd)
+
+        data['rankings'] = [r.to_dict() for r in rankings]
+
+    else:
+        raise NotImplementedError()
+
+    return {'data': data}
 
 
 def advance_round(rdb_session, user, round_id, request_dict):
