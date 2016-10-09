@@ -23,6 +23,7 @@ const UserService = function ($http, $q, $window) {
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
     editJurors: (id, data) => $http.post(base + 'admin/round/' + id + '/edit_jurors', data).then(getData, getData),
     editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
+    cancelRound: (id) => $http.post(base + 'admin/round/' + id + '/cancel').then(getData, getData),
 
     importCSV: (id) => $http.post(base + 'admin/round/' + id + '/import', {
       import_method: 'gistcsv',
