@@ -133,7 +133,7 @@
                 </md-menu>
             </div>
             <div class="campaign__round-details"
-                 layout="row" layout-align="space-between start"
+                 layout="row" layout-align="space-between stretch"
                  ng-show="$ctrl.roundDetails[round.id]">
                 <div class="spinner__container" layout="row" layout-align="center center"
                     ng-show="$ctrl.roundDetails[round.id] === 'loading'">
@@ -163,26 +163,31 @@
                         </span>
                     </div>
                 </div>
-                <div layout="column" layout-align="start stretch" flex="50"
+                <div layout="column" layout-align="start start" flex="50"
                      ng-show="$ctrl.roundDetails[round.id] !== 'loading'">
                     <strong class="campaign__directions">Voting Stats</strong>
                     <div class="campaign__juror-progress"
                          ng-repeat="(rate, count) in $ctrl.roundPreview[round.id].ratings">
                         {{rate * 4 + 1}} / 5: {{count}} {{count === 1 ? "image" : "images"}}
                     </div>
+                    <span flex></span>
+                    <md-button ng-click="$ctrl.addRound($event)"
+                               ng-disabled="!$ctrl.roundPreview[round.id].is_closeable">
+                        <md-tooltip md-direction="right">Add new round</md-tooltip>
+                        <md-icon>add</md-icon>
+                        <span>Add next round</span>
+                    </md-button>
                 </div>
             </div>
         </div>
     </md-card>
-    <div class="campaign__rounds-add" layout="row" layout-align="space-between center">
-        <md-button ng-click="$ctrl.addRound($event)"
-                   ng-disabled="!$ctrl.isLastRoundCompleted()">
-            <md-tooltip md-direction="right">Add new round</md-tooltip>
+    <div class="campaign__rounds-add"
+         layout="row" layout-align="space-between center"
+         ng-show="!$ctrl.campaign.rounds.length">
+        <md-button ng-click="$ctrl.addRound($event)">
             <md-icon>add</md-icon>
-            <span ng-show="!$ctrl.campaign.rounds.length">Add initial round</span>
-            <span ng-show="$ctrl.campaign.rounds.length">Add next round</span>
+            <span>Add initial round</span>
         </md-button>
-        <span class="muted" ng-show="!$ctrl.isLastRoundCompleted()">Previous round needs to be completed first</span>
         <span flex></span>
     </div>
 </div>

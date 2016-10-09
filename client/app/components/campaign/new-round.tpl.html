@@ -27,7 +27,18 @@
                             <p>Vote Method</p>
                         </div>
                     </md-list-item>
-                    <md-list-item class="md-2-line">
+                    <md-list-item class="md-2-line" ng-if="preview">
+                        <md-icon>assignment_turned_in</md-icon>
+                        <div class="md-list-item-text">
+                            <md-select class="dialog__input" ng-model="round.threshold">
+                                <md-option ng-repeat="(key, value) in preview.thresholds" ng-value="key">
+                                    {{key}} ({{value}} images passed)
+                                </md-option>
+                            </md-select>
+                            <p>Threshold</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line" ng-if="!preview">
                         <md-icon>cloud_download</md-icon>
                         <div class="md-list-item-text">
                         <md-autocomplete flex
