@@ -442,6 +442,9 @@ def advance_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
+    if not rnd:
+        raise Forbidden('No permission to advance round %s, or round does not exist' % round_id)
+
     if rnd.vote_method not in ('rating', 'yesno'):
         raise NotImplementedError()  # see docstring above
     threshold = float(request_dict['threshold'])
