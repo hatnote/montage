@@ -427,6 +427,7 @@ class RoundEntry(Base):
     dq_user_id = Column(Integer, ForeignKey('users.id'))
     dq_reason = Column(String(255))  # in case it's disqualified
     # examples: too low resolution, out of date range
+    # TODO: dq_date?
     flags = Column(JSONEncodedDict)
 
     entry = relationship(Entry, back_populates='entered_rounds')
@@ -441,6 +442,13 @@ class RoundEntry(Base):
         if round is not None:
             self.round = round
         return
+
+    def to_dq_details(self):
+        ret = {'entry': self.entry.to_details_dict(),
+               'dq_reason': self.dq_reason,
+               'dq_user_id': self.dq_user_id}
+        return ret
+               
 
 round_entries_t = RoundEntry.__table__
 
@@ -1108,6 +1116,15 @@ class CoordinatorDAO(UserDAO):
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None)\
                       .all()
+        return results
+
+    def get_disqualified(self, rnd):
+        results = self.query(RoundEntry)\
+                      .options(joinedload('entry'))\
+                      .filter_by(round_id=rnd.id)\
+                      .filter(RoundEntry.dq_user_id != None)\
+                      .all()
+        
         return results
 
     def modify_jurors(self, rnd, new_jurors):

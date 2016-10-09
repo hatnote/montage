@@ -139,7 +139,7 @@ def full_run(url_base, remote):
                            'show_filename': True,
                            'show_resolution': True,
                            'dq_by_upload_date': True,
-                           'dq_by_resolution': True,
+                           'dq_by_resolution': False,
                            'dq_by_uploader': True,
                            'dq_by_filetype': True,
                            'allowed_filetypes': ['jpeg', 'png', 'gif'],
@@ -190,6 +190,19 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/import' % round_id,
                       data, su_to='LilyOfTheWest')
     """
+
+    # Disqualify by resolution
+
+    data = {'dq_by_resolution': True}
+    resp = fetch_json(url_base + '/admin/round/%s/autodisqualify' % round_id,
+                      data, su_to='LilyOfTheWest')
+
+    # Get a list of disqualified entries
+
+    resp = fetch_json(url_base + '/admin/round/%s/disqualified' % round_id,
+                      su_to='LilyOfTheWest')
+
+    import pdb;pdb.set_trace()
 
     # Activate a round
     # - as coordinator
@@ -354,7 +367,13 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/advance' % round_id,
                       data, su_to='LilyOfTheWest')
+
     rnd_2_id = resp['data']['id']
+
+    # get a csv of final round results
+
+    #resp = fetch_json(url_base + '/admin/round/%s/download' % round_id,
+    #                  su_to='LilyOfTheWest')
 
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_2_id,
                       {'post': True}, su_to='LilyOfTheWest')

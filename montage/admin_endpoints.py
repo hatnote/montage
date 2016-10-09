@@ -38,6 +38,10 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
+           GET('/admin/round/<round_id:int>/disqualified', 
+               get_disqualified),
+           POST('/admin/round/<round_id:int>/autodisqualify', 
+               autodisqualify),
            GET('/maintainer', get_maint_index),
            GET('/admin/round/<round_id:int>/download', download_results),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
@@ -177,27 +181,7 @@ def import_entries(rdb_session, user, round_id, request_dict):
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries),
-            'dq_upload_date': 0,
-            'dq_resolution': 0,
-            'dq_uploader': 0,
-            'dq_filetype': 0}
-
-    if rnd.config.get('dq_by_upload_date'):
-        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
-        data['dq_upload_date'] = len(dq_upload_date)
-
-    if rnd.config.get('dq_by_resolution'):
-        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
-        data['dq_resolution'] = len(dq_resolution)
-
-    if rnd.config.get('dq_by_uploader'):
-        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
-        data['dq_uploader'] = len(dq_uploader)
-
-    if rnd.config.get('dq_by_filetype'):
-        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
-        data['dq_filetype'] = len(dq_filetype)
+            'total_entries': len(rnd.entries)}
 
     return {'data': data}
 
@@ -628,6 +612,47 @@ def download_results(rdb_session, user, round_id, request_dict):
     resp.mimetype_params['charset'] = 'utf-8'                                                                                               
     resp.headers["Content-Disposition"] = "attachment; filename=montage_vote_report.csv"
     return resp
+
+
+def autodisqualify(rdb_session, user, round_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    dq_by_upload_date = request_dict.get('dq_by_upload_date')
+    dq_by_resolution = request_dict.get('dq_by_resolution')
+    dq_by_uploader = request_dict.get('dq_by_uploader')
+    dq_by_filetype = request_dict.get('dq_by_filetype')
+
+    round_entries = []
+
+    if rnd.config.get('dq_by_upload_date') or dq_by_upload_date:
+        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
+        round_entries += dq_upload_date
+
+    if rnd.config.get('dq_by_resolution') or dq_by_resolution:
+        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
+        round_entries += dq_resolution
+
+    if rnd.config.get('dq_by_uploader') or dq_by_uploader:
+        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
+        round_entries += dq_uploader
+
+    if rnd.config.get('dq_by_filetype') or dq_by_filetype:
+        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
+        round_entries += dq_filetype
+
+    data = [re.to_dq_details() for re in round_entries]
+
+    return {'data': data}
+
+def get_disqualified(rdb_session, user, round_id):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+    
+    round_entries = coord_dao.get_disqualified(rnd)
+
+    data = [re.to_dq_details() for re in round_entries]
+    return {'data': data}
 
 # Endpoints restricted to maintainers
 
