@@ -428,6 +428,7 @@ class RoundEntry(Base):
     dq_user_id = Column(Integer, ForeignKey('users.id'))
     dq_reason = Column(String(255))  # in case it's disqualified
     # examples: too low resolution, out of date range
+    # TODO: dq_date?
     flags = Column(JSONEncodedDict)
 
     entry = relationship(Entry, back_populates='entered_rounds')
@@ -442,6 +443,13 @@ class RoundEntry(Base):
         if round is not None:
             self.round = round
         return
+
+    def to_dq_details(self):
+        ret = {'entry': self.entry.to_details_dict(),
+               'dq_reason': self.dq_reason,
+               'dq_user_id': self.dq_user_id}
+        return ret
+
 
 round_entries_t = RoundEntry.__table__
 
@@ -1149,9 +1157,6 @@ class CoordinatorDAO(UserDAO):
         snpr_res = snpr.as_dict()
 
         ret = []
-        entry_count = self.query(RoundEntry).filter_by(round_id=rnd.id,
-                                                       dq_user_id=None).count()
-        juror_count = len(by_juror_id)
 
         for i, entry_id in enumerate(snpr_res['order']):
             entry = self.query(Entry).get(entry_id)
@@ -1160,6 +1165,26 @@ class CoordinatorDAO(UserDAO):
             fer = FinalEntryRanking(i, entry, ranking_map)
             ret.append(fer)
         return ret
+
+    def get_all_ratings(self, rnd):
+        results = self.query(Task, Rating, Entry)\
+                      .options(joinedload('user'))\
+                      .join(RoundEntry)\
+                      .join(Rating)\
+                      .join(Entry)\
+                      .filter(RoundEntry.round_id == rnd.id,
+                              RoundEntry.dq_user_id == None)\
+                      .all()
+        return results
+
+    def get_disqualified(self, rnd):
+        results = self.query(RoundEntry)\
+                      .options(joinedload('entry'))\
+                      .filter_by(round_id=rnd.id)\
+                      .filter(RoundEntry.dq_user_id != None)\
+                      .all()
+
+        return results
 
     def modify_jurors(self, rnd, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with

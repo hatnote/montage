@@ -1,6 +1,10 @@
+import unicodecsv
+import io
 import datetime
 
-from clastic import GET, POST
+from collections import defaultdict
+
+from clastic import GET, POST, Response
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
@@ -34,7 +38,12 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
+           GET('/admin/round/<round_id:int>/disqualified', 
+               get_disqualified),
+           POST('/admin/round/<round_id:int>/autodisqualify', 
+               autodisqualify),
            GET('/maintainer', get_maint_index),
+           GET('/admin/round/<round_id:int>/download', download_results),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
            # TODO: split out into round/campaign log endpoints
@@ -172,27 +181,7 @@ def import_entries(rdb_session, user, round_id, request_dict):
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries),
-            'dq_upload_date': 0,
-            'dq_resolution': 0,
-            'dq_uploader': 0,
-            'dq_filetype': 0}
-
-    if rnd.config.get('dq_by_upload_date'):
-        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
-        data['dq_upload_date'] = len(dq_upload_date)
-
-    if rnd.config.get('dq_by_resolution'):
-        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
-        data['dq_resolution'] = len(dq_resolution)
-
-    if rnd.config.get('dq_by_uploader'):
-        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
-        data['dq_uploader'] = len(dq_uploader)
-
-    if rnd.config.get('dq_by_filetype'):
-        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
-        data['dq_filetype'] = len(dq_filetype)
+            'total_entries': len(rnd.entries)}
 
     return {'data': data}
 
@@ -588,6 +577,93 @@ def get_round(rdb_session, user, round_id):
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
+
+def download_results(rdb_session, user, round_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
+
+    if rnd.status != 'finalized':
+        raise DoesNotExist('round results not yet finalized')
+
+    all_ratings = coord_dao.get_all_ratings(rnd)
+
+    results_by_name = defaultdict(dict)
+
+    for row in all_ratings:
+        filename = row[2].name
+        username = row[0].user.username
+        if row[0].complete_date:
+            results_by_name[filename][username] = row[1].value
+        else:
+            # tbv = to be voted
+            # there should be no empty tasks in a fully finalized round
+            results_by_name[filename][username] = 'tbv'
+
+    output = io.BytesIO()
+    csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames, 
+                                       restval=None)
+    # na means this entry wasn't assigned
+
+    csv_writer.writeheader()
+    
+    for filename, ratings in results_by_name.items():
+        csv_row = {'filename': filename}
+        valid_ratings = [r for r in ratings.values() if type(r) is not str]
+        # TODO: catch if there are more than a quorum of votes
+        ratings['average'] = sum(valid_ratings) / len(valid_ratings)
+        csv_row.update(ratings)
+        csv_writer.writerow(csv_row)
+
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')                                                                                         
+    resp.mimetype_params['charset'] = 'utf-8'                                                                                               
+    resp.headers["Content-Disposition"] = "attachment; filename=montage_vote_report.csv"
+    return resp
+
+
+def autodisqualify(rdb_session, user, round_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    dq_by_upload_date = request_dict.get('dq_by_upload_date')
+    dq_by_resolution = request_dict.get('dq_by_resolution')
+    dq_by_uploader = request_dict.get('dq_by_uploader')
+    dq_by_filetype = request_dict.get('dq_by_filetype')
+
+    round_entries = []
+
+    if rnd.config.get('dq_by_upload_date') or dq_by_upload_date:
+        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
+        round_entries += dq_upload_date
+
+    if rnd.config.get('dq_by_resolution') or dq_by_resolution:
+        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
+        round_entries += dq_resolution
+
+    if rnd.config.get('dq_by_uploader') or dq_by_uploader:
+        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
+        round_entries += dq_uploader
+
+    if rnd.config.get('dq_by_filetype') or dq_by_filetype:
+        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
+        round_entries += dq_filetype
+
+    data = [re.to_dq_details() for re in round_entries]
+
+    return {'data': data}
+
+def get_disqualified(rdb_session, user, round_id):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+    
+    round_entries = coord_dao.get_disqualified(rnd)
+
+    data = [re.to_dq_details() for re in round_entries]
+    return {'data': data}
 
 # Endpoints restricted to maintainers
 
