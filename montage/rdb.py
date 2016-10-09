@@ -1219,7 +1219,13 @@ class CoordinatorDAO(UserDAO):
             new_jurors = [self.get_or_create_user(j, 'juror', round=rnd)
                           for j in new_jurors]
 
-        if rnd.quorum > len(new_jurors):
+        if not new_jurors:
+            raise InvalidAction('round requires at least one juror, got %r'
+                                % (new_jurors,))
+
+        if rnd.vote_method == 'ranking':
+            rnd.quorum = len(new_jurors)
+        elif rnd.quorum > len(new_jurors):
             raise InvalidAction('expected at least %s jurors to make quorum'
                                 ' (%s) for round #%s'
                                 % (len(new_jurors), rnd.quorum, rnd.id))
@@ -1346,6 +1352,7 @@ class OrganizerDAO(CoordinatorDAO):
                     .filter_by(id=round_id)\
                     .one_or_none()
         return round
+
 
 class MaintainerDAO(OrganizerDAO):
     def get_audit_log(self, limit=100, offset=0):

@@ -431,9 +431,21 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % rnd_3_id,
                       data, su_to='LilyOfTheWest')
 
-    data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
+                      {'post': True}, su_to='LilyOfTheWest')
+
+    resp = fetch_json(url_base + '/admin/round/%s/pause' % rnd_3_id,
+                      {'post': True}, su_to='LilyOfTheWest')
+
+    # remove jf and eff
+    data = {'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Jimbo Wales']}
+    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % rnd_3_id,
                       data, su_to='LilyOfTheWest')
+
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
+                      {'post': True}, su_to='LilyOfTheWest')
 
     submit_ratings(url_base, rnd_3_id)
 
