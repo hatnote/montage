@@ -116,6 +116,7 @@
                                 Edit Round
                             </md-button>
                         </md-menu-item>
+                        <md-menu-divider></md-menu-divider>
                         <md-menu-item>
                             <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
                                     ng-click="$ctrl.activateRound(round)">
@@ -132,13 +133,16 @@
                 </md-menu>
             </div>
             <div class="campaign__round-details"
+                 layout="row" layout-align="space-between start"
                  ng-show="$ctrl.roundDetails[round.id]">
                 <div class="spinner__container" layout="row" layout-align="center center"
                     ng-show="$ctrl.roundDetails[round.id] === 'loading'">
                     <md-progress-circular md-diameter="40"></md-progress-circular>
                 </div>
-                <strong class="campaign__directions">Progress</strong>
-                <div layout="column" layout-align="start stretch" flex="50">
+                <div layout="column" layout-align="start stretch" flex="50"
+                     ng-show="$ctrl.roundDetails[round.id] !== 'loading'">
+                    <strong class="campaign__directions">Progress</strong>
+                    <span class="campaign__juror-progress">{{$ctrl.roundDetails[round.id].total_open_tasks}} tasks out of {{$ctrl.roundDetails[round.id].total_tasks}} ({{$ctrl.roundDetails[round.id].percent_tasks_open | number: 0}}%) needs review.</span>
                     <div class="campaign__juror-progress"
                          layout="row" layout-align="space-between center"
                          ng-repeat="juror in $ctrl.roundDetails[round.id].jurors | orderBy : 'username'">
@@ -157,6 +161,14 @@
                             ng-if="!juror.stats.total_tasks">
                             No tasks assigned
                         </span>
+                    </div>
+                </div>
+                <div layout="column" layout-align="start stretch" flex="50"
+                     ng-show="$ctrl.roundDetails[round.id] !== 'loading'">
+                    <strong class="campaign__directions">Voting Stats</strong>
+                    <div class="campaign__juror-progress"
+                         ng-repeat="(rate, count) in $ctrl.roundPreview[round.id].ratings">
+                        {{rate * 4 + 1}} / 5: {{count}} {{count === 1 ? "image" : "images"}}
                     </div>
                 </div>
             </div>

@@ -30,6 +30,7 @@ const CampaignComponent = {
         vm.openRound = openRound;
         vm.pauseRound = pauseRound;
         vm.roundDetails = {};
+        vm.roundPreview = {};
         vm.saveCampaignName = saveCampaignName;
         vm.showRoundMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
@@ -219,8 +220,13 @@ const CampaignComponent = {
         function loadRoundDetails(round) {
             const id = round.id;
             vm.roundDetails[id] = 'loading';
-            userService.admin.getRound(id).then((response) => {
-                vm.roundDetails[id] = response.data;
+
+            $q.all({
+                round: userService.admin.getRound(id),
+                preview: userService.admin.previewRound(round.id)
+            }).then((response) => {
+                vm.roundDetails[id] = response.round.data;
+                vm.roundPreview[id] = response.preview.data;
             });
         }
 
