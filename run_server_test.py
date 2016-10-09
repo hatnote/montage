@@ -417,6 +417,24 @@ def full_run(url_base, remote):
                       {'post': True}, su_to='LilyOfTheWest')
     pprint(resp['data'])
 
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/pause' % rnd_3_id,
+                      data, su_to='LilyOfTheWest')
+
+    # adding jimbo
+    data = {'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'Jimbo Wales']}
+
+    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % rnd_3_id,
+                      data, su_to='LilyOfTheWest')
+
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
+                      data, su_to='LilyOfTheWest')
+
     submit_ratings(url_base, rnd_3_id)
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_3_id,

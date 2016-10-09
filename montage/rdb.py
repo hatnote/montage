@@ -837,7 +837,7 @@ class CoordinatorDAO(UserDAO):
                          % (round_entry.entry.upload_date, min_date, max_date))
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
-            
+
             for task in round_entry.tasks:
                 task.cancel_date = cancel_date
 
@@ -1217,7 +1217,7 @@ class CoordinatorDAO(UserDAO):
         # round is complete or cancelled.
         if not getattr(new_jurors, 'username', None):
             new_jurors = [self.get_or_create_user(j, 'juror', round=rnd)
-                           for j in new_jurors]
+                          for j in new_jurors]
 
         if rnd.quorum > len(new_jurors):
             raise InvalidAction('expected at least %s jurors to make quorum'
@@ -1638,16 +1638,17 @@ def create_initial_tasks(rdb_session, rnd):
     if rnd.vote_method in ('yesno', 'rating'):
         ret = create_initial_rating_tasks(rdb_session, rnd)
     elif rnd.vote_method == 'ranking':
-        ret = create_initial_ranking_tasks(rdb_session, rnd)
+        ret = create_ranking_tasks(rdb_session, rnd)
     else:
         raise ValueError('invalid round vote method: %r' % rnd.vote_method)
     return ret
 
 
-def create_initial_ranking_tasks(rdb_session, rnd):
+def create_ranking_tasks(rdb_session, rnd, jurors=None):
     ret = []
 
-    jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if jurors is None:
+        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
     if not jurors:
         raise InvalidAction('expected round with active jurors')
 
@@ -1716,7 +1717,62 @@ def create_initial_rating_tasks(rdb_session, rnd):
     return ret
 
 
-def reassign_tasks(session, rnd, new_jurors):
+def reassign_tasks(session, rnd, new_jurors, strategy=None):
+    if rnd.vote_method in ('yesno', 'rating'):
+        ret = reassign_rating_tasks(session, rnd, new_jurors,
+                                    strategy=strategy)
+    elif rnd.vote_method == 'ranking':
+        ret = reassign_ranking_tasks(session, rnd, new_jurors,
+                                     strategy=strategy)
+    else:
+        raise ValueError('invalid round vote method: %r' % rnd.vote_method)
+    return ret
+
+
+def reassign_ranking_tasks(session, rnd, new_jurors, strategy=None):
+    assert len(new_jurors) > 0
+
+    old_jurors = session.query(User)\
+                        .join(RoundJuror)\
+                        .filter_by(round=rnd, is_active=True)\
+                        .all()
+
+    """
+    For all removed jurors, cancel their tasks.
+    For all added jurors, create their tasks.
+    """
+    old_juror_id_set = set([j.id for j in old_jurors])
+    new_juror_id_set = set([j.id for j in new_jurors])
+    if new_juror_id_set == old_juror_id_set:
+        return
+    removed_jurors = [j for j in old_jurors if j.id not in new_juror_id_set]
+    added_jurors = [j for j in new_jurors if j.id not in old_juror_id_set]
+
+    now = datetime.datetime.utcnow()
+
+    tasks_to_cancel = []
+    if removed_jurors:
+        removed_juror_ids = [j.id for j in removed_jurors]
+        tasks_to_cancel = (session.query(Task)
+                           .filter_by(complete_date=None,
+                                      cancel_date=None)
+                           .filter(Task.user_id.in_(removed_juror_ids))
+                           .join(RoundEntry)
+                           .filter_by(round=rnd).all())
+        for task in tasks_to_cancel:
+            task.cancel_date = now
+
+    added_tasks = []
+    if added_jurors:
+        added_tasks = create_ranking_tasks(session, rnd, jurors=added_jurors)
+
+    ret = {'reassigned_task_count': len(tasks_to_cancel) + len(added_tasks),
+           'task_count_mean': -1}
+
+    return ret
+
+
+def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
     """Different strategies for different outcomes:
 
     1. Try to balance toward everyone having cast roughly the same
@@ -1744,10 +1800,6 @@ def reassign_tasks(session, rnd, new_jurors):
 
     assert len(new_jurors) >= rnd.quorum
 
-    all_jurors = session.query(User)\
-                        .join(Rating, RoundEntry)\
-                        .filter_by(round_id=rnd.id)\
-                        .all()
     cur_tasks = session.query(Task)\
                        .options(joinedload('round_entry'))\
                        .join(RoundEntry)\
