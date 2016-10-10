@@ -43,7 +43,7 @@
         <div class="campaign__round md-primary md-hue-1"
              layout="column" layout-align="start stretch"
              ng-repeat="round in $ctrl.campaign.rounds"
-             ng-class="'campaign__round--inactive'">
+             ng-class="round.status === 'finalized' ? 'campaign__round--inactive' : 'campaign__round--active'">
             <div class="spinner__container" layout="row" layout-align="center center"
                  ng-show="round.loading">
                 <md-progress-circular md-diameter="40"></md-progress-circular>
@@ -118,22 +118,23 @@
                         </md-menu-item>
                         <md-menu-divider></md-menu-divider>
                         <md-menu-item>
-                            <md-button ng-disabled="round.status === 'active' || round.status === 'completed'"
+                            <md-button ng-disabled="round.status === 'active' || round.status === 'finalized'"
                                     ng-click="$ctrl.activateRound(round)">
                                 Activate Round
                             </md-button>
                         </md-menu-item>
                         <md-menu-item>
-                            <md-button ng-disabled="round.status === 'paused' || round.status === 'completed'"
+                            <md-button ng-disabled="round.status === 'paused' || round.status === 'finalized'"
                                     ng-click="$ctrl.pauseRound(round)">
                                 Pause Round
                             </md-button>
                         </md-menu-item>
-			<md-menu-item>
-			    <md-button ng-click="$ctrl.cancelRound(round)">
-			        Cancel Round
-			    </md-button>
-			</md-menu-item>
+                        <md-menu-item>
+                            <md-button ng-disabled="round.status === 'finalized'"
+                                       ng-click="$ctrl.cancelRound(round)">
+                                Cancel Round
+                            </md-button>
+                        </md-menu-item>
                     </md-menu-content>
                 </md-menu>
             </div>
