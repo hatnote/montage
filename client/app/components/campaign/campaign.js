@@ -1,4 +1,5 @@
 import moment from 'moment';
+import _ from 'lodash';
 
 import './campaign.scss';
 import templateAdmin from './campaign-admin.tpl.html';
@@ -28,7 +29,7 @@ const CampaignComponent = {
         vm.nameEdit = '';
         vm.openRound = openRound;
         vm.pauseRound = pauseRound;
-	vm.cancelRound = cancelRound;
+        vm.cancelRound = cancelRound;
         vm.roundDetails = {};
         vm.roundPreview = {};
         vm.saveCampaignName = saveCampaignName;
@@ -82,7 +83,7 @@ const CampaignComponent = {
             });
         }
 
-        function createRound(round, loading) {
+        function createRound(round, loading, prevRoundId) {
             let round_ = angular.copy(round);
             round_ = angular.extend(round_, {
                 jurors: round.jurors.map((element) => element.name),
@@ -127,7 +128,7 @@ const CampaignComponent = {
             loading.window = true;
             round_.imports ?
                 addFirstRound(vm.campaign.id, round_, loading) :
-                addNextRound(vm.campaign.id, round_, loading);
+                addNextRound(prevRoundId, round_, loading);
         }
 
         function addFirstRound(id, round, loading) {
@@ -200,6 +201,7 @@ const CampaignComponent = {
                     name: user.username
                 }));
                 scope.round.imports = undefined;
+                scope.prevRound = _.last(vm.campaign.rounds);
             }
 
             dialogService.show({

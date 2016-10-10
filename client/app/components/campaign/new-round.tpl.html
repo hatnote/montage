@@ -7,6 +7,7 @@
         <md-dialog-content>
             <div class="md-dialog-content" layout="column" layout-align="start stretch">
                 <h2 class="md-title no-margin dialog__title">Add Round</h2>
+                <span class="muted" ng-show="prevRound">based on results of {{prevRound.name}}</span>
                 <md-input-container class="dialog__name">
                     <label>Round Name</label>
                     <input type="text" ng-model="round.name" required>
@@ -85,7 +86,7 @@
             <md-button ng-click="cancel()">
                 Cancel
             </md-button>
-            <md-button class="md-primary" ng-click="createRound(round, loading)">
+            <md-button class="md-primary" ng-click="createRound(round, loading, prevRound.id)">
                 Create
             </md-button>
         </md-dialog-actions>
