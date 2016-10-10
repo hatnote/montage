@@ -173,7 +173,7 @@
                     <strong class="campaign__directions">Voting Stats</strong>
                     <div class="campaign__juror-progress"
                          ng-repeat="(rate, count) in $ctrl.roundPreview[round.id].ratings">
-                        {{rate * 4 + 1}} / 5: {{count}} {{count === 1 ? "image" : "images"}}
+                        {{rate * 4 + 1 | number: 2}} / 5: {{count}} {{count === 1 ? "image" : "images"}}
                     </div>
                     <span flex></span>
                     <md-button ng-click="$ctrl.addRound($event)"
