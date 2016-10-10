@@ -199,7 +199,7 @@ const CampaignComponent = {
                         category: ''
                     }
                 },
-                preview: vm.campaign.active_round ? vm.roundPreview[vm.campaign.active_round.id] : false,
+                preview: vm.campaign.rounds.length ? vm.roundPreview[_.last(vm.campaign.rounds).id] : false,
                 createRound: createRound,
                 searchCategory: (name) => dataService.searchCategory(name).then((response) => {
                     return response.data[1].map((element) => element.substring(9));
