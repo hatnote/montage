@@ -28,6 +28,7 @@ const CampaignComponent = {
         vm.nameEdit = '';
         vm.openRound = openRound;
         vm.pauseRound = pauseRound;
+	vm.cancelRound = cancelRound;
         vm.roundDetails = {};
         vm.roundPreview = {};
         vm.saveCampaignName = saveCampaignName;
@@ -64,6 +65,16 @@ const CampaignComponent = {
         function activateRound(round) {
             round.loading = true;
             userService.admin.activateRound(round.id).then((response) => {
+                round.loading = false;
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
+            });
+        }
+
+        function cancelRound(round) {
+            round.loading = true;
+            userService.admin.cancelRound(round.id).then((response) => {
                 round.loading = false;
                 response.error ?
                     alertService.error(response.error) :

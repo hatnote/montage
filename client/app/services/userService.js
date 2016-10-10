@@ -23,6 +23,7 @@ const UserService = function ($http, $q, $window) {
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
     editJurors: (id, data) => $http.post(base + 'admin/round/' + id + '/edit_jurors', data).then(getData, getData),
     editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
+    cancelRound: (id) => $http.post(base + 'admin/round/' + id + '/cancel').then(getData, getData),
 
     previewRound: (id) => $http.get(base + 'admin/round/' + id + '/preview_results').then(getData, getData),
     advanceRound: (id, data) => $http.post(base + 'admin/round/' + id + '/advance', data).then(getData, getData),
