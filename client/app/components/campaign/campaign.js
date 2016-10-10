@@ -73,13 +73,26 @@ const CampaignComponent = {
             });
         }
 
-        function cancelRound(round) {
-            round.loading = true;
-            userService.admin.cancelRound(round.id).then((response) => {
-                round.loading = false;
-                response.error ?
-                    alertService.error(response.error) :
-                    $state.reload();
+        function cancelRound(round, event) {
+
+            let confirm = $mdDialog.confirm()
+                .title('Cancelling Round')
+                .textContent('Are you sure you want to cancel this round?')
+                .ariaLabel('Cancelling Round')
+                .targetEvent(event)
+                .ok('Yes, Cancel Round')
+                .cancel('No, Keep Round');
+
+            $mdDialog.show(confirm).then(() => {
+                round.loading = true;
+                userService.admin.cancelRound(round.id).then((response) => {
+                    round.loading = false;
+                    response.error ?
+                        alertService.error(response.error) :
+                        $state.reload();
+                });
+            }, () => {
+                // round kept
             });
         }
 
