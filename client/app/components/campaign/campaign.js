@@ -336,11 +336,10 @@ const CampaignComponent = {
 
         function saveEditRound(round, loading) {
             loading.window = true;
+	    round.new_jurors = round.jurors.map((user) => user.name);
 
-            const jurors = round.jurors.map((user) => user.name);
             $q.all({
-                round: userService.admin.editRound(round.id, round),
-                jurors: userService.admin.editJurors(round.id, { new_jurors: jurors })
+                round: userService.admin.editRound(round.id, round)
             }).then((response) => {
                 if (response.round.error) {
                     loading.window = false;

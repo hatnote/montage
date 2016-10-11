@@ -21,7 +21,6 @@ const UserService = function ($http, $q, $window) {
 
     populateRound: (id, data) => $http.post(base + 'admin/round/' + id + '/import', data).then(getData, getData),
     editCampaign: (id, data) => $http.post(base + 'admin/campaign/' + id + '/edit', data).then(getData, getData),
-    editJurors: (id, data) => $http.post(base + 'admin/round/' + id + '/edit_jurors', data).then(getData, getData),
     editRound: (id, data) => $http.post(base + 'admin/round/' + id + '/edit', data).then(getData, getData),
     cancelRound: (id) => $http.post(base + 'admin/round/' + id + '/cancel').then(getData, getData),
 
