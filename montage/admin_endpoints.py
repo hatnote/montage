@@ -34,7 +34,6 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/pause', pause_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
-           POST('/admin/round/<round_id:int>/edit_jurors', modify_jurors),
            POST('/admin/round/<round_id:int>/cancel', cancel_round),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
@@ -324,7 +323,8 @@ def edit_round(rdb_session, user, round_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    column_names = ['name', 'description', 'directions', 'config']
+    column_names = ['name', 'description', 'directions', 
+                    'config', 'new_jurors', 'deadline_date']
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
     #  - quorum: [requires reallocation]
@@ -333,12 +333,17 @@ def edit_round(rdb_session, user, round_id, request_dict):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
+    if not rnd:
+        raise DoesNotExist()
+
     new_val_map = {}
 
     for column_name in column_names:
         # val = request_dict.pop(column_name, None)  # see note below
         val = request_dict.get(column_name)
         if val is not None:
+            if column_name == 'deadline_date':
+                val = js_isoparse(val)
             setattr(rnd, column_name, val)
             new_val_map[column_name] = val
 
@@ -346,6 +351,17 @@ def edit_round(rdb_session, user, round_id, request_dict):
     # if request_dict:
     #     raise InvalidAction('unable to modify round attributes: %r'
     #                         % request_dict.keys())
+
+    new_juror_names = new_val_map.get('new_jurors')
+    old_juror_names = [u.username for u in rnd.jurors]
+
+    import pdb;pdb.set_trace()
+
+    if new_juror_names and set(new_juror_names) != set(old_juror_names):
+        if rnd.status != 'paused':
+            raise InvalidAction('round must be paused to edit jurors')
+        else:
+            rnd = coord_dao.modify_jurors(rnd, new_val_map['new_jurors'])
 
     return {'data': new_val_map}
 
@@ -361,38 +377,6 @@ def cancel_round(rdb_session, user, round_id):
 
     stats = rnd.get_count_map()
     return {'data': stats}
-
-
-def modify_jurors(rdb_session, user, round_id, request_dict):
-    """
-    Summary: Post a new campaign
-
-    Request model:
-        campaign_name:
-            type: string
-
-    Response model: AdminCampaignDetails
-    """
-    rnd_dict = {}
-    new_jurors = request_dict.get('new_jurors')
-
-    if not new_jurors:
-        raise InvalidAction()
-
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-
-    # TODO: Check if the number of jurors is valid (eg more than quorum)?
-
-    if not rnd:
-        raise DoesNotExist()
-
-    if rnd.status != 'paused':
-        raise InvalidAction('round must be paused to edit jurors')
-
-    rnd = coord_dao.modify_jurors(rnd, new_jurors)
-
-    return {'data': rnd_dict}
 
 
 def get_round_results_preview(rdb_session, user, round_id):
