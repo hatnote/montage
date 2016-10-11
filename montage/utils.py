@@ -86,7 +86,7 @@ def get_threshold_map(ratings_map):
     ratings_map[0.0] = ratings_map.get(0.0, 0)
     ratings_map[1.0] = ratings_map.get(1.0, 0)
     ratings = ratings_map.keys()
-    for rating in ratings:
+    for rating in sorted(ratings):
         rating = round(rating, 3)
         total_gte = sum([v for k, v in ratings_map.items() if k >= rating])
         thresh_counts[rating] = total_gte

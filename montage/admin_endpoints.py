@@ -38,10 +38,10 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
-           GET('/admin/round/<round_id:int>/disqualified', 
+           GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
-           POST('/admin/round/<round_id:int>/autodisqualify', 
-               autodisqualify),
+           POST('/admin/round/<round_id:int>/autodisqualify',
+                autodisqualify),
            GET('/maintainer', get_maint_index),
            GET('/admin/round/<round_id:int>/download', download_results),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
@@ -323,7 +323,7 @@ def edit_round(rdb_session, user, round_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    column_names = ['name', 'description', 'directions', 
+    column_names = ['name', 'description', 'directions',
                     'config', 'new_jurors', 'deadline_date']
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
@@ -355,8 +355,6 @@ def edit_round(rdb_session, user, round_id, request_dict):
     new_juror_names = new_val_map.get('new_jurors')
     old_juror_names = [u.username for u in rnd.jurors]
 
-    import pdb;pdb.set_trace()
-
     if new_juror_names and set(new_juror_names) != set(old_juror_names):
         if rnd.status != 'paused':
             raise InvalidAction('round must be paused to edit jurors')
@@ -369,10 +367,10 @@ def edit_round(rdb_session, user, round_id, request_dict):
 def cancel_round(rdb_session, user, round_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    
+
     if not rnd:
         raise Forbidden('cannot access round')
-        
+
     coord_dao.cancel_round(rnd)
 
     stats = rnd.get_count_map()
@@ -615,12 +613,12 @@ def download_results(rdb_session, user, round_id, request_dict):
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
-    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames, 
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames,
                                        restval=None)
     # na means this entry wasn't assigned
 
     csv_writer.writeheader()
-    
+
     for filename, ratings in results_by_name.items():
         csv_row = {'filename': filename}
         valid_ratings = [r for r in ratings.values() if type(r) is not str]
@@ -630,8 +628,8 @@ def download_results(rdb_session, user, round_id, request_dict):
         csv_writer.writerow(csv_row)
 
     ret = output.getvalue()
-    resp = Response(ret, mimetype='text/csv')                                                                                         
-    resp.mimetype_params['charset'] = 'utf-8'                                                                                               
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
     resp.headers["Content-Disposition"] = "attachment; filename=montage_vote_report.csv"
     return resp
 
@@ -676,7 +674,7 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
 def get_disqualified(rdb_session, user, round_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
-    
+
     round_entries = coord_dao.get_disqualified(rnd)
 
     data = [re.to_dq_details() for re in round_entries]

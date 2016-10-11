@@ -174,7 +174,7 @@ class Campaign(Base):
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
         ret = self.to_info_dict()
-        ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds] 
+        ret['rounds'] = [rnd.to_info_dict() for rnd in self.rounds]
         # should this exclude cancelled rounds?
         ret['coordinators'] = [user.to_info_dict() for user in self.coords]
         active_rnd = self.active_round
@@ -1172,10 +1172,13 @@ class CoordinatorDAO(UserDAO):
 
             all_inputs.append(cur_input)
 
-        snpr = SchulzeNPR(all_inputs,
-                          ballot_notation='grouping')
-        # Note: attribute error on SchulzeNPR.BALLOT_NOTATION_GROUPING
-        # Is this a version issue on python-vote-core?
+        # If the following line errors, you have a the wrong version
+        # of python-vote-core. make sure you have the github version
+        # installed, referenced in the requirements.txt.
+        # # pip install -r requirements.txt
+        notation_style = SchulzeNPR.BALLOT_NOTATION_GROUPING  # see note above
+        snpr = SchulzeNPR(all_inputs, ballot_notation=notation_style)
+
         snpr_res = snpr.as_dict()
 
         ret = []
