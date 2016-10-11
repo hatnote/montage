@@ -135,6 +135,12 @@
                                 Cancel Round
                             </md-button>
                         </md-menu-item>
+			<md-menu-item>
+                            <md-button ng-disabled="round.status !== 'finalized'"
+                                       ng-click="$ctrl.downloadRound(round)">
+                                Download Results
+                            </md-button>
+                        </md-menu-item>
                     </md-menu-content>
                 </md-menu>
             </div>
