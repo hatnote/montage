@@ -1337,7 +1337,6 @@ class OrganizerDAO(CoordinatorDAO):
     # Read methods
     def get_all_campaigns(self):
         campaigns = self.query(Campaign)\
-                        .option(joinedload('round'))\
                         .all()
         return campaigns
 
