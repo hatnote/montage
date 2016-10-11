@@ -16,7 +16,8 @@ from sqlalchemy import (Text,
                         Boolean,
                         DateTime,
                         TIMESTAMP,
-                        ForeignKey)
+                        ForeignKey,
+                        inspect)
 from sqlalchemy.sql import func, asc
 from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
@@ -241,7 +242,6 @@ class Round(Base):
         # inspect(self).session (might be None if not attached), only
         # disadvantage is that user is not available to do permissions
         # checking.
-        from sqlalchemy import inspect
         rdb_session = inspect(self).session
         if not rdb_session:
             # TODO: just make a session
@@ -275,6 +275,29 @@ class Round(Base):
                 'percent_tasks_open': percent_open,
                 'total_cancelled_tasks': cancelled_task_count,
                 'total_disqualified_entries': dq_entry_count}
+
+    def is_closeable(self):
+        rdb_session = inspect(self).session
+        
+        if not rdb_session:
+            # TODO: see above
+            raise RuntimeError('cannot get counts for detached Round')
+        '''
+        open_tasks = rdb_session.query(Task)\
+                                .filter(Task.round_entry.has(round_id=self.id),
+                                        Task.complete_date == None,
+                                        Task.cancel_date == None)\
+                                .count()
+        '''
+        if self.entries and self.status == 'active' or self.status == 'paused':
+            open_tasks = rdb_session.query(Task)\
+                                    .options(joinedload('round_entry'))\
+                                    .filter(Task.round_entry.has(round_id=self.id),
+                                            Task.complete_date == None,
+                                            Task.cancel_date == None)\
+                                    .first()
+            return not open_tasks
+        return False
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -321,7 +344,6 @@ class RoundJuror(Base):
             self.user = user
 
     def get_count_map(self):
-        from sqlalchemy import inspect
         rdb_session = inspect(self).session
         if not rdb_session:
             # TODO: just make a session
@@ -739,9 +761,11 @@ class CoordinatorDAO(UserDAO):
                           .count()
         total_open_tasks = self.query(Task)\
                                .filter(Task.round_entry.has(round_id=rnd.id),
+                                       Task.user_id == self.user.id,
                                        Task.complete_date == None,
                                        Task.cancel_date == None)\
                                .count()
+
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
         else:
