@@ -281,7 +281,7 @@ def full_run(url_base, remote):
                            u'Jean-Frédéric',
                            u'Jimbo Wales']}
 
-    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % round_id,
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
                       data, su_to='LilyOfTheWest')
 
 
@@ -369,7 +369,7 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
                       su_to='LilyOfTheWest')
-    # pprint(resp['data'])
+    pprint(resp['data'])
 
     rnd_data = {'name': 'Test advance to rating round',
                 'vote_method': 'rating',
@@ -435,7 +435,7 @@ def full_run(url_base, remote):
                            u'Jean-Frédéric',
                            u'Jimbo Wales']}
 
-    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % rnd_3_id,
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % rnd_3_id,
                       data, su_to='LilyOfTheWest')
 
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
@@ -448,7 +448,7 @@ def full_run(url_base, remote):
     data = {'new_jurors': [u'Slaporte',
                            u'MahmoudHashemi',
                            u'Jimbo Wales']}
-    resp = fetch_json(url_base + '/admin/round/%s/edit_jurors' % rnd_3_id,
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % rnd_3_id,
                       data, su_to='LilyOfTheWest')
 
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
