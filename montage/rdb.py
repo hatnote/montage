@@ -1714,6 +1714,7 @@ def create_initial_rating_tasks(rdb_session, rnd):
                                                  for j in jurors])
 
     pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
+
     for entry, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'
         if entry is None:
@@ -1722,7 +1723,6 @@ def create_initial_rating_tasks(rdb_session, rnd):
         # TODO: bulk_save_objects
         task = Task(user=juror, round_entry=entry)
         ret.append(task)
-
     return ret
 
 
@@ -1844,7 +1844,10 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
         reassg_tasks.extend(user_tasks[target_workload:])
         target_work_map[user] = user_tasks[:target_workload]
         for task in target_work_map[user]:
-            elig_map[task.round_entry].remove(user)
+            try:
+                elig_map[task.round_entry].remove(user)
+            except ValueError:
+                pass
 
     # and now the distribution of tasks begins
 
