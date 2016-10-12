@@ -35,7 +35,7 @@ const RoundComponent = {
 
         // rating exclusives
         vm.rating = {
-            all: vm.images.length,
+            //all: vm.images.length,
             current: vm.images[0],
             currentIndex: 0,
             getNext: getNextImage,
@@ -54,6 +54,8 @@ const RoundComponent = {
         }
 
         function getImageName(image) {
+            if (!image) return;
+
             const entry = image.entry;
             const name = encodeURIComponent(entry.name);
             const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
@@ -67,10 +69,8 @@ const RoundComponent = {
             return url + 1280;
         }
 
-        function getNextImage(next) {
-            if (next) {
-                vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.rating.all;
-            }
+        function getNextImage() {
+            vm.rating.currentIndex++;
             vm.rating.current = vm.images[vm.rating.currentIndex];
             vm.rating.next = vm.images[vm.rating.currentIndex + 1];
         }
@@ -144,35 +144,45 @@ const RoundComponent = {
             $window.open(url, '_blank');
         }
 
-        function setRate(rate) {
-            const current = vm.rating.current;
-            const rating = (rate - 1) / 4;
+        let ratings = [];
+        let skips = 0;
+
+        function sendRates(rates, skips) {
             vm.loading = true;
-
             userService.juror.setRating(vm.round.id, {
-                'ratings': [{
-                    'task_id': current.id,
-                    'value': rating
-                }]
+                ratings: rates
             }).then(() => {
-                _.pull(vm.images, current);
-                getCounter++;
-                vm.stats.total_open_tasks--;
-                vm.rating.all = vm.images.length;
-                vm.rating.getNext();
+                userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
 
-                if (getCounter === 5) {
-                    getCounter = 0;
-                    userService.juror.getRoundTasks(vm.round.id).then((response) => {
-                        let newImages = response.data.tasks;
-                        [].push.apply(vm.images, newImages);
-                        vm.images = _.uniqBy(vm.images, 'round_entry_id');
-                        vm.loading = false;
-                    });
-                } else {
+                    vm.images = response.data.tasks;
+                    vm.rating.current = vm.images[0];
+                    vm.rating.currentIndex = 0;
+                    vm.rating.next = vm.images[1];
+
                     vm.loading = false;
-                }
+                });
             });
+        }
+
+        function setRate(rate) {
+            if (rate) {
+                const rating = (rate - 1) / 4;
+                ratings.push({
+                    'task_id': vm.rating.current.id,
+                    'value': rating
+                });
+                vm.stats.total_open_tasks--;
+            } else {
+                skips++;
+            }
+
+            if (getCounter === 4) {
+                getCounter = 0;
+                sendRates(ratings, skips);
+            } else {
+                getCounter++;
+                vm.rating.getNext();
+            }
         }
     },
     template: `<ng-include src="'round-template'"/>`
