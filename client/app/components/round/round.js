@@ -70,9 +70,9 @@ const RoundComponent = {
         }
 
         function getNextImage() {
-            vm.rating.currentIndex++;
+            vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.images.length;
             vm.rating.current = vm.images[vm.rating.currentIndex];
-            vm.rating.next = vm.images[vm.rating.currentIndex + 1];
+            vm.rating.next = vm.images[(vm.rating.currentIndex + 1) % vm.images.length];
         }
 
         function getTemplate() {
@@ -152,8 +152,11 @@ const RoundComponent = {
             userService.juror.setRating(vm.round.id, {
                 ratings: rates
             }).then(() => {
-                userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
+                if(vm.stats.total_open_tasks <= 10) {
+                    skips = 0;
+                }
 
+                userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
                     vm.images = response.data.tasks;
                     vm.rating.current = vm.images[0];
                     vm.rating.currentIndex = 0;
@@ -176,7 +179,7 @@ const RoundComponent = {
                 skips++;
             }
 
-            if (getCounter === 4) {
+            if (getCounter === 4 || !vm.stats.total_open_tasks) {
                 getCounter = 0;
                 sendRates(ratings, skips);
             } else {
