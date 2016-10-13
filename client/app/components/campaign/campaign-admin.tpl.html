@@ -135,6 +135,12 @@
                                 Cancel Round
                             </md-button>
                         </md-menu-item>
+			<md-menu-item>
+                            <md-button ng-disabled="round.status !== 'finalized'"
+                                       ng-click="$ctrl.downloadRound(round)">
+                                Download Results
+                            </md-button>
+                        </md-menu-item>
                     </md-menu-content>
                 </md-menu>
             </div>
@@ -171,18 +177,24 @@
                 </div>
                 <div layout="column" layout-align="start start" flex="50"
                      ng-show="$ctrl.roundDetails[round.id] !== 'loading'">
+<!--
                     <strong class="campaign__directions">Voting Stats</strong>
                     <div class="campaign__juror-progress"
                          ng-repeat="(rate, count) in $ctrl.roundPreview[round.id].ratings">
                         {{rate * 4 + 1 | number: 2}} / 5: {{count}} {{count === 1 ? "image" : "images"}}
                     </div>
                     <span flex></span>
-                    <md-button ng-click="$ctrl.addRound($event)"
-                               ng-disabled="!$ctrl.roundPreview[round.id].is_closeable || !$last">
-                        <md-tooltip md-direction="right">Add new round</md-tooltip>
-                        <md-icon>add</md-icon>
-                        <span>Add next round</span>
-                    </md-button>
+-->
+                    <div class="campaign__rounds-add"
+                         layout="row" layout-align="space-between center"
+                         ng-show="$ctrl.campaign.rounds.length">
+                        <md-button ng-click="$ctrl.addRound($event)"
+                                   ng-disabled="true">
+                            <md-tooltip md-direction="right">Add new round</md-tooltip>
+                            <md-icon>add</md-icon>
+                            <span>Add next round</span>
+                        </md-button>
+                    </div>
                 </div>
             </div>
         </div>

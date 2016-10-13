@@ -33,7 +33,7 @@
                         <div class="md-list-item-text">
                             <md-select class="dialog__input" ng-model="round.threshold">
                                 <md-option ng-repeat="(key, value) in preview.thresholds" ng-value="key">
-                                    {{key}} ({{value}} images passed)
+                                    {{value}} entries (average score of {{key}})
                                 </md-option>
                             </md-select>
                             <p>Threshold</p>

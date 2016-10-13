@@ -30,6 +30,7 @@ const CampaignComponent = {
         vm.openRound = openRound;
         vm.pauseRound = pauseRound;
         vm.cancelRound = cancelRound;
+        vm.downloadRound = downloadRound;
         vm.roundDetails = {};
         vm.roundPreview = {};
         vm.saveCampaignName = saveCampaignName;
@@ -95,6 +96,11 @@ const CampaignComponent = {
                 // round kept
             });
         }
+
+	function downloadRound(round) {
+	    let dl_url = userService.admin.downloadRound(round.id);
+	    window.open(dl_url);
+	}
 
         function createRound(round, loading, prevRoundId) {
             let round_ = angular.copy(round);

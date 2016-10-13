@@ -37,7 +37,7 @@
             </md-icon>
         </md-button>
         <md-button class="md-icon-button image__skip-btn"
-                   ng-click="$ctrl.rating.getNext(true)">
+                   ng-click="$ctrl.rating.setRate()">
             <md-icon>
                 skip_next
                 <md-tooltip>Skip voting on this file</md-tooltip>
@@ -71,7 +71,7 @@
                 </md-icon>
             </md-button>
             <span class="image__divider">|</span>
-            <md-button class="image__skip-btn" ng-click="$ctrl.rating.getNext(true)">
+            <md-button class="image__skip-btn" ng-click="$ctrl.rating.setRate()">
                 <md-tooltip>Skip voting on this file</md-tooltip>
                 Skip
             </md-button>

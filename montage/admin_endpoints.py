@@ -46,6 +46,7 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/download', download_results),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
+           GET('/maintainer/round/<round_id:int>/download', download_results),
            # TODO: split out into round/campaign log endpoints
            GET('/maintainer/audit_logs', get_audit_logs)]
     return ret
@@ -588,16 +589,24 @@ def get_round(rdb_session, user, round_id):
 
 
 def download_results(rdb_session, user, round_id, request_dict):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
+    # TODO: Quick hacky maintainer access
+    # this should should be standardized throughout
+    if user.is_maintainer:
+        main_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
+        rnd = main_dao.get_round(round_id)
+    else:
+        coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+        rnd = coord_dao.get_round(round_id)
 
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
 
-    if rnd.status != 'finalized':
+    if not user.is_maintainer and rnd.status != 'finalized':
         raise DoesNotExist('round results not yet finalized')
-
-    all_ratings = coord_dao.get_all_ratings(rnd)
+    if user.is_maintainer:
+        all_ratings = main_dao.get_all_ratings(rnd)
+    else:
+        all_ratings = coord_dao.get_all_ratings(rnd)
 
     results_by_name = defaultdict(dict)
 

@@ -27,6 +27,8 @@ const UserService = function ($http, $q, $window) {
     previewRound: (id) => $http.get(base + 'admin/round/' + id + '/preview_results').then(getData, getData),
     advanceRound: (id, data) => $http.post(base + 'admin/round/' + id + '/advance', data).then(getData, getData),
 
+    downloadRound: (id) =>  base + 'admin/round/' + id + '/download',
+
     importCSV: (id) => $http.post(base + 'admin/round/' + id + '/import', {
       import_method: 'gistcsv',
       gist_url: 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
@@ -37,7 +39,7 @@ const UserService = function ($http, $q, $window) {
     get: () => $http.get(base + 'juror').then(getData, getData),
     getCampaign: (id) => $http.get(base + 'juror/campaign/' + id).then(getData, getData),
     getRound: (id) => $http.get(base + 'juror/round/' + id).then(getData, getData),
-    getRoundTasks: (id) => $http.get(base + 'juror/round/' + id + '/tasks').then(getData, getData),
+    getRoundTasks: (id, offset) => $http.get(base + 'juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0)).then(getData, getData),
 
     setRating: (id, data) => $http.post(base + 'juror/round/' + id + '/tasks/submit', data).then(getData, getData)
   };
