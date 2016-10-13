@@ -1821,6 +1821,8 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
     elig_map = defaultdict(lambda: list(new_jurors))
     work_map = defaultdict(list)
 
+    # only complete_date because that indicates that's the only
+    # indicator we have that the user has seen the entry
     comp_tasks = [t for t in cur_tasks if t.complete_date]
     for task in comp_tasks:
         try:
@@ -1829,7 +1831,7 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
             pass
 
     incomp_tasks = [t for t in cur_tasks
-                    if not (t.complete_date or t.cancel_date)]
+                    if not t.complete_date and not t.cancel_date]
 
     for task in incomp_tasks:
         work_map[task.user].append(task)
@@ -1863,16 +1865,23 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
         wcp = [(target_workload - len(w), u)
                for u, w in target_work_map.items()
                if u in eligible_users]
-        wcp = [(p[0] if p[0] > 0 else 0.001, p[1]) for p in wcp]
+        wcp = [(p[0] if p[0] > 0 else 0.0001, p[1]) for p in wcp]
 
         return weighted_choice(wcp)
 
     while reassg_queue:
         task = reassg_queue.pop()
         task.user = choose_eligible(elig_map[task.round_entry])
+
+        # try:  # consider uncommenting this try/except if there are issues
+        elig_map[task.round_entry].remove(task.user)
+        # except ValueError:
+        #    pass
+
         target_work_map[task.user].append(task)
 
     task_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
+
     return {'incomplete_task_count': len(incomp_tasks),
             'reassigned_task_count': len(reassg_tasks),
             'task_count_map': task_count_map,
