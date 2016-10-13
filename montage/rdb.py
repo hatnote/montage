@@ -1863,7 +1863,7 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None):
     target_work_map = dict([(j, []) for j in new_jurors])
     target_workload = int(len(incomp_tasks) / float(len(new_jurors))) + 1
     for user, user_tasks in work_map.items():
-        if user not in new_jurors:
+        if True or user not in new_jurors:  # TODO: quick fix
             reassg_tasks.extend(user_tasks)
             continue
 
