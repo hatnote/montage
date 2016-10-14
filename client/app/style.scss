@@ -62,6 +62,10 @@ footer {
     padding: 0;
 }
 
+.margin__left {
+    margin-left: 15px;
+}
+
 .md-button {
     &.active {
         font-weight: 500;
@@ -71,6 +75,11 @@ footer {
         font-size: 20px;
         margin-top: 2px;
     }
+}
+
+md-tooltip .md-content {
+    height: auto !important;
+    font-size: 12px;
 }
 
 .muted {

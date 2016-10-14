@@ -97,10 +97,10 @@ const CampaignComponent = {
             });
         }
 
-	function downloadRound(round) {
-	    let dl_url = userService.admin.downloadRound(round.id);
-	    window.open(dl_url);
-	}
+        function downloadRound(round) {
+            let dl_url = userService.admin.downloadRound(round.id);
+            window.open(dl_url);
+        }
 
         function createRound(round, loading, prevRoundId) {
             let round_ = angular.copy(round);
@@ -342,7 +342,7 @@ const CampaignComponent = {
 
         function saveEditRound(round, loading) {
             loading.window = true;
-	    round.new_jurors = round.jurors.map((user) => user.name);
+            round.new_jurors = round.jurors.map((user) => user.name);
 
             $q.all({
                 round: userService.admin.editRound(round.id, round)
