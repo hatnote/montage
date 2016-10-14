@@ -82,7 +82,12 @@ def post_frontend_error_log(user, config, request_dict):
 
 def get_frontend_error_log(config, request_dict):
     # TODO
-    return []
+    count = int(request_dict.get('count', DEFAULT_LINE_COUNT))
+    feel_path = config.get('feel_log_path', None)
+    if not feel_path:
+        return ['(no front-end error log configured)']
+
+    return _get_tail_from_path(feel_path, count=count)
 
 
 META_ROUTES = get_meta_routes()

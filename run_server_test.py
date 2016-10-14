@@ -118,8 +118,6 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/logs/feel', err_data, su_to='LilyOfTheWest')
 
     resp = fetch_json(url_base + '/logs/feel', su_to='LilyOfTheWest')
-    print resp
-    return
 
     # Add a coordinator to a camapign
     # - as organizer
