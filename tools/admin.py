@@ -319,6 +319,8 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
     from sqlalchemy.orm import joinedload
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
+    print 'scanning round %s for duplicate tasks and juror eligibility' % rnd_id
+
     session = maint_dao.rdb_session
     rnd = session.query(Round).get(rnd_id)
 
@@ -328,41 +330,51 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                         .all()
 
     cur_tasks = session.query(Task)\
+                       .filter_by(cancel_date=None)\
                        .options(joinedload('round_entry'))\
                        .join(RoundEntry)\
-                       .filter_by(round=rnd)\
+                       .filter_by(round=rnd,
+                                  dq_user_id=None)\
                        .all()
 
     elig_map = defaultdict(lambda: list(cur_jurors))
     dup_map = defaultdict(list)
     # only complete_date because that indicates that's the only
     # indicator we have that the user has seen the entry
-    comp_tasks = [t for t in cur_tasks if t.complete_date]
-    for task in comp_tasks:
-        try:
-            elig_map[task.round_entry].remove(task.user)
-        except ValueError:
-            pass
+    # comp_tasks = [t for t in cur_tasks if t.complete_date]
+    for task in cur_tasks:
+        if task.complete_date:
+            try:
+                elig_map[task.round_entry].remove(task.user)
+            except ValueError:
+                pass
         dup_map[(task.round_entry_id, task.user_id)].append(task)
-    dup_items = [x for x in dup_map.items() if len(x[1]) > 1]
-    print len(cur_tasks), len(dup_items)
-    count = 0
+    dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
+    print 'found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))
+    print 'starting retaskification'
+    reassign_count = 0
+    revert_count = 0
     for _, dup_tasks in dup_items:
         for i, task in enumerate(reversed(dup_tasks)):
             if i == 0:
                 continue  # leave the most recent one alone
-            count += 1
-            task.complete_date = None
+            reassign_count += 1
             new_j = random.choice(elig_map[task.round_entry])
             print task, task.user, new_j
             task.user = new_j
             elig_map[task.round_entry].remove(task.user)
             # the following line makes this safer, but slower
             # also note that sqlalchemy doesn't support limit with its delete
-            assert session.query(Rating).filter_by(task_id=task.id).count() == 1
-            session.query(Rating).filter_by(task_id=task.id).delete()
+            if task.complete_date:
+                revert_count += 1
+                assert session.query(Rating).filter_by(task_id=task.id).count() == 1
+                session.query(Rating).filter_by(task_id=task.id).delete()
+                task.complete_date = None
 
-    print 'reverted %s ratings into tasks' % (count,)
+    print ('reassigned %s tasks and reverted %s ratings for round %s' 
+           % (reassign_count, revert_count, rnd_id))
+    if debug:
+        import pdb;pdb.set_trace()
     return
 
 def reassign(maint_dao, rnd_id, debug=False):
@@ -372,7 +384,7 @@ def reassign(maint_dao, rnd_id, debug=False):
                                   rnd, new_jurors,
                                   reassign_all=True)
 
-    print '++ reassingment stats: '
+    print '++ reassignment stats: '
     pprint(stats)
 
     if debug:
