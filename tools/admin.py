@@ -14,6 +14,7 @@ from montage.rdb import (make_rdb_session,
                          OrganizerDAO,
                          MaintainerDAO,
                          CoordinatorDAO,
+                         reassign_rating_tasks,
                          lookup_user)
 
 from montage.utils import get_threshold_map
@@ -264,6 +265,68 @@ def advance_round(maint_dao, rnd_id, debug):
         import pdb;pdb.set_trace()
     return next_round
 
+def check_dupes(maint_dao, rnd_id, debug=False):
+    dupe_tasks_query = '''
+    SELECT users.username, ratings.value, tasks.id, entries.name 
+    FROM tasks 
+    JOIN ratings 
+    ON tasks.id = ratings.task_id 
+    JOIN round_entries 
+    ON tasks.round_entry_id = round_entries.id 
+    JOIN entries 
+    ON round_entries.entry_id = entries.id 
+    JOIN users 
+    ON tasks.user_id = users.id 
+    WHERE round_entries.round_id = :rnd_id 
+    AND round_entries.dq_user_id IS NULL'''
+
+    dupe_ratings_query = '''
+    SELECT users.username, ratings.value, entries.name 
+    FROM ratings 
+    JOIN round_entries 
+    ON ratings.round_entry_id = round_entries.id 
+    JOIN entries 
+    ON round_entries.entry_id = entries.id 
+    JOIN users 
+    ON ratings.user_id = users.id 
+    WHERE round_entries.round_id = :rnd_id 
+    AND round_entries.dq_user_id IS NULL'''
+    
+    dupe_tasks = maint_dao.rdb_session.execute(dupe_tasks_query, 
+                                               {'rnd_id': rnd_id}).fetchall()
+    dupe_ratings = maint_dao.rdb_session.execute(dupe_ratings_query, 
+                                                 {'rnd_id': rnd_id}).fetchall()
+
+    if len(dupe_ratings) - len(dupe_tasks):
+        print ('-- found %s double-assigned tasks'
+               % len(dupe_tasks))
+        
+    if dupe_ratings:
+        print ('-- found %s double-assigned ratings'
+               % len(dupe_ratings))
+
+    if debug:
+        import pdb;pdb.set_trace()
+
+    return
+
+
+def reassign(maint_dao, rnd_id, debug=False):
+    rnd = maint_dao.get_round(rnd_id)
+    new_jurors = rnd.jurors
+    stats = reassign_rating_tasks(maint_dao.rdb_session, 
+                                  rnd, new_jurors, 
+                                  reassign_all=True)
+
+    print '++ reassingment stats: '
+    pprint(stats)
+
+    if debug:
+        import pdb;pdb.set_trace()
+    return stats
+    
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
@@ -301,6 +364,13 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('--advance-round',
                         help=('finalize a specified round and start the next'),
+                        type=int)
+    parser.add_argument('--check-dupes',
+                        help=('check for double-assigned tasks or ratings in a '
+                        'specified round'),
+                        type=int)
+    parser.add_argument('--reassign',
+                        help=('reassign all the rating tasks in a round'),
                         type=int)
     parser.add_argument('--campaign', help='campaign id', type=int)
     parser.add_argument('--force', action='store_true', 
@@ -355,6 +425,15 @@ if __name__ == '__main__':
     if args.advance_round:
         rnd_id = args.advance_round
         advance_round(maint_dao, rnd_id, args.debug)
+
+    if args.check_dupes:
+        rnd_id = args.check_dupes
+        check_dupes(maint_dao, rnd_id, args.debug)
+
+    if args.reassign:
+        rnd_id = args.reassign
+        reassign(maint_dao, rnd_id, args.debug)
+
 
     #if args.remove_coordinator:
     #    username = args.remove_coordinator
