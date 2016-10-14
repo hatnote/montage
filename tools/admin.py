@@ -297,7 +297,7 @@ def check_dupes(maint_dao, rnd_id, debug=False):
     dupe_ratings = maint_dao.rdb_session.execute(dupe_ratings_query, 
                                                  {'rnd_id': rnd_id}).fetchall()
 
-    if len(dupe_ratings) - len(dupe_tasks):
+    if len(dupe_tasks) - len(dupe_ratings):
         print ('-- found %s double-assigned tasks'
                % len(dupe_tasks))
         
