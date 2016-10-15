@@ -34,6 +34,23 @@ def warn(msg, force=False):
     return
 
 
+def rdb_console(maint_dao):
+    import montage.rdb
+    for m in dir(montage.rdb):
+        locals()[m] = getattr(montage.rdb, m)
+
+    session = maint_dao.rdb_session
+
+    print 'rdb console:'
+    print '  Use session.query() to interact with the db.'
+    print '  Commit modifications with session.commit().\n'
+
+    import pdb;pdb.set_trace()
+
+    return
+
+
+
 def create_campaign(maint_dao, username):
     coord_user = maint_dao.get_or_create_user(username, 'coordinator')
     camp_name = raw_input('?? Campaign name: ')
@@ -483,6 +500,9 @@ if __name__ == '__main__':
     parser.add_argument('--add_organizer',
                         help='add an organizer by username',
                         type=str)
+    parser.add_argument('--rdb-console',
+                        help='drop to a console for interacting with db objects',
+                        action='store_true')
     parser.add_argument('--list',
                         help='list all campaigns and rounds',
                         action='store_true')
@@ -550,6 +570,9 @@ if __name__ == '__main__':
     if args.list:
         campaigns = maint_dao.get_all_campaigns()
         pprint([c.to_details_dict() for c in campaigns])
+
+    if args.rdb_console:
+        rdb_console(maint_dao)
 
     if args.add_organizer:
         new_org = args.organizer
