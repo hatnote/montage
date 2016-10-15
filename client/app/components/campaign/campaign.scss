@@ -99,6 +99,10 @@ mont-campaign {
         margin-top: 10px;
     }
 
+    .campaign__directions-text {
+        white-space: pre-wrap;
+    }
+
     .tag--completed, .tag--finalized {
         background-color: #5cb85c;
     }

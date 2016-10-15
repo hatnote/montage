@@ -1,6 +1,11 @@
 @import '../../variables';
 
 .toolbar {
+    .md-icon-button img {
+        width: 100%;
+        height: 100%;
+    }
+
     h2 sup {
         font-size: 10px;
         opacity: .8;

@@ -11,6 +11,10 @@
                     <label>Round Name</label>
                     <input type="text" ng-model="round.name" required>
                 </md-input-container>
+                <md-input-container class="md-block">
+                    <label>Directions</label>
+                    <textarea ng-model="round.directions" md-maxlength="1000" rows="1"></textarea>
+                </md-input-container>
                 <md-list flex>
                     <md-list-item class="md-2-line">
                         <md-icon>{{voteMethods[round.vote_method].icon}}</md-icon>
