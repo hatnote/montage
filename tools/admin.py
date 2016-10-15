@@ -393,7 +393,6 @@ def reassign(maint_dao, rnd_id, debug=False):
     return stats
 
 
-
 def make_threshold_map(maint_dao, rnd_id, debug=False):
     rnd = maint_dao.get_round(rnd_id)
     avg_ratings_map = maint_dao.get_round_average_rating_map(rnd)
@@ -406,14 +405,16 @@ def make_threshold_map(maint_dao, rnd_id, debug=False):
     return thresh_map
 
 
-def assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
+def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
     import datetime
 
     from unicodecsv import DictReader
 
-    from montage.rdb import Round, User, Entry, RoundEntry, Task
+    from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
     session = maint_dao.rdb_session
+
+    print 'applying ratings from %s to round #%s' % (csv_path, rnd_id)
 
     rnd = session.query(Round).get(rnd_id)
 
@@ -427,9 +428,13 @@ def assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
 
     now = datetime.datetime.utcnow()
 
-    for entry_dict in dr:
-        entry_title = entry_dict['title']
-        entry = session.query(Entry).filter_by(name=entry_title).one()
+    del_ratings_count = 0
+    new_ratings_count = 0
+    for orig_entry_dict in dr:
+        entry_dict = dict(orig_entry_dict)
+        entry_name = entry_dict.pop('entry')
+        _, _, entry_name = entry_name.partition('File:')
+        entry = session.query(Entry).filter_by(name=entry_name).one()
         round_entry = (session.query(RoundEntry)
                        .filter_by(round=rnd, entry=entry)
                        .one())
@@ -437,16 +442,34 @@ def assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
         old_tasks = (session.query(Task)
                      .filter_by(round_entry=round_entry)
                      .all())
+        # cancel old tasks, delete associated ratings
         for t in old_tasks:
             t.complete_date = None
             t.cancel_date = now
 
-            rating = session.query(Rating).filter_by(task_id=t.id).first()
-            if not rating:
-                raise Exception()
+            del_count = session.query(Rating).filter_by(task_id=t.id).delete()
+            del_ratings_count += del_count
 
+        # create new tasks, apply associated ratings
+        for username, rv in entry_dict.items():
+            if not rv.strip():
+                continue
+            rating_val = float(rv)
+            user = username_map[username]
+            new_task = Task(user=user, round_entry=round_entry)
+            new_rating = Rating(value=rating_val, user=user, task=new_task,
+                                round_entry=round_entry)
+            new_ratings_count += 1
+            session.add(new_rating)
 
-    import pdb;pdb.set_trace()
+    print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
+                                                            new_ratings_count)
+
+    if debug:
+        print 'precommit pdb:'
+        import pdb;pdb.set_trace()
+    # session.commit()
+    return
 
 
 
@@ -577,9 +600,9 @@ if __name__ == '__main__':
         make_threshold_map(maint_dao, rnd_id)
 
     if args.apply_ratings:
-        rnd_id = args.assign_ratings
+        rnd_id = args.apply_ratings
         csv_path = args.ratings_csv_path
-        assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
+        apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
 
 
     # TODO: move out rdb_session commit/rollback in a try finally
