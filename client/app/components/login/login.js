@@ -1,7 +1,7 @@
 import './login.scss';
 import template from './login.tpl.html';
 
-import logo from '../../images/logo_1.png';
+import logo from '../../images/logo_blue.svg';
 
 const LoginComponent = {
     bindings: {
