@@ -377,6 +377,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
         import pdb;pdb.set_trace()
     return
 
+
 def reassign(maint_dao, rnd_id, debug=False):
     rnd = maint_dao.get_round(rnd_id)
     new_jurors = rnd.jurors
@@ -390,6 +391,18 @@ def reassign(maint_dao, rnd_id, debug=False):
     if debug:
         import pdb;pdb.set_trace()
     return stats
+
+
+def make_threshold_map(maint_dao, rnd_id, debug=False):
+    rnd = maint_dao.get_round(rnd_id)
+    avg_ratings_map = maint_dao.get_round_average_rating_map(rnd)
+    thresh_map = get_threshold_map(avg_ratings_map)
+
+    print ('-- Round threshold map for round %s (%r) ...'
+           % (rnd.id, rnd.name))
+    pprint(thresh_map)
+
+    return thresh_map
 
 
 if __name__ == '__main__':
@@ -438,6 +451,9 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('--retask-duplicate-ratings',
                         help=('reassign all ratings that were duplicated'),
+                        type=int)
+    parser.add_argument('--threshold-map',
+                        help=('get the threshold map (based on average ratings) for a specified round'),
                         type=int)
 
     parser.add_argument('--campaign', help='campaign id', type=int)
@@ -504,6 +520,11 @@ if __name__ == '__main__':
     if args.retask_duplicate_ratings:
         rnd_id = args.retask_duplicate_ratings
         retask_duplicate_ratings(maint_dao, rnd_id, args.debug)
+
+    if args.threshold_map:
+        rnd_id = args.threshold_map
+        make_threshold_map(maint_dao, rnd_id)
+
     # TODO: move out rdb_session commit/rollback in a try finally
     # rdb_session.commit()
 
