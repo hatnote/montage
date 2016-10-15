@@ -429,12 +429,15 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
 
     now = datetime.datetime.utcnow()
 
+    new_tasks = []
+    new_ratings = []
     del_ratings_count = 0
-    new_ratings_count = 0
+
     for orig_entry_dict in dr:
         entry_dict = dict(orig_entry_dict)
         entry_name = entry_dict.pop('entry')
-        _, _, entry_name = entry_name.partition('File:')
+        _, _, entry_name = entry_name.rpartition('File:')
+        entry_name = entry_name.strip()
         entry = session.query(Entry).filter_by(name=entry_name).one()
         round_entry = (session.query(RoundEntry)
                        .filter_by(round=rnd, entry=entry)
@@ -458,18 +461,19 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
             rating_val = float(rv)
             user = username_map[username]
             new_task = Task(user=user, round_entry=round_entry)
+            new_tasks.append(new_task)
             new_rating = Rating(value=rating_val, user=user, task=new_task,
                                 round_entry=round_entry)
-            new_ratings_count += 1
+            new_ratings.append(new_rating)
             session.add(new_rating)
 
     print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
-                                                            new_ratings_count)
+                                                            len(new_ratings))
 
     if debug:
         print 'precommit pdb:'
         import pdb;pdb.set_trace()
-    # session.commit()
+    session.commit()
     return
 
 
