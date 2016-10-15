@@ -43,10 +43,12 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/autodisqualify',
                 autodisqualify),
            GET('/maintainer', get_maint_index),
-           GET('/admin/round/<round_id:int>/download', download_results),
+           GET('/admin/round/<round_id:int>/results', get_results),
+           GET('/admin/round/<round_id:int>/download', download_results_csv),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
-           GET('/maintainer/round/<round_id:int>/download', download_results),
+           GET('/maintainer/round/<round_id:int>/results', get_results),
+           GET('/maintainer/round/<round_id:int>/download', download_results_csv),
            # TODO: split out into round/campaign log endpoints
            GET('/maintainer/audit_logs', get_audit_logs)]
     return ret
@@ -590,37 +592,65 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
-def download_results(rdb_session, user, round_id, request_dict):
+def make_ratings_table(user_dao, rnd):
+    all_ratings = user_dao.get_all_ratings(rnd)
+    all_tasks = user_dao.get_all_tasks(rnd)
+
+    results_by_name = defaultdict(dict)
+    ratings_dict = {r.task_id: r.value for r in all_ratings}
+
+    for (task, entry) in all_tasks:
+        rating = ratings_dict.get(task.id, {})
+        filename = entry.name
+        username = task.user.username
+
+        if task.complete_date:
+            results_by_name[filename][username] = rating
+        else:
+            # tbv = to be voted
+            # there should be no empty tasks in a fully finalized round
+            results_by_name[filename][username] = 'tbv'
+
+    return results_by_name
+
+
+def get_results(rdb_session, user, round_id, request_dict):
     # TODO: Quick hacky maintainer access
     # this should should be standardized throughout
     if user.is_maintainer:
-        main_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
-        rnd = main_dao.get_round(round_id)
+        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
     else:
-        coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-        rnd = coord_dao.get_round(round_id)
+        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
 
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
 
     if not user.is_maintainer and rnd.status != 'finalized':
         raise DoesNotExist('round results not yet finalized')
+    
+    results_by_name = make_ratings_table(user_dao, rnd)
+
+    return {'data': results_by_name}
+
+
+def download_results_csv(rdb_session, user, round_id, request_dict):
     if user.is_maintainer:
-        all_ratings = main_dao.get_all_ratings(rnd)
+        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
     else:
-        all_ratings = coord_dao.get_all_ratings(rnd)
+        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
 
-    results_by_name = defaultdict(dict)
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
 
-    for row in all_ratings:
-        filename = row[2].name
-        username = row[0].user.username
-        if row[0].complete_date:
-            results_by_name[filename][username] = row[1].value
-        else:
-            # tbv = to be voted
-            # there should be no empty tasks in a fully finalized round
-            results_by_name[filename][username] = 'tbv'
+    if not user.is_maintainer and rnd.status != 'finalized':
+        raise DoesNotExist('round results not yet finalized')
+
+
+    results_by_name = make_ratings_table(user_dao, rnd)
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
@@ -633,8 +663,11 @@ def download_results(rdb_session, user, round_id, request_dict):
     for filename, ratings in results_by_name.items():
         csv_row = {'filename': filename}
         valid_ratings = [r for r in ratings.values() if type(r) is not str]
-        # TODO: catch if there are more than a quorum of votes
-        ratings['average'] = sum(valid_ratings) / len(valid_ratings)
+        if valid_ratings:
+            # TODO: catch if there are more than a quorum of votes
+            ratings['average'] = sum(valid_ratings) / len(valid_ratings)
+        else:
+            ratings['average'] = 'na'
         csv_row.update(ratings)
         csv_writer.writerow(csv_row)
 

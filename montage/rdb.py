@@ -1216,10 +1216,18 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def get_all_ratings(self, rnd):
-        results = self.query(Task, Rating, Entry)\
+        results = self.query(Rating)\
+                      .join(RoundEntry)\
+                      .join(Entry)\
+                      .filter(RoundEntry.round_id == rnd.id,
+                              RoundEntry.dq_user_id == None)\
+                      .all()
+        return results
+
+    def get_all_tasks(self, rnd):
+        results = self.query(Task, Entry)\
                       .options(joinedload('user'))\
                       .join(RoundEntry)\
-                      .join(Rating)\
                       .join(Entry)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None)\
