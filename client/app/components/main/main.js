@@ -2,6 +2,8 @@ import './main.scss';
 import template from './main.tpl.html';
 import pack from '../../../package.json';
 
+import logo from '../../images/logo_white_fat.svg';
+
 const MainComponent = {
   bindings: {
     user: '='
@@ -14,6 +16,7 @@ const MainComponent = {
     };
     vm.goToDashboard = goToDashboard;
     vm.isCurrentState = (name) => $state.current.name === name;
+    vm.logo = logo;
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
 
