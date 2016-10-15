@@ -350,6 +350,13 @@ def submit_ratings(rdb_session, user, request_dict):
     round_id_set = set([t.round_entry.round_id for t in tasks])
     if not len(round_id_set) == 1:
         raise InvalidAction('can only submit ratings for one round at a time')
+    # comp_tasks = [t for t in tasks if t.complete_date]  # TODO: uncomment when submission fix is in place
+    # if comp_tasks:
+    #     raise InvalidAction('cannot submit ratings for complete tasks: %r'
+    #                         % comp_tasks)
+    tasks = [t for t in tasks if not t.complete_date]
+    if not tasks:
+        return {}
     rnd = juror_dao.get_round(list(round_id_set)[0])
     style = rnd.vote_method
 

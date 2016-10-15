@@ -14,6 +14,7 @@ from montage.rdb import (make_rdb_session,
                          OrganizerDAO,
                          MaintainerDAO,
                          CoordinatorDAO,
+                         reassign_rating_tasks,
                          lookup_user)
 
 from montage.utils import get_threshold_map
@@ -53,7 +54,7 @@ def create_campaign(maint_dao, username):
     rdb_session.commit()
 
     pprint(campaign.to_info_dict())
-    print ('++ campaign %s (%r) created with %r as coordinator' 
+    print ('++ campaign %s (%r) created with %r as coordinator'
            % (campaign.id, campaign.name, coord_user.username))
     return campaign
 
@@ -98,7 +99,7 @@ def create_round(maint_dao, campaign_id, advance=False, debug=False):
 
     pprint(rnd.to_info_dict())
 
-    print ('++ round %s (%r) created in campaign %s (%r)' 
+    print ('++ round %s (%r) created in campaign %s (%r)'
            % (rnd.id, rnd.name, campaign.id, campaign.name))
 
     if not advance:
@@ -117,11 +118,11 @@ def create_round(maint_dao, campaign_id, advance=False, debug=False):
         if vote_method == 'ranking' and len(entries) > RANKING_MAX:
             print ('-- %s is too many entries for ranking round, aborting'
                    % len(entries))
-            # TODO: does not actually roll back the round, since 
+            # TODO: does not actually roll back the round, since
             # create_round commits on its own. Should individual dao methods
             # have an option to not commit?
             rdb_session.rollback()
-            sys.exit(0)        
+            sys.exit(0)
 
         source = 'round(#%s)' % last_successful_rnd.id
         maint_dao.add_round_entries(rnd, advancing_group, source)
@@ -155,7 +156,7 @@ def cancel_campaign(maint_dao, camp_id, debug, force=False):
 
     maint_dao.cancel_campaign(campaign)
 
-    print ('++ cancelled campaign %s (%r) and %s rounds' 
+    print ('++ cancelled campaign %s (%r) and %s rounds'
            % (camp_id, campaign.name, len(campaign.rounds)))
     pass
 
@@ -180,10 +181,10 @@ def cancel_round(maint_dao, rnd_id, debug, force=False):
 
 def activate_round(maint_dao, rnd_id, debug):
     rnd = maint_dao.get_round(rnd_id)
-    
+
     maint_dao.activate_round(rnd)
     maint_dao.rdb_session.commit()
-    
+
     print '++ activated round %s (%s)' % (rnd.id, rnd.name)
 
     if debug:
@@ -193,12 +194,12 @@ def activate_round(maint_dao, rnd_id, debug):
 
 def pause_round(maint_dao, rnd_id, debug):
     rnd = maint_dao.get_round(rnd_id)
-    
+
     maint_dao.pause_round(rnd)
     maint_dao.rdb_session.commit()
 
     print '++ paused round %s (%r)' % (rnd.id, rnd.name)
-    
+
     if debug:
         import pdb;pdb.set_trace()
     return rnd
@@ -255,40 +256,179 @@ def advance_round(maint_dao, rnd_id, debug):
 
     camp_id = rnd.campaign.id
 
-    print ('++ ready to import %s entries to the next round in %s (%r)...' 
+    print ('++ ready to import %s entries to the next round in %s (%r)...'
            % (threshold_map[cur_thresh], camp_id, rnd.campaign.name))
 
     next_round = create_round(maint_dao, camp_id, advance=True, debug=debug)
-  
+
     if debug:
         import pdb;pdb.set_trace()
     return next_round
 
 
+def check_dupes(maint_dao, rnd_id, debug=False):
+    dupe_tasks_query = '''
+    SELECT users.username, ratings.value, tasks.id, entries.name
+    FROM tasks
+    JOIN ratings
+    ON tasks.id = ratings.task_id
+    JOIN round_entries
+    ON tasks.round_entry_id = round_entries.id
+    JOIN entries
+    ON round_entries.entry_id = entries.id
+    JOIN users
+    ON tasks.user_id = users.id
+    WHERE round_entries.round_id = :rnd_id
+    AND round_entries.dq_user_id IS NULL'''
+
+    dupe_ratings_query = '''
+    SELECT users.username, ratings.value, entries.name
+    FROM ratings
+    JOIN round_entries
+    ON ratings.round_entry_id = round_entries.id
+    JOIN entries
+    ON round_entries.entry_id = entries.id
+    JOIN users
+    ON ratings.user_id = users.id
+    WHERE round_entries.round_id = :rnd_id
+    AND round_entries.dq_user_id IS NULL'''
+
+    dupe_tasks = maint_dao.rdb_session.execute(dupe_tasks_query,
+                                               {'rnd_id': rnd_id}).fetchall()
+    dupe_ratings = maint_dao.rdb_session.execute(dupe_ratings_query,
+                                                 {'rnd_id': rnd_id}).fetchall()
+
+    if len(dupe_tasks) - len(dupe_ratings):
+        print ('-- found %s double-assigned tasks'
+               % len(dupe_tasks))
+
+    if dupe_ratings:
+        print ('-- found %s double-assigned ratings'
+               % len(dupe_ratings))
+
+    if debug:
+        import pdb;pdb.set_trace()
+
+    return
+
+
+def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
+    # TODO: does not write to the db yet; session.commit() not called
+    import random
+    from collections import defaultdict
+    from sqlalchemy.orm import joinedload
+    from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
+
+    print 'scanning round %s for duplicate tasks and juror eligibility' % rnd_id
+
+    session = maint_dao.rdb_session
+    rnd = session.query(Round).get(rnd_id)
+
+    cur_jurors = session.query(User)\
+                        .join(RoundJuror)\
+                        .filter_by(round=rnd, is_active=True)\
+                        .all()
+
+    cur_tasks = session.query(Task)\
+                       .filter_by(cancel_date=None)\
+                       .options(joinedload('round_entry'))\
+                       .join(RoundEntry)\
+                       .filter_by(round=rnd,
+                                  dq_user_id=None)\
+                       .all()
+
+    elig_map = defaultdict(lambda: list(cur_jurors))
+    dup_map = defaultdict(list)
+    # only complete_date because that indicates that's the only
+    # indicator we have that the user has seen the entry
+    # comp_tasks = [t for t in cur_tasks if t.complete_date]
+    for task in cur_tasks:
+        if task.complete_date:
+            try:
+                elig_map[task.round_entry].remove(task.user)
+            except ValueError:
+                pass
+        dup_map[(task.round_entry_id, task.user_id)].append(task)
+    dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
+    print 'found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))
+    print 'starting retaskification'
+    reassign_count = 0
+    revert_count = 0
+    for _, dup_tasks in dup_items:
+        for i, task in enumerate(reversed(dup_tasks)):
+            if i == 0:
+                continue  # leave the most recent one alone
+            reassign_count += 1
+            new_j = random.choice(elig_map[task.round_entry])
+            print task, task.user, new_j
+            task.user = new_j
+            elig_map[task.round_entry].remove(task.user)
+            # the following line makes this safer, but slower
+            # also note that sqlalchemy doesn't support limit with its delete
+            if task.complete_date:
+                revert_count += 1
+                assert session.query(Rating).filter_by(task_id=task.id).count() == 1
+                session.query(Rating).filter_by(task_id=task.id).delete()
+                task.complete_date = None
+
+    print ('reassigned %s tasks and reverted %s ratings for round %s' 
+           % (reassign_count, revert_count, rnd_id))
+    if debug:
+        import pdb;pdb.set_trace()
+    return
+
+
+def reassign(maint_dao, rnd_id, debug=False):
+    rnd = maint_dao.get_round(rnd_id)
+    new_jurors = rnd.jurors
+    stats = reassign_rating_tasks(maint_dao.rdb_session,
+                                  rnd, new_jurors,
+                                  reassign_all=True)
+
+    print '++ reassignment stats: '
+    pprint(stats)
+
+    if debug:
+        import pdb;pdb.set_trace()
+    return stats
+
+
+def make_threshold_map(maint_dao, rnd_id, debug=False):
+    rnd = maint_dao.get_round(rnd_id)
+    avg_ratings_map = maint_dao.get_round_average_rating_map(rnd)
+    thresh_map = get_threshold_map(avg_ratings_map)
+
+    print ('-- Round threshold map for round %s (%r) ...'
+           % (rnd.id, rnd.name))
+    pprint(thresh_map)
+
+    return thresh_map
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
-    parser.add_argument('--add_organizer', 
-                        help='add an organizer by username', 
+    parser.add_argument('--add_organizer',
+                        help='add an organizer by username',
                         type=str)
     parser.add_argument('--list',
                         help='list all campaigns and rounds',
                         action='store_true')
-    parser.add_argument('--cancel-round', 
+    parser.add_argument('--cancel-round',
                         help=('set a round as cancelled, cancel related'
                               ' tasks and remove it from the campaign\'s'
                               ' active  rounds'), type=int)
-    parser.add_argument('--cancel-campaign', 
+    parser.add_argument('--cancel-campaign',
                         help=('cancel a campaign by id, including all of its'
                               ' rounds and associated tasks'), type=int)
-    parser.add_argument('--add-coordinator', 
-                        help=('add a coordinator by username to a campaign'), 
+    parser.add_argument('--add-coordinator',
+                        help=('add a coordinator by username to a campaign'),
                         type=str)
-    #parser.add_argument('--remove-coordinator', 
+    #parser.add_argument('--remove-coordinator',
     #                    help=('remove a coordinator by username from a '
-    #                          'campaign (not implemented'), 
+    #                          'campaign (not implemented'),
     #                    type=str)
     parser.add_argument('--create-campaign',
-                        help=('create a new campaign with a  specified coordiantor'),
+                        help=('create a new campaign with a specified coordinator'),
                         type=str)
     parser.add_argument('--create-round',
                         help=('create a new round in a specified campaign'),
@@ -302,12 +442,25 @@ if __name__ == '__main__':
     parser.add_argument('--advance-round',
                         help=('finalize a specified round and start the next'),
                         type=int)
+    parser.add_argument('--check-dupes',
+                        help=('check for double-assigned tasks or ratings in a'
+                        ' specified round'),
+                        type=int)
+    parser.add_argument('--reassign',
+                        help=('reassign all the rating tasks in a round'),
+                        type=int)
+    parser.add_argument('--retask-duplicate-ratings',
+                        help=('reassign all ratings that were duplicated'),
+                        type=int)
+    parser.add_argument('--threshold-map',
+                        help=('get the threshold map (based on average ratings) for a specified round'),
+                        type=int)
+
     parser.add_argument('--campaign', help='campaign id', type=int)
-    parser.add_argument('--force', action='store_true', 
+    parser.add_argument('--force', action='store_true',
                         help='Use with caution when cancelling things')
     parser.add_argument('--debug', action='store_true')
 
-    
     args = parser.parse_args()
 
     rdb_session = make_rdb_session(echo=args.debug)
@@ -339,7 +492,7 @@ if __name__ == '__main__':
     if args.create_campaign:
         coord_name = args.create_campaign
         create_campaign(maint_dao, coord_name, debug=args.debug)
-    
+
     if args.create_round:
         campaign_id = args.create_round
         create_round(maint_dao, campaign_id)
@@ -355,6 +508,25 @@ if __name__ == '__main__':
     if args.advance_round:
         rnd_id = args.advance_round
         advance_round(maint_dao, rnd_id, args.debug)
+
+    if args.check_dupes:
+        rnd_id = args.check_dupes
+        check_dupes(maint_dao, rnd_id, args.debug)
+
+    if args.reassign:
+        rnd_id = args.reassign
+        reassign(maint_dao, rnd_id, args.debug)
+
+    if args.retask_duplicate_ratings:
+        rnd_id = args.retask_duplicate_ratings
+        retask_duplicate_ratings(maint_dao, rnd_id, args.debug)
+
+    if args.threshold_map:
+        rnd_id = args.threshold_map
+        make_threshold_map(maint_dao, rnd_id)
+
+    # TODO: move out rdb_session commit/rollback in a try finally
+    # rdb_session.commit()
 
     #if args.remove_coordinator:
     #    username = args.remove_coordinator

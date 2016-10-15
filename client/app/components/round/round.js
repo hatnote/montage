@@ -181,8 +181,12 @@ const RoundComponent = {
             }
 
             if (getCounter === 4 || !vm.stats.total_open_tasks) {
+		// Why are these grouped in batches? What happens to a juror's votes
+		// if they navigate away from the page before they submit their
+		// 5th vote?
                 getCounter = 0;
                 sendRates(ratings, skips);
+		ratings = [];
             } else {
                 getCounter++;
                 vm.rating.getNext();

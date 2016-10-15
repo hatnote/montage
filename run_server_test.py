@@ -113,6 +113,12 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/campaign/%s/edit' % campaign_id,
                       data, su_to='Yarl')
 
+    # detour to add a frontend error
+    err_data = {'error': 'TypologyError', 'stack': 'some textual\nstack\netc.'}
+    resp = fetch_json(url_base + '/logs/feel', err_data, su_to='LilyOfTheWest')
+
+    resp = fetch_json(url_base + '/logs/feel', su_to='LilyOfTheWest')
+
     # Add a coordinator to a camapign
     # - as organizer
     # note: you can also add coordinators when the round is created

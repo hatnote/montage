@@ -355,6 +355,8 @@ def edit_round(rdb_session, user, round_id, request_dict):
 
     new_juror_names = new_val_map.get('new_jurors')
     old_juror_names = [u.username for u in rnd.jurors]
+    # TODO: Reactivating jurors
+    
 
     if new_juror_names and set(new_juror_names) != set(old_juror_names):
         if rnd.status != 'paused':
