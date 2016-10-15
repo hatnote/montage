@@ -14,7 +14,7 @@ const RoundComponent = {
         tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, $templateCache, $window, alertService, userService, versionService) {
+    controller: function ($mdDialog, $q, $state, $templateCache, $window, alertService, userService, versionService) {
         let vm = this;
 
         let counter = 0;
@@ -166,30 +166,36 @@ const RoundComponent = {
         }
 
         function setRate(rate) {
-            if (rate) {
-                const rating = (rate - 1) / 4;
-                vm.loading = true;
-                sendRate({
-                    'task_id': vm.rating.current.id,
-                    'value': rating
-                }).then(() => {
-                    vm.loading = false;
-                    vm.stats.total_open_tasks--;
-                });
-            } else {
-                skips++;
+            function rating() {
+                if (rate) {
+                    const rating = (rate - 1) / 4;
+                    vm.loading = true;
+                    return sendRate({
+                        'task_id': vm.rating.current.id,
+                        'value': rating
+                    }).then(() => {
+                        vm.loading = false;
+                        vm.stats.total_open_tasks--;
+                        return true;
+                    });
+                } else {
+                    skips++;
+                    return $q.when(false);
+                }
             }
 
-            if (counter === 4 || !vm.stats.total_open_tasks) {
-                counter = 0;
-                vm.loading = true;
-                getTasks().then(() => {
-                    vm.loading = false;
-                });
-            } else {
-                counter++;
-                vm.rating.getNext();
-            }
+            rating().then(() => {
+                if (counter === 4 || !vm.stats.total_open_tasks) {
+                    counter = 0;
+                    vm.loading = true;
+                    getTasks().then(() => {
+                        vm.loading = false;
+                    });
+                } else {
+                    counter++;
+                    vm.rating.getNext();
+                }
+            });
         }
     },
     template: `<ng-include src="'round-template'"/>`
