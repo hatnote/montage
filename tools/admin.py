@@ -371,7 +371,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                 session.query(Rating).filter_by(task_id=task.id).delete()
                 task.complete_date = None
 
-    print ('reassigned %s tasks and reverted %s ratings for round %s' 
+    print ('reassigned %s tasks and reverted %s ratings for round %s'
            % (reassign_count, revert_count, rnd_id))
     if debug:
         import pdb;pdb.set_trace()
@@ -393,6 +393,7 @@ def reassign(maint_dao, rnd_id, debug=False):
     return stats
 
 
+
 def make_threshold_map(maint_dao, rnd_id, debug=False):
     rnd = maint_dao.get_round(rnd_id)
     avg_ratings_map = maint_dao.get_round_average_rating_map(rnd)
@@ -403,6 +404,50 @@ def make_threshold_map(maint_dao, rnd_id, debug=False):
     pprint(thresh_map)
 
     return thresh_map
+
+
+def assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
+    import datetime
+
+    from unicodecsv import DictReader
+
+    from montage.rdb import Round, User, Entry, RoundEntry, Task
+
+    session = maint_dao.rdb_session
+
+    rnd = session.query(Round).get(rnd_id)
+
+    dr = DictReader(open(csv_path, 'rb'))
+
+    usernames = dr.fieldnames[1:]
+    username_map = {}
+    for username in usernames:
+        user = session.query(User).filter_by(username=username).one()
+        username_map[username] = user
+
+    now = datetime.datetime.utcnow()
+
+    for entry_dict in dr:
+        entry_title = entry_dict['title']
+        entry = session.query(Entry).filter_by(name=entry_title).one()
+        round_entry = (session.query(RoundEntry)
+                       .filter_by(round=rnd, entry=entry)
+                       .one())
+
+        old_tasks = (session.query(Task)
+                     .filter_by(round_entry=round_entry)
+                     .all())
+        for t in old_tasks:
+            t.complete_date = None
+            t.cancel_date = now
+
+            rating = session.query(Rating).filter_by(task_id=t.id).first()
+            if not rating:
+                raise Exception()
+
+
+    import pdb;pdb.set_trace()
+
 
 
 if __name__ == '__main__':
@@ -455,6 +500,12 @@ if __name__ == '__main__':
     parser.add_argument('--threshold-map',
                         help=('get the threshold map (based on average ratings) for a specified round'),
                         type=int)
+    parser.add_argument('--apply-ratings',
+                        help='apply ratings based on input (eg --csv-file)',
+                        type=int)
+    parser.add_argument('--ratings-csv-path',
+                        help='ratings file (use with --apply-ratings)',
+                        type=str)
 
     parser.add_argument('--campaign', help='campaign id', type=int)
     parser.add_argument('--force', action='store_true',
@@ -524,6 +575,12 @@ if __name__ == '__main__':
     if args.threshold_map:
         rnd_id = args.threshold_map
         make_threshold_map(maint_dao, rnd_id)
+
+    if args.apply_ratings:
+        rnd_id = args.assign_ratings
+        csv_path = args.ratings_csv_path
+        assign_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
+
 
     # TODO: move out rdb_session commit/rollback in a try finally
     # rdb_session.commit()
