@@ -152,6 +152,7 @@ const RoundComponent = {
             userService.juror.setRating(vm.round.id, {
                 ratings: rates
             }).then(() => {
+                ratings = [];
                 if(vm.stats.total_open_tasks <= 10) {
                     skips = 0;
                 }
