@@ -371,7 +371,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                 session.query(Rating).filter_by(task_id=task.id).delete()
                 task.complete_date = None
 
-    print ('reassigned %s tasks and reverted %s ratings for round %s' 
+    print ('reassigned %s tasks and reverted %s ratings for round %s'
            % (reassign_count, revert_count, rnd_id))
     if debug:
         import pdb;pdb.set_trace()
@@ -403,6 +403,74 @@ def make_threshold_map(maint_dao, rnd_id, debug=False):
     pprint(thresh_map)
 
     return thresh_map
+
+
+def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
+    import datetime
+
+    from unicodecsv import DictReader
+
+    from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
+
+    session = maint_dao.rdb_session
+
+    print 'applying ratings from %s to round #%s' % (csv_path, rnd_id)
+
+    rnd = session.query(Round).get(rnd_id)
+
+    dr = DictReader(open(csv_path, 'rb'))
+
+    usernames = dr.fieldnames[1:]
+    username_map = {}
+    for username in usernames:
+        user = session.query(User).filter_by(username=username).one()
+        username_map[username] = user
+
+    now = datetime.datetime.utcnow()
+
+    del_ratings_count = 0
+    new_ratings_count = 0
+    for orig_entry_dict in dr:
+        entry_dict = dict(orig_entry_dict)
+        entry_name = entry_dict.pop('entry')
+        _, _, entry_name = entry_name.partition('File:')
+        entry = session.query(Entry).filter_by(name=entry_name).one()
+        round_entry = (session.query(RoundEntry)
+                       .filter_by(round=rnd, entry=entry)
+                       .one())
+
+        old_tasks = (session.query(Task)
+                     .filter_by(round_entry=round_entry)
+                     .all())
+        # cancel old tasks, delete associated ratings
+        for t in old_tasks:
+            t.complete_date = None
+            t.cancel_date = now
+
+            del_count = session.query(Rating).filter_by(task_id=t.id).delete()
+            del_ratings_count += del_count
+
+        # create new tasks, apply associated ratings
+        for username, rv in entry_dict.items():
+            if not rv.strip():
+                continue
+            rating_val = float(rv)
+            user = username_map[username]
+            new_task = Task(user=user, round_entry=round_entry)
+            new_rating = Rating(value=rating_val, user=user, task=new_task,
+                                round_entry=round_entry)
+            new_ratings_count += 1
+            session.add(new_rating)
+
+    print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
+                                                            new_ratings_count)
+
+    if debug:
+        print 'precommit pdb:'
+        import pdb;pdb.set_trace()
+    # session.commit()
+    return
+
 
 
 if __name__ == '__main__':
@@ -455,6 +523,12 @@ if __name__ == '__main__':
     parser.add_argument('--threshold-map',
                         help=('get the threshold map (based on average ratings) for a specified round'),
                         type=int)
+    parser.add_argument('--apply-ratings',
+                        help='apply ratings based on input (eg --csv-file)',
+                        type=int)
+    parser.add_argument('--ratings-csv-path',
+                        help='ratings file (use with --apply-ratings)',
+                        type=str)
 
     parser.add_argument('--campaign', help='campaign id', type=int)
     parser.add_argument('--force', action='store_true',
@@ -524,6 +598,12 @@ if __name__ == '__main__':
     if args.threshold_map:
         rnd_id = args.threshold_map
         make_threshold_map(maint_dao, rnd_id)
+
+    if args.apply_ratings:
+        rnd_id = args.apply_ratings
+        csv_path = args.ratings_csv_path
+        apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
+
 
     # TODO: move out rdb_session commit/rollback in a try finally
     # rdb_session.commit()

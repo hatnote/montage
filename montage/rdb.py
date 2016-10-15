@@ -278,7 +278,7 @@ class Round(Base):
 
     def is_closeable(self):
         rdb_session = inspect(self).session
-        
+
         if not rdb_session:
             # TODO: see above
             raise RuntimeError('cannot get counts for detached Round')
@@ -487,6 +487,8 @@ class Rating(Base):
 
     value = Column(Float)
 
+    user = relationship('User')
+    task = relationship('Task', back_populates='rating')
     round_entry = relationship('RoundEntry', back_populates='rating')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -536,6 +538,7 @@ class Task(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User', back_populates='tasks')
+    rating = relationship('Rating')
     round_entry = relationship('RoundEntry', back_populates='tasks')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1216,10 +1219,18 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def get_all_ratings(self, rnd):
-        results = self.query(Task, Rating, Entry)\
+        results = self.query(Rating)\
+                      .join(RoundEntry)\
+                      .join(Entry)\
+                      .filter(RoundEntry.round_id == rnd.id,
+                              RoundEntry.dq_user_id == None)\
+                      .all()
+        return results
+
+    def get_all_tasks(self, rnd):
+        results = self.query(Task, Entry)\
                       .options(joinedload('user'))\
                       .join(RoundEntry)\
-                      .join(Rating)\
                       .join(Entry)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None)\
