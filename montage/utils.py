@@ -83,13 +83,14 @@ def get_mw_userid(username):
 
 def get_threshold_map(ratings_map):
     thresh_counts = {}
+    # coerce some types
+    ratings_map = dict([(float(k), int(v)) for k, v in ratings_map.items()])
     ratings_map[0.0] = ratings_map.get(0.0, 0)
     ratings_map[1.0] = ratings_map.get(1.0, 0)
-    ratings = ratings_map.keys()
-    for rating in sorted(ratings):
-        rating = round(rating, 3)
+    for rating in sorted(ratings_map.keys()):
         total_gte = sum([v for k, v in ratings_map.items() if k >= rating])
-        thresh_counts[rating] = total_gte
+        rating_key = round(rating, 3)
+        thresh_counts[rating_key] = total_gte
     return thresh_counts
 
 
