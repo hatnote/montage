@@ -343,11 +343,10 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
     # indicator we have that the user has seen the entry
     # comp_tasks = [t for t in cur_tasks if t.complete_date]
     for task in cur_tasks:
-        if task.complete_date:
-            try:
-                elig_map[task.round_entry].remove(task.user)
-            except ValueError:
-                pass
+        try:
+            elig_map[task.round_entry].remove(task.user)
+        except ValueError:
+            pass
         dup_map[(task.round_entry_id, task.user_id)].append(task)
     dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
     print 'found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))
@@ -360,7 +359,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                 continue  # leave the most recent one alone
             reassign_count += 1
             new_j = random.choice(elig_map[task.round_entry])
-            print task, task.user, new_j
+            print task, 'is being assigned from', task.user, 'to', new_j
             task.user = new_j
             elig_map[task.round_entry].remove(task.user)
             # the following line makes this safer, but slower
@@ -374,6 +373,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
     print ('reassigned %s tasks and reverted %s ratings for round %s' 
            % (reassign_count, revert_count, rnd_id))
     if debug:
+        print 'precommit debug prompt:'
         import pdb;pdb.set_trace()
     return
 
@@ -389,6 +389,7 @@ def reassign(maint_dao, rnd_id, debug=False):
 
     if debug:
         import pdb;pdb.set_trace()
+    maint_dao.rdb_session.commit()
     return stats
 
 
