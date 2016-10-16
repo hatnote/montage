@@ -348,6 +348,7 @@ def full_run(url_base, remote):
                       su_to='Jimbo Wales')
 
     rating_dicts = []
+
     for task in resp['data']['tasks']:
         val = float(task['id'] % 2)  # deterministic but arbitrary
         rating_dicts.append({'task_id': task['id'], 'value': val})
@@ -355,6 +356,12 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
+
+    # Get a list of past ratings
+    # - as juror
+    resp = fetch_json(url_base + '/juror/round/%s/ratings' % round_id,
+                      su_to='Jimbo Wales')
+
 
     # Admin endpoints (part 2)
     # --------------- --------

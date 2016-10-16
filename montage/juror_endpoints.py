@@ -28,7 +28,8 @@ def get_juror_routes():
            GET('/juror/campaign/<campaign_id:int>', get_campaign),
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
-           POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings)]
+           POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
+           GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round)]
     return ret
 
 
@@ -268,6 +269,22 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     for task in tasks:
         data['tasks'].append(task.to_details_dict())
 
+    return {'data': data}
+
+
+def get_ratings_from_round(rdb_session, user, round_id, request):
+    count = request.values.get('count', 15)
+    offset = request.values.get('offset', 0)
+    juror_dao = JurorDAO(rdb_session, user)
+    rnd = juror_dao.get_round(round_id)
+
+    if not rnd:
+        raise PermissionDenied()
+
+    ratings = juror_dao.get_ratings_from_round(rnd=rnd,
+                                               num=count,
+                                               offset=offset)
+    data = [r.to_info_dict() for r in ratings]
     return {'data': data}
 
 
