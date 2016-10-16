@@ -1,4 +1,5 @@
 
+import urllib
 import hashlib
 
 """
@@ -14,8 +15,10 @@ def make_mw_img_url(title, size=None):
     "returns a unicode object URL"
     if isinstance(title, unicode):
         thash = hashlib.md5(title.encode('utf8')).hexdigest()
+        url_title = urllib.quote(title.encode('utf8'))
     elif isinstance(title, bytes):
         thash = hashlib.md5(title).hexdigest()
+        url_title = urllib.quote(title)
     else:
         raise TypeError('image title must be bytes or unicode')
 
@@ -33,9 +36,9 @@ def make_mw_img_url(title, size=None):
                          ' or an integer pixel value, not %r' % size)
 
     if size == 'orig':
-        parts = [BASE, thash[:1], thash[:2], title]
+        parts = [BASE, thash[:1], thash[:2], url_title]
     else:
         parts = [BASE, 'thumb', thash[:1], thash[:2],
-                 title, '%s-%s' % (size, title)]
+                 url_title, '%s-%s' % (size, url_title)]
 
     return u'/'.join(parts)
