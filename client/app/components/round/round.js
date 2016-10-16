@@ -14,9 +14,11 @@ const RoundComponent = {
         tasks: '<',
         type: '<'
     },
-    controller: function ($state, $mdDialog, $templateCache, $window, alertService, userService, versionService) {
+    controller: function ($mdDialog, $q, $state, $templateCache, $window, alertService, userService, versionService) {
         let vm = this;
-        let getCounter = 0;
+
+        let counter = 0;
+        let skips = 0;
 
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
@@ -73,6 +75,15 @@ const RoundComponent = {
             vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.images.length;
             vm.rating.current = vm.images[vm.rating.currentIndex];
             vm.rating.next = vm.images[(vm.rating.currentIndex + 1) % vm.images.length];
+        }
+
+        function getTasks() {
+            return userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
+                vm.images = response.data.tasks;
+                vm.rating.current = vm.images[0];
+                vm.rating.currentIndex = 0;
+                vm.rating.next = vm.images[1];
+            });
         }
 
         function getTemplate() {
@@ -144,53 +155,47 @@ const RoundComponent = {
             $window.open(url, '_blank');
         }
 
-        let ratings = [];
-        let skips = 0;
-
-        function sendRates(rates, skips) {
-            vm.loading = true;
-            userService.juror.setRating(vm.round.id, {
-                ratings: rates
+        function sendRate(rate) {
+            return userService.juror.setRating(vm.round.id, {
+                ratings: [rate]
             }).then(() => {
-                ratings = [];
-                if(vm.stats.total_open_tasks <= 10) {
+                if (vm.stats.total_open_tasks <= 10) {
                     skips = 0;
                 }
-
-                userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
-                    vm.images = response.data.tasks;
-                    vm.rating.current = vm.images[0];
-                    vm.rating.currentIndex = 0;
-                    vm.rating.next = vm.images[1];
-
-                    vm.loading = false;
-                });
             });
         }
 
         function setRate(rate) {
-            if (rate) {
-                const rating = (rate - 1) / 4;
-                ratings.push({
-                    'task_id': vm.rating.current.id,
-                    'value': rating
-                });
-                vm.stats.total_open_tasks--;
-            } else {
-                skips++;
+            function rating() {
+                if (rate) {
+                    const rating = (rate - 1) / 4;
+                    vm.loading = true;
+                    return sendRate({
+                        'task_id': vm.rating.current.id,
+                        'value': rating
+                    }).then(() => {
+                        vm.loading = false;
+                        vm.stats.total_open_tasks--;
+                        return true;
+                    });
+                } else {
+                    skips++;
+                    return $q.when(false);
+                }
             }
 
-            if (getCounter === 4 || !vm.stats.total_open_tasks) {
-		// Why are these grouped in batches? What happens to a juror's votes
-		// if they navigate away from the page before they submit their
-		// 5th vote?
-                getCounter = 0;
-                sendRates(ratings, skips);
-		ratings = [];
-            } else {
-                getCounter++;
-                vm.rating.getNext();
-            }
+            rating().then(() => {
+                if (counter === 4 || !vm.stats.total_open_tasks) {
+                    counter = 0;
+                    vm.loading = true;
+                    getTasks().then(() => {
+                        vm.loading = false;
+                    });
+                } else {
+                    counter++;
+                    vm.rating.getNext();
+                }
+            });
         }
     },
     template: `<ng-include src="'round-template'"/>`

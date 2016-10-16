@@ -34,6 +34,23 @@ def warn(msg, force=False):
     return
 
 
+def rdb_console(maint_dao):
+    import montage.rdb
+    for m in dir(montage.rdb):
+        locals()[m] = getattr(montage.rdb, m)
+
+    session = maint_dao.rdb_session
+
+    print 'rdb console:'
+    print '  Use session.query() to interact with the db.'
+    print '  Commit modifications with session.commit().\n'
+
+    import pdb;pdb.set_trace()
+
+    return
+
+
+
 def create_campaign(maint_dao, username):
     coord_user = maint_dao.get_or_create_user(username, 'coordinator')
     camp_name = raw_input('?? Campaign name: ')
@@ -343,11 +360,10 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
     # indicator we have that the user has seen the entry
     # comp_tasks = [t for t in cur_tasks if t.complete_date]
     for task in cur_tasks:
-        if task.complete_date:
-            try:
-                elig_map[task.round_entry].remove(task.user)
-            except ValueError:
-                pass
+        try:
+            elig_map[task.round_entry].remove(task.user)
+        except ValueError:
+            pass
         dup_map[(task.round_entry_id, task.user_id)].append(task)
     dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
     print 'found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))
@@ -360,7 +376,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                 continue  # leave the most recent one alone
             reassign_count += 1
             new_j = random.choice(elig_map[task.round_entry])
-            print task, task.user, new_j
+            print task, 'is being assigned from', task.user, 'to', new_j
             task.user = new_j
             elig_map[task.round_entry].remove(task.user)
             # the following line makes this safer, but slower
@@ -374,6 +390,7 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
     print ('reassigned %s tasks and reverted %s ratings for round %s'
            % (reassign_count, revert_count, rnd_id))
     if debug:
+        print 'precommit debug prompt:'
         import pdb;pdb.set_trace()
     return
 
@@ -390,6 +407,7 @@ def reassign(maint_dao, rnd_id, debug=False):
 
     if debug:
         import pdb;pdb.set_trace()
+    maint_dao.rdb_session.commit()
     return stats
 
 
@@ -428,12 +446,15 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
 
     now = datetime.datetime.utcnow()
 
+    new_tasks = []
+    new_ratings = []
     del_ratings_count = 0
-    new_ratings_count = 0
+
     for orig_entry_dict in dr:
         entry_dict = dict(orig_entry_dict)
         entry_name = entry_dict.pop('entry')
-        _, _, entry_name = entry_name.partition('File:')
+        _, _, entry_name = entry_name.rpartition('File:')
+        entry_name = entry_name.strip()
         entry = session.query(Entry).filter_by(name=entry_name).one()
         round_entry = (session.query(RoundEntry)
                        .filter_by(round=rnd, entry=entry)
@@ -457,18 +478,19 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
             rating_val = float(rv)
             user = username_map[username]
             new_task = Task(user=user, round_entry=round_entry)
+            new_tasks.append(new_task)
             new_rating = Rating(value=rating_val, user=user, task=new_task,
                                 round_entry=round_entry)
-            new_ratings_count += 1
+            new_ratings.append(new_rating)
             session.add(new_rating)
 
     print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
-                                                            new_ratings_count)
+                                                            len(new_ratings))
 
     if debug:
         print 'precommit pdb:'
         import pdb;pdb.set_trace()
-    # session.commit()
+    session.commit()
     return
 
 
@@ -478,6 +500,9 @@ if __name__ == '__main__':
     parser.add_argument('--add_organizer',
                         help='add an organizer by username',
                         type=str)
+    parser.add_argument('--rdb-console',
+                        help='drop to a console for interacting with db objects',
+                        action='store_true')
     parser.add_argument('--list',
                         help='list all campaigns and rounds',
                         action='store_true')
@@ -545,6 +570,9 @@ if __name__ == '__main__':
     if args.list:
         campaigns = maint_dao.get_all_campaigns()
         pprint([c.to_details_dict() for c in campaigns])
+
+    if args.rdb_console:
+        rdb_console(maint_dao)
 
     if args.add_organizer:
         new_org = args.organizer
