@@ -478,6 +478,7 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
             rating_val = float(rv)
             user = username_map[username]
             new_task = Task(user=user, round_entry=round_entry)
+            new_task.complete_date = now
             new_tasks.append(new_task)
             new_rating = Rating(value=rating_val, user=user, task=new_task,
                                 round_entry=round_entry)
