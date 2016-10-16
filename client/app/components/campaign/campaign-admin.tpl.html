@@ -189,7 +189,7 @@
                          layout="row" layout-align="space-between center"
                          ng-show="$ctrl.campaign.rounds.length">
                         <md-button ng-click="$ctrl.addRound($event)"
-                                   ng-disabled="true">
+                                   ng-disabled="!$ctrl.roundPreview[round.id].is_closeable">
                             <md-tooltip md-direction="right">Add new round</md-tooltip>
                             <md-icon>add</md-icon>
                             <span>Add next round</span>
