@@ -117,6 +117,7 @@ class User(Base):
                                creator=lambda r: RoundJuror(round=r))
 
     tasks = relationship('Task', back_populates='user')
+    ratings = relationship('Rating', back_populates='user')
     # update_date?
 
     def __init__(self, **kw):
@@ -489,11 +490,21 @@ class Rating(Base):
 
     user = relationship('User')
     task = relationship('Task', back_populates='rating')
+    user = relationship('User', back_populates='ratings')
     round_entry = relationship('RoundEntry', back_populates='rating')
+
+    entry = association_proxy('round_entry', 'entry',
+                              creator=lambda e: RoundEntry(entry=e))
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
+    def to_info_dict(self):
+        info = {'id': self.id,
+                'name': self.entry.name,
+                'user': self.user.username,
+                'value': self.value}
+        return info
 
 class Ranking(Base):
     __tablename__ = 'rankings'
@@ -1501,6 +1512,18 @@ class JurorDAO(UserDAO):
                     .offset(offset)\
                     .all()
         return tasks
+
+    def get_ratings_from_round(self, rnd, num, offset=0):
+        ratings = self.query(Rating)\
+                      .join(Task)\
+                      .filter(Task.user == self.user,
+                              Task.complete_date != None,
+                              Task.cancel_date == None,
+                              Task.round_entry.has(round_id=rnd.id))\
+                      .limit(num)\
+                      .offset(offset)\
+                      .all()
+        return ratings
 
     def _build_round_stats(self,
                            re_count,
