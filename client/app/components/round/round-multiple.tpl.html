@@ -1,14 +1,20 @@
 <div class="round" ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
-    <div class="round__title" layout="row" layout-align="start end">
+    <div class="spinner__container" layout="row" layout-align="center center"
+         ng-show="$ctrl.loading">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+    <div class="round__title" layout="row" layout-align="start center">
         <h2 class="md-headline">
             {{$ctrl.round.name}}<br />
             <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
         </h2>
         <span flex></span>
+        <!--
         <md-button class="md-icon-button" aria-label="Sort">
             <md-icon>filter_list</md-icon>
         </md-button>
         <span>|</span>
+        -->
         <md-button class="md-icon-button" aria-label="Grid size"
                    ng-class="{'md-primary': $ctrl.size === 3}"
                    ng-click="$ctrl.setGallerySize(3)">
@@ -27,6 +33,11 @@
             <md-tooltip>Small thumbnails size</md-tooltip>
             <md-icon>photo_size_select_small</md-icon>
         </md-button>
+        <span>|</span>
+        <md-button class="md-primary" ng-click="$ctrl.saveRanking()">
+            <md-icon>save</md-icon>
+            Save Round
+        </md-button>
     </div>
 
     <grid-list class="gallery" sv-root sv-part="$ctrl.images">
@@ -43,8 +54,8 @@
             </div>
             <grid-tile-footer class="gallery__footer">
                 <h3 class="gallery__footer-name">
-                    <span ng-show="$ctrl.isVoting('ranking')">#{{$index+1}}</span>
-                    <span>{{image.entry.name}}</span>
+                    <strong ng-show="$ctrl.isVoting('ranking')">{{$index+1 | ordinal}} place</strong><br />
+                    <span>Image #{{image.entry.id}}</span>
                 </h3>
             </grid-tile-footer>
         </grid-tile>
@@ -58,4 +69,9 @@
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
     <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.images && !$ctrl.images.length">
+    <h2 class="md-headline">you voted on all images in the round</h2>
+    <span>good job! :)</span>
 </div>

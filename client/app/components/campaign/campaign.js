@@ -50,14 +50,12 @@ const CampaignComponent = {
                 label: 'Rating',
                 value: 'rating',
                 icon: 'star_border'
-            }
-            /*
+            },
             'ranking': {
                 label: 'Ranking',
                 value: 'ranking',
                 icon: 'sort'
             }
-            */
         };
 
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);

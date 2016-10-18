@@ -14,8 +14,9 @@
                     <md-icon>keyboard_arrow_right</md-icon>
                 </md-button>
             </div>
-            <div class="dialog__image-description">
-                <h2 class="md-title">{{image.entry.name}}</h2>
+            <div class="dialog__image-description"
+                 ng-hide="true">
+                <h2 class="md-title">Image #{{image.entry.id}}</h2>
             </div>
         </md-dialog-content>
     </form>
