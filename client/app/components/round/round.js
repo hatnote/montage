@@ -166,8 +166,11 @@ const RoundComponent = {
 
             userService.juror.setRating(vm.round.id, {
                 ratings: data
-            }).then(() => {
+            }).then((response) => {
                 vm.loading = false;
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
             });
         }
 
