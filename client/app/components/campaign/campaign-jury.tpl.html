@@ -46,12 +46,21 @@
             <span class="md-body-1" flex="20"
                   layout="column" layout-align="start start"
                   ng-if="round.total_tasks">
-                <md-progress-linear md-mode="determinate"
-                                    value="{{100 - round.percent_tasks_open}}"></md-progress-linear>
-                <div class="campaign__progress" layout="row" layout-align="space-between center">
+                <md-progress-linear md-mode="determinate" 
+                    value="{{100 - round.percent_tasks_open}}"
+                    ng-if="round.vote_method !== 'ranking'"></md-progress-linear>
+                <div class="campaign__progress"
+                     layout="row" layout-align="space-between center"
+                     ng-if="round.vote_method !== 'ranking'">
                     <span>{{round.total_tasks - round.total_open_tasks}} / {{round.total_tasks}} reviewed</span>
                     <span flex></span>
                     <span class="muted">{{100 - round.percent_tasks_open | number: 0}}%</span>
+                </div>
+                <div class="campaign__progress"
+                     layout="row" layout-align="space-between center"
+                     ng-if="round.vote_method === 'ranking'">
+                    <span ng-show="!round.total_open_tasks"><md-icon>done</md-icon> Voted</span>
+                    <span ng-show="round.total_open_tasks"><md-icon>clear</md-icon> Not Voted</span>
                 </div>
             </span>
             <span class="muted" flex="20"
