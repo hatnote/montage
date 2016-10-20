@@ -160,8 +160,8 @@ const RoundComponent = {
             vm.loading = true;
 
             let data = vm.images.map((image) => ({
-                task_id: image.round_entry_id,
-                value: vm.images.indexOf(image) + 1
+                task_id: image.id,
+                value: vm.images.indexOf(image)
             }));
 
             userService.juror.setRating(vm.round.id, {
