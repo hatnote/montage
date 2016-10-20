@@ -3,7 +3,8 @@
          ng-show="$ctrl.loading">
         <md-progress-circular md-diameter="40"></md-progress-circular>
     </div>
-    <div class="round__title" layout="row" layout-align="start center">
+    <div class="round__title" layout="row" layout-align="start center"
+         ng-hide="$ctrl.error || $ctrl.round.status !== 'active' || ($ctrl.images && !$ctrl.images.length)">
         <h2 class="md-headline">
             {{$ctrl.round.name}}<br />
             <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
@@ -72,6 +73,7 @@
 </div>
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.images && !$ctrl.images.length">
-    <h2 class="md-headline">you voted on all images in the round</h2>
+    <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you voted on all images in the round</h2>
+    <h2 class="md-headline" ng-show="$ctrl.isVoting('ranking')">you voted on ranking round</h2>
     <span>good job! :)</span>
 </div>
