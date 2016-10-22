@@ -54,6 +54,8 @@ def fetch_json(url, data=None, act=None, **kw):
     try:
         res = fetch(url, data=data)
     except urllib2.HTTPError as he:
+        if kw.get('assert_error'):
+            return True # TODO
         print '!! ', he.read()
         print
         raise
@@ -202,13 +204,13 @@ def full_run(url_base, remote):
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
                       data, su_to='LilyOfTheWest')
-    '''
+    """
     # Cancel a round
     # - as coordinator
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/cancel' % round_id,
                       data, su_to='LilyOfTheWest')
-    '''
+    """
 
     # Pause a round
     # - as coordinator
@@ -306,9 +308,8 @@ def full_run(url_base, remote):
 
     # Get the jury index
     # - as juror
-    resp = fetch_json(url_base + '/juror', su_to='Jimbo Wales')
 
-    round_id = resp['data'][-1]['id']
+    resp = fetch_json(url_base + '/juror', su_to='Slaporte')
 
     """
     # TODO: Jurors only see a list of rounds at this point, so there
@@ -334,13 +335,38 @@ def full_run(url_base, remote):
     # an offset paramter
 
     # entry_id = resp['data']['tasks'][0]['round_entry_id']
-    task_id = resp['data']['tasks'][0]['id']
+    tasks = resp['data']['tasks']
+    task_id = tasks[0]['id']
 
     # Submit a single rating task
     # - as juror
     data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
+
+    # Attempt to submit or get tasks while the round is paused
+    
+    # Pause the round
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
+                      data, su_to='LilyOfTheWest')
+
+    task_id = tasks[-1]['id']
+
+    # Attempt to submit a rating task (should fail)
+    data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
+    resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
+                      data, su_to='Jimbo Wales', assert_error=400) # TODO
+
+    # Attempt to get more tasks (should fail)
+    resp = fetch_json(url_base + '/juror/round/%s/tasks' % round_id,
+                      su_to='Jimbo Wales', assert_error=400) # TODO
+
+    # Activate a round
+    # - as coordinator
+    data = {'post': True}
+    resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
+                      data, su_to='LilyOfTheWest')
 
     # Get more tasks
     # - as juror
@@ -361,7 +387,16 @@ def full_run(url_base, remote):
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/ratings' % round_id,
                       su_to='Jimbo Wales')
+    
+    recent_rating = resp['data'][-1]
 
+    # Adjust a recent rating
+    # - as juror
+    task_id = recent_rating['task_id']
+    new_val = float((recent_rating['id'] + 1) % 2)
+    data = {'ratings': [{'task_id': task_id, 'value': new_val}]}
+    resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % recent_rating['round_id'],
+                      data, su_to='Jimbo Wales')
 
     # Admin endpoints (part 2)
     # --------------- --------

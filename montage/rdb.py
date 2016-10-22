@@ -501,9 +501,11 @@ class Rating(Base):
 
     def to_info_dict(self):
         info = {'id': self.id,
+                'task_id': self.task.id,
                 'name': self.entry.name,
                 'user': self.user.username,
-                'value': self.value}
+                'value': self.value,
+                'round_id': self.round_entry.round_id}
         return info
 
 class Ranking(Base):
@@ -1470,6 +1472,7 @@ class JurorDAO(UserDAO):
     def get_task(self, task_id):
         task = self.query(Task)\
                    .filter_by(id=task_id)\
+                   .filter(Task.user == self.user)\
                    .one_or_none()
         return task
 
@@ -1661,7 +1664,7 @@ class JurorDAO(UserDAO):
             )
         return results
 
-    def apply_rating(self, task, rating):
+    def apply_rating(self, task, value):
         if not task.user == self.user:
             # belt and suspenders until server test covers the cross
             # complete case
@@ -1670,10 +1673,20 @@ class JurorDAO(UserDAO):
         rating = Rating(user_id=self.user.id,
                         task_id=task.id,
                         round_entry_id=task.round_entry_id,
-                        value=rating)
+                        value=value)
         self.rdb_session.add(rating)
         task.complete_date = now
         return
+
+    def edit_rating(self, task, value):
+        if not task.user == self.user:
+            raise PermissionDenied()
+        now = datetime.datetime.utcnow()
+        ret = self.rdb_session.query(Rating)\
+                              .filter_by(task_id=task.id)\
+                              .update({'value': value})
+        task.complete_date = now
+        return ret
 
     def apply_ranking(self, ranked_tasks):
         """format: [(task1,),
