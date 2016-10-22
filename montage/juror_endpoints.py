@@ -286,7 +286,7 @@ def get_ratings_from_round(rdb_session, user, round_id, request):
     ratings = juror_dao.get_ratings_from_round(rnd=rnd,
                                                num=count,
                                                offset=offset)
-    data = [r.to_info_dict() for r in ratings]
+    data = [r.to_details_dict() for r in ratings]
     return {'data': data}
 
 

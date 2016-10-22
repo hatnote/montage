@@ -508,6 +508,12 @@ class Rating(Base):
                 'round_id': self.round_entry.round_id}
         return info
 
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['entry'] = self.entry.to_details_dict()
+        return ret
+
+
 
 class Ranking(Base):
     __tablename__ = 'rankings'
@@ -1518,8 +1524,11 @@ class JurorDAO(UserDAO):
         return tasks
 
     def get_ratings_from_round(self, rnd, num, offset=0):
+        # all the filter fields but cancel_date are actually on Rating
+        # already
         ratings = self.query(Rating)\
                       .join(Task)\
+                      .options(joinedload('round_entry'))\
                       .filter(Task.user == self.user,
                               Task.complete_date != None,
                               Task.cancel_date == None,

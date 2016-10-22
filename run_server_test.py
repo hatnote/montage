@@ -345,7 +345,7 @@ def full_run(url_base, remote):
                       data, su_to='Jimbo Wales')
 
     # Attempt to submit or get tasks while the round is paused
-    
+
     # Pause the round
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
@@ -387,7 +387,7 @@ def full_run(url_base, remote):
     # - as juror
     resp = fetch_json(url_base + '/juror/round/%s/ratings' % round_id,
                       su_to='Jimbo Wales')
-    
+
     recent_rating = resp['data'][-1]
 
     # Adjust a recent rating
