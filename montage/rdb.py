@@ -508,6 +508,7 @@ class Rating(Base):
                 'round_id': self.round_entry.round_id}
         return info
 
+
 class Ranking(Base):
     __tablename__ = 'rankings'
 
@@ -1664,7 +1665,7 @@ class JurorDAO(UserDAO):
             )
         return results
 
-    def apply_rating(self, task, value):
+    def apply_rating(self, task, value, review=''):
         if not task.user == self.user:
             # belt and suspenders until server test covers the cross
             # complete case
@@ -1674,6 +1675,12 @@ class JurorDAO(UserDAO):
                         task_id=task.id,
                         round_entry_id=task.round_entry_id,
                         value=value)
+        review_stripped = review.strip()
+        if len(review_stripped) > 8192:
+            raise ValueError('review must be less than 8192 characters, not %r'
+                             % len(review_stripped))
+        if review_stripped:
+            rating['flags']['review'] = review_stripped
         self.rdb_session.add(rating)
         task.complete_date = now
         return
@@ -1704,6 +1711,14 @@ class JurorDAO(UserDAO):
                                   task_id=task.id,
                                   round_entry_id=task.round_entry.id,
                                   value=rank_i)
+                # TODO: how to get review here when Task has no attribute
+                # review = task.get('review')
+                # review_stripped = review.strip()
+                # if len(review_stripped) > 8192:
+                #     raise ValueError('review must be less than 8192 chars,'
+                #                      ' not %r' % len(review_stripped))
+                # if review_stripped:
+                #     ranking['flags']['review'] = review_stripped
                 self.rdb_session.add(ranking)
                 task.complete_date = now
         return
