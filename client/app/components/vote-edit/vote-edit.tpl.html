@@ -35,8 +35,10 @@
             <md-tooltip>Small thumbnails size</md-tooltip>
             <md-icon>photo_size_select_small</md-icon>
         </md-button>
-        <span>|</span>
-        <md-button class="md-primary" ng-click="$ctrl.save()">
+        <span>&nbsp;</span>
+        <md-button class="md-primary"
+                   ng-disabled="!$ctrl.edits.length"
+                   ng-click="$ctrl.save()">
             <md-icon>save</md-icon>
             Save Changes ({{$ctrl.edits.length}})
         </md-button>
@@ -75,7 +77,7 @@
             </div>
         </grid-tile>
     </grid-list>
-    <div ng-show='$ctrl.loadingMore'>Loading data...</div>
+    <div ng-show='$ctrl.loadingMore'></div>
 </div>
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.error">
@@ -88,7 +90,5 @@
 </div>
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.images && !$ctrl.images.length">
-    <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you voted on all images in the round</h2>
-    <h2 class="md-headline" ng-show="$ctrl.isVoting('ranking')">you voted on ranking round</h2>
-    <span>good job! :)</span>
+    <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you haven't voted on any image this round</h2>
 </div>

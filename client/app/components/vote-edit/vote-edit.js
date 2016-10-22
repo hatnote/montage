@@ -26,7 +26,7 @@ const VoteEditComponent = {
         vm.loadMore = loadMore;
         vm.round = vm.data.data;
         vm.openURL = openURL;
-        vm.saveRanking = saveRanking;
+        vm.save = save;
         vm.setRate = setRate;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.showSidebar = true;
@@ -92,6 +92,27 @@ const VoteEditComponent = {
             $window.open(url, '_blank');
         }
 
+        function save() {
+            vm.loading = true;
+            saveRating().then((response) => {
+                vm.edits = [];
+                vm.images.forEach((image) => { delete image.edited; });
+                vm.loading = false;
+                response.error ?
+                    alertService.error(response.error) :
+                    alertService.success('New votes saved');
+            });
+        }
+
+        function saveRating() {
+            return userService.juror.setRating(vm.round.id, {
+                ratings: vm.edits.map((element) => ({
+                    task_id: element.task_id,
+                    value: (element.value - 1) / 4
+                }))
+            });
+        }
+
         function saveRanking() {
             vm.loading = true;
 
@@ -107,16 +128,6 @@ const VoteEditComponent = {
                 response.error ?
                     alertService.error(response.error) :
                     $state.reload();
-            });
-        }
-
-        function sendRate(rate) {
-            return userService.juror.setRating(vm.round.id, {
-                ratings: [rate]
-            }).then(() => {
-                if (vm.stats.total_open_tasks <= 10) {
-                    skips = 0;
-                }
             });
         }
 
