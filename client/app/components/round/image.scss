@@ -4,6 +4,11 @@ mont-round {
     .image {
          width: 100%;
          margin-top: 25px;
+
+         a {
+             text-decoration: none;
+             color: rgb(33,150,243);
+         }
     }
 
     .image__gallery {
@@ -25,6 +30,7 @@ mont-round {
 
     .image__description {
         width: 300px;
+        height: calc(100vh - 135px);
         margin: 0 20px;
 
         & > *:first-child {
