@@ -298,12 +298,7 @@ const CampaignComponent = {
             if (!isRoundActive(round)) {
                 return;
             }
-
-            if (round.voteMethod === 'voting') {
-                $state.go('main.juror.image');
-            } else {
-                $state.go(isAdmin() ? 'main.admin.round' : 'main.juror.round', { id: round.id });
-            }
+            $state.go('main.juror.round', { id: round.id });
         }
 
         function pauseRound(round) {
