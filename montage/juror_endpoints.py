@@ -259,6 +259,8 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
         count = MAX_RATINGS_SUBMIT  # TODO: better constant
     if not rnd:
         raise PermissionDenied()
+    if rnd.status != 'active':
+        raise InvalidAction('round %s (%s) is not active' % (rnd.id, rnd.name))
     tasks = juror_dao.get_tasks_from_round(rnd=rnd,
                                            num=count,
                                            offset=offset)
@@ -352,6 +354,7 @@ def submit_ratings(rdb_session, user, request_dict):
     juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
 
     r_dicts = request_dict['ratings']
+
     if len(r_dicts) > MAX_RATINGS_SUBMIT:
         raise InvalidAction('can submit up to 100 ratings at once, not %r'
                             % len(r_dicts))
@@ -367,11 +370,14 @@ def submit_ratings(rdb_session, user, request_dict):
     round_id_set = set([t.round_entry.round_id for t in tasks])
     if not len(round_id_set) == 1:
         raise InvalidAction('can only submit ratings for one round at a time')
-    comp_tasks = [t for t in tasks if t.complete_date]
-    if comp_tasks:
-        raise InvalidAction('cannot submit ratings for complete tasks: %r'
-                            % comp_tasks)
-    rnd = juror_dao.get_round(list(round_id_set)[0])
+
+    round_id = list(round_id_set)[0]
+    rnd = juror_dao.get_round(round_id)
+    if not rnd:
+        raise PermissionDenied()
+    if rnd.status != 'active':
+        raise InvalidAction('round %s (%s) is not active' % (rnd.id, rnd.name))
+
     style = rnd.vote_method
 
     # validation
@@ -403,7 +409,11 @@ def submit_ratings(rdb_session, user, request_dict):
 
     if style in ('rating', 'yesno'):
         for t in tasks:
-            juror_dao.apply_rating(t, id_map[t.id])
+            val = id_map[t.id]
+            if t.complete_date:
+                juror_dao.edit_rating(t, val)
+            else:
+                juror_dao.apply_rating(t, val)
     elif style == 'ranking':
         # This part is designed to support ties ok though
         sorted_rs = sorted(r_dicts, key=lambda r: r['value'])
@@ -415,6 +425,7 @@ def submit_ratings(rdb_session, user, request_dict):
         juror_dao.apply_ranking(ranked_tasks)
 
     return {}  # TODO?
+
 
 JUROR_ROUTES = get_juror_routes()
 
