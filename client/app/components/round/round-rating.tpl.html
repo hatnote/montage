@@ -41,7 +41,9 @@
             </md-icon>
         </md-button>
     </div>
-    <div class="image__description" ng-show="$ctrl.showSidebar">
+    <div class="image__description"
+            layout="column" layout-align="start stretch"
+            ng-show="$ctrl.showSidebar">
         <div layout="row" layout-align="start center">
             <h1>Image #{{$ctrl.rating.current.entry.id}}</h1>
             <span flex></span>
@@ -105,6 +107,9 @@
                 </md-button>
             </div>
         </md-list>
+        <div class="md-body-2 muted" layout="row" layout-align="center end" flex>
+            <span><md-icon>new_releases</md-icon> You can edit your votes on <a href="" ui-sref="main.juror.vote-edit({id: $ctrl.round.id})">this page</a></span>
+        </div>
     </div>
 </div>
 <img class="invisible" ng-src="{{$ctrl.getImageName($ctrl.rating.next)}}">
