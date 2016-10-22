@@ -72,17 +72,6 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id)
       }
     })
-    .state('main.juror.image', {
-      url: '/image',
-      template: `<mont-image
-                      layout="column" layout-align="start start"
-                      data="$resolve.image"
-                      user="$resolve.user"
-                      type="$resolve.userType"></mont-round>`,
-      resolve: {
-        image: (dataService) => dataService.getTempImage() // temporary!
-      }
-    })
 
     .state('main.admin', {
       template: '<ui-view/>',
@@ -104,18 +93,6 @@ function stateConfig($stateProvider, $urlRouterProvider) {
                       data="$resolve.data"
                       user="$resolve.user"
                       type="$resolve.userType"></mont-dashboard>`
-    })
-    .state('main.admin.round', {
-      url: '/admin/round/:id',
-      template: `<mont-round
-                      layout="column" layout-align="start start"
-                      data="$resolve.round"
-                      user="$resolve.user"
-                      images="$resolve.images"
-                      type="$resolve.userType"></mont-round>`,
-      resolve: {
-        round: ($stateParams, userService) => userService.admin.getRound($stateParams.id)
-      }
     })
     .state('main.login', {
       url: '/login',
