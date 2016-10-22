@@ -3,6 +3,7 @@ import moment from 'moment';
 
 import 'angular-material';
 import 'angular-ui-router';
+import 'ng-infinite-scroll';
 import './components/angular-sortable-view';
 
 import './style.scss';
@@ -12,7 +13,7 @@ import 'material-design-icons/iconfont/material-icons.css';
 import components from './components';
 import services from './services';
 
-angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
+angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view', 'infinite-scroll'])
   .config(stateConfig)
   .config(themeConfig)
   .config(localeConfig);
