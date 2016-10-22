@@ -72,6 +72,19 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id)
       }
     })
+    .state('main.juror.vote-edit', {
+      url: '/round/:id/edit',
+      template: `<mont-vote-edit
+                      layout="column" layout-align="start start"
+                      data="$resolve.round"
+                      user="$resolve.user"
+                      tasks="$resolve.tasks"
+                      type="$resolve.userType"></mont-round>`,
+      resolve: {
+        round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
+        tasks: ($stateParams, userService) => userService.juror.getPastVotes($stateParams.id)
+      }
+    })
 
     .state('main.admin', {
       template: '<ui-view/>',
