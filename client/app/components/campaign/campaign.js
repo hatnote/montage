@@ -50,14 +50,12 @@ const CampaignComponent = {
                 label: 'Rating',
                 value: 'rating',
                 icon: 'star_border'
-            }
-            /*
+            },
             'ranking': {
                 label: 'Ranking',
                 value: 'ranking',
                 icon: 'sort'
             }
-            */
         };
 
         $templateCache.put('campaign-template', isAdmin() ? templateAdmin : templateJury);
@@ -300,12 +298,7 @@ const CampaignComponent = {
             if (!isRoundActive(round)) {
                 return;
             }
-
-            if (round.voteMethod === 'voting') {
-                $state.go('main.juror.image');
-            } else {
-                $state.go(isAdmin() ? 'main.admin.round' : 'main.juror.round', { id: round.id });
-            }
+            $state.go('main.juror.round', { id: round.id });
         }
 
         function pauseRound(round) {

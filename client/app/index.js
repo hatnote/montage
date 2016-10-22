@@ -3,6 +3,7 @@ import moment from 'moment';
 
 import 'angular-material';
 import 'angular-ui-router';
+import 'ng-infinite-scroll';
 import './components/angular-sortable-view';
 
 import './style.scss';
@@ -12,7 +13,7 @@ import 'material-design-icons/iconfont/material-icons.css';
 import components from './components';
 import services from './services';
 
-angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view'])
+angular.module('montage', ['ngMaterial', 'ui.router', 'angular-sortable-view', 'infinite-scroll'])
   .config(stateConfig)
   .config(themeConfig)
   .config(localeConfig);
@@ -71,15 +72,17 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         tasks: ($stateParams, userService) => userService.juror.getRoundTasks($stateParams.id)
       }
     })
-    .state('main.juror.image', {
-      url: '/image',
-      template: `<mont-image
+    .state('main.juror.vote-edit', {
+      url: '/round/:id/edit',
+      template: `<mont-vote-edit
                       layout="column" layout-align="start start"
-                      data="$resolve.image"
+                      data="$resolve.round"
                       user="$resolve.user"
+                      tasks="$resolve.tasks"
                       type="$resolve.userType"></mont-round>`,
       resolve: {
-        image: (dataService) => dataService.getTempImage() // temporary!
+        round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
+        tasks: ($stateParams, userService) => userService.juror.getPastVotes($stateParams.id)
       }
     })
 
@@ -103,18 +106,6 @@ function stateConfig($stateProvider, $urlRouterProvider) {
                       data="$resolve.data"
                       user="$resolve.user"
                       type="$resolve.userType"></mont-dashboard>`
-    })
-    .state('main.admin.round', {
-      url: '/admin/round/:id',
-      template: `<mont-round
-                      layout="column" layout-align="start start"
-                      data="$resolve.round"
-                      user="$resolve.user"
-                      images="$resolve.images"
-                      type="$resolve.userType"></mont-round>`,
-      resolve: {
-        round: ($stateParams, userService) => userService.admin.getRound($stateParams.id)
-      }
     })
     .state('main.login', {
       url: '/login',

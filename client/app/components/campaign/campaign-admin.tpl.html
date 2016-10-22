@@ -1,4 +1,4 @@
-<div class="campaign">
+<div class="campaign campaign--admin">
     <h2 class="campaign__title md-display-1"
         layout="row" layout-align="start center">
         <span ng-hide="$ctrl.isNameEdited">{{$ctrl.campaign.name}}</span>
@@ -157,7 +157,8 @@
                     <span class="campaign__juror-progress">{{$ctrl.roundDetails[round.id].total_open_tasks}} tasks out of {{$ctrl.roundDetails[round.id].total_tasks}} ({{$ctrl.roundDetails[round.id].percent_tasks_open | number: 0}}%) needs review.</span>
                     <div class="campaign__juror-progress"
                          layout="row" layout-align="space-between center"
-                         ng-repeat="juror in $ctrl.roundDetails[round.id].jurors | orderBy : 'username'">
+                         ng-repeat="juror in $ctrl.roundDetails[round.id].jurors | orderBy : 'username'"
+                         ng-show="juror.is_active">
                         <span flex="40">{{juror.username}}</span>
                         <span layout="column" layout-align="start start" flex
                             ng-if="juror.stats.total_tasks">
@@ -187,9 +188,9 @@
 -->
                     <div class="campaign__rounds-add"
                          layout="row" layout-align="space-between center"
-                         ng-show="$ctrl.campaign.rounds.length">
+                         ng-show="$ctrl.campaign.rounds.length && round.vote_method !== 'ranking'">
                         <md-button ng-click="$ctrl.addRound($event)"
-                                   ng-disabled="!$ctrl.roundPreview[round.id].is_closeable">
+                                   ng-disabled="!$ctrl.roundPreview[round.id].is_closeable || !$last">
                             <md-tooltip md-direction="right">Add new round</md-tooltip>
                             <md-icon>add</md-icon>
                             <span>Add next round</span>

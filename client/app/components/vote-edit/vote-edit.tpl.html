@@ -1,4 +1,5 @@
-<div class="round" ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
+<div class="round" ng-if="!$ctrl.error && $ctrl.round.status === 'active'"
+     infinite-scroll="$ctrl.loadMore()" infinite-scroll-disabled="$ctrl.loadingMore" infinite-scroll-distance="1">
     <div class="spinner__container" layout="row" layout-align="center center"
          ng-show="$ctrl.loading">
         <md-progress-circular md-diameter="40"></md-progress-circular>
@@ -35,32 +36,46 @@
             <md-icon>photo_size_select_small</md-icon>
         </md-button>
         <span>|</span>
-        <md-button class="md-primary" ng-click="$ctrl.saveRanking()">
+        <md-button class="md-primary" ng-click="$ctrl.save()">
             <md-icon>save</md-icon>
-            Save Round
+            Save Changes ({{$ctrl.edits.length}})
         </md-button>
     </div>
 
     <grid-list class="gallery" sv-root sv-part="$ctrl.images">
-        <grid-tile class="gallery__image link"
+        <grid-tile class="gallery__image"
                    ng-class="'gallery__image--size-'+$ctrl.size"
-                   ng-repeat="image in $ctrl.images"
-                   ng-click="$ctrl.openImage(image, $event)" sv-element>
+                   ng-repeat="image in $ctrl.images" sv-element>
             <md-button class="md-icon-button gallery__drag-icon"
                        ng-show="$ctrl.isVoting('ranking')" sv-handle>
                 <md-icon>drag_handle</md-icon>
             </md-button>
             <div class="gallery__image-containter" layout="column" layout-align="center center">
-                <img ng-src="https://commons.wikimedia.org/w/thumb.php?f={{image.entry.name}}&w=800">
+                <img ng-src="{{$ctrl.getImageName(image)}}">
             </div>
-            <grid-tile-footer class="gallery__footer">
+            <grid-tile-footer class="gallery__footer" ng-hide="true">
                 <h3 class="gallery__footer-name">
-                    <strong ng-show="$ctrl.isVoting('ranking')">{{$index+1 | ordinal}} place</strong><br />
-                    <span>Image #{{image.entry.id}}</span>
+                    <div>
+                        <strong ng-show="$ctrl.isVoting('ranking')">{{$index+1 | ordinal}} place</strong>
+                        <strong ng-show="!$ctrl.isVoting('ranking')">{{image.value}}</strong>
+                    </div>
+                    <span>Image #{{image.id}}</span>
                 </h3>
             </grid-tile-footer>
+            <div class="gallery__rating">
+                <md-button class="md-icon-button"
+                            ng-repeat="rate in $ctrl.rating.rates"
+                            ng-click="$ctrl.setRate(image, rate)"
+                            ng-class="{'md-primary': image.value >= rate, 'md-edited': image.value >= rate && image.edited }">
+                    <md-icon>
+                        star_rate
+                        <md-tooltip>Rate {{rate}}/5</md-tooltip>
+                    </md-icon>
+                </md-button>
+            </div>
         </grid-tile>
     </grid-list>
+    <div ng-show='$ctrl.loadingMore'>Loading data...</div>
 </div>
 <div class="central-error" layout="column" layout-align="center center"
      ng-show="$ctrl.error">

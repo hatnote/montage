@@ -1,6 +1,6 @@
 @import '../../variables';
 
-mont-round {
+mont-vote-edit {
     & > ng-include {
         height: 100%;
         width: 100%;
@@ -31,7 +31,7 @@ mont-round {
             background: #ccc;
             width: calc((100% - 100px) / 5) !important; // id needs to be important, because of sortable plugin adds inline css
             height: 15vw !important;
-            margin: 10px;
+            margin: 10px 10px 40px;
             vertical-align: top;
 
             &.sv-helper {
@@ -112,7 +112,15 @@ mont-round {
                         font-size: 16px;
                     }
                 }
-            } 
+            }
+
+            .gallery__rating {
+                text-align: center;
+
+                .md-button.md-icon-button {
+                    margin: 0;
+                }
+            }
         }
     }
 }
@@ -154,4 +162,8 @@ mont-round {
         width: 180px;
         padding: 20px;
     }
+}
+
+.md-button.md-edited.md-primary:not([disabled]) md-icon {
+    color: mediumseagreen;
 }

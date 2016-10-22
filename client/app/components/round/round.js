@@ -29,6 +29,7 @@ const RoundComponent = {
         vm.round = vm.data.data;
         vm.openImage = openImage;
         vm.openURL = openURL;
+        vm.saveRanking = saveRanking;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.showSidebar = true;
         vm.size = 1;
@@ -153,6 +154,24 @@ const RoundComponent = {
 
         function openURL(url) {
             $window.open(url, '_blank');
+        }
+
+        function saveRanking() {
+            vm.loading = true;
+
+            let data = vm.images.map((image) => ({
+                task_id: image.id,
+                value: vm.images.indexOf(image)
+            }));
+
+            userService.juror.setRating(vm.round.id, {
+                ratings: data
+            }).then((response) => {
+                vm.loading = false;
+                response.error ?
+                    alertService.error(response.error) :
+                    $state.reload();
+            });
         }
 
         function sendRate(rate) {
