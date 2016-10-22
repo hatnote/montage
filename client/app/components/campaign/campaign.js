@@ -23,6 +23,7 @@ const CampaignComponent = {
         vm.editCampaign = editCampaign;
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
+        vm.editVotes = editVotes;
         vm.isNameEdited = false;
         vm.isRoundActive = isRoundActive;
         vm.loadRoundDetails = loadRoundDetails;
@@ -271,6 +272,10 @@ const CampaignComponent = {
                     saveEditRound: saveEditRound,
                 }
             }, event);
+        }
+
+        function editVotes(round) {
+            $state.go('main.juror.vote-edit', { id: round.id });
         }
 
         function isAdmin() {

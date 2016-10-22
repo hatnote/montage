@@ -11,8 +11,8 @@
     <div class="campaign__rounds-description"
          layout="row" layout-align="space-between center">
         <span class="md-body-1" flex="30">Name</span>
-        <span class="md-body-1" flex="30">Deadline Date</span>
-        <span class="md-body-1" flex="20">Progress</span>
+        <span class="md-body-1" flex="20">Deadline Date</span>
+        <span class="md-body-1" flex="30">Progress</span>
         <span flex></span>
         <span class="md-body-1" flex="10">Vote Method</span>
     </div>
@@ -34,7 +34,7 @@
                 <span class="campaign__directions-text" ng-show="round.directions">{{round.directions}}</span>
                 <span class="muted" ng-show="!round.directions">No directions provided</span>
             </span>
-            <span class="md-body-1" flex="30" layout="row" layout-align="start center">
+            <span class="md-body-1" flex="20" layout="row" layout-align="start center">
                 <span ng-show="round.deadline_date">
                     {{round.deadline_date | date: 'd MMM yyyy'}}<br />
                     <small class="muted">{{round.deadline_date | fromNow}}</small>
@@ -43,25 +43,33 @@
                     No deadline date provided
                 </span>
             </span>
-            <span class="md-body-1" flex="20"
-                  layout="column" layout-align="start start"
+            <span class="md-body-1" flex="30"
+                  layout="row" layout-align="space-between center"
                   ng-if="round.total_tasks">
-                <md-progress-linear md-mode="determinate" 
-                    value="{{100 - round.percent_tasks_open}}"
-                    ng-if="round.vote_method !== 'ranking'"></md-progress-linear>
-                <div class="campaign__progress"
-                     layout="row" layout-align="space-between center"
-                     ng-if="round.vote_method !== 'ranking'">
-                    <span>{{round.total_tasks - round.total_open_tasks}} / {{round.total_tasks}} reviewed</span>
-                    <span flex></span>
-                    <span class="muted">{{100 - round.percent_tasks_open | number: 0}}%</span>
+                <div layout="column" layout-align="start start" flex>
+                    <md-progress-linear md-mode="determinate" 
+                        value="{{100 - round.percent_tasks_open}}"
+                        ng-if="round.vote_method !== 'ranking'"></md-progress-linear>
+                    <div class="campaign__progress"
+                            layout="row" layout-align="space-between center"
+                            ng-if="round.vote_method !== 'ranking'">
+                        <span>{{round.total_tasks - round.total_open_tasks}} / {{round.total_tasks}} reviewed</span>
+                        <span flex></span>
+                        <span class="muted">{{100 - round.percent_tasks_open | number: 0}}%</span>
+                    </div>
+                    <div class="campaign__progress"
+                            layout="row" layout-align="space-between center"
+                            ng-if="round.vote_method === 'ranking'">
+                        <span ng-show="!round.total_open_tasks"><md-icon>done</md-icon> Voted</span>
+                        <span ng-show="round.total_open_tasks"><md-icon>clear</md-icon> Not Voted</span>
+                    </div>
                 </div>
-                <div class="campaign__progress"
-                     layout="row" layout-align="space-between center"
-                     ng-if="round.vote_method === 'ranking'">
-                    <span ng-show="!round.total_open_tasks"><md-icon>done</md-icon> Voted</span>
-                    <span ng-show="round.total_open_tasks"><md-icon>clear</md-icon> Not Voted</span>
-                </div>
+                <md-button class="md-icon-button" aria-label="Edit Votes"
+                           ng-click="$event.stopPropagation(); $ctrl.editVotes(round)"
+                           ng-disabled="!$ctrl.isRoundActive(round)">
+                    <md-icon>mode_edit</md-icon>
+                    <md-tooltip>Edit Votes</md-tooltip>
+                </md-button>
             </span>
             <span class="muted" flex="20"
                   ng-if="!round.total_tasks">
