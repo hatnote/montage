@@ -132,7 +132,7 @@ class User(Base):
         ret = {'id': self.id,
                'username': self.username,
                'is_organizer': self.is_organizer,
-               'is_maintainer': self.is_maintainer,}
+               'is_maintainer': self.is_maintainer}
         return ret
 
     def to_details_dict(self):
@@ -1451,7 +1451,6 @@ class MaintainerDAO(OrganizerDAO):
     def add_organizer(self, username):
         user = self.get_or_create_user(username, 'organizer')
         if user.is_organizer:
-            #raise Exception('organizer already exists')
             pass
         else:
             user.is_organizer = True
@@ -1459,8 +1458,12 @@ class MaintainerDAO(OrganizerDAO):
             self.rdb_session.commit()
         return user
 
-    # Read methods
-
+    def get_active_users(self):
+        users = (self.rdb_session.query(User)
+                 .filter(User.last_active_date != None)
+                 .order_by(User.last_active_date.desc())
+                 .all())
+        return list(users)
 
 
 def bootstrap_maintainers(rdb_session):

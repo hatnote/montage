@@ -98,7 +98,6 @@ class UserMiddleware(Middleware):
     def endpoint(self, next, cookie, rdb_session, _route, config,
                  request_dict, response_dict, timings_dict):
         # endpoints are default non-public
-        # TODO: last_activity_date?
         response_dict['user'] = None
         start_time = time.time()
         timings_dict['lookup_user'] = 0.0
@@ -138,7 +137,7 @@ class UserMiddleware(Middleware):
 
         now = datetime.datetime.utcnow()
         last_minute = now - datetime.timedelta(seconds=60)
-        if user.last_active_date and user.last_active_date < last_minute:
+        if not user.last_active_date or user.last_active_date < last_minute:
             # updates only up to once a minute
             user.last_active_date = now
 
