@@ -7,7 +7,7 @@
     <div class="round__title" layout="row" layout-align="start center"
          ng-hide="$ctrl.error || $ctrl.round.status !== 'active' || ($ctrl.images && !$ctrl.images.length)">
         <h2 class="md-headline">
-            {{$ctrl.round.name}}<br />
+            Edit votes for <a href="" ui-sref="main.juror.round({id: $ctrl.round.id})">{{$ctrl.round.name}}</a><br />
             <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
         </h2>
         <span flex></span>
@@ -64,7 +64,9 @@
                     <span>Image #{{image.id}}</span>
                 </h3>
             </grid-tile-footer>
-            <div class="gallery__rating" ng-if="$ctrl.isVoting('rating')">
+            <div class="gallery__rating"
+                 layout="row" layout-align="center center"
+                 ng-if="$ctrl.isVoting('rating')">
                 <md-button class="md-icon-button"
                             ng-repeat="rate in $ctrl.rating.rates"
                             ng-click="$ctrl.setRate(image, rate)"
