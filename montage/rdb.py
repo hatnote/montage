@@ -499,6 +499,10 @@ class Rating(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(Rating, self).__init__(**kw)
+
     def to_info_dict(self):
         info = {'id': self.id,
                 'task_id': self.task.id,
@@ -514,9 +518,12 @@ class Rating(Base):
         return ret
 
 
-
 class Ranking(Base):
     __tablename__ = 'rankings'
+
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(Ranking, self).__init__(**kw)
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -1704,32 +1711,34 @@ class JurorDAO(UserDAO):
         task.complete_date = now
         return ret
 
-    def apply_ranking(self, ranked_tasks):
-        """format: [(task1,),
-                 (task3,),
-                 (task4, task6),
-                 (task5,)]
+    def apply_ranking(self, ballot):
+        """ballot format:
 
-        with task1 being the highest rank. this format is designed to
-        support ties.
+        [{"task": <Task object>,
+          "value": 0,
+          "review": "The light dances across the image."},
+        {...}]
+
+        ballot can be in any order, with values representing
+        ranks. ties are allowed.
         """
         now = datetime.datetime.utcnow()
-        for rank_i, rank_tasks in enumerate(ranked_tasks):
-            for task in rank_tasks:
-                ranking = Ranking(user_id=self.user.id,
-                                  task_id=task.id,
-                                  round_entry_id=task.round_entry.id,
-                                  value=rank_i)
-                # TODO: how to get review here when Task has no attribute
-                # review = task.get('review')
-                # review_stripped = review.strip()
-                # if len(review_stripped) > 8192:
-                #     raise ValueError('review must be less than 8192 chars,'
-                #                      ' not %r' % len(review_stripped))
-                # if review_stripped:
-                #     ranking['flags']['review'] = review_stripped
-                self.rdb_session.add(ranking)
-                task.complete_date = now
+        for r_dict in ballot:
+            task = r_dict['task']
+            ranking = Ranking(user_id=self.user.id,
+                              task_id=task.id,
+                              round_entry_id=task.round_entry.id,
+                              value=r_dict['value'])
+            review = r_dict.get('review') or ''
+            review_stripped = review.strip()
+            if len(review_stripped) > 8192:
+                raise ValueError('review must be less than 8192 chars,'
+                                 ' not %r' % len(review_stripped))
+            elif review:
+                ranking.flags['review'] = review
+
+            self.rdb_session.add(ranking)
+            task.complete_date = now
         return
 
 

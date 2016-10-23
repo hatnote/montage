@@ -397,9 +397,11 @@ def submit_ratings(rdb_session, user, request_dict):
             raise InvalidAction('ranking expects whole numbers >= 0, not %r'
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
-        if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
-            raise InvalidAction('ranking expects contiguous unique numbers,'
-                                ' 0 - %s, not %r' % (len(rnd.entries), ranks))
+        last_rank = max(ranks)
+        max_ok_rank = len(rnd.entries) - 1
+        if last_rank > max_ok_rank:
+            raise InvalidAction('ranking for round #%s expects ranks 0 - %s,'
+                                ' not %s' % (rnd.id, max_ok_rank, last_rank))
         all_rnd_tasks = juror_dao.get_tasks_from_round(rnd,
                                                        num=MAX_RATINGS_SUBMIT)
         if len(all_rnd_tasks) != len(id_map):
@@ -416,13 +418,18 @@ def submit_ratings(rdb_session, user, request_dict):
                 juror_dao.apply_rating(t, val)
     elif style == 'ranking':
         # This part is designed to support ties ok though
-        sorted_rs = sorted(r_dicts, key=lambda r: r['value'])
-        sorted_rank_task_pairs = [(int(r['value']), task_map[r['task_id']])
-                                  for r in sorted_rs]
-        rank_items = [tuple(t) for r, t in
-                      groupby(sorted_rank_task_pairs, key=lambda rt: rt[0])]
-        ranked_tasks = [tuple([p[1] for p in rt]) for rt in rank_items]
-        juror_dao.apply_ranking(ranked_tasks)
+        """
+        [{"task_id": 123,
+          "value": 0,
+          "review": "The light dances across the image."}]
+        """
+        ballot = []
+        for rd in r_dicts:
+            cur = dict(rd)
+            cur['task'] = task_map[rd['task_id']]
+            ballot.append(cur)
+
+        juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
 
