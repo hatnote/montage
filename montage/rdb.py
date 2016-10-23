@@ -32,7 +32,7 @@ from utils import (format_date,
                    to_unicode,
                    get_mw_userid,
                    weighted_choice,
-                   PermissionDenied, DoesNotExist, InvalidAction)
+                   PermissionDenied, InvalidAction)
 from imgutils import make_mw_img_url
 from loaders import get_entries_from_gist_csv, load_category
 from simple_serdes import DictableBase, JSONEncodedDict
@@ -132,7 +132,7 @@ class User(Base):
         ret = {'id': self.id,
                'username': self.username,
                'is_organizer': self.is_organizer,
-               'is_maintainer': self.is_maintainer,}
+               'is_maintainer': self.is_maintainer}
         return ret
 
     def to_details_dict(self):
@@ -499,6 +499,10 @@ class Rating(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(Rating, self).__init__(**kw)
+
     def to_info_dict(self):
         info = {'id': self.id,
                 'task_id': self.task.id,
@@ -506,13 +510,13 @@ class Rating(Base):
                 'user': self.user.username,
                 'value': self.value,
                 'round_id': self.round_entry.round_id}
+        info['review'] = self.flags.get('review')  # TODO
         return info
 
     def to_details_dict(self):
         ret = self.to_info_dict()
         ret['entry'] = self.entry.to_details_dict()
         return ret
-
 
 
 class Ranking(Base):
@@ -525,10 +529,34 @@ class Ranking(Base):
 
     value = Column(Integer)
 
+    user = relationship('User')
+    task = relationship('Task')
     round_entry = relationship('RoundEntry', back_populates='ranking')
+
+    entry = association_proxy('round_entry', 'entry',
+                              creator=lambda e: RoundEntry(entry=e))
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
+
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(Ranking, self).__init__(**kw)
+
+    def to_info_dict(self):
+        info = {'id': self.id,
+                'task_id': self.task.id,
+                'name': self.entry.name,
+                'user': self.user.username,
+                'value': self.value,
+                'round_id': self.round_entry.round_id}
+        info['review'] = self.flags.get('review')  # TODO
+        return info
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['entry'] = self.entry.to_details_dict()
+        return ret
 
 
 class FinalEntryRanking(object):
@@ -1423,7 +1451,6 @@ class MaintainerDAO(OrganizerDAO):
     def add_organizer(self, username):
         user = self.get_or_create_user(username, 'organizer')
         if user.is_organizer:
-            #raise Exception('organizer already exists')
             pass
         else:
             user.is_organizer = True
@@ -1431,8 +1458,12 @@ class MaintainerDAO(OrganizerDAO):
             self.rdb_session.commit()
         return user
 
-    # Read methods
-
+    def get_active_users(self):
+        users = (self.rdb_session.query(User)
+                 .filter(User.last_active_date != None)
+                 .order_by(User.last_active_date.desc())
+                 .all())
+        return list(users)
 
 
 def bootstrap_maintainers(rdb_session):
@@ -1537,6 +1568,16 @@ class JurorDAO(UserDAO):
                       .offset(offset)\
                       .all()
         return ratings
+
+    def get_rankings_from_round(self, rnd):
+        rankings = self.query(Ranking)\
+                       .filter(Ranking.user == self.user,
+                               Ranking.round_entry.has(round_id=rnd.id))\
+                       .join(Task)\
+                       .options(joinedload('round_entry'))\
+                       .filter(Task.cancel_date == None)\
+                       .all()
+        return rankings
 
     def _build_round_stats(self,
                            re_count,
@@ -1698,38 +1739,62 @@ class JurorDAO(UserDAO):
         if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
-        ret = self.rdb_session.query(Rating)\
-                              .filter_by(task_id=task.id)\
-                              .update({'value': value})
+        rating = self.rdb_session.query(Rating)\
+                                 .filter_by(task_id=task.id)\
+                                 .first()
+        rating.value = value
         task.complete_date = now
-        return ret
+        return rating
 
-    def apply_ranking(self, ranked_tasks):
-        """format: [(task1,),
-                 (task3,),
-                 (task4, task6),
-                 (task5,)]
+    def apply_ranking(self, ballot):
+        """ballot format:
 
-        with task1 being the highest rank. this format is designed to
-        support ties.
+        [{"task": <Task object>,
+          "value": 0,
+          "review": "The light dances across the image."},
+        {...}]
+
+        ballot can be in any order, with values representing
+        ranks. ties are allowed.
         """
         now = datetime.datetime.utcnow()
-        for rank_i, rank_tasks in enumerate(ranked_tasks):
-            for task in rank_tasks:
-                ranking = Ranking(user_id=self.user.id,
-                                  task_id=task.id,
-                                  round_entry_id=task.round_entry.id,
-                                  value=rank_i)
-                # TODO: how to get review here when Task has no attribute
-                # review = task.get('review')
-                # review_stripped = review.strip()
-                # if len(review_stripped) > 8192:
-                #     raise ValueError('review must be less than 8192 chars,'
-                #                      ' not %r' % len(review_stripped))
-                # if review_stripped:
-                #     ranking['flags']['review'] = review_stripped
-                self.rdb_session.add(ranking)
-                task.complete_date = now
+        for r_dict in ballot:
+            task = r_dict['task']
+            ranking = Ranking(user_id=self.user.id,
+                              task_id=task.id,
+                              round_entry_id=task.round_entry.id,
+                              value=r_dict['value'])
+            review = r_dict.get('review') or ''
+            if review:
+                ranking.flags['review'] = review
+
+            self.rdb_session.add(ranking)
+            task.complete_date = now
+        return
+
+    def edit_ranking(self, ballot):
+        """ballot format:
+
+        [{"task": <Task object>,
+          "value": 0,
+          "review": "The light dances across the image."},
+        {...}]
+
+        ballot can be in any order, with values representing
+        ranks. ties are allowed.
+        """
+        now = datetime.datetime.utcnow()
+        for r_dict in ballot:
+            task = r_dict['task']
+            ranking = self.rdb_session.query(Ranking)\
+                                      .filter_by(task_id=task.id)\
+                                      .first()
+            review = r_dict.get('review') or ''
+            ranking.value = r_dict['value']
+            if review:
+                ranking.flags['review'] = review
+
+            task.complete_date = now
         return
 
 

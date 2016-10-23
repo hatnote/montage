@@ -45,6 +45,7 @@ def get_admin_routes():
            GET('/maintainer', get_maint_index),
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/download', download_results_csv),
+           GET('/maintainer/active_users', get_active_users),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
            GET('/maintainer/round/<round_id:int>/results', get_results),
@@ -88,6 +89,19 @@ def make_admin_round_details(rnd, rnd_stats):
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
     return ret
+
+
+def get_active_users(user, rdb_session):
+    if not (user.is_maintainer or user.is_organizer):
+        raise Forbidden('must be a designated organizer to create campaigns')
+    maint_dao = MaintainerDAO(rdb_session, user)
+    users = maint_dao.get_active_users()
+    data = []
+    for user in users:
+        ud = user.to_details_dict()
+        ud['last_active_date'] = ud['last_active_date'].isoformat()
+        data.append(ud)
+    return {'data': data}
 
 
 # TODO: (clastic) some way to mark arguments as injected from the
@@ -358,7 +372,7 @@ def edit_round(rdb_session, user, round_id, request_dict):
     new_juror_names = new_val_map.get('new_jurors')
     old_juror_names = [u.username for u in rnd.jurors]
     # TODO: Reactivating jurors
-    
+
 
     if new_juror_names and set(new_juror_names) != set(old_juror_names):
         if rnd.status != 'paused':
@@ -629,7 +643,7 @@ def get_results(rdb_session, user, round_id, request_dict):
 
     if not user.is_maintainer and rnd.status != 'finalized':
         raise DoesNotExist('round results not yet finalized')
-    
+
     results_by_name = make_ratings_table(user_dao, rnd)
 
     return {'data': results_by_name}

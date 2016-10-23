@@ -9,6 +9,8 @@ from rdb import JurorDAO
 from utils import format_date, PermissionDenied, InvalidAction
 
 MAX_RATINGS_SUBMIT = 100
+VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
+VALID_YESNO = (0.0, 1.0)
 
 
 def get_juror_routes():
@@ -29,7 +31,8 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
-           GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round)]
+           GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
+           GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round)]
     return ret
 
 
@@ -290,8 +293,17 @@ def get_ratings_from_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
-VALID_YESNO = (0.0, 1.0)
+def get_rankings_from_round(rdb_session, user, round_id):
+    juror_dao = JurorDAO(rdb_session, user)
+    rnd = juror_dao.get_round(round_id)
+
+    if not rnd:
+        raise PermissionDenied()
+
+    rankings = juror_dao.get_rankings_from_round(rnd=rnd)
+    data = [r.to_details_dict() for r in rankings]
+    data.sort(key=lambda x: x['value'])
+    return {'data': data}
 
 
 def submit_rating(rdb_session, user, request_dict):
@@ -361,6 +373,13 @@ def submit_ratings(rdb_session, user, request_dict):
     elif not r_dicts:
         return {}  # submitting no ratings = immediate return
 
+    for rd in r_dicts:
+        review = rd.get('review') or ''
+        review_stripped = review.strip()
+        if len(review_stripped) > 8192:
+            raise ValueError('review must be less than 8192 chars,'
+                             ' not %r' % len(review_stripped))
+
     id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
@@ -397,9 +416,11 @@ def submit_ratings(rdb_session, user, request_dict):
             raise InvalidAction('ranking expects whole numbers >= 0, not %r'
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
-        if ranks != range(len(rnd.entries)):  # TODO: no support for ties yet
-            raise InvalidAction('ranking expects contiguous unique numbers,'
-                                ' 0 - %s, not %r' % (len(rnd.entries), ranks))
+        last_rank = max(ranks)
+        max_ok_rank = len(rnd.entries) - 1
+        if last_rank > max_ok_rank:
+            raise InvalidAction('ranking for round #%s expects ranks 0 - %s,'
+                                ' not %s' % (rnd.id, max_ok_rank, last_rank))
         all_rnd_tasks = juror_dao.get_tasks_from_round(rnd,
                                                        num=MAX_RATINGS_SUBMIT)
         if len(all_rnd_tasks) != len(id_map):
@@ -416,13 +437,26 @@ def submit_ratings(rdb_session, user, request_dict):
                 juror_dao.apply_rating(t, val)
     elif style == 'ranking':
         # This part is designed to support ties ok though
-        sorted_rs = sorted(r_dicts, key=lambda r: r['value'])
-        sorted_rank_task_pairs = [(int(r['value']), task_map[r['task_id']])
-                                  for r in sorted_rs]
-        rank_items = [tuple(t) for r, t in
-                      groupby(sorted_rank_task_pairs, key=lambda rt: rt[0])]
-        ranked_tasks = [tuple([p[1] for p in rt]) for rt in rank_items]
-        juror_dao.apply_ranking(ranked_tasks)
+        """
+        [{"task_id": 123,
+          "value": 0,
+          "review": "The light dances across the image."}]
+        """
+        ballot = []
+        is_edit = False
+        for rd in r_dicts:
+            cur = dict(rd)
+            cur['task'] = task_map[rd['task_id']]
+            if cur['task'].complete_date:
+                is_edit = True
+            elif is_edit:
+                raise InvalidAction('all tasks must be complete or incomplete')
+            ballot.append(cur)
+
+        if is_edit:
+            juror_dao.edit_ranking(ballot)
+        else:
+            juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
 

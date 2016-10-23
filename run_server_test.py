@@ -508,6 +508,10 @@ def full_run(url_base, remote):
                       su_to='LilyOfTheWest')
     pprint(resp['data'])
 
+    resp = fetch_json(url_base + '/juror/round/%s/rankings' % rnd_3_id,
+                      su_to='Jimbo Wales')
+    pprint(resp['data'])
+
     print cookies
     import pdb;pdb.set_trace()
 
@@ -541,17 +545,30 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
             ratings = []
             for i, t_dict in enumerate(t_dicts):
                 task_id = t_dict['id']
+                review = None
+                rating_dict = {'task_id': task_id}
 
                 # arb scoring
                 if r_dict['vote_method'] == 'yesno':
                     value = len(j_username + t_dict['entry']['name']) % 2
+                    if value == 1.0:
+                        review = '%s likes this' % j_username
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
+                    if value == 1.0:
+                        review = '%s loves this' % j_username
                 elif r_dict['vote_method'] == 'ranking':
                     value = (i + len(j_username)) % len(t_dicts)
+                    if value == 0:
+                        review = '%s thinks this should win' % j_username
                 else:
                     raise NotImplementedError()
-                ratings.append({'task_id': task_id, "value": value})
+
+                rating_dict['value'] = value
+                if review:
+                    rating_dict['review'] = review
+
+                ratings.append(rating_dict)
 
             data = {'ratings': ratings}
             t_resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
