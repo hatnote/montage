@@ -510,6 +510,7 @@ class Rating(Base):
                 'user': self.user.username,
                 'value': self.value,
                 'round_id': self.round_entry.round_id}
+        info['review'] = self.flags.get('review')  # TODO
         return info
 
     def to_details_dict(self):
@@ -521,10 +522,6 @@ class Rating(Base):
 class Ranking(Base):
     __tablename__ = 'rankings'
 
-    def __init__(self, **kw):
-        self.flags = kw.pop('flags', {})
-        super(Ranking, self).__init__(**kw)
-
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     task_id = Column(Integer, ForeignKey('tasks.id'))
@@ -532,10 +529,34 @@ class Ranking(Base):
 
     value = Column(Integer)
 
+    user = relationship('User')
+    task = relationship('Task')
     round_entry = relationship('RoundEntry', back_populates='ranking')
+
+    entry = association_proxy('round_entry', 'entry',
+                              creator=lambda e: RoundEntry(entry=e))
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
+
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(Ranking, self).__init__(**kw)
+
+    def to_info_dict(self):
+        info = {'id': self.id,
+                'task_id': self.task.id,
+                'name': self.entry.name,
+                'user': self.user.username,
+                'value': self.value,
+                'round_id': self.round_entry.round_id}
+        info['review'] = self.flags.get('review')  # TODO
+        return info
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['entry'] = self.entry.to_details_dict()
+        return ret
 
 
 class FinalEntryRanking(object):
@@ -1544,6 +1565,16 @@ class JurorDAO(UserDAO):
                       .offset(offset)\
                       .all()
         return ratings
+
+    def get_rankings_from_round(self, rnd):
+        rankings = self.query(Ranking)\
+                       .filter(Ranking.user == self.user,
+                               Ranking.round_entry.has(round_id=rnd.id))\
+                       .join(Task)\
+                       .options(joinedload('round_entry'))\
+                       .filter(Task.cancel_date == None)\
+                       .all()
+        return rankings
 
     def _build_round_stats(self,
                            re_count,

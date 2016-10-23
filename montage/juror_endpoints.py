@@ -9,6 +9,8 @@ from rdb import JurorDAO
 from utils import format_date, PermissionDenied, InvalidAction
 
 MAX_RATINGS_SUBMIT = 100
+VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
+VALID_YESNO = (0.0, 1.0)
 
 
 def get_juror_routes():
@@ -29,7 +31,8 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
-           GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round)]
+           GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
+           GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round)]
     return ret
 
 
@@ -290,8 +293,17 @@ def get_ratings_from_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
-VALID_YESNO = (0.0, 1.0)
+def get_rankings_from_round(rdb_session, user, round_id):
+    juror_dao = JurorDAO(rdb_session, user)
+    rnd = juror_dao.get_round(round_id)
+
+    if not rnd:
+        raise PermissionDenied()
+
+    rankings = juror_dao.get_rankings_from_round(rnd=rnd)
+    data = [r.to_details_dict() for r in rankings]
+    data.sort(key=lambda x: x['value'])
+    return {'data': data}
 
 
 def submit_rating(rdb_session, user, request_dict):

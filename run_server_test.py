@@ -508,6 +508,10 @@ def full_run(url_base, remote):
                       su_to='LilyOfTheWest')
     pprint(resp['data'])
 
+    resp = fetch_json(url_base + '/juror/round/%s/rankings' % rnd_3_id,
+                      su_to='Jimbo Wales')
+    pprint(resp['data'])
+
     print cookies
     import pdb;pdb.set_trace()
 
