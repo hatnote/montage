@@ -32,7 +32,7 @@ from utils import (format_date,
                    to_unicode,
                    get_mw_userid,
                    weighted_choice,
-                   PermissionDenied, DoesNotExist, InvalidAction)
+                   PermissionDenied, InvalidAction)
 from imgutils import make_mw_img_url
 from loaders import get_entries_from_gist_csv, load_category
 from simple_serdes import DictableBase, JSONEncodedDict
@@ -1736,11 +1736,12 @@ class JurorDAO(UserDAO):
         if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
-        ret = self.rdb_session.query(Rating)\
-                              .filter_by(task_id=task.id)\
-                              .update({'value': value})
+        rating = self.rdb_session.query(Rating)\
+                                 .filter_by(task_id=task.id)\
+                                 .first()
+        rating.value = value
         task.complete_date = now
-        return ret
+        return rating
 
     def apply_ranking(self, ballot):
         """ballot format:
@@ -1761,14 +1762,35 @@ class JurorDAO(UserDAO):
                               round_entry_id=task.round_entry.id,
                               value=r_dict['value'])
             review = r_dict.get('review') or ''
-            review_stripped = review.strip()
-            if len(review_stripped) > 8192:
-                raise ValueError('review must be less than 8192 chars,'
-                                 ' not %r' % len(review_stripped))
-            elif review:
+            if review:
                 ranking.flags['review'] = review
 
             self.rdb_session.add(ranking)
+            task.complete_date = now
+        return
+
+    def edit_ranking(self, ballot):
+        """ballot format:
+
+        [{"task": <Task object>,
+          "value": 0,
+          "review": "The light dances across the image."},
+        {...}]
+
+        ballot can be in any order, with values representing
+        ranks. ties are allowed.
+        """
+        now = datetime.datetime.utcnow()
+        for r_dict in ballot:
+            task = r_dict['task']
+            ranking = self.rdb_session.query(Ranking)\
+                                      .filter_by(task_id=task.id)\
+                                      .first()
+            review = r_dict.get('review') or ''
+            ranking.value = r_dict['value']
+            if review:
+                ranking.flags['review'] = review
+
             task.complete_date = now
         return
 

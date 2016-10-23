@@ -373,6 +373,13 @@ def submit_ratings(rdb_session, user, request_dict):
     elif not r_dicts:
         return {}  # submitting no ratings = immediate return
 
+    for rd in r_dicts:
+        review = rd.get('review') or ''
+        review_stripped = review.strip()
+        if len(review_stripped) > 8192:
+            raise ValueError('review must be less than 8192 chars,'
+                             ' not %r' % len(review_stripped))
+
     id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
@@ -436,12 +443,20 @@ def submit_ratings(rdb_session, user, request_dict):
           "review": "The light dances across the image."}]
         """
         ballot = []
+        is_edit = False
         for rd in r_dicts:
             cur = dict(rd)
             cur['task'] = task_map[rd['task_id']]
+            if cur['task'].complete_date:
+                is_edit = True
+            elif is_edit:
+                raise InvalidAction('all tasks must be complete or incomplete')
             ballot.append(cur)
 
-        juror_dao.apply_ranking(ballot)
+        if is_edit:
+            juror_dao.edit_ranking(ballot)
+        else:
+            juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
 
