@@ -417,16 +417,15 @@ def submit_ratings(rdb_session, user, request_dict):
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
         last_rank = max(ranks)
-        max_ok_rank = len(rnd.entries) - 1
+        len_rnd_entries = len(rnd.entries)
+        max_ok_rank = len_rnd_entries - 1
         if last_rank > max_ok_rank:
             raise InvalidAction('ranking for round #%s expects ranks 0 - %s,'
                                 ' not %s' % (rnd.id, max_ok_rank, last_rank))
-        all_rnd_tasks = juror_dao.get_tasks_from_round(rnd,
-                                                       num=MAX_RATINGS_SUBMIT)
-        if len(all_rnd_tasks) != len(id_map):
+        if len_rnd_entries != len(id_map):
             raise InvalidAction('must submit all rankings at once.'
                                 ' (expected %s submissions, got %s.)'
-                                % (len(id_map), len(all_rnd_tasks)))
+                                % (len_rnd_entries, len(id_map)))
 
     if style in ('rating', 'yesno'):
         for t in tasks:
