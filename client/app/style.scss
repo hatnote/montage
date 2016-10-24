@@ -42,6 +42,11 @@ body {
     }
 }
 
+a {
+    text-decoration: none;
+    color: rgb(33,150,243);
+}
+
 footer {
     color: $lightGrey;
     padding-bottom: 10px;
