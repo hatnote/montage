@@ -23,7 +23,7 @@ const RoundComponent = {
         vm.encodeName = encodeName;
         vm.error = vm.data.error;
         vm.getImageName = getImageName;
-        vm.images = vm.tasks.data.tasks;
+        vm.images = vm.tasks.data ? vm.tasks.data.tasks : false;
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.keyDown = keyDown;
         vm.round = vm.data.data;
@@ -33,7 +33,7 @@ const RoundComponent = {
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.showSidebar = true;
         vm.size = 1;
-        vm.stats = vm.tasks.data.stats;
+        vm.stats = vm.tasks.data ? vm.tasks.data.stats : false;
         vm.user = angular.extend(vm.user, vm.data.user);
 
         // rating exclusives
