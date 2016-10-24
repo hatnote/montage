@@ -54,15 +54,7 @@ const VoteEditComponent = {
 
         function getImageName(image) {
             if (!image) return;
-
-            const entry = image.entry;
-            const name = encodeURIComponent(entry.name);
-            const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
-
-            if (entry.width <= 600) {
-                return url + (entry.width - 1);
-            }
-            return url + 600;
+            return image.entry.url_med;
         }
 
         function getTasks() {
