@@ -80,7 +80,7 @@ mont-vote-edit {
                 display: block;
                 position: absolute;
                 width: 100%;
-                height: 22px;
+                height: 26px;
                 bottom: 0;
                 padding-top: 5px;
                 overflow: hidden;
@@ -93,6 +93,10 @@ mont-vote-edit {
                     max-width: 100%; 
                 }
 
+                md-icon.material-icons {
+                    color: white;
+                }
+
                 .gallery__footer-name {
                     overflow: hidden;
                     white-space: nowrap;
@@ -101,6 +105,7 @@ mont-vote-edit {
 
                     font-size: 14px;
                     font-weight: 400;
+                    line-height: 24px;
                 }
 
                 &:hover {
@@ -159,8 +164,9 @@ mont-vote-edit {
 
     .dialog__image-description {
         background: white;
-        width: 180px;
+        width: 250px;
         padding: 20px;
+        overflow: scroll;
     }
 }
 

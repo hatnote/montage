@@ -15,8 +15,49 @@
                 </md-button>
             </div>
             <div class="dialog__image-description"
-                 ng-hide="true">
+                 layout="column" layout-align="start stretch">
                 <h2 class="md-title">Image #{{image.entry.id}}</h2>
+                <md-list flex>
+                    <md-list-item class="md-2-line">
+                        <md-icon>
+                            cloud_upload
+                            <md-tooltip>File upload date</md-tooltip>
+                        </md-icon>
+                        <div class="md-list-item-text">
+                            <h3>{{image.entry.upload_date | date}}</h3>
+                            <p>{{image.entry.upload_date | date:'EEEE'}}, {{image.entry.upload_date | date:'H:mm'}}</p>
+                        </div>
+                    </md-list-item>
+                    <md-list-item class="md-2-line">
+                        <md-icon>
+                            image
+                            <md-tooltip>File resolution</md-tooltip>
+                        </md-icon>
+                        <div class="md-list-item-text">
+                            <h3>{{image.entry.resolution / 1000000 | number:2}} Mpix</h3>
+                            <p>{{image.entry.width}} × {{image.entry.height}}</p>
+                        </div>
+                    </md-list-item>
+                    <md-divider></md-divider>
+                    <div ng-show="isRanking">
+                        <h3 class="md-title">Review</h3>
+                        <md-input-container class="md-block">
+                            <label>Your Review</label>
+                            <textarea ng-model="image.review" md-maxlength="1000" rows="2"></textarea>
+                        </md-input-container>
+                    </div>
+                    <h3 class="md-title">External links</h3>
+                    <div layout="row" layout-align="start stretch">
+                        <md-button flex="50"
+                                ng-click="$ctrl.openURL(image.entry.url)">
+                            File
+                        </md-button>
+                        <md-button class="md-primary" flex="50"
+                                ng-click="$ctrl.openURL('https://commons.wikimedia.org/wiki/File:' + image.entry.name)">
+                            Commons
+                        </md-button>
+                    </div>
+                </md-list>
             </div>
         </md-dialog-content>
     </form>

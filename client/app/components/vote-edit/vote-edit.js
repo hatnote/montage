@@ -25,8 +25,10 @@ const VoteEditComponent = {
         vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
         vm.loadMore = loadMore;
         vm.round = vm.data.data;
+        vm.openImage = openImage;
         vm.openURL = openURL;
         vm.save = save;
+        vm.saveRanking = saveRanking;
         vm.setRate = setRate;
         vm.setGallerySize = (size) => { vm.size = size; };
         vm.showSidebar = true;
@@ -85,6 +87,51 @@ const VoteEditComponent = {
             });
         }
 
+        function openImage(image, event) {
+            $mdDialog.show({
+                parent: angular.element(document.body),
+                targetEvent: event,
+                clickOutsideToClose: true,
+                template: imageTemplate,
+                controller: ($scope, $mdDialog, $timeout) => {
+                    $scope.cancel = () => $mdDialog.hide();
+                    $scope.image = image;
+                    $scope.isFirst = vm.images.indexOf(image) === 0;
+                    $scope.isLast = vm.images.indexOf(image) === vm.images.length - 1;
+                    $scope.isRanking = vm.isVoting('ranking');
+                    $scope.nextImage = () => {
+                        if ($scope.isLast) { return; }
+                        const currentIndex = vm.images.indexOf(image);
+                        const nextImage = vm.images[currentIndex + 1];
+                        $mdDialog.hide();
+                        openImage(nextImage);
+                    };
+                    $scope.prevImage = () => {
+                        if ($scope.isFirst) { return; }
+                        const currentIndex = vm.images.indexOf(image);
+                        const prevImage = vm.images[currentIndex - 1];
+                        $mdDialog.hide();
+                        openImage(prevImage);
+                    };
+                    $scope.keyDown = function (event) {
+                        if (event.code === 'ArrowRight') {
+                            $scope.nextImage();
+                        }
+                        else if (event.code === 'ArrowLeft') {
+                            $scope.prevImage();
+                        }
+                    };
+                    $timeout(() => {
+                        $scope.filePath = 'https://commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
+                    }, 100);
+                }
+            }).then(function (answer) {
+                // answer
+            }, function () {
+                // cancelled
+            });
+        }
+
         function openURL(url) {
             $window.open(url, '_blank');
         }
@@ -114,8 +161,9 @@ const VoteEditComponent = {
             vm.loading = true;
 
             let data = vm.images.map((image) => ({
-                task_id: image.id,
-                value: vm.images.indexOf(image)
+                task_id: image.task_id,
+                value: vm.images.indexOf(image),
+                review: image.review ? image.review : null
             }));
 
             userService.juror.setRating(vm.round.id, {

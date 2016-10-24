@@ -34,7 +34,7 @@
             <md-tooltip>Small thumbnails size</md-tooltip>
             <md-icon>photo_size_select_small</md-icon>
         </md-button>
-        <span>|</span>
+        <span>&nbsp;&nbsp;</span>
         <md-button class="md-primary" ng-click="$ctrl.saveRanking()">
             <md-icon>save</md-icon>
             Save Round
@@ -55,7 +55,13 @@
             </div>
             <grid-tile-footer class="gallery__footer">
                 <h3 class="gallery__footer-name">
-                    <strong ng-show="$ctrl.isVoting('ranking')">{{$index+1 | ordinal}} place</strong><br />
+                    <div layout="row" layout-align="space-between center">
+                        <strong ng-show="$ctrl.isVoting('ranking')" flex>{{$index+1 | ordinal}} place</strong>
+                        <md-icon ng-show="image.review">
+                            rate_review
+                            <md-tooltip md-direction="top">Review added</md-tooltip>
+                        </md-icon>
+                    </div>
                     <span>Image #{{image.entry.id}}</span>
                 </h3>
             </grid-tile-footer>
@@ -76,4 +82,6 @@
     <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you voted on all images in the round</h2>
     <h2 class="md-headline" ng-show="$ctrl.isVoting('ranking')">you voted on ranking round</h2>
     <span>good job! :)</span>
+    <br />
+    <span><md-icon>new_releases</md-icon> You can edit ranking on <a href="" ui-sref="main.juror.vote-edit({id: $ctrl.round.id})">this page</a></span>
 </div>

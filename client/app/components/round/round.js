@@ -119,6 +119,7 @@ const RoundComponent = {
                     $scope.image = image;
                     $scope.isFirst = vm.images.indexOf(image) === 0;
                     $scope.isLast = vm.images.indexOf(image) === vm.images.length - 1;
+                    $scope.isRanking = vm.isVoting('ranking');
                     $scope.nextImage = () => {
                         if ($scope.isLast) { return; }
                         const currentIndex = vm.images.indexOf(image);
@@ -161,7 +162,8 @@ const RoundComponent = {
 
             let data = vm.images.map((image) => ({
                 task_id: image.id,
-                value: vm.images.indexOf(image)
+                value: vm.images.indexOf(image),
+                review: image.review ? image.review : null
             }));
 
             userService.juror.setRating(vm.round.id, {
