@@ -16,6 +16,7 @@ const MainComponent = {
     };
     vm.goToDashboard = goToDashboard;
     vm.isCurrentState = (name) => $state.current.name === name;
+    vm.loading = false;
     vm.logo = logo;
     vm.logout = logout;
     vm.showUserMenu = ($mdOpenMenu, ev) => { $mdOpenMenu(ev); };
@@ -23,6 +24,7 @@ const MainComponent = {
     // functions 
 
     function goToDashboard() {
+      vm.loading = true;
       const target = $state.current.name.includes('admin') ?
         'main.admin.dashboard' :
         'main.juror.dashboard';
@@ -30,6 +32,7 @@ const MainComponent = {
     }
 
     function logout() {
+      vm.loading = true;
       userService.logout().then(() => {
         vm.user = {};
         $state.go('main.login');
