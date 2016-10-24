@@ -82,7 +82,13 @@ function stateConfig($stateProvider, $urlRouterProvider) {
                       type="$resolve.userType"></mont-round>`,
       resolve: {
         round: ($stateParams, userService) => userService.juror.getRound($stateParams.id),
-        tasks: ($stateParams, userService) => userService.juror.getPastVotes($stateParams.id)
+        tasks: ($q, $stateParams, userService) => {
+          let votes = {
+            rating: userService.juror.getPastVotes($stateParams.id),
+            ranking: userService.juror.getPastRanking($stateParams.id)
+          };
+          return $q.all(votes).then((response) => response.rating.data.length ? response.rating : response.ranking);
+        }
       }
     })
 

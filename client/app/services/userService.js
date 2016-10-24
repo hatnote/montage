@@ -39,6 +39,8 @@ const UserService = function ($http, $q, $window) {
     get: () => $http.get(base + 'juror').then(getData, getData),
     getCampaign: (id) => $http.get(base + 'juror/campaign/' + id).then(getData, getData),
     getPastVotes: (id, offset) => $http.get(base + 'juror/round/' + id + '/ratings?offset=' + (offset || 0)).then(getData, getData),
+    getPastRanking: (id, offset) => $http.get(base + 'juror/round/' + id + '/rankings').then(getData, getData),
+
     getRound: (id) => $http.get(base + 'juror/round/' + id).then(getData, getData),
     getRoundTasks: (id, offset) => $http.get(base + 'juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0)).then(getData, getData),
 

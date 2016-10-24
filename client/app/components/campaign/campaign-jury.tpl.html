@@ -66,7 +66,6 @@
                 </div>
                 <md-button class="md-icon-button" aria-label="Edit Votes"
                            ng-click="$event.stopPropagation(); $ctrl.editVotes(round)"
-                           ng-if="round.vote_method !== 'ranking'"
                            ng-disabled="!$ctrl.isRoundActive(round)">
                     <md-icon>mode_edit</md-icon>
                     <md-tooltip>Edit Votes</md-tooltip>
