@@ -127,6 +127,7 @@ const RoundComponent = {
                         $mdDialog.hide();
                         openImage(nextImage);
                     };
+                    $scope.openURL = openURL;
                     $scope.prevImage = () => {
                         if ($scope.isFirst) { return; }
                         const currentIndex = vm.images.indexOf(image);
