@@ -24,6 +24,8 @@ const CampaignComponent = {
         vm.editCampaignName = editCampaignName;
         vm.editRound = editRound;
         vm.editVotes = editVotes;
+        vm.getActiveJurors = (round) => round.jurors.filter((juror) => juror.is_active);
+        vm.getInactiveJurors = (round) => round.jurors.filter((juror) => !juror.is_active);
         vm.isNameEdited = false;
         vm.isRoundActive = isRoundActive;
         vm.loadRoundDetails = loadRoundDetails;
@@ -261,7 +263,7 @@ const CampaignComponent = {
         function editRound(round, event) {
             let round_ = angular.extend(angular.copy(round), {
                 deadline_date: new Date(round.deadline_date),
-                jurors: round.jurors.map((user) => ({ name: user.username }))
+                jurors: vm.getActiveJurors(round).map((user) => ({ name: user.username }))
             });
 
             dialogService.show({

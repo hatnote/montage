@@ -74,6 +74,13 @@ mont-campaign {
         margin-top: 10px;
     }
 
+    .campaign__juror--inactive {
+        .campaign__juror-name {
+            color: $lightGrey;
+            text-decoration: line-through;
+        }
+    }
+
     .campaign--juror .campaign__round--active {
         cursor: pointer;
     }
