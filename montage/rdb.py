@@ -1326,7 +1326,8 @@ class CoordinatorDAO(UserDAO):
                                 ' (%s) for round #%s'
                                 % (len(new_jurors), rnd.quorum, rnd.id))
         new_juror_names = sorted([nj.username for nj in new_jurors])
-        old_juror_names = sorted([oj.username for oj in rnd.jurors])
+        old_jurors = self.get_active_jurors(rnd)
+        old_juror_names = sorted([oj.username for oj in old_jurors])
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
