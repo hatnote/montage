@@ -804,7 +804,8 @@ class CoordinatorDAO(UserDAO):
 
     def get_active_jurors(self, rnd):
         rjs = (self.query(RoundJuror)
-               .filter_by(is_active=True)
+               .filter_by(is_active=True,
+                          round_id=rnd.id)
                .options(joinedload('user'))
                .all())
         users = [rj.user for rj in rjs]

@@ -486,6 +486,17 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/edit' % rnd_3_id,
                       data, su_to='LilyOfTheWest')
 
+    # edit without changing the jurors, but with changing the description
+    data = {'directions': 'great new directions',
+            'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'Jimbo Wales']}
+
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % rnd_3_id,
+                      data, su_to='LilyOfTheWest')
+
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
                       {'post': True}, su_to='LilyOfTheWest')
 
