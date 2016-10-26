@@ -370,11 +370,10 @@ def edit_round(rdb_session, user, round_id, request_dict):
     #                         % request_dict.keys())
 
     new_juror_names = new_val_map.get('new_jurors')
-    old_juror_names = [u.username for u in rnd.jurors]
-    # TODO: Reactivating jurors
+    cur_jurors = coord_dao.get_active_jurors(rnd)
+    cur_juror_names = [u.username for u in cur_jurors]
 
-
-    if new_juror_names and set(new_juror_names) != set(old_juror_names):
+    if new_juror_names and set(new_juror_names) != set(cur_juror_names):
         if rnd.status != 'paused':
             raise InvalidAction('round must be paused to edit jurors')
         else:

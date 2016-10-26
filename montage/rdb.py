@@ -802,6 +802,14 @@ class CoordinatorDAO(UserDAO):
                     .one_or_none()
         return round
 
+    def get_active_jurors(self, rnd):
+        rjs = (self.query(RoundJuror)
+               .filter_by(is_active=True)
+               .options(joinedload('user'))
+               .all())
+        users = [rj.user for rj in rjs]
+        return users
+
     def get_round_task_counts(self, rnd):
         # the fact that these are identical for two DAOs shows it
         # should be on the Round model or somewhere else shared
