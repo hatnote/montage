@@ -34,8 +34,10 @@ const UserListComponent = {
             });
         }
     },
-    template: `<div>
-        <span layout="row" layout-align="space-between center" ng-repeat="user in $ctrl.ngModel">
+    template: `<div class="user-list">
+        <span class="user-list__row"
+              layout="row" layout-align="space-between center"
+              ng-repeat="user in $ctrl.ngModel">
             <span>{{user.name}}</span>
             <span flex></span>
             <md-icon class="link"

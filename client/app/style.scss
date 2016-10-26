@@ -198,3 +198,11 @@ mont-user-list {
         border-top: 2px solid #eee;
     }
 }
+
+.user-list {
+    margin-bottom: 20px;
+
+    .user-list__row {
+        height: 25px;
+    }
+}
