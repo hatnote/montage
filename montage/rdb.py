@@ -1334,7 +1334,7 @@ class CoordinatorDAO(UserDAO):
         res = reassign_tasks(self.rdb_session, rnd, new_jurors)
 
         for juror in new_jurors:
-            if juror.username not in old_juror_names:
+            if juror not in rnd.jurors:
                 rnd.jurors.append(juror)
 
         for round_juror in rnd.round_jurors:
