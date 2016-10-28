@@ -2,9 +2,11 @@ import _ from 'lodash';
 
 import './round.scss';
 import './image.scss';
+
 import templateMultiple from './round-multiple.tpl.html';
-import templateRating from './round-rating.tpl.html';
-import templateYesNo from './round-yesno.tpl.html';
+import templateSingle from './round-single.tpl.html';
+import templateRateboxRating from './templates/ratebox-rating.tpl.html';
+import templateRateboxYesNo from './templates/ratebox-yesno.tpl.html';
 import imageTemplate from './image.tpl.html';
 
 const RoundComponent = {
@@ -49,6 +51,7 @@ const RoundComponent = {
 
         versionService.setVersion(vm.type === 'admin' ? 'admin' : 'juror');
         $templateCache.put('round-template', getTemplate());
+        $templateCache.put('ratebox-template', getTemplateRatebox());
 
         // functions
 
@@ -88,9 +91,15 @@ const RoundComponent = {
         }
 
         function getTemplate() {
-            if (vm.isVoting('rating')) return templateRating;
-            if (vm.isVoting('yesno')) return templateYesNo;
+            if (vm.isVoting('rating')) return templateSingle;
+            if (vm.isVoting('yesno')) return templateSingle;
             if (vm.isVoting('ranking')) return templateMultiple;
+            return '';
+        }
+
+        function getTemplateRatebox() {
+            if (vm.isVoting('rating')) return templateRateboxRating;
+            if (vm.isVoting('yesno')) return templateRateboxYesNo;
             return '';
         }
 
