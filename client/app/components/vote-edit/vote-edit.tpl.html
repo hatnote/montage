@@ -54,13 +54,13 @@
     <grid-list class="gallery" sv-root sv-part="$ctrl.images">
         <grid-tile class="gallery__image link"
                    ng-class="'gallery__image--size-'+$ctrl.size"
-                   ng-repeat="image in $ctrl.images"
-                   ng-click="$ctrl.openImage(image, $event)" sv-element>
+                   ng-repeat="image in $ctrl.images" sv-element>
             <md-button class="md-icon-button gallery__drag-icon"
                        ng-show="$ctrl.isVoting('ranking')" sv-handle>
                 <md-icon>drag_handle</md-icon>
             </md-button>
-            <div class="gallery__image-containter" layout="column" layout-align="center center">
+            <div class="gallery__image-containter" layout="column" layout-align="center center"
+                 ng-click="$ctrl.openImage(image, $event)">
                 <img ng-src="{{$ctrl.getImageName(image)}}">
             </div>
             <grid-tile-footer class="gallery__footer" ng-if="$ctrl.isVoting('ranking')">
