@@ -14,6 +14,7 @@ const MainComponent = {
       env: $window.__env,
       package: pack
     };
+    vm.goTo = goTo;
     vm.goToDashboard = goToDashboard;
     vm.isCurrentState = (name) => $state.current.name === name;
     vm.loading = false;
@@ -23,12 +24,16 @@ const MainComponent = {
 
     // functions 
 
-    function goToDashboard() {
+    function goTo(target) {
       vm.loading = true;
+      $state.go(target, {}, { reload: true });
+    }
+
+    function goToDashboard() {
       const target = $state.current.name.includes('admin') ?
         'main.admin.dashboard' :
         'main.juror.dashboard';
-      $state.go(target, {}, { reload: true });
+      goTo(target);
     }
 
     function logout() {

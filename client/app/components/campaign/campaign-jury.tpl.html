@@ -1,4 +1,8 @@
 <div class="campaign campaign--juror">
+    <div class="spinner__container" layout="row" layout-align="center center"
+         ng-show="$ctrl.loading">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
     <h2 class="campaign__title md-display-1"
         layout="row" layout-align="start center">
         <span>{{$ctrl.campaign[0].campaign.name}}</span>

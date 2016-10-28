@@ -28,6 +28,7 @@ const CampaignComponent = {
         vm.getInactiveJurors = (round) => round.jurors.filter((juror) => !juror.is_active);
         vm.isNameEdited = false;
         vm.isRoundActive = isRoundActive;
+        vm.loading = false;
         vm.loadRoundDetails = loadRoundDetails;
         vm.nameEdit = '';
         vm.openRound = openRound;
@@ -305,6 +306,7 @@ const CampaignComponent = {
             if (!isRoundActive(round)) {
                 return;
             }
+            vm.loading = true;
             $state.go('main.juror.round', { id: round.id });
         }
 
