@@ -1,6 +1,6 @@
 {
   "name": "montage",
-  "version": "16.10.28",
+  "version": "16.10.29",
   "description": "Photo evaluation tool for and by Wiki Loves competitions",
   "main": "app/index.js",
   "repository": "https://github.com/hatnote/montage",
