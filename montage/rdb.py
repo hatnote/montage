@@ -1279,8 +1279,10 @@ class CoordinatorDAO(UserDAO):
         results = self.query(Rating)\
                       .join(RoundEntry)\
                       .join(Entry)\
+                      .join(Task)\
                       .filter(RoundEntry.round_id == rnd.id,
-                              RoundEntry.dq_user_id == None)\
+                              RoundEntry.dq_user_id == None,
+                              Task.cancel_date == None)\
                       .all()
         return results
 
@@ -1288,8 +1290,10 @@ class CoordinatorDAO(UserDAO):
         results = self.query(Ranking)\
                       .join(RoundEntry)\
                       .join(Entry)\
+                      .join(Task, Ranking.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
-                              RoundEntry.dq_user_id == None)\
+                              RoundEntry.dq_user_id == None,
+                              Task.cancel_date == None)\
                       .all()
         return results
 
@@ -1299,7 +1303,8 @@ class CoordinatorDAO(UserDAO):
                       .join(RoundEntry)\
                       .join(Entry)\
                       .filter(RoundEntry.round_id == rnd.id,
-                              RoundEntry.dq_user_id == None)\
+                              RoundEntry.dq_user_id == None,
+                              Task.cancel_date == None)\
                       .all()
         return results
 
