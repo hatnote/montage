@@ -605,8 +605,11 @@ def get_round(rdb_session, user, round_id):
     return {'data': data}
 
 
-def make_ratings_table(user_dao, rnd):
-    all_ratings = user_dao.get_all_ratings(rnd)
+def make_vote_table(user_dao, rnd):
+    if rnd.vote_method == 'ranking':
+        all_ratings = user_dao.get_all_rankings(rnd)
+    else:
+        all_ratings = user_dao.get_all_ratings(rnd)
     all_tasks = user_dao.get_all_tasks(rnd)
 
     results_by_name = defaultdict(dict)
@@ -643,7 +646,7 @@ def get_results(rdb_session, user, round_id, request_dict):
     if not user.is_maintainer and rnd.status != 'finalized':
         raise DoesNotExist('round results not yet finalized')
 
-    results_by_name = make_ratings_table(user_dao, rnd)
+    results_by_name = make_vote_table(user_dao, rnd)
 
     return {'data': results_by_name}
 
@@ -663,7 +666,7 @@ def download_results_csv(rdb_session, user, round_id, request_dict):
         raise DoesNotExist('round results not yet finalized')
 
 
-    results_by_name = make_ratings_table(user_dao, rnd)
+    results_by_name = make_vote_table(user_dao, rnd)
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
