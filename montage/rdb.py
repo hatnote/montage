@@ -277,7 +277,19 @@ class Round(Base):
                 'total_open_tasks': open_task_count,
                 'percent_tasks_open': percent_open,
                 'total_cancelled_tasks': cancelled_task_count,
-                'total_disqualified_entries': dq_entry_count}
+                'total_disqualified_entries': dq_entry_count,
+                'total_uploaders': len(self.get_uploaders())}
+
+    def get_uploaders(self):
+        # TODO: order by and maybe include count per?
+        rdb_session = inspect(self).session
+        query = (rdb_session
+                 .query(Entry.upload_user_text)
+                 .group_by(Entry.upload_user_id)
+                 .join(RoundEntry)
+                 .filter(RoundEntry.round == self,
+                         RoundEntry.dq_user_id == None))
+        return [x[0] for x in query.all()]
 
     def is_closeable(self):
         rdb_session = inspect(self).session
