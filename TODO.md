@@ -10,6 +10,7 @@ New TODOs
 * Eliminate task table, switch to status column
 * Be able to deactivate coordinators
 * friggin indexes
+* Randomize ranking round task order
 
 ## Final report format
 

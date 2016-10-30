@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 # Relational database models for Montage
+import time
 import random
+import string
 import datetime
 import itertools
 from collections import Counter, defaultdict
@@ -563,19 +565,29 @@ class FinalEntryRanking(object):
     """This is just for organizing ranking information as calculated at
     the end of a ranking round.
     """
-    def __init__(self, rank, entry, ranking_map):
+    def __init__(self, rank, entry, ranking_map, juror_review_map):
         self.rank = rank
         self.entry = entry
         self.ranking_map = ranking_map
 
+        self.juror_ranking_map = {}
+
+        for rank, jurors in ranking_map.items():
+            for juror in jurors:
+                self.juror_ranking_map[juror] = rank
+
+        self.juror_review_map = juror_review_map
+
     def to_dict(self):
         return {'ranking': self.rank,
                 'entry': self.entry.to_dict(),
-                'ranking_map': self.ranking_map}
+                'ranking_map': self.ranking_map,
+                'juror_review_map': self.juror_review_map,
+                'juror_ranking_map': self.juror_ranking_map}
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '<%s #%r %r>' % (cn, self.ranking, self.entry)
+        return '<%s #%r %r>' % (cn, self.rank, self.entry)
 
 
 class Task(Base):
@@ -801,6 +813,13 @@ class CoordinatorDAO(UserDAO):
                     .filter_by(id=round_id)\
                     .one_or_none()
         return round
+
+    def get_campaign_rounds(self, campaign, with_cancelled=False):
+        q = self.query(Round).filter_by(campaign=campaign)
+        if not with_cancelled:
+            q.filter(Round.status != 'cancelled')
+        q.order_by(Round.create_date)
+        return q.all()
 
     def get_active_jurors(self, rnd):
         rjs = (self.query(RoundJuror)
@@ -1238,6 +1257,16 @@ class CoordinatorDAO(UserDAO):
                .all())
         all_inputs = []
         by_juror_id = bucketize(res, lambda r: r.user_id)
+        entry_user_review_map = {}
+
+        for ranking in res:
+            user_id = ranking.user_id
+            entry_id = ranking.round_entry.entry_id
+            review = ranking.flags.get('review', '')
+            username = self.query(User).get(user_id).username
+
+            entry_user_review_map.setdefault(entry_id, {})[username] = review
+
         entry_rank_user_map = {}
         for user_id, rankings in by_juror_id.items():
             cur_ballot = []
@@ -1270,8 +1299,8 @@ class CoordinatorDAO(UserDAO):
         for i, entry_id in enumerate(snpr_res['order']):
             entry = self.query(Entry).get(entry_id)
             ranking_map = entry_rank_user_map[entry_id]
-
-            fer = FinalEntryRanking(i, entry, ranking_map)
+            review_map = entry_user_review_map[entry_id]
+            fer = FinalEntryRanking(i, entry, ranking_map, review_map)
             ret.append(fer)
         return ret
 
@@ -1393,6 +1422,71 @@ class CoordinatorDAO(UserDAO):
                                 deadline_date=deadline_date)
         source = 'round(#%s)' % prev_finalized_rnd.id
         self.add_round_entries(rnd, advancing_group, source=source)
+
+    def get_campaign_report(self, campaign):
+        # TODO: must be a coordinator on the campaign
+        # TODO: assert campaign is finalized
+        ret = {}
+        start_time = time.time()
+
+        ret["campaign"] = campaign.to_info_dict()
+
+        ret["rounds"] = [r.to_details_dict() for r in campaign.rounds
+                         if r.status == 'finalized']
+
+        ret["coordinators"] = [cc.user for cc in campaign.campaign_coords]
+
+        rnds = self.get_campaign_rounds(campaign, with_cancelled=False)
+
+        final_rnd = rnds[-1]
+
+        assert final_rnd.vote_method == 'ranking'
+
+        juror_alias_map = None
+
+        def make_juror_alias_map(juror_ranking_map):
+            jurors = juror_ranking_map.keys()
+            random.shuffle(jurors)
+            # TODO: gonna be in trouble for final rounds with greater
+            # than 26 jurors (double letters)
+            return dict([(juror, alias) for juror, alias
+                         in zip(jurors, string.uppercase)])
+
+        def alias_jurors(juror_ranking_map):
+            ret = {}
+            for k, v in juror_ranking_map.items():
+                ret[juror_alias_map[k]] = v
+            return ret
+
+        ranking_list = self.get_round_ranking_list(final_rnd)
+
+        winners = []
+
+        for fer in ranking_list:
+            # TODO: get entry description from commons
+            cur = {}
+            cur['ranking'] = fer.rank
+            cur['entry'] = fer.entry.to_dict()  # TODO (need desc, etc.)
+
+            if not juror_alias_map:
+                jrm = fer.juror_ranking_map
+                # automatically alias by default
+                if final_rnd.config.get('alias_jurors', True):
+                    juror_alias_map = make_juror_alias_map(jrm)
+                else:
+                    # dummy map
+                    juror_alias_map = dict([(k, k) for k in jrm])
+
+            cur['juror_ranking_map'] = alias_jurors(fer.juror_ranking_map)
+            cur['juror_review_map'] = alias_jurors(fer.juror_review_map)
+            winners.append(cur)
+
+        ret['winners'] = winners
+
+        ret['render_date'] = datetime.datetime.utcnow()
+        ret['render_duration'] = time.time() - start_time
+
+        return ret
 
 
 class OrganizerDAO(CoordinatorDAO):
