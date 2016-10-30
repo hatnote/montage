@@ -665,7 +665,6 @@ def download_results_csv(rdb_session, user, round_id, request_dict):
     if not user.is_maintainer and rnd.status != 'finalized':
         raise DoesNotExist('round results not yet finalized')
 
-
     results_by_name = make_vote_table(user_dao, rnd)
 
     output = io.BytesIO()
