@@ -1432,7 +1432,7 @@ class CoordinatorDAO(UserDAO):
         ret["campaign"] = campaign.to_info_dict()
 
         ret["rounds"] = [r.to_details_dict() for r in campaign.rounds
-                         if r.status == 'finalized']
+                         if r.status != 'cancelled']  # TODO: switch to == 'finalized'
 
         ret["coordinators"] = [cc.user for cc in campaign.campaign_coords]
 
