@@ -1,7 +1,7 @@
 # TODO
 
 New TODOs
-
+* Add maintainer view for a round's DQed entries
 * Translate "score" on threshold selection back into appropriate
   units. For instance, on yesno rounds with quorum of 4, instead of
   >0.5, say "at least two yeses". Similarly, but not quite the same,
