@@ -313,6 +313,7 @@ class Round(Base):
                                     .first()
             return not open_tasks
         return False
+        
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -1320,7 +1321,7 @@ class CoordinatorDAO(UserDAO):
         results = self.query(Rating)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .join(Task)\
+                      .join(Task, Rating.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
                               Task.cancel_date == None)\
@@ -1446,7 +1447,7 @@ class CoordinatorDAO(UserDAO):
         ret["rounds"] = [r.to_details_dict() for r in campaign.rounds
                          if r.status != 'cancelled']  # TODO: switch to == 'finalized'
 
-        ret["coordinators"] = [cc.user for cc in campaign.campaign_coords]
+        ret["coordinators"] = [cc.user.to_info_dict() for cc in campaign.campaign_coords]
 
         rnds = self.get_campaign_rounds(campaign, with_cancelled=False)
 
@@ -1472,6 +1473,9 @@ class CoordinatorDAO(UserDAO):
 
         ranking_list = self.get_round_ranking_list(final_rnd)
 
+        ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']] 
+                                     for r in ret['rounds']], []))
+
         winners = []
 
         for fer in ranking_list:
@@ -1494,7 +1498,7 @@ class CoordinatorDAO(UserDAO):
             winners.append(cur)
 
         ret['winners'] = winners
-
+        
         ret['render_date'] = datetime.datetime.utcnow()
         ret['render_duration'] = time.time() - start_time
 
