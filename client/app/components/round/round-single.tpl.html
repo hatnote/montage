@@ -74,6 +74,16 @@
                     <p>{{$ctrl.rating.current.entry.width}} × {{$ctrl.rating.current.entry.height}}</p>
                 </div>
             </md-list-item>
+            <md-list-item class="md-2-line">
+                <md-icon>
+                    history
+                    <md-tooltip>File history</md-tooltip>
+                </md-icon>
+                <div class="md-list-item-text">
+                    <h3>{{$ctrl.rating.current.history.length}} version(s)</h3>
+                    <p><a ng-href="https://commons.wikimedia.org/wiki/File:{{$ctrl.rating.current.entry.name}}#filehistory" target="_blank">see file history</a></p>
+                </div>
+            </md-list-item>
             <md-divider></md-divider>
             <h3 class="md-title">External links</h3>
             <div layout="row" layout-align="center center">

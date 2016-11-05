@@ -1,4 +1,6 @@
-const UserService = function ($http, $q, $window) {
+import _ from 'lodash';
+
+const UserService = function ($http, $q, $window, dataService) {
 
   function getData(response) {
     let data = response.data;
@@ -27,7 +29,7 @@ const UserService = function ($http, $q, $window) {
     previewRound: (id) => $http.get(base + 'admin/round/' + id + '/preview_results').then(getData, getData),
     advanceRound: (id, data) => $http.post(base + 'admin/round/' + id + '/advance', data).then(getData, getData),
 
-    downloadRound: (id) =>  base + 'admin/round/' + id + '/download',
+    downloadRound: (id) => base + 'admin/round/' + id + '/download',
 
     importCSV: (id) => $http.post(base + 'admin/round/' + id + '/import', {
       import_method: 'gistcsv',
@@ -42,10 +44,33 @@ const UserService = function ($http, $q, $window) {
     getPastRanking: (id, offset) => $http.get(base + 'juror/round/' + id + '/rankings').then(getData, getData),
 
     getRound: (id) => $http.get(base + 'juror/round/' + id).then(getData, getData),
-    getRoundTasks: (id, offset) => $http.get(base + 'juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0)).then(getData, getData),
+    getRoundTasks: getRoundTasks,
 
     setRating: (id, data) => $http.post(base + 'juror/round/' + id + '/tasks/submit', data).then(getData, getData)
   };
+
+  function getRoundTasks(id, offset) {
+    return $http.get(base + 'juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0))
+      .then((response) => {
+        let data = getData(response);
+        if (data.error) {
+          return data;
+        }
+
+        const tasks = data.data.tasks;
+        const files = tasks.map((task) => task.entry.name);
+        return dataService.getImageInfo(files).then((response) => {
+          const hists = Object.keys(response.data.query.pages).map(key => response.data.query.pages[key]);
+          hists.forEach(element => {
+            let image = _.find(tasks, {
+              entry: { url: element.imageinfo[0].url }
+            });
+            image.history = element.imageinfo;
+          });
+          return data;
+        });
+      }, getData);
+  }
 
   const service = {
     admin: admin,
