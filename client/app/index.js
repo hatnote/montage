@@ -39,7 +39,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
     })
 
     .state('main.juror', {
-      template: '<ui-view/>',
+      template: '<ui-view></ui-view>',
       resolve: {
         data: (userService) => userService.juror.get(),
         userType: ($q) => $q.when('juror')
@@ -93,7 +93,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
     })
 
     .state('main.admin', {
-      template: '<ui-view/>',
+      template: '<ui-view></ui-view>',
       resolve: {
         data: (userService) => userService.admin.get(),
         userType: ($q) => $q.when('admin')
