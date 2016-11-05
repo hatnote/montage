@@ -1,0 +1,20 @@
+mont-user-list {
+    margin-top: 10px;
+}
+
+// calendar border fixes
+.md-datepicker-calendar-pane.md-pane-open {
+    border-width: 0;
+
+    md-calendar-month-body {
+        border-top: 2px solid #eee;
+    }
+}
+
+.user-list {
+    margin-bottom: 20px;
+
+    .user-list__row {
+        height: 25px;
+    }
+}

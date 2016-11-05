@@ -1,0 +1,15 @@
+.md-button {
+    &.active {
+        font-weight: 500;
+    }
+
+    &.md-mini md-icon.material-icons {
+        font-size: 20px;
+        margin-top: 2px;
+    }
+}
+
+md-tooltip .md-content {
+    height: auto !important;
+    font-size: 12px;
+}

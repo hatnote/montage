@@ -1,0 +1,36 @@
+.dialog__edit {
+    width: 450px;
+
+   .dialog__title {
+        margin-bottom: 10px;
+   }
+
+   .dialog__name {
+        margin-bottom: 0;
+   }
+
+   .dialog__input {
+        margin: 0;
+        height: 30px;
+        width: 100%;
+   } 
+
+   .dialog__input--flat {
+        margin-top: -5px;
+        margin-bottom: 0;
+        margin-left: 35px;
+        padding-top: 0;
+        .md-errors-spacer {
+            display: none;
+        }
+   } 
+
+   md-datepicker {
+        padding-right: 0;
+        display: block;
+
+        .md-datepicker-input {
+            font-size: 16px;
+        }
+   }
+}
