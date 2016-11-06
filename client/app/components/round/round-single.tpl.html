@@ -81,8 +81,12 @@
                 </md-icon>
                 <div class="md-list-item-text">
                     <h3>{{$ctrl.rating.current.history.length}} version(s)</h3>
-                    <p><a ng-href="https://commons.wikimedia.org/wiki/File:{{$ctrl.rating.current.entry.name}}#filehistory" target="_blank">see file history</a></p>
+                    <p>last one at {{$ctrl.rating.current.history[0].timestamp | date}}</p>
                 </div>
+                <md-button class="md-secondary md-icon-button"
+                           ng-click="$ctrl.openURL('https://commons.wikimedia.org/wiki/File:' + $ctrl.rating.current.entry.name + '#filehistory')">
+                    <md-icon>link</md-icon>
+                </md-button>
             </md-list-item>
             <md-divider></md-divider>
             <h3 class="md-title">External links</h3>
