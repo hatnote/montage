@@ -59,8 +59,13 @@ const UserService = function ($http, $q, $window, dataService) {
 
         const tasks = data.data.tasks;
         const files = tasks.map((task) => task.entry.name);
-        return dataService.getImageInfo(files).then((response) => {
-          const hists = Object.keys(response.data.query.pages).map(key => response.data.query.pages[key]);
+        return dataService.getImageInfo(files).then((responses) => {
+          const hists = [];
+          responses.forEach(response => {
+            const array = Object.keys(response.data.query.pages).map(key => response.data.query.pages[key]);
+            Array.prototype.push.apply(hists, array);
+          });
+
           hists.forEach(element => {
             let image = _.find(tasks, {
               entry: { url: element.imageinfo[0].url }
