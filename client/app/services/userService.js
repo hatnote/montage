@@ -4,7 +4,7 @@ const UserService = function ($http, $q, $window, dataService) {
 
   function getData(response) {
     let data = response.data;
-    return (data.code && data.code !== '200') ? { error: data } : data;
+    return (response.status !== 200) ? { error: data } : data;
   }
 
   const base = $window.__env.baseUrl;

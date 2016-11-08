@@ -58,6 +58,15 @@
                             <p>Wikimedia Commons Source Category</p>
                         </div>
                     </md-list-item>
+                    <md-list-item class="md-2-line" ng-if="!preview">
+                        <md-icon>link</md-icon>
+                        <div class="md-list-item-text">
+                            <md-input-container class="dialog__gist">
+                                <input type="text" ng-model="round.imports.gist_url">
+                            </md-input-container>
+                            <p>File List URL</p>
+                        </div>
+                    </md-list-item>
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">

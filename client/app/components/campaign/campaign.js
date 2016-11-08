@@ -128,6 +128,10 @@ const CampaignComponent = {
                 deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC')
             });
 
+            if(round_.imports && !round_.imports.category.length) {
+                round_.imports.import_method = 'gistcsv';
+            }
+
             if (!round_.name) {
                 alertService.error({
                     message: 'Error',
@@ -181,7 +185,10 @@ const CampaignComponent = {
                 userService.admin.populateRound(id, round.imports).then((response) => {
                     if (response.error) {
                         loading.window = false;
-                        alertService.error(response.error);
+                        alertService.error({
+                            message: 'Error',
+                            detail: 'Something is wrong with file list URL or Commons importing'
+                        });
                         return;
                     }
 
