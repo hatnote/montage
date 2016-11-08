@@ -5,7 +5,7 @@ import urllib2
 from unicodecsv import DictReader
 
 import rdb
-from labs import get_files
+from labs import get_files, get_file_info
 
 CSV_FULL_COLS = ['img_name',
                  'img_major_mime',
@@ -34,6 +34,8 @@ def make_entry(edict):
                  'upload_user_text': edict['img_user_text']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
+    if edict.get('flags'):
+        raw_entry['flags'] = edict['flags']
     return rdb.Entry(**raw_entry)
 
 
@@ -56,7 +58,22 @@ def load_full_csv(csv_file_obj):
 
 def load_brief_csv(csv_file_obj):
     "Just the image names, we'll look up the rest in the DB"
-    return
+
+    ret = []
+    dr = DictReader(csv_file_obj)
+    
+    for row in dr:
+        name = row['Filename']
+        end_time = row.get('Endtime')
+        edict = get_file_info(name)
+
+        if end_time:
+            edict['flags'] = {'end_time': end_time}
+
+        entry = make_entry(edict)
+        ret.append(entry)
+
+    return ret
 
 
 def get_entries_from_gist_csv(raw_url):

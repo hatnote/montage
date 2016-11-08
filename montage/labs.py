@@ -13,7 +13,7 @@ class MissingMySQLClient(RuntimeError):
     pass
 
 
-def get_files(category_name):
+def fetchall_from_commonswiki(query, params):
     if oursql is None:
         raise MissingMySQLClient('could not import oursql, check your'
                                  ' environment and restart the service')
@@ -24,6 +24,11 @@ def get_files(category_name):
                                 read_default_file=DB_CONFIG,
                                 charset=None)
     cursor = connection.cursor(oursql.DictCursor)
+    cursor.execute(query, params)
+    return cursor.fetchall()
+
+
+def get_files(category_name):
     query = '''
     SELECT *
     FROM image
@@ -36,8 +41,22 @@ def get_files(category_name):
     AND cl_to = ?;
     '''
     params = (category_name.replace(' ', '_'),)
-    cursor.execute(query, params)
-    return cursor.fetchall()
+
+    results = fetchall_from_commonswiki(query, params)
+
+    return results
+
+
+def get_file_info(filename):
+    query = '''
+    SELECT *
+    FROM image
+    WHERE img_name = ?;
+    '''
+    params = (filename.replace(' ', '_'),)
+    results = fetchall_from_commonswiki(query, params)
+
+    return results
 
 
 if __name__ == '__main__':
