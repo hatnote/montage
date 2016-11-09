@@ -84,7 +84,8 @@
                     <p>{{$ctrl.rating.current.entry.width}} × {{$ctrl.rating.current.entry.height}}</p>
                 </div>
             </md-list-item>
-            <md-list-item class="md-2-line">
+            <md-list-item class="md-2-line"
+                          ng-show="$ctrl.rating.current.history">
                 <md-icon>
                     history
                     <md-tooltip>File history</md-tooltip>

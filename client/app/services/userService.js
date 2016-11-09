@@ -70,7 +70,9 @@ const UserService = function ($http, $q, $window, dataService) {
             let image = _.find(tasks, {
               entry: { url: element.imageinfo[0].url }
             });
-            image.history = element.imageinfo;
+            if(image) {
+              image.history = element.imageinfo;
+            }
           });
           return data;
         });
