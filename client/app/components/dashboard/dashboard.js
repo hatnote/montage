@@ -39,16 +39,16 @@ const DashboardComponent = {
                     campaign: {
                         name: '',
                         coordinators: [],
-                        open_date: new Date(Date.UTC(2016, 8, 1)),
-                        close_date: new Date(Date.UTC(2016, 8, 30))
+                        open_date: new Date(Date.UTC(2017, 8, 1)),
+                        close_date: new Date(Date.UTC(2017, 8, 30))
                     },
                     today: new Date(),
                     create: (campaign_, loading) => {
                         let campaign = angular.copy(campaign_);
                         campaign = angular.extend(campaign, {
                             coordinators: campaign.coordinators.map((element) => element.name),
-                            open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC'),
-                            close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC')
+                            open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss'),
+                            close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss')
                         });
 
                         loading.window = true;

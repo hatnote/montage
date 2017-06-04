@@ -26,10 +26,15 @@
                     <md-list-item class="md-2-line">
                         <md-icon>date_range</md-icon>
                         <div class="md-list-item-text">
-                            <md-datepicker ng-model="round.deadline_date"
-                                           md-min-date="today"
-                                           md-hide-icons="calendar"></md-datepicker>
-                            <p>Deadline Date</p>
+                            <div layout="row" layout-align="space-between start">
+                                <md-datepicker ng-model="round.deadline_date"
+                                            md-hide-icons="calendar"></md-datepicker>
+                                <md-input-container class="dialog__input--flat" flex>
+                                    <input name="hour" type="time"
+                                        ng-model="round.deadline_date">
+                                </md-input-container>
+                            </div>
+                            <p>Close Date and Time (UTC)</p>
                         </div>
                     </md-list-item>
                 </md-list>

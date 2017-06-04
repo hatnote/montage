@@ -5,10 +5,7 @@ config*yaml
 *.log
 
 # Compiled front-end
-montage/static/index.html
-montage/static/assets
-montage/static/dist
-
+montage/static/
 
 # emacs
 *~
