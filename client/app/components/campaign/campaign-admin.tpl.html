@@ -20,7 +20,8 @@
             <md-icon>cancel</md-icon>
         </md-button>
         <small class="md-headline muted">
-            {{$ctrl.campaign.open_date | date: 'd MMM yyyy'}} – {{$ctrl.campaign.close_date | date: 'd MMM yyyy'}}
+            {{$ctrl.campaign.open_date | date: 'd MMM yyyy'}} <small>{{$ctrl.campaign.open_date | date: 'HH:mm'}} UTC</small> – 
+            {{$ctrl.campaign.close_date | date: 'd MMM yyyy'}} <small>{{$ctrl.campaign.close_date | date: 'HH:mm'}} UTC</small>
         </small>
         <span flex></span>
         <md-button class="md-icon-button" aria-label="Edit"
