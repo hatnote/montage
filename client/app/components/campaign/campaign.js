@@ -349,8 +349,8 @@ const CampaignComponent = {
 
             let campaign_ = angular.extend(angular.copy(campaign), {
                 coordinators: campaign.coordinators.map((element) => element.name),
-                open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC'),
-                close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss', 'UTC')
+                open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss'),
+                close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss')
             });
 
             userService.admin.editCampaign(campaign_.id, campaign_).then((response) => {
@@ -370,8 +370,12 @@ const CampaignComponent = {
             loading.window = true;
             round.new_jurors = round.jurors.map((user) => user.name);
 
+            const round_ = angular.extend({}, round, {
+                deadline_date: $filter('date')(round.deadline_date, 'yyyy-MM-ddTHH:mm:ss')
+            })
+
             $q.all({
-                round: userService.admin.editRound(round.id, round)
+                round: userService.admin.editRound(round_.id, round_)
             }).then((response) => {
                 if (response.round.error) {
                     loading.window = false;
