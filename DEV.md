@@ -42,47 +42,6 @@ Then run the app:
 npm run start
 ```
 
-# TODO
-
-A bit of space for dev bookkeeping.
-
-## Backend
-
-* Closing behaviors
-    * Compute ranking winners
-* Permissions cleanup for admin endpoints
-     * e.g., organizer checks
-* Check for resource existence instead of raising 500s (e.g., campaign endpoints)
-* Logging and timing
-* Locking
-* Undo rating submit
-* Add indexes
-* Switch request_dict to Werkzeug MultiDict for BadRequest behavior
-* fix `one_or_none` getters
-...
-
-* DAO.add_juror doesn't add jurors really
-* category import
-* lookup round + check round permissions
-* endpoint should return progress info (/admin/round/<id>, /admin)
-* Campaign + first Round as single step?
-* Blacklisted user disqualification
-* Load dates (?)
-* create round from previous round
-
-## Frontend
-
-* Make URLs configurable for different backend paths (e.g., Labs versus localhost)
-* Submit ratings
-* Submit rankings
-* Interfaces for closing rounds
-* Undo rating submit
-* Where to show directions in interface? ("show these directions next time"/cookie)
-
-Ratings closing round interface:
-
-* Specify threshold (1, 2, 3, 4, 5 stars, etc.)
-
 # Workflow
 
 A rough draft of Montage's workflow:
