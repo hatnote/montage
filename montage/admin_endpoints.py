@@ -42,12 +42,16 @@ def get_admin_routes():
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
                 autodisqualify),
-           GET('/maintainer', get_maint_index),
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/download', download_results_csv),
+           GET('/maintainer', get_maint_index),
            GET('/maintainer/active_users', get_active_users),
            GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
            GET('/maintainer/round/<round_id:int>', get_maint_round),
+           GET('/maintainer/round/<round_id:int>/preview_results',
+               get_round_results_preview),
+           GET('/maintainer/round/<round_id:int>/disqualified',
+               get_disqualified),
            GET('/maintainer/round/<round_id:int>/results', get_results),
            GET('/maintainer/round/<round_id:int>/download', download_results_csv),
            # TODO: split out into round/campaign log endpoints
@@ -730,11 +734,20 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
 
     return {'data': data}
 
-def get_disqualified(rdb_session, user, round_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
 
-    round_entries = coord_dao.get_disqualified(rnd)
+def get_disqualified(rdb_session, user, round_id):
+    # TODO: I wish there was a middleware to check these kinds of permissions
+    if user.is_maintainer:
+        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
+    else:
+        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+        rnd = user_dao.get_round(round_id)
+
+    if rnd is None:
+        raise Forbidden('round does not exist')
+
+    round_entries = user_dao.get_disqualified(rnd)
 
     data = [re.to_dq_details() for re in round_entries]
     return {'data': data}
