@@ -49,3 +49,34 @@ campaign = cdao.get_campaign(1)
 cdao.get_campaign_report(campaign)
 
 ```
+# TODOs from DEV.md
+
+A bit of space for dev bookkeeping.
+
+## Backend
+
+* Check for resource existence instead of raising 500s (e.g., campaign endpoints)
+* Logging and timing
+* Locking
+* Add indexes
+* Switch request_dict to Werkzeug MultiDict for BadRequest behavior
+* fix `one_or_none` getters
+...
+
+* DAO.add_juror doesn't add jurors really
+* lookup round + check round permissions
+* endpoint should return progress info (/admin/round/<id>, /admin)
+* Campaign + first Round as single step?
+* Blacklisted user disqualification
+* Load dates (?)
+* create round from previous round
+
+## Frontend
+
+* Make URLs configurable for different backend paths (e.g., Labs versus localhost)
+* Interfaces for closing rounds
+* Where to show directions in interface? ("show these directions next time"/cookie)
+
+Ratings closing round interface:
+
+* Specify threshold (1, 2, 3, 4, 5 stars, etc.)
