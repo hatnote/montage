@@ -89,6 +89,7 @@ def make_admin_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
+           'total_disqualified_entries': rnd_stats['total_disqualified_entries'],
            'campaign': rnd.campaign.to_info_dict(),
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
@@ -232,7 +233,7 @@ def activate_round(rdb_session, user, round_id, request_dict):
 
     coord_dao.activate_round(rnd)
 
-    ret_data = coord_dao.get_round_task_counts(rnd)
+    ret_data = rnd.get_count_map()
     ret_data['round_id'] = round_id
     return {'data': ret_data}
 
@@ -329,7 +330,7 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     rdb_session.commit()
 
     data = rnd.to_details_dict()
-    data['progress'] = coord_dao.get_round_task_counts(rnd)
+    data['progress'] = rnd.get_count_map()
 
     return {'data': data}
 
@@ -403,7 +404,7 @@ def get_round_results_preview(rdb_session, user, round_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
 
-    round_counts = coord_dao.get_round_task_counts(rnd)
+    round_counts = rnd.get_count_map()
     is_closeable = round_counts['total_open_tasks'] == 0
 
     data = {'round': rnd.to_info_dict(),
@@ -474,7 +475,7 @@ def advance_round(rdb_session, user, round_id, request_dict):
     # been performed the first round.
 
     next_rnd_dict = next_rnd.to_details_dict()
-    next_rnd_dict['progress'] = coord_dao.get_round_task_counts(next_rnd)
+    next_rnd_dict['progress'] = next_rnd.get_count_map()
 
     msg = ('%s advanced campaign %r (#%s) from %s round "%s" to %s round "%s"'
            % (user.username, rnd.campaign.name, rnd.campaign.id,
@@ -601,7 +602,7 @@ def get_round(rdb_session, user, round_id):
     if rnd is None:
         raise Forbidden('not a coordinator for this round')
 
-    rnd_stats = coord_dao.get_round_task_counts(rnd)
+    rnd_stats = rnd.get_count_map()
     # entries_info = user_dao.get_entry_info(round_id) # TODO
 
     # TODO: joinedload if this generates too many queries
@@ -793,7 +794,7 @@ def get_maint_round(rdb_session, user, round_id, request_dict):
         raise DoesNotExist('no rounds available')
     # entries_info = user_dao.get_entry_info(round_id) # TODO
 
-    rnd_stats = maint_dao.get_round_task_counts(rnd)
+    rnd_stats = rnd.get_count_map()
 
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
