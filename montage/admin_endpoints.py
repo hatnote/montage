@@ -346,11 +346,15 @@ def edit_round(rdb_session, user, round_id, request_dict):
     Response model: AdminCampaignDetails
     """
     column_names = ['name', 'description', 'directions',
-                    'config', 'new_jurors', 'deadline_date']
+                    'config', 'new_jurors', 'deadline_date',
+                    'quorum']
+
     # Use specific methods to edit other columns:
     #  - status: activate_round, pause_round
     #  - quorum: [requires reallocation]
     #  - active_jurors: [requires reallocation]
+
+    pause_column_names = ['quorum', 'new_jurors']
 
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     rnd = coord_dao.get_round(round_id)
@@ -363,7 +367,7 @@ def edit_round(rdb_session, user, round_id, request_dict):
     for column_name in column_names:
         # val = request_dict.pop(column_name, None)  # see note below
         val = request_dict.get(column_name)
-        if val is not None:
+        if val is not None and column_name not in pause_column_names:
             if column_name == 'deadline_date':
                 val = js_isoparse(val)
             setattr(rnd, column_name, val)
@@ -374,7 +378,8 @@ def edit_round(rdb_session, user, round_id, request_dict):
     #     raise InvalidAction('unable to modify round attributes: %r'
     #                         % request_dict.keys())
 
-    new_juror_names = new_val_map.get('new_jurors')
+
+    new_juror_names = request_dict.get('new_jurors')
     cur_jurors = coord_dao.get_active_jurors(rnd)
     cur_juror_names = [u.username for u in cur_jurors]
 
@@ -382,7 +387,15 @@ def edit_round(rdb_session, user, round_id, request_dict):
         if rnd.status != 'paused':
             raise InvalidAction('round must be paused to edit jurors')
         else:
-            rnd = coord_dao.modify_jurors(rnd, new_val_map['new_jurors'])
+            new_juror_stats = coord_dao.modify_jurors(rnd, new_juror_names)
+
+    new_quorum = request_dict.get('quorum')
+
+    if new_quorum and new_quorum != rnd.quorum:
+        if rnd.status != 'paused':
+            raise InvalidAction('round must be paused to edit quorum')
+        else:
+            new_juror_stats = coord_dao.modify_quorum(rnd, new_quorum)
 
     return {'data': new_val_map}
 

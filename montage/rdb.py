@@ -1407,6 +1407,47 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_jurors', round=rnd, message=msg)
         return res
 
+    def modify_quorum(self, rnd, new_quorum, strategy=None):
+        # This only supports increasing the quorum. Decreaseing the
+        # quorum would require handling some completed tasks (eg,
+        # whose vote do you discard? Randomly choose?)
+
+        # TODO: Support decreasing the quorum.
+
+        old_quorum = rnd.quorum
+
+        if not new_quorum:
+            raise InvalidAction('must specify new quorum')
+        
+        if new_quorum <= old_quorum:
+            raise NotImplemented('currently we do not support decreasing' +
+                                 'the quorum, currently quourum is %r, got %r')
+
+        jurors = self.get_active_jurors(rnd)
+        session = self.rdb_session
+
+        rnd.quorum = new_quorum
+
+        if rnd.vote_method == 'ranking':
+            raise InvalidAction('no quorum for a ranking round')
+        elif rnd.vote_method in ('yesno', 'rating'):
+            new_tpe = new_quorum - old_quorum
+            # I'm pretty sure this will fairly distribute tasks
+            created_tasks = create_initial_rating_tasks(session, rnd,
+                                                        tasks_per_entry=new_tpe)
+            ret = reassign_rating_tasks(session, rnd, jurors,
+                                        strategy=strategy, reassign_all=True)
+        else:
+            raise ValueError('invalid vote method: %r' % rnd.vote_method)
+
+        msg = ('%s changed round #%s quorum (%r -> %r), reassigned %s tasks'
+               ' (average juror task queue is now at %s)'
+               % (self.user.username, rnd.id, old_quorum, new_quorum,
+                  ret['reassigned_task_count'], ret['task_count_mean']))
+
+        self.log_action('modify_quorum', round=rnd, message=msg)
+        return ret
+
     def create_ranking_tasks(self, rnd, round_entries):
         jurors = rnd.jurors
         ret = []
@@ -1976,11 +2017,17 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     return ret
 
 
-def create_initial_rating_tasks(rdb_session, rnd):
-    # TODO: deny quorum > number of jurors
+def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
+    # Creates a specified number of tasks per entry.
+
     ret = []
 
-    quorum = rnd.quorum
+    if not tasks_per_entry:
+        tasks_per_entry = rnd.quorum
+
+    if tasks_per_entry > len(rnd.round_jurors):
+        raise InvalidAction('quorum cannot be greater than the number of jurors')
+
     jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
     if not jurors:
         raise InvalidAction('expected round with active jurors')
@@ -1999,10 +2046,11 @@ def create_initial_rating_tasks(rdb_session, rnd):
                                           RoundEntry.dq_user_id == None)\
                                   .order_by(rand_func).all()
 
-    to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)
+    to_process = itertools.chain.from_iterable([shuffled_entries] * tasks_per_entry)
     # some pictures may get more than quorum votes
     # it's either that or some get less
-    per_juror = int(ceil(len(shuffled_entries) * (float(quorum) / len(jurors))))
+    per_juror = int(ceil(len(shuffled_entries) 
+                         * (float(tasks_per_entry) / len(jurors))))
 
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
                                                  for j in jurors])

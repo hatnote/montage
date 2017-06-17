@@ -135,7 +135,7 @@ def full_run(url_base, remote):
     # - as coordinator
     rnd_data = {'name': 'Test yes/no round',
                 'vote_method': 'yesno',
-                'quorum': 4,
+                'quorum': 1,
                 'deadline_date': "2016-10-15T00:00:00",
                 'jurors': [u'Slaporte',
                            u'MahmoudHashemi',
@@ -292,12 +292,24 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
                       data, su_to='LilyOfTheWest')
 
+    # Edit quorum
+    # - as coordinator
+    data = {'quorum': 4}
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
+                      data, su_to='LilyOfTheWest')
+
+    # Try to edit invalid quorum
+    # - as coordinator
+    data = {'quorum': 1}
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
+                      data, su_to='LilyOfTheWest', assert_error=400)
 
     # Reactivate a round
     # - as coordinator
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/activate' % round_id,
                       data, su_to='LilyOfTheWest')
+
 
     # Get the audit logs
     # - as maintainer
@@ -448,6 +460,7 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_2_id,
                       su_to='LilyOfTheWest')
     pprint(resp['data'])
+
 
     thresh_map = resp['data']['thresholds']  # TODO
     cur_thresh = [t for t, c in sorted(thresh_map.items()) if 0 < c <= 20][-1]
