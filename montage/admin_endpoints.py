@@ -42,6 +42,8 @@ def get_admin_routes():
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
                 autodisqualify),
+           GET('/admin/round/<round_id:int>/preview_disqualification',
+                preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/download', download_results_csv),
            GET('/maintainer', get_maint_index),
@@ -377,7 +379,6 @@ def edit_round(rdb_session, user, round_id, request_dict):
     # if request_dict:
     #     raise InvalidAction('unable to modify round attributes: %r'
     #                         % request_dict.keys())
-
 
     new_juror_names = request_dict.get('new_jurors')
     cur_jurors = coord_dao.get_active_jurors(rnd)
@@ -747,6 +748,38 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
     data = [re.to_dq_details() for re in round_entries]
 
     return {'data': data}
+
+
+def preview_disqualification(rdb_session, user, round_id):
+    # Let's you see what will get disqualified, without actually
+    # disqualifying any entries
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    rnd = coord_dao.get_round(round_id)
+
+    if rnd is None:
+        raise Forbidden('not a coordinator for this round')
+
+    # TODO: explain each disqualification
+
+    ret = {'config': rnd.config}
+
+    by_upload_date = coord_dao.autodisqualify_by_date(rnd, preview=True)
+    ret['by_upload_date'] = [re.entry.to_details_dict(with_uploader=True) 
+                             for re in by_upload_date]
+    
+    by_resolution = coord_dao.autodisqualify_by_resolution(rnd, preview=True)
+    ret['by_resolution'] = [re.entry.to_details_dict(with_uploader=True) 
+                            for re in by_resolution]
+
+    by_uploader = coord_dao.autodisqualify_by_uploader(rnd, preview=True)
+    ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True) 
+                          for re in by_uploader]
+
+    by_filetype = coord_dao.autodisqualify_by_filetype(rnd, preview=True)
+    ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True) 
+                          for re in by_filetype]
+
+    return {'data': ret}
 
 
 def get_disqualified(rdb_session, user, round_id):

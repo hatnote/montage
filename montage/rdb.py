@@ -924,17 +924,18 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def autodisqualify_by_date(self, rnd):
+    def autodisqualify_by_date(self, rnd, preview=False):
         campaign = rnd.campaign
         min_date = campaign.open_date
         max_date = campaign.close_date
 
-        if not min_date or not max_date:
+        if (not min_date or not max_date):
             round_entries = []
-
-            msg = ('%s disqualified 0 entries by date due to missing, '
-                   'campaign open or close date' % (self.user.username,))
-            self.log_action('autodisqualify_by_date', round=rnd, message=msg)
+            
+            if not preview:
+                msg = ('%s disqualified 0 entries by date due to missing, '
+                       'campaign open or close date' % (self.user.username,))
+                self.log_action('autodisqualify_by_date', round=rnd, message=msg)
 
             return round_entries
 
@@ -944,6 +945,9 @@ class CoordinatorDAO(UserDAO):
                             .filter((Entry.upload_date < min_date) |
                                     (Entry.upload_date > max_date))\
                             .all()
+
+        if preview:
+            return round_entries
 
         cancel_date = datetime.datetime.utcnow()
 
@@ -962,7 +966,7 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_resolution(self, rnd):
+    def autodisqualify_by_resolution(self, rnd, preview=False):
         # TODO: get from config
         min_res = rnd.config.get('min_resolution', DEFAULT_MIN_RESOLUTION)
 
@@ -971,6 +975,9 @@ class CoordinatorDAO(UserDAO):
                             .filter(RoundEntry.round_id == rnd.id)\
                             .filter(Entry.resolution < min_res)\
                             .all()
+
+        if preview:
+            return round_entries
 
         min_res_str = round(min_res / ONE_MEGAPIXEL, 2)
         cancel_date = datetime.datetime.utcnow()
@@ -991,13 +998,16 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_filetype(self, rnd):
+    def autodisqualify_by_filetype(self, rnd, preview=False):
         allowed_filetypes = rnd.config.get('allowed_filetypes')
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
                             .filter(RoundEntry.round_id == rnd.id)\
                             .filter(~Entry.mime_minor.in_(allowed_filetypes))\
                             .all()
+
+        if preview:
+            return round_entries
 
         cancel_date = datetime.datetime.utcnow()
 
@@ -1016,7 +1026,7 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_uploader(self, rnd):
+    def autodisqualify_by_uploader(self, rnd, preview=False):
         dq_group = {}
         dq_usernames = [j.username for j in rnd.jurors]
 
@@ -1050,6 +1060,9 @@ class CoordinatorDAO(UserDAO):
                             .filter(RoundEntry.round_id == rnd.id)\
                             .filter(Entry.upload_user_text.in_(dq_usernames))\
                             .all()
+
+        if preview:
+            return round_entries
 
         cancel_date = datetime.datetime.utcnow()
 

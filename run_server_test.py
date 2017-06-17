@@ -218,6 +218,12 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
                       data, su_to='LilyOfTheWest')
 
+    # Preview disqualifications
+    resp = fetch_json(url_base + '/admin/round/%s/preview_disqualification' % round_id,
+                      su_to='LilyOfTheWest')
+
+    import pdb;pdb.set_trace()
+
     # Disqualify by resolution
 
     data = {'dq_by_resolution': True}
