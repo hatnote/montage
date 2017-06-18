@@ -22,14 +22,14 @@ def get_admin_routes():
     """
     ret = [GET('/admin', get_index),
            POST('/admin/add_organizer', add_organizer),
-           POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
+           POST('/admin/add_campaign', create_campaign),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
-           #POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
+           POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
            POST('/admin/campaign/<campaign_id:int>/add_round',
-                create_round),  # was ../new/round
+                create_round),
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
-                add_coordinator),  # was /admin/add_coordinator/campaign/...',
+                add_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
                'report.html'),
@@ -297,6 +297,16 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
     return {'data': edit_dict}
 
 
+def cancel_campaign(rdb_session, user, campaign_id, request_dict):
+    coord_dao = CoordinatorDAO(rdb_session, user=user)
+    campaign = coord_dao.get_campaign(campaign_id)
+    if not campaign:
+        raise Forbidden('not coordinator or campaign does not exist')
+    results = coord_dao.cancel_campaign(campaign)
+    return {'data': results}
+
+
+
 def _prepare_round_params(coord_dao, request_dict):
     rnd_dict = {}
     req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
@@ -534,7 +544,7 @@ def finalize_campaign(rdb_session, user, campaign_id):
     msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
            % (user.username, campaign.name, campaign.id,
               last_rnd.vote_method, last_rnd.name))
-    coord_dao.log_action('finalize_ranking_round', campaign=campaign, message=msg)
+    coord_dao.log_action('finalize_campaign', campaign=campaign, message=msg)
     return campaign_summary
 
 def get_index(rdb_session, user):

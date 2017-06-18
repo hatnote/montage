@@ -156,6 +156,7 @@ class Campaign(Base):
     # actually uploaded during the contest window
     open_date = Column(DateTime)
     close_date = Column(DateTime)
+    status = Column(String(255))  # active, cancelled, finalized
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
@@ -218,7 +219,7 @@ class Round(Base):
     directions = Column(Text)
     open_date = Column(DateTime)
     close_date = Column(DateTime)
-    status = Column(String(255))
+    status = Column(String(255))  # active, paused, cancelled finalized
     vote_method = Column(String(255))
     quorum = Column(Integer)
 
@@ -890,6 +891,20 @@ class CoordinatorDAO(UserDAO):
 
         return ret
 
+    def cancel_campaign(self, campaign):
+        cancel_date = datetime.datetime.utcnow()
+        campaign_id = campaign.id
+        rounds = (self.query(Round)
+                      .filter(Round.campaign_id == campaign_id)
+                      .all())
+        campaign.status = 'cancelled'
+        for round in rounds:
+            self.cancel_round(round)
+        msg = '%s cancelled campaign "%s" and %s rounds' %\
+              (self.user.username, campaign.name, len(rounds))
+        self.log_action('cancel_campaign', campaign=campaign, message=msg)
+        self.rdb_session.commit()
+
     def create_round(self, campaign, name, description, directions, quorum,
                      vote_method, jurors, deadline_date, config=None):
 
@@ -1539,7 +1554,8 @@ class CoordinatorDAO(UserDAO):
         ret["rounds"] = [r.to_details_dict() for r in campaign.rounds
                          if r.status != 'cancelled']  # TODO: switch to == 'finalized'
 
-        ret["coordinators"] = [cc.user.to_info_dict() for cc in campaign.campaign_coords]
+        ret["coordinators"] = [cc.user.to_info_dict() for cc in
+                               campaign.campaign_coords]
 
         rnds = self.get_campaign_rounds(campaign, with_cancelled=False)
 
@@ -1621,28 +1637,13 @@ class OrganizerDAO(CoordinatorDAO):
         campaign = Campaign(name=name,
                             open_date=open_date,
                             close_date=close_date,
+                            status='active',
                             coords=coords)
 
         self.rdb_session.add(campaign)
 
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
         self.log_action('create_campaign', campaign=campaign, message=msg)
-
-        return campaign
-
-    def cancel_campaign(self, campaign):
-        cancel_date = datetime.datetime.utcnow()
-
-        campaign.close_date = cancel_date
-
-        for rnd in campaign.rounds:
-            self.cancel_round(rnd)
-
-        msg = ('%s cancelled campaign %s (%s) and %s rounds'
-               % (self.user.username, campaign.id, campaign.name,
-                  len(campaign.rounds)))
-        self.log_action('cancel_campaign', campaign=campaign, message=msg)
-        self.rdb_session.commit()
 
         return campaign
 

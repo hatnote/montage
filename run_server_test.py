@@ -548,6 +548,13 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
                       {'post': True}, su_to='LilyOfTheWest')
 
+    # cancel campaign -- warning, this cancels everything (campaign, rounds, and tasks)
+    
+    #resp = fetch_json(url_base + '/admin/campaign/%s/cancel' % campaign_id,
+    #                  {'post': True}, su_to='LilyOfTheWest')
+
+    #import pdb;pdb.set_trace()
+
     # submit the remaining ratings
     submit_ratings(url_base, rnd_3_id)
 
