@@ -25,10 +25,14 @@ def get_admin_routes():
            POST('/admin/add_campaign', create_campaign),  # was ../new/campaign
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
+           #POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
            POST('/admin/campaign/<campaign_id:int>/add_round',
                 create_round),  # was ../new/round
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),  # was /admin/add_coordinator/campaign/...',
+           POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
+           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
+               'report.html'),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -163,6 +167,18 @@ def create_campaign(user, rdb_session, request_dict):
     data = campaign.to_details_dict()
 
     return {'data': data}
+
+
+def get_campaign_report(rdb_session, user, campaign_id):
+    user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    campaign = user_dao.get_campaign(campaign_id)
+    if not campaign:
+        raise Forbidden('not a coordinator for this campaign, ' +
+                        'or campaign doesn\'t exist')
+    summary = user_dao.get_campaign_report(campaign)
+    ctx = summary.summary
+    ctx['use_ashes'] = True
+    return ctx
 
 
 def import_entries(rdb_session, user, round_id, request_dict):
@@ -498,6 +514,28 @@ def advance_round(rdb_session, user, round_id, request_dict):
 
     return {'data': next_rnd_dict}
 
+def finalize_campaign(rdb_session, user, campaign_id):
+    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    campaign = coord_dao.get_campaign(campaign_id)
+
+    if not campaign:
+        raise Forbidden('No permission finalize campaign %s, or campaign does not exist' % campaign_id)
+
+    last_rnd = campaign.active_round
+
+    if not last_rnd:
+        raise InvalidAction('no active rounds')
+
+    if last_rnd.vote_method != 'ranking':
+        raise InvalidAction('only ranking rounds can be finalized')
+
+    campaign_summary = coord_dao.finalize_ranking_round(last_rnd)
+
+    msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
+           % (user.username, campaign.name, campaign.id,
+              last_rnd.vote_method, last_rnd.name))
+    coord_dao.log_action('finalize_ranking_round', campaign=campaign, message=msg)
+    return campaign_summary
 
 def get_index(rdb_session, user):
     """

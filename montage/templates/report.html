@@ -1,0 +1,149 @@
+<html>
+  <head>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        background-color: rgb(249, 249, 249);
+        color: rgba(0,0,0,.87);
+        font: 14px Roboto, Arial, sans-serif;
+      }
+      .container {
+        width: 1000px;
+        margin: auto;
+      }
+      .header {
+        background-color: rgb(33,150,243);
+        color: #fff;
+        padding: 0.2em 0;
+      }
+      .header h1 {
+        font-weight: 300;
+      }
+      .report {
+        background-color: rgb(255,255,255);
+        border-radius: 2px;
+        padding: 1em;
+        box-shadow: 0 1px 3px 0 rgba(0,0,0,.2),
+                    0 1px 1px 0 rgba(0,0,0,.14),
+                    0 2px 1px -1px rgba(0,0,0,.12);
+        margin-top: 2em;
+      }
+      .box {
+        margin-top: 10px;
+        border: 2px solid #222;
+        background-color: #222;
+        width: 990px;
+      }
+      .caption {
+        padding: 4px 10px 4px 10px;
+      }
+      .num {
+        font-weight: bold;
+        font-size: 2.4em;
+        color: #eee;
+        float: left;
+        padding-right: 10px;
+      }
+      .num a {
+        text-decoration: none;
+        color: #eee;
+      }
+      .caption p {
+        color: #fff;
+        font-size: 13px;
+      }
+      .footer {
+        border-top: 1px solid #dcdcdc;
+        padding: 2em 0;
+        width: 400px;
+        margin: 2em auto;
+        text-align: center;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      thead tr {
+        text-align: left;
+        font-weight: bold;
+        border-bottom: 1px solid #222;
+      }
+      tr {
+        border-bottom: 1px solid #dcdcdc;
+        padding: 0.2em; 
+      }
+      td ul {
+        list-style: none;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="header">
+      <div class="container">
+	<h1>{campaign.name}</h1>
+      </div>
+    </div>
+
+    <div class="container report">
+      <h2>About</h2>
+      <p>{campaign.name} was Organized by {#coordinators}<a href="https://commons.wikimedia.org/wiki/{username}">{username}</a>{@sep}, {/sep}{/coordinators} from {campaign.open_date} - {campaign.close_date}, receiving {#rounds}{@first}{total_round_entries}{/first}{/rounds} submissions from 832 users on Wikimedia Commons.</p>
+      <p>After <a href="#">three rounds of review</a>, the final jury <a href="#">selected ten winners</a> for the year.</p>
+    </div>
+    
+    <div class="container winners">
+      <h2>Winners</h2>
+      {#winners}
+      <div class="box">
+	<a name="entry-{ranking}"></a>
+	<img src="https://commons.wikimedia.org/w/thumb.php?f={entry.name}&w=990" class="entry-img">
+	<div class="caption">
+	  <div class="num">
+	    <a href="#entry-{ranking}">{ranking}</a>
+	  </div>
+	  <p>Photograph by {entry.upload_user_text}, {juror_ranking_map}</p>
+	</div>
+      </div>
+      {/winners}
+    </div>
+
+    <div class="container report">
+      <h2>Rounds</h2>
+      <table>
+	<thead>
+	  <tr>
+	    <th>Name</th>
+	    <th>Entries</th>
+	    <th>Users</th>
+	    <th>Date</th>
+	    <th>Jurors</th>
+	    <th>Voting type</th>
+	    <th>Minimum to advance</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  {#rounds}
+	  <tr>
+	    <td>{name}</td>
+	    <td>{total_round_entries}</td>
+	    <td>{total_users}</th>
+	    <td>{open_date} - {close_date}</td>
+	    <td>{@size key="jurors"}{/size}</td>
+	    <td>{vote_method}</td>
+	    <td>TODO</td>
+	  </tr>
+          {/rounds}
+        </tbody>
+      </table>
+
+      <h2>Jury</h2>
+      <p>Thank you to all of the jury members for {campaign.name}: {#all_jurors}<a href="https://commons.wikimedia.org/wiki/User:{.}">{.}</a>{@sep}, {/sep}{/all_jurors}.</p>
+
+    </div>
+    <div class="footer">
+      <img src="https://raw.githubusercontent.com/hatnote/montage/master/client/app/images/logo_1.png" width="100px">
+    </div>
+  </body>
+</html>

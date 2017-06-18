@@ -73,6 +73,8 @@ class MessageMiddleware(Middleware):
             # code == 2xx
             # TODO: autoserialize body if no body is set
             return ret
+        elif isinstance(ret, dict) and ret.get('use_ashes'):
+            return ret
         elif isinstance(ret, dict):
             response_dict.update(ret)
         else:

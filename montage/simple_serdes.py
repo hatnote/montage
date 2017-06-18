@@ -2,6 +2,8 @@
 import json
 import datetime
 
+from utils import json_serial
+
 from sqlalchemy import inspect
 from sqlalchemy.types import TypeDecorator, Text
 from sqlalchemy.ext.mutable import Mutable
@@ -112,7 +114,7 @@ class JSONEncodedDict(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             value = {}
-        return json.dumps(value)
+        return json.dumps(value, default=json_serial)
 
     def process_result_value(self, value, dialect):
         if value is None:

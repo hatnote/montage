@@ -139,6 +139,15 @@ def format_date(date):
     return date
 
 
+def json_serial(obj):
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        serial = obj.isoformat()
+        return serial
+    elif isinstance(obj, set):
+        return list(obj)
+    raise TypeError ("Type %s not serializable" % type(obj))
+
+
 def parse_date(date):
     if date is None:
         return None

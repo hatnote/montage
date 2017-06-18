@@ -30,18 +30,33 @@ handlers = [
 opener = urllib2.build_opener(*handlers)
 
 
-def fetch(url, data=None):
+def fetch(url, data=None, content_type='application/json'):
     if not data:
         req = urllib2.Request(url)
     else:
         data_bytes = json.dumps(data)
         req = urllib2.Request(url, data_bytes,
-                              {'Content-Type': 'application/json'})
+                              {'Content-Type': content_type})
     return opener.open(req)
 
 
+def fetch_json(url, data=None, **kw):
+    resp = fetch_url(url, data=data, **kw)
+    if resp and kw.get('assert_error'):
+        return True # TODO
+    data_dict = json.load(resp)
+    if kw.get('assert_success', True):
+        try:
+            assert data_dict['status'] == 'success'
+            # print '.. loaded %s' % url
+        except AssertionError:
+            print '!! did not successfully load %s' % url
+            import pdb;pdb.set_trace()
+    return data_dict
+
+
 @script_log.wrap('info', inject_as='act')
-def fetch_json(url, data=None, act=None, **kw):
+def fetch_url(url, data=None, act=None, **kw):
     act.level = kw.get('log_level', act.level)
     su_to = kw.get('su_to')
     if su_to:
@@ -52,22 +67,15 @@ def fetch_json(url, data=None, act=None, **kw):
             url += '?su_to=' + url_su_to
     act['url'] = url
     try:
-        res = fetch(url, data=data)
+        res = fetch(url, data=data, content_type=kw.get('content_type', 'application/json'))
     except urllib2.HTTPError as he:
         if kw.get('assert_error'):
             return True # TODO
+        import pdb;pdb.set_trace()
         print '!! ', he.read()
         print
         raise
-    data_dict = json.load(res)
-    if kw.get('assert_success', True):
-        try:
-            assert data_dict['status'] == 'success'
-            # print '.. loaded %s' % url
-        except AssertionError:
-            print '!! did not successfully load %s' % url
-            import pdb;pdb.set_trace()
-    return data_dict
+    return res
 
 
 def full_run(url_base, remote):
@@ -221,8 +229,6 @@ def full_run(url_base, remote):
     # Preview disqualifications
     resp = fetch_json(url_base + '/admin/round/%s/preview_disqualification' % round_id,
                       su_to='LilyOfTheWest')
-
-    import pdb;pdb.set_trace()
 
     # Disqualify by resolution
 
@@ -435,7 +441,6 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % round_id,
                       su_to='LilyOfTheWest')
-    pprint(resp['data'])
 
     rnd_data = {'name': 'Test advance to rating round',
                 'vote_method': 'rating',
@@ -465,7 +470,6 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_2_id,
                       su_to='LilyOfTheWest')
-    pprint(resp['data'])
 
 
     thresh_map = resp['data']['thresholds']  # TODO
@@ -485,11 +489,9 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/advance' % rnd_2_id,
                       data, su_to='LilyOfTheWest')
-    pprint(resp['data'])
     rnd_3_id = resp['data']['id']
     resp = fetch_json(url_base + '/admin/round/%s/activate' % rnd_3_id,
                       {'post': True}, su_to='LilyOfTheWest')
-    pprint(resp['data'])
 
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/pause' % rnd_3_id,
@@ -551,7 +553,15 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/admin/round/%s/preview_results' % rnd_3_id,
                       su_to='LilyOfTheWest')
-    pprint(resp['data'])
+
+    # finalize the campaign
+
+    resp = fetch_json(url_base + '/admin/campaign/%s/finalize' % campaign_id,
+                      {'post': True}, su_to='LilyOfTheWest')
+
+    # view the final campaign report
+    resp = fetch_url(url_base + '/admin/campaign/%s/report' % campaign_id,
+                     su_to='LilyOfTheWest', content_type='text/html')
 
     resp = fetch_json(url_base + '/juror/round/%s/rankings' % rnd_3_id,
                       su_to='Jimbo Wales')

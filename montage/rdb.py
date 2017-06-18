@@ -8,6 +8,7 @@ import datetime
 import itertools
 from collections import Counter, defaultdict
 from math import ceil
+from json import dumps
 
 from pyvotecore.schulze_npr import SchulzeNPR
 from sqlalchemy import (Text,
@@ -32,6 +33,7 @@ from boltons.statsutils import mean
 
 from utils import (format_date,
                    to_unicode,
+                   json_serial,
                    get_mw_userid,
                    weighted_choice,
                    PermissionDenied, InvalidAction)
@@ -663,6 +665,9 @@ class RoundResultsSummary(Base):
     id = Column(Integer, primary_key=True)
 
     round_id = Column(Integer, ForeignKey('rounds.id'))
+    round = relationship('Round')
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    campaign = relationship('Campaign')
 
     summary = Column(JSONEncodedDict)
 
@@ -1240,6 +1245,38 @@ class CoordinatorDAO(UserDAO):
 
         return advance_count
 
+    def finalize_ranking_round(self, rnd):
+        assert rnd.vote_method == 'ranking'
+
+        # TODO: Ranking method?
+
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = 'finalized'
+        # rnd.config['ranking_method'] = method
+        
+        summary = self.build_campaign_report(rnd.campaign)
+
+        result_summary = RoundResultsSummary(round_id=rnd.id,
+                                             campaign_id=rnd.campaign.id,
+                                             summary=summary)
+        self.rdb_session.add(result_summary)
+        self.rdb_session.commit()
+        msg = ('%s finalized round "%s" (#%s) and created round results summary %s' % 
+               (self.user.username, rnd.name, rnd.id, result_summary.id))
+        self.log_action('finalize_ranking_round', round=rnd, message=msg)
+        self.rdb_session.commit()
+        return result_summary
+
+    def get_campaign_report(self, campaign):
+        campaign_id = campaign.id
+        summary = self.query(RoundResultsSummary)\
+                      .filter(
+                          RoundResultsSummary.campaign.has(
+                            Campaign.coords.any(username=self.user.username)))\
+                      .filter_by(campaign_id=campaign_id)\
+                      .one_or_none()
+        return summary
+
     def get_rating_advancing_group(self, rnd, threshold=None):
         assert rnd.vote_method in ('rating', 'yesno')
 
@@ -1276,7 +1313,7 @@ class CoordinatorDAO(UserDAO):
 
         return dict(rating_ctr)
 
-    def get_round_ranking_list(self, rnd):
+    def get_round_ranking_list(self, rnd, notation):
         res = (self.query(Ranking)
                .options(joinedload('round_entry'))
                .filter(Ranking.round_entry.has(round_id=rnd.id))
@@ -1490,9 +1527,10 @@ class CoordinatorDAO(UserDAO):
         source = 'round(#%s)' % prev_finalized_rnd.id
         self.add_round_entries(rnd, advancing_group, source=source)
 
-    def get_campaign_report(self, campaign):
+    def build_campaign_report(self, campaign):
         # TODO: must be a coordinator on the campaign
         # TODO: assert campaign is finalized
+        
         ret = {}
         start_time = time.time()
 

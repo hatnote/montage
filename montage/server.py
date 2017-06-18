@@ -43,6 +43,8 @@ from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
+from clastic.render import AshesRenderFactory
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
@@ -68,7 +70,8 @@ DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
-
+TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                              'templates')
 
 def create_app(env_name='prod'):
     # rendering is handled by MessageMiddleware
@@ -110,6 +113,8 @@ def create_app(env_name='prod'):
 
     if not config.get('db_disable_ping'):
         event.listen(engine, 'engine_connect', ping_connection)
+
+    renderer = AshesRenderFactory(TEMPLATES_PATH)
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
@@ -157,7 +162,8 @@ def create_app(env_name='prod'):
                  'consumer_token': consumer_token,
                  'root_path': root_path}
 
-    app = Application(routes, resources, middlewares=middlewares)
+    app = Application(routes, resources, middlewares=middlewares,
+                      render_factory=renderer)
 
     static_app = StaticApplication(STATIC_PATH)
 
