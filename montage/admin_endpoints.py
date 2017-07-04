@@ -173,8 +173,8 @@ def get_campaign_report(rdb_session, user, campaign_id):
     user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = user_dao.get_campaign(campaign_id)
     if not campaign:
-        raise Forbidden('not a coordinator for this campaign, ' +
-                        'or campaign doesn\'t exist')
+        raise Forbidden('not a coordinator for this campaign,'
+                        ' or campaign does not exist')
     summary = user_dao.get_campaign_report(campaign)
     ctx = summary.summary
     ctx['use_ashes'] = True
@@ -524,12 +524,13 @@ def advance_round(rdb_session, user, round_id, request_dict):
 
     return {'data': next_rnd_dict}
 
+
 def finalize_campaign(rdb_session, user, campaign_id):
     coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaign = coord_dao.get_campaign(campaign_id)
 
     if not campaign:
-        raise Forbidden('No permission finalize campaign %s, or campaign does not exist' % campaign_id)
+        raise Forbidden('No permission to finalize campaign %s, or campaign does not exist' % campaign_id)
 
     last_rnd = campaign.active_round
 
@@ -546,6 +547,7 @@ def finalize_campaign(rdb_session, user, campaign_id):
               last_rnd.vote_method, last_rnd.name))
     coord_dao.log_action('finalize_campaign', campaign=campaign, message=msg)
     return campaign_summary
+
 
 def get_index(rdb_session, user):
     """
@@ -812,19 +814,19 @@ def preview_disqualification(rdb_session, user, round_id):
     ret = {'config': rnd.config}
 
     by_upload_date = coord_dao.autodisqualify_by_date(rnd, preview=True)
-    ret['by_upload_date'] = [re.entry.to_details_dict(with_uploader=True) 
+    ret['by_upload_date'] = [re.entry.to_details_dict(with_uploader=True)
                              for re in by_upload_date]
-    
+
     by_resolution = coord_dao.autodisqualify_by_resolution(rnd, preview=True)
-    ret['by_resolution'] = [re.entry.to_details_dict(with_uploader=True) 
+    ret['by_resolution'] = [re.entry.to_details_dict(with_uploader=True)
                             for re in by_resolution]
 
     by_uploader = coord_dao.autodisqualify_by_uploader(rnd, preview=True)
-    ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True) 
+    ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True)
                           for re in by_uploader]
 
     by_filetype = coord_dao.autodisqualify_by_filetype(rnd, preview=True)
-    ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True) 
+    ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True)
                           for re in by_filetype]
 
     return {'data': ret}

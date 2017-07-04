@@ -187,8 +187,8 @@ def full_run(url_base, remote):
     config = rnd['data']['config']
     config['show_filename'] = False
     data = {'config': config}
-    resp = fetch_json (url_base + '/admin/round/%s/edit' % round_id,
-                       data, su_to='LilyOfTheWest')
+    resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
+                      data, su_to='LilyOfTheWest')
 
     # Import entries to a round from a gistcsv
     # - as coordinator
@@ -313,8 +313,9 @@ def full_run(url_base, remote):
     # Try to edit invalid quorum
     # - as coordinator
     data = {'quorum': 1}
+    # TODO: maybe make this a 500
     resp = fetch_json(url_base + '/admin/round/%s/edit' % round_id,
-                      data, su_to='LilyOfTheWest', assert_error=400)
+                      data, su_to='LilyOfTheWest', assert_error=500)
 
     # Reactivate a round
     # - as coordinator
@@ -549,7 +550,7 @@ def full_run(url_base, remote):
                       {'post': True}, su_to='LilyOfTheWest')
 
     # cancel campaign -- warning, this cancels everything (campaign, rounds, and tasks)
-    
+
     #resp = fetch_json(url_base + '/admin/campaign/%s/cancel' % campaign_id,
     #                  {'post': True}, su_to='LilyOfTheWest')
 

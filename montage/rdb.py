@@ -316,7 +316,7 @@ class Round(Base):
                                     .first()
             return not open_tasks
         return False
-        
+
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -951,7 +951,7 @@ class CoordinatorDAO(UserDAO):
 
         if (not min_date or not max_date):
             round_entries = []
-            
+
             if not preview:
                 msg = ('%s disqualified 0 entries by date due to missing, '
                        'campaign open or close date' % (self.user.username,))
@@ -1268,7 +1268,7 @@ class CoordinatorDAO(UserDAO):
         rnd.close_date = datetime.datetime.utcnow()
         rnd.status = 'finalized'
         # rnd.config['ranking_method'] = method
-        
+
         summary = self.build_campaign_report(rnd.campaign)
 
         result_summary = RoundResultsSummary(round_id=rnd.id,
@@ -1276,7 +1276,7 @@ class CoordinatorDAO(UserDAO):
                                              summary=summary)
         self.rdb_session.add(result_summary)
         self.rdb_session.commit()
-        msg = ('%s finalized round "%s" (#%s) and created round results summary %s' % 
+        msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
                (self.user.username, rnd.name, rnd.id, result_summary.id))
         self.log_action('finalize_ranking_round', round=rnd, message=msg)
         self.rdb_session.commit()
@@ -1328,7 +1328,7 @@ class CoordinatorDAO(UserDAO):
 
         return dict(rating_ctr)
 
-    def get_round_ranking_list(self, rnd, notation):
+    def get_round_ranking_list(self, rnd, notation=None):
         res = (self.query(Ranking)
                .options(joinedload('round_entry'))
                .filter(Ranking.round_entry.has(round_id=rnd.id))
@@ -1483,10 +1483,11 @@ class CoordinatorDAO(UserDAO):
 
         if not new_quorum:
             raise InvalidAction('must specify new quorum')
-        
+
         if new_quorum <= old_quorum:
-            raise NotImplemented('currently we do not support decreasing' +
-                                 'the quorum, currently quourum is %r, got %r')
+            raise NotImplementedError('currently we do not support quorum '
+                                      'decreases. current quorum is %r, got %r'
+                                      % (old_quorum, new_quorum))
 
         jurors = self.get_active_jurors(rnd)
         session = self.rdb_session
@@ -1545,7 +1546,7 @@ class CoordinatorDAO(UserDAO):
     def build_campaign_report(self, campaign):
         # TODO: must be a coordinator on the campaign
         # TODO: assert campaign is finalized
-        
+
         ret = {}
         start_time = time.time()
 
@@ -1581,7 +1582,7 @@ class CoordinatorDAO(UserDAO):
 
         ranking_list = self.get_round_ranking_list(final_rnd)
 
-        ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']] 
+        ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']]
                                      for r in ret['rounds']], []))
 
         winners = []
@@ -1606,7 +1607,7 @@ class CoordinatorDAO(UserDAO):
             winners.append(cur)
 
         ret['winners'] = winners
-        
+
         ret['render_date'] = datetime.datetime.utcnow()
         ret['render_duration'] = time.time() - start_time
 
@@ -2101,7 +2102,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     to_process = itertools.chain.from_iterable([shuffled_entries] * tasks_per_entry)
     # some pictures may get more than quorum votes
     # it's either that or some get less
-    per_juror = int(ceil(len(shuffled_entries) 
+    per_juror = int(ceil(len(shuffled_entries)
                          * (float(tasks_per_entry) / len(jurors))))
 
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
