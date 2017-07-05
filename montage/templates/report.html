@@ -71,7 +71,7 @@
       }
       tr {
         border-bottom: 1px solid #dcdcdc;
-        padding: 0.2em; 
+        padding: 0.2em;
       }
       td ul {
         list-style: none;
@@ -89,10 +89,10 @@
 
     <div class="container report">
       <h2>About</h2>
-      <p>{campaign.name} was Organized by {#coordinators}<a href="https://commons.wikimedia.org/wiki/{username}">{username}</a>{@sep}, {/sep}{/coordinators} from {campaign.open_date} - {campaign.close_date}, receiving {#rounds}{@first}{total_round_entries}{/first}{/rounds} submissions from 832 users on Wikimedia Commons.</p>
-      <p>After <a href="#">three rounds of review</a>, the final jury <a href="#">selected ten winners</a> for the year.</p>
+      <p><em>{campaign.name}</em> was organized by {#coordinators}{@last} and{/last} <a href="https://commons.wikimedia.org/wiki/{username}">{username}</a>{@sep}, {/sep}{/coordinators} from {campaign.open_date} - {campaign.close_date}, receiving {#rounds}{@first}{total_round_entries}{/first}{/rounds} submissions from 832 users on Wikimedia Commons.</p>
+      <p>After <a href="#rounds-details">three rounds of review</a>, the <a href="#jury-details">jury of {@size key=all_jurors /}</a> selected {@size key=winners /} winners, seen below.</p>
     </div>
-    
+
     <div class="container winners">
       <h2>Winners</h2>
       {#winners}
@@ -110,7 +110,7 @@
     </div>
 
     <div class="container report">
-      <h2>Rounds</h2>
+      <h2 id="rounds-details">Rounds</h2>
       <table>
 	<thead>
 	  <tr>
@@ -130,7 +130,7 @@
 	    <td>{total_round_entries}</td>
 	    <td>{total_users}</th>
 	    <td>{open_date} - {close_date}</td>
-	    <td>{@size key="jurors"}{/size}</td>
+	    <td>{@size key=jurors /}</td>
 	    <td>{vote_method}</td>
 	    <td>TODO</td>
 	  </tr>
@@ -139,7 +139,7 @@
       </table>
 
       <h2>Jury</h2>
-      <p>Thank you to all of the jury members for {campaign.name}: {#all_jurors}<a href="https://commons.wikimedia.org/wiki/User:{.}">{.}</a>{@sep}, {/sep}{/all_jurors}.</p>
+      <p>Thank you to all of the jury members for <em>{campaign.name}</em>: {#all_jurors}{@last}and {/last}<a href="https://commons.wikimedia.org/wiki/User:{.}">{.}</a>{@sep}, {/sep}{/all_jurors}.</p>
 
     </div>
     <div class="footer">
