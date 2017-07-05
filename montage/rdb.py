@@ -120,7 +120,6 @@ class User(Base):
     rounds = association_proxy('jurored_rounds', 'round',
                                creator=lambda r: RoundJuror(round=r))
 
-    tasks = relationship('Task', back_populates='user')
     ratings = relationship('Vote', back_populates='user')
     # update_date?
 
@@ -253,18 +252,17 @@ class Round(Base):
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
         re_count = len(self.round_entries)
-        task_count = rdb_session.query(Task)\
-                                .filter(Task.round_entry.has(round_id=self.id),
-                                        Task.cancel_date == None)\
+        task_count = rdb_session.query(Vote)\
+                                .filter(Vote.round_entry.has(round_id=self.id),
+                                        Vote.status != 'cancelled')\
                                 .count()
-        open_task_count = rdb_session.query(Task)\
-                                     .filter(Task.round_entry.has(round_id=self.id),
-                                             Task.complete_date == None,
-                                             Task.cancel_date == None)\
+        open_task_count = rdb_session.query(Vote)\
+                                     .filter(Vote.round_entry.has(round_id=self.id),
+                                             Vote.status == 'active')\
                                      .count()
-        cancelled_task_count = rdb_session.query(Task)\
-                                     .filter(Task.round_entry.has(round_id=self.id),
-                                             Task.cancel_date != None)\
+        cancelled_task_count = rdb_session.query(Vote)\
+                                     .filter(Vote.round_entry.has(round_id=self.id),
+                                             Vote.status == 'cancelled')\
                                      .count()
         dq_entry_count = rdb_session.query(RoundEntry)\
                                     .filter_by(round_id=self.id)\
@@ -308,13 +306,12 @@ class Round(Base):
                                 .count()
         '''
         if self.entries and self.status == 'active' or self.status == 'paused':
-            open_tasks = rdb_session.query(Task)\
+            active_votes = rdb_session.query(Vote)\
                                     .options(joinedload('round_entry'))\
-                                    .filter(Task.round_entry.has(round_id=self.id),
-                                            Task.complete_date == None,
-                                            Task.cancel_date == None)\
+                                    .filter(Vote.round_entry.has(round_id=self.id),
+                                            Vote.status == 'active')\
                                     .first()
-            return not open_tasks
+            return not active_votes
         return False
 
 
@@ -367,22 +364,19 @@ class RoundJuror(Base):
         if not rdb_session:
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
-        task_count = rdb_session.query(Task)\
-                                .filter(Task.round_entry.has(round_id=self.round_id),
-                                        Task.user_id == self.user_id,
-                                        Task.cancel_date == None)\
+        task_count = rdb_session.query(Vote)\
+                                .filter(Vote.round_entry.has(round_id=self.round_id),
+                                        Vote.status != 'cancelled')\
                                 .count()
-        open_task_count = rdb_session.query(Task)\
-                                     .filter(Task.round_entry.has(round_id=self.round_id),
-                                             Task.user_id == self.user_id,
-                                             Task.complete_date == None,
-                                             Task.cancel_date == None)\
+        open_task_count = rdb_session.query(Vote)\
+                                     .filter(Vote.round_entry.has(round_id=self.round_id),
+                                             Vote.user_id == self.user_id,
+                                             Vote.status == 'active')\
                                      .count()
-        cancelled_task_count = rdb_session.query(Task)\
-                                     .filter(Task.round_entry.has(round_id=self.round_id),
-                                             Task.user_id == self.user_id,
-                                             Task.complete_date == None,
-                                             Task.cancel_date != None)\
+        cancelled_task_count = rdb_session.query(Vote)\
+                                     .filter(Vote.round_entry.has(round_id=self.round_id),
+                                             Vote.user_id == self.user_id,
+                                             Vote.status == 'cancelled')\
                                      .count()
         if task_count:
             percent_open = round((100.0 * open_task_count) / task_count, 3)
@@ -475,8 +469,7 @@ class RoundEntry(Base):
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
-    tasks = relationship('Task', back_populates='round_entry')
-    rating = relationship('Vote', back_populates='round_entry')
+    vote = relationship('Vote', back_populates='round_entry')
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -500,19 +493,20 @@ class Vote(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    task_id = Column(Integer, ForeignKey('tasks.id'))
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     value = Column(Float)
+    status = Column(String)  # active, cancelled, complete
 
-    task = relationship('Task', back_populates='rating')
     user = relationship('User', back_populates='ratings')
-    round_entry = relationship('RoundEntry', back_populates='rating')
+    round_entry = relationship('RoundEntry', back_populates='vote')
 
     entry = association_proxy('round_entry', 'entry',
                               creator=lambda e: RoundEntry(entry=e))
 
     create_date = Column(TIMESTAMP, server_default=func.now())
+    modified_date = Column(DateTime)
+
     flags = Column(JSONEncodedDict)
 
     def __init__(self, **kw):
@@ -525,7 +519,6 @@ class Vote(Base):
 
     def to_info_dict(self):
         info = {'id': self.id,
-                'task_id': self.task.id,
                 'name': self.entry.name,
                 'user': self.user.username,
                 'value': self.value,
@@ -537,6 +530,9 @@ class Vote(Base):
         ret = self.to_info_dict()
         ret['entry'] = self.entry.to_details_dict()
         return ret
+
+
+votes_t = Vote.__table__
 
 
 class FinalEntryRanking(object):
@@ -566,38 +562,6 @@ class FinalEntryRanking(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return '<%s #%r %r>' % (cn, self.rank, self.entry)
-
-
-class Task(Base):
-    __tablename__ = 'tasks'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
-
-    user = relationship('User', back_populates='tasks')
-    rating = relationship('Vote')
-    round_entry = relationship('RoundEntry', back_populates='tasks')
-
-    create_date = Column(TIMESTAMP, server_default=func.now())
-    complete_date = Column(DateTime)
-    cancel_date = Column(DateTime)
-
-    entry = association_proxy('round_entry', 'entry',
-                              creator=lambda e: RoundEntry(entry=e))
-
-    def to_info_dict(self):
-        ret = {'id': self.id,
-               'round_entry_id': self.round_entry_id}
-        return ret
-
-    def to_details_dict(self):
-        ret = self.to_info_dict()
-        ret['entry'] = self.entry.to_details_dict()
-        return ret
-
-
-tasks_t = Task.__table__
 
 
 class RoundResultsSummary(Base):
@@ -815,15 +779,15 @@ class CoordinatorDAO(UserDAO):
         # the fact that these are identical for two DAOs shows it
         # should be on the Round model or somewhere else shared
         re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
-        total_tasks = self.query(Task)\
-                          .filter(Task.round_entry.has(round_id=rnd.id),
-                                  Task.cancel_date == None)\
+        total_tasks = self.query(Vote)\
+                          .filter(Vote.round_entry.has(round_id=rnd.id),
+                                  Vote.user_id == self.user.id,
+                                  Vote.status != 'cancelled')\
                           .count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.round_entry.has(round_id=rnd.id),
-                                       Task.user_id == self.user.id,
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
+        total_open_tasks = self.query(Vote)\
+                               .filter(Vote.round_entry.has(round_id=rnd.id),
+                                       Vote.user_id == self.user.id,
+                                       Vote.status == 'active')\
                                .count()
 
         if total_tasks:
@@ -939,8 +903,9 @@ class CoordinatorDAO(UserDAO):
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-            for task in round_entry.tasks:
-                task.cancel_date = cancel_date
+            for vote in round_entry.votes:
+                vote.status = 'cancelled'
+                vote.modified_date = datetime.datetime.utcnow()
 
         msg = ('%s disqualified %s entries outside of date range %s - %s'
                % (self.user.username, len(round_entries), min_date, max_date))
@@ -971,8 +936,9 @@ class CoordinatorDAO(UserDAO):
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
 
-            for task in r_ent.tasks:
-                task.cancel_date = cancel_date
+            for vote in r_ent.vote:
+                vote.status = 'cancelled'
+                vote.modified_date = datetime.datetime.utcnow()
 
         msg = ('%s disqualified %s entries smaller than %s megapixels'
                % (self.user.username, len(round_entries), min_res_str))
@@ -999,8 +965,9 @@ class CoordinatorDAO(UserDAO):
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
 
-            for task in r_ent.tasks:
-                task.cancel_date = cancel_date
+            for vote in r_ent.vote:
+                vote.status = 'cancelled'
+                vote.modified_date = datetime.datetime.utcnow()
 
         msg = ('%s disqualified %s entries by filetype not in %s'
                % (self.user.username, len(round_entries), allowed_filetypes))
@@ -1055,8 +1022,9 @@ class CoordinatorDAO(UserDAO):
             round_entry.dq_reason = dq_reason
             round_entry.dq_user_id = self.user.id
 
-            for task in round_entry.tasks:
-                task.cancel_date = cancel_date
+            for vote in round_entry.votes:
+                vote.status = 'cancelled'
+                vote.modified_date = datetime.datetime.utcnow()
 
         msg = ('%s disqualified %s entries based on upload user'
                % (self.user.username, len(round_entries)))
@@ -1187,19 +1155,20 @@ class CoordinatorDAO(UserDAO):
         return user
 
     def cancel_round(self, rnd):
-        tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=rnd.id))\
+        votes = self.query(Vote)\
+                    .filter(Vote.round_entry.has(round_id=rnd.id))\
                     .all()
         cancel_date = datetime.datetime.utcnow()
 
         rnd.status = 'cancelled'
         rnd.close_date = cancel_date
 
-        for task in tasks:
-            task.cancel_date = cancel_date
+        for vote in votes:
+            vote.status = 'cancelled'
+            vote.modified_date = datetime.datetime.utcnow()
 
-        msg = '%s cancelled round "%s" and %s open tasks' %\
-              (self.user.username, rnd.name, len(tasks))
+        msg = '%s cancelled round "%s" and %s votes' %\
+              (self.user.username, rnd.name, len(votes))
         self.log_action('cancel_round', round=rnd, message=msg)
         self.rdb_session.commit()
 
@@ -1207,7 +1176,7 @@ class CoordinatorDAO(UserDAO):
 
     def finalize_rating_round(self, rnd, threshold):
         assert rnd.vote_method in ('rating', 'yesno')
-        # TODO: assert all tasks complete
+        # TODO: assert all votes complete
 
         rnd.close_date = datetime.datetime.utcnow()
         rnd.status = 'finalized'
@@ -1281,7 +1250,8 @@ class CoordinatorDAO(UserDAO):
     def get_round_average_rating_map(self, rnd):
         results = self.query(Vote, func.avg(Vote.value).label('average'))\
                       .join(RoundEntry)\
-                      .filter(Vote.round_entry.has(round_id=rnd.id))\
+                      .filter(Vote.round_entry.has(round_id=rnd.id),
+                              Vote.status == 'complete')\
                       .group_by(Vote.round_entry_id)\
                       .all()
 
@@ -1293,7 +1263,8 @@ class CoordinatorDAO(UserDAO):
     def get_round_ranking_list(self, rnd, notation=None):
         res = (self.query(Vote)
                .options(joinedload('round_entry'))
-               .filter(Vote.round_entry.has(round_id=rnd.id))
+               .filter(Vote.round_entry.has(round_id=rnd.id),
+                       Vote.status == 'complete')
                .all())
         all_inputs = []
         by_juror_id = bucketize(res, lambda r: r.user_id)
@@ -1348,32 +1319,31 @@ class CoordinatorDAO(UserDAO):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .join(Task, Vote.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
-                              Task.cancel_date == None)\
+                              Vote.status == 'complete')\
                       .all()
         return results
 
+    # do we need this?
     def get_all_rankings(self, rnd):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .join(Task, Vote.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
-                              Task.cancel_date == None)\
+                              Vote.status == 'complete')\
                       .all()
         return results
 
     def get_all_tasks(self, rnd):
-        results = self.query(Task, Entry)\
+        results = self.query(Vote, Entry)\
                       .options(joinedload('user'))\
                       .join(RoundEntry)\
                       .join(Entry)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
-                              Task.cancel_date == None)\
+                              Vote.status == 'active')\
                       .all()
         return results
 
@@ -1480,7 +1450,7 @@ class CoordinatorDAO(UserDAO):
         jurors = rnd.jurors
         ret = []
         for juror in jurors:
-            ret.extend([Task(user=juror, round_entry=re)
+            ret.extend([Vote(user=juror, round_entry=re, status='active')
                         for re in round_entries])
         return ret
 
@@ -1697,28 +1667,26 @@ class JurorDAO(UserDAO):
                     .one_or_none()
         return round
 
-    def get_task(self, task_id):
-        task = self.query(Task)\
-                   .filter_by(id=task_id)\
-                   .filter(Task.user == self.user)\
+    def get_task(self, vote_id):
+        task = self.query(Vote)\
+                   .filter_by(id=vote_id)\
+                   .filter(Vote.user == self.user)\
                    .one_or_none()
         return task
 
     def get_tasks(self, num=1, offset=0):
-        tasks = self.query(Task)\
-                    .filter(Task.user == self.user,
-                            Task.complete_date == None,
-                            Task.cancel_date == None)\
+        tasks = self.query(Vote)\
+                    .filter(Vote.user == self.user,
+                            Vote.status == 'active')\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
 
     def get_total_tasks(self):
-        task_count = self.query(Task)\
-                         .filter(Task.user == self.user,
-                                 Task.complete_date == None,
-                                 Task.cancel_date == None)\
+        task_count = self.query(Vote)\
+                         .filter(Vote.user == self.user,
+                                 Vote.status == 'active')\
                          .count()
         return task_count
 
@@ -1726,19 +1694,18 @@ class JurorDAO(UserDAO):
         if isinstance(task_ids, int):
             task_ids = [task_ids]
 
-        ret = (self.query(Task)
+        ret = (self.query(Vote)
                .options(joinedload('round_entry'))
-               .filter(Task.id.in_(task_ids),
-                       Task.user == self.user)
+               .filter(Vote.id.in_(task_ids),
+                       Vote.user == self.user)
                .all())
         return ret
 
     def get_tasks_from_round(self, rnd, num=1, offset=0):
-        tasks = self.query(Task)\
-                    .filter(Task.user == self.user,
-                            Task.complete_date == None,
-                            Task.cancel_date == None,
-                            Task.round_entry.has(round_id=rnd.id))\
+        tasks = self.query(Vote)\
+                    .filter(Vote.user == self.user,
+                            Vote.status == 'active',
+                            Vote.round_entry.has(round_id=rnd.id))\
                     .limit(num)\
                     .offset(offset)\
                     .all()
@@ -1748,12 +1715,10 @@ class JurorDAO(UserDAO):
         # all the filter fields but cancel_date are actually on Vote
         # already
         ratings = self.query(Vote)\
-                      .join(Task)\
                       .options(joinedload('round_entry'))\
-                      .filter(Task.user == self.user,
-                              Task.complete_date != None,
-                              Task.cancel_date == None,
-                              Task.round_entry.has(round_id=rnd.id))\
+                      .filter(Vote.user == self.user,
+                              Vote.status == 'complete',
+                              Vote.round_entry.has(round_id=rnd.id))\
                       .limit(num)\
                       .offset(offset)\
                       .all()
@@ -1762,10 +1727,9 @@ class JurorDAO(UserDAO):
     def get_rankings_from_round(self, rnd):
         rankings = self.query(Vote)\
                        .filter(Vote.user == self.user,
+                               Vote.status == 'complete',
                                Vote.round_entry.has(round_id=rnd.id))\
-                       .join(Task)\
                        .options(joinedload('round_entry'))\
-                       .filter(Task.cancel_date == None)\
                        .all()
         return rankings
 
@@ -1784,29 +1748,27 @@ class JurorDAO(UserDAO):
 
     def get_task_counts(self):
         re_count = self.query(RoundEntry).count()
-        total_tasks = self.query(Task)\
-                          .filter(Task.user_id == self.user.id,
-                                  Task.cancel_date == None)\
+        total_tasks = self.query(Vote)\
+                          .filter(Vote.user_id == self.user.id,
+                                  Vote.status != 'cancelled')\
                           .count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.user_id == self.user.id,
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
+        total_open_tasks = self.query(Vote)\
+                               .filter(Vote.user_id == self.user.id,
+                                       Vote.status == 'active')\
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
     def get_round_task_counts(self, rnd):
         re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
-        total_tasks = self.query(Task)\
-                          .filter(Task.round_entry.has(round_id=rnd.id),
-                                  Task.user_id == self.user.id,
-                                  Task.cancel_date == None)
+        total_tasks = self.query(Vote)\
+                          .filter(Vote.round_entry.has(round_id=rnd.id),
+                                  Vote.user_id == self.user.id,
+                                  Vote.status != 'cancelled')
         total_tasks = total_tasks.count()
-        total_open_tasks = self.query(Task)\
-                               .filter(Task.round_entry.has(round_id=rnd.id),
-                                       Task.user_id == self.user.id,
-                                       Task.complete_date == None,
-                                       Task.cancel_date == None)\
+        total_open_tasks = self.query(Vote)\
+                               .filter(Vote.round_entry.has(round_id=rnd.id),
+                                       Vote.user_id == self.user.id,
+                                       Vote.status == 'active')\
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
@@ -1854,28 +1816,26 @@ class JurorDAO(UserDAO):
 
         def tasks_query(where):
             return select(
-                [rounds_t.c.id, func.count(tasks_t.c.id).label(task_count)],
+                [rounds_t.c.id, func.count(votes_t.c.id).label(task_count)],
             ).select_from(
                 user_rounds_join.outerjoin(
                     round_entries_t,
                     onclause=(rounds_t.c.id == round_entries_t.c.round_id),
                 ).outerjoin(
-                    tasks_t,
-                    onclause=(round_entries_t.c.id == tasks_t.c.round_entry_id)
+                    votes_t,
+                    onclause=(round_entries_t.c.id == votes_t.c.round_entry_id)
                 )
             ).where(
-                (tasks_t.c.user_id.in_([self.user.id, None])) & where
+                (votes_t.c.user_id.in_([self.user.id, None])) & where
             ).group_by(
                 rounds_t.c.id
             ).order_by(
                 asc("id")
             )
 
-        rounds_all_tasks_query = tasks_query(tasks_t.c.cancel_date == None)
+        rounds_all_tasks_query = tasks_query(votes_t.c.status != 'cancelled')
         rounds_all_tasks = self.rdb_session.execute(rounds_all_tasks_query)
-        rounds_open_tasks_query = tasks_query(
-            (tasks_t.c.cancel_date == None) &
-            (tasks_t.c.complete_date == None))
+        rounds_open_tasks_query = tasks_query(votes_t.c.status == 'active')
         rounds_open_tasks = self.rdb_session.execute(rounds_open_tasks_query)
 
         rounds_to_total_tasks = {row['id']: row[task_count]
@@ -1905,35 +1865,34 @@ class JurorDAO(UserDAO):
             )
         return results
 
-    def apply_rating(self, task, value, review=''):
-        if not task.user == self.user:
+    def apply_rating(self, vote, value, review=''):
+        if not vote.user == self.user:
             # belt and suspenders until server test covers the cross
             # complete case
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
-        rating = Vote(user_id=self.user.id,
-                      task_id=task.id,
-                      round_entry_id=task.round_entry_id,
-                      value=value)
         review_stripped = review.strip()
+        
         if len(review_stripped) > 8192:
             raise ValueError('review must be less than 8192 characters, not %r'
                              % len(review_stripped))
         if review_stripped:
-            rating['flags']['review'] = review_stripped
-        self.rdb_session.add(rating)
-        task.complete_date = now
+            vote['flags']['review'] = review_stripped
+        self.rdb_session.add(vote)
+        vote.modified_date = now
+        vote.status = 'complete'
         return
 
-    def edit_rating(self, task, value):
-        if not task.user == self.user:
+    def edit_rating(self, vote, value):
+        if not vote.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
         rating = self.rdb_session.query(Vote)\
-                                 .filter_by(task_id=task.id)\
+                                 .filter_by(id=vote.id)\
                                  .first()
         rating.value = value
-        task.complete_date = now
+        rating.modified_date = now
+        rating.status = 'complete'
         return rating
 
     def apply_ranking(self, ballot):
@@ -1949,17 +1908,16 @@ class JurorDAO(UserDAO):
         """
         now = datetime.datetime.utcnow()
         for r_dict in ballot:
-            task = r_dict['task']
+            vote = r_dict['task']
             ranking = Vote(user_id=self.user.id,
-                           task_id=task.id,
-                           round_entry_id=task.round_entry.id,
+                           round_entry_id=vote.round_entry.id,
                            value=r_dict['value'])
             review = r_dict.get('review') or ''
             if review:
                 ranking.flags['review'] = review
-
+            vote.modified_date = now
+            vote.status = 'complete'
             self.rdb_session.add(ranking)
-            task.complete_date = now
         return
 
     def edit_ranking(self, ballot):
@@ -1975,16 +1933,15 @@ class JurorDAO(UserDAO):
         """
         now = datetime.datetime.utcnow()
         for r_dict in ballot:
-            task = r_dict['task']
-            ranking = self.rdb_session.query(Vote)\
-                                      .filter_by(task_id=task.id)\
-                                      .first()
+            vote = r_dict['vote']
             review = r_dict.get('review') or ''
-            ranking.value = r_dict['value']
+            vote.value = r_dict['value']
             if review:
-                ranking.flags['review'] = review
+                vote.flags['review'] = review
 
-            task.complete_date = now
+            vote.modified_date = now
+            vote.status = 'complete'
+            self.rdb_session.add(vote)
         return
 
 
@@ -2026,8 +1983,8 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
 
     for juror in jurors:
         for entry in shuffled_entries:
-            task = Task(user=juror, round_entry=entry)
-            ret.append(task)
+            vote = Vote(user=juror, round_entry=entry, status='active')
+            ret.append(vote)
 
     return ret
 
@@ -2078,8 +2035,8 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
             break
 
         # TODO: bulk_save_objects
-        task = Task(user=juror, round_entry=entry)
-        ret.append(task)
+        vote = Vote(user=juror, round_entry=entry, status='active')
+        ret.append(vote)
     return ret
 
 
@@ -2116,23 +2073,23 @@ def reassign_ranking_tasks(session, rnd, new_jurors, strategy=None):
 
     now = datetime.datetime.utcnow()
 
-    tasks_to_cancel = []
+    votes_to_cancel = []
     if removed_jurors:
         removed_juror_ids = [j.id for j in removed_jurors]
-        tasks_to_cancel = (session.query(Task)
-                           .filter_by(complete_date=None,
-                                      cancel_date=None)
-                           .filter(Task.user_id.in_(removed_juror_ids))
+        votes_to_cancel = (session.query(Vote)
+                           .filter_by(status='active')
+                           .filter(Vote.user_id.in_(removed_juror_ids))
                            .join(RoundEntry)
                            .filter_by(round=rnd).all())
-        for task in tasks_to_cancel:
-            task.cancel_date = now
+        for vote in votes_to_cancel:
+            vote.status = 'cancelled'
+            vote.modified_date = now
 
-    added_tasks = []
+    added_votes = []
     if added_jurors:
-        added_tasks = create_ranking_tasks(session, rnd, jurors=added_jurors)
+        added_votes = create_ranking_tasks(session, rnd, jurors=added_jurors)
 
-    ret = {'reassigned_task_count': len(tasks_to_cancel) + len(added_tasks),
+    ret = {'reassigned_task_count': len(votes_to_cancel) + len(added_votes),
            'task_count_mean': -1}
 
     return ret
@@ -2167,45 +2124,42 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
 
     assert len(new_jurors) >= rnd.quorum
 
-    cur_tasks = session.query(Task)\
+    cur_votes = session.query(Vote)\
                        .options(joinedload('round_entry'))\
                        .join(RoundEntry)\
                        .filter_by(round=rnd)\
                        .all()
 
-    incomp_tasks = []
-    reassg_tasks = []
+    incomp_votes = []
+    reassg_votes = []
 
     elig_map = defaultdict(lambda: list(new_jurors))
     work_map = defaultdict(list)
 
-    # only complete_date because that indicates that's the only
-    # indicator we have that the user has seen the entry
-    comp_tasks = [t for t in cur_tasks if t.complete_date]
-    for task in comp_tasks:
+    comp_votes = [v for v in cur_votes if v.status == 'complete']
+    for vote in comp_votes:
         try:
-            elig_map[task.round_entry].remove(task.user)
+            elig_map[vote.round_entry].remove(vote.user)
         except ValueError:
             pass
 
-    incomp_tasks = [t for t in cur_tasks
-                    if not t.complete_date and not t.cancel_date]
+    incomp_votes = [v for v in cur_votes if v.status == 'active']
 
-    for task in incomp_tasks:
-        work_map[task.user].append(task)
+    for vote in incomp_votes:
+        work_map[vote.user].append(vote)
 
     target_work_map = dict([(j, []) for j in new_jurors])
-    target_workload = int(len(incomp_tasks) / float(len(new_jurors))) + 1
-    for user, user_tasks in work_map.items():
+    target_workload = int(len(incomp_votes) / float(len(new_jurors))) + 1
+    for user, user_votes in work_map.items():
         if reassign_all or user not in new_jurors:
-            reassg_tasks.extend(user_tasks)
+            reassg_votes.extend(user_votes)
             continue
 
-        reassg_tasks.extend(user_tasks[target_workload:])
-        target_work_map[user] = user_tasks[:target_workload]
-        for task in target_work_map[user]:
+        reassg_votes.extend(user_votes[target_workload:])
+        target_work_map[user] = user_votes[:target_workload]
+        for vote in target_work_map[user]:
             try:
-                elig_map[task.round_entry].remove(user)
+                elig_map[vote.round_entry].remove(user)
             except ValueError:
                 pass
 
@@ -2216,7 +2170,7 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
 
     # assuming initial task randomization remains sufficient here
 
-    reassg_queue = list(reassg_tasks)
+    reassg_queue = list(reassg_votes)
 
     def choose_eligible(eligible_users):
         # TODO: cache?
@@ -2228,22 +2182,22 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
         return weighted_choice(wcp)
 
     while reassg_queue:
-        task = reassg_queue.pop()
-        task.user = choose_eligible(elig_map[task.round_entry])
+        vote = reassg_queue.pop()
+        vote.user = choose_eligible(elig_map[vote.round_entry])
 
         # try:  # consider uncommenting this try/except if there are issues
-        elig_map[task.round_entry].remove(task.user)
+        elig_map[vote.round_entry].remove(vote.user)
         # except ValueError:
         #    pass
 
-        target_work_map[task.user].append(task)
+        target_work_map[vote.user].append(vote)
 
-    task_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
+    vote_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
 
-    return {'incomplete_task_count': len(incomp_tasks),
-            'reassigned_task_count': len(reassg_tasks),
-            'task_count_map': task_count_map,
-            'task_count_mean': mean(task_count_map.values())}
+    return {'incomplete_task_count': len(incomp_votes),
+            'reassigned_task_count': len(reassg_votes),
+            'task_count_map': vote_count_map,
+            'task_count_mean': mean(vote_count_map.values())}
 
 
 def make_rdb_session(echo=True):

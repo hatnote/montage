@@ -453,7 +453,11 @@ def get_round_results_preview(rdb_session, user, round_id):
 
     if rnd.vote_method in ('yesno', 'rating'):
         data['ratings'] = coord_dao.get_round_average_rating_map(rnd)
-        data['thresholds'] = get_threshold_map(data['ratings'])
+        try:
+            data['thresholds'] = get_threshold_map(data['ratings'])
+        except:
+            import pdb;pdb.post_mortem()
+            raise
     elif rnd.vote_method == 'ranking':
         if not is_closeable:
             # TODO: should this sort of check apply to ratings as well?

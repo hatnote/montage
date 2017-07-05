@@ -361,11 +361,11 @@ def full_run(url_base, remote):
 
     # entry_id = resp['data']['tasks'][0]['round_entry_id']
     tasks = resp['data']['tasks']
-    task_id = tasks[0]['id']
+    vote_id = tasks[0]['id']
 
     # Submit a single rating task
     # - as juror
-    data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
+    data = {'ratings': [{'vote_id': vote_id, 'value': 1.0}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
 
@@ -376,10 +376,10 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
                       data, su_to='LilyOfTheWest')
 
-    task_id = tasks[-1]['id']
+    vote_id = tasks[-1]['id']
 
     # Attempt to submit a rating task (should fail)
-    data = {'ratings': [{'task_id': task_id, 'value': 1.0}]}
+    data = {'ratings': [{'vote_id': vote_id, 'value': 1.0}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales', assert_error=400) # TODO
 
@@ -400,9 +400,9 @@ def full_run(url_base, remote):
 
     rating_dicts = []
 
-    for task in resp['data']['tasks']:
-        val = float(task['id'] % 2)  # deterministic but arbitrary
-        rating_dicts.append({'task_id': task['id'], 'value': val})
+    for vote in resp['data']['tasks']:
+        val = float(vote['id'] % 2)  # deterministic but arbitrary
+        rating_dicts.append({'vote_id': vote['id'], 'value': val})
     data = {'ratings': rating_dicts}
 
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
@@ -417,9 +417,9 @@ def full_run(url_base, remote):
 
     # Adjust a recent rating
     # - as juror
-    task_id = recent_rating['task_id']
+    vote_id = recent_rating['id']
     new_val = float((recent_rating['id'] + 1) % 2)
-    data = {'ratings': [{'task_id': task_id, 'value': new_val}]}
+    data = {'ratings': [{'vote_id': vote_id, 'value': new_val}]}
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % recent_rating['round_id'],
                       data, su_to='Jimbo Wales')
 
@@ -607,9 +607,9 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
                 break  # right?
             ratings = []
             for i, t_dict in enumerate(t_dicts):
-                task_id = t_dict['id']
+                vote_id = t_dict['id']
                 review = None
-                rating_dict = {'task_id': task_id}
+                rating_dict = {'vote_id': vote_id}
 
                 # arb scoring
                 if r_dict['vote_method'] == 'yesno':
