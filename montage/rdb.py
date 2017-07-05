@@ -121,7 +121,7 @@ class User(Base):
                                creator=lambda r: RoundJuror(round=r))
 
     tasks = relationship('Task', back_populates='user')
-    ratings = relationship('Rating', back_populates='user')
+    ratings = relationship('Vote', back_populates='user')
     # update_date?
 
     def __init__(self, **kw):
@@ -476,8 +476,7 @@ class RoundEntry(Base):
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
     tasks = relationship('Task', back_populates='round_entry')
-    rating = relationship('Rating', back_populates='round_entry')
-    ranking = relationship('Ranking', back_populates='round_entry')
+    rating = relationship('Vote', back_populates='round_entry')
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -496,8 +495,8 @@ class RoundEntry(Base):
 round_entries_t = RoundEntry.__table__
 
 
-class Rating(Base):
-    __tablename__ = 'ratings'
+class Vote(Base):
+    __tablename__ = 'votes'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -506,7 +505,6 @@ class Rating(Base):
 
     value = Column(Float)
 
-    user = relationship('User')
     task = relationship('Task', back_populates='rating')
     user = relationship('User', back_populates='ratings')
     round_entry = relationship('RoundEntry', back_populates='rating')
@@ -519,47 +517,11 @@ class Rating(Base):
 
     def __init__(self, **kw):
         self.flags = kw.pop('flags', {})
-        super(Rating, self).__init__(**kw)
+        super(Vote, self).__init__(**kw)
 
-    def to_info_dict(self):
-        info = {'id': self.id,
-                'task_id': self.task.id,
-                'name': self.entry.name,
-                'user': self.user.username,
-                'value': self.value,
-                'round_id': self.round_entry.round_id}
-        info['review'] = self.flags.get('review')  # TODO
-        return info
-
-    def to_details_dict(self):
-        ret = self.to_info_dict()
-        ret['entry'] = self.entry.to_details_dict()
-        return ret
-
-
-class Ranking(Base):
-    __tablename__ = 'rankings'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    task_id = Column(Integer, ForeignKey('tasks.id'))
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
-
-    value = Column(Integer)
-
-    user = relationship('User')
-    task = relationship('Task')
-    round_entry = relationship('RoundEntry', back_populates='ranking')
-
-    entry = association_proxy('round_entry', 'entry',
-                              creator=lambda e: RoundEntry(entry=e))
-
-    create_date = Column(TIMESTAMP, server_default=func.now())
-    flags = Column(JSONEncodedDict)
-
-    def __init__(self, **kw):
-        self.flags = kw.pop('flags', {})
-        super(Ranking, self).__init__(**kw)
+    @property
+    def ranking_value(self):
+        return int(self.value)
 
     def to_info_dict(self):
         info = {'id': self.id,
@@ -614,7 +576,7 @@ class Task(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     user = relationship('User', back_populates='tasks')
-    rating = relationship('Rating')
+    rating = relationship('Vote')
     round_entry = relationship('RoundEntry', back_populates='tasks')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1302,13 +1264,13 @@ class CoordinatorDAO(UserDAO):
 
         assert 0.0 <= threshold <= 1.0
 
-        avg = func.avg(Rating.value).label('average')
+        avg = func.avg(Vote.value).label('average')
 
-        results = self.query(RoundEntry, Rating, avg)\
+        results = self.query(RoundEntry, Vote, avg)\
                       .options(joinedload('entry'))\
                       .filter_by(dq_user_id=None, round_id=rnd.id)\
-                      .join(Rating)\
-                      .group_by(Rating.round_entry_id)\
+                      .join(Vote)\
+                      .group_by(Vote.round_entry_id)\
                       .having(avg >= threshold)\
                       .all()
 
@@ -1317,10 +1279,10 @@ class CoordinatorDAO(UserDAO):
         return entries
 
     def get_round_average_rating_map(self, rnd):
-        results = self.query(Rating, func.avg(Rating.value).label('average'))\
+        results = self.query(Vote, func.avg(Vote.value).label('average'))\
                       .join(RoundEntry)\
-                      .filter(Rating.round_entry.has(round_id=rnd.id))\
-                      .group_by(Rating.round_entry_id)\
+                      .filter(Vote.round_entry.has(round_id=rnd.id))\
+                      .group_by(Vote.round_entry_id)\
                       .all()
 
         # thresh_counts = get_threshold_map(r[1] for r in ratings)
@@ -1329,9 +1291,9 @@ class CoordinatorDAO(UserDAO):
         return dict(rating_ctr)
 
     def get_round_ranking_list(self, rnd, notation=None):
-        res = (self.query(Ranking)
+        res = (self.query(Vote)
                .options(joinedload('round_entry'))
-               .filter(Ranking.round_entry.has(round_id=rnd.id))
+               .filter(Vote.round_entry.has(round_id=rnd.id))
                .all())
         all_inputs = []
         by_juror_id = bucketize(res, lambda r: r.user_id)
@@ -1350,7 +1312,7 @@ class CoordinatorDAO(UserDAO):
             cur_ballot = []
             cur_input = {'count': 1, 'ballot': cur_ballot}
 
-            r_by_val = bucketize(rankings, lambda r: r.value)
+            r_by_val = bucketize(rankings, lambda r: r.ranking_value)
             lowest_rank = max(r_by_val.keys())
             for rank in range(0, lowest_rank + 1):
                 ranking_objs = r_by_val.get(rank, [])
@@ -1383,10 +1345,10 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def get_all_ratings(self, rnd):
-        results = self.query(Rating)\
+        results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .join(Task, Rating.task_id == Task.id)\
+                      .join(Task, Vote.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
                               Task.cancel_date == None)\
@@ -1394,10 +1356,10 @@ class CoordinatorDAO(UserDAO):
         return results
 
     def get_all_rankings(self, rnd):
-        results = self.query(Ranking)\
+        results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .join(Task, Ranking.task_id == Task.id)\
+                      .join(Task, Vote.task_id == Task.id)\
                       .filter(RoundEntry.round_id == rnd.id,
                               RoundEntry.dq_user_id == None,
                               Task.cancel_date == None)\
@@ -1783,9 +1745,9 @@ class JurorDAO(UserDAO):
         return tasks
 
     def get_ratings_from_round(self, rnd, num, offset=0):
-        # all the filter fields but cancel_date are actually on Rating
+        # all the filter fields but cancel_date are actually on Vote
         # already
-        ratings = self.query(Rating)\
+        ratings = self.query(Vote)\
                       .join(Task)\
                       .options(joinedload('round_entry'))\
                       .filter(Task.user == self.user,
@@ -1798,9 +1760,9 @@ class JurorDAO(UserDAO):
         return ratings
 
     def get_rankings_from_round(self, rnd):
-        rankings = self.query(Ranking)\
-                       .filter(Ranking.user == self.user,
-                               Ranking.round_entry.has(round_id=rnd.id))\
+        rankings = self.query(Vote)\
+                       .filter(Vote.user == self.user,
+                               Vote.round_entry.has(round_id=rnd.id))\
                        .join(Task)\
                        .options(joinedload('round_entry'))\
                        .filter(Task.cancel_date == None)\
@@ -1949,10 +1911,10 @@ class JurorDAO(UserDAO):
             # complete case
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
-        rating = Rating(user_id=self.user.id,
-                        task_id=task.id,
-                        round_entry_id=task.round_entry_id,
-                        value=value)
+        rating = Vote(user_id=self.user.id,
+                      task_id=task.id,
+                      round_entry_id=task.round_entry_id,
+                      value=value)
         review_stripped = review.strip()
         if len(review_stripped) > 8192:
             raise ValueError('review must be less than 8192 characters, not %r'
@@ -1967,7 +1929,7 @@ class JurorDAO(UserDAO):
         if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
-        rating = self.rdb_session.query(Rating)\
+        rating = self.rdb_session.query(Vote)\
                                  .filter_by(task_id=task.id)\
                                  .first()
         rating.value = value
@@ -1988,10 +1950,10 @@ class JurorDAO(UserDAO):
         now = datetime.datetime.utcnow()
         for r_dict in ballot:
             task = r_dict['task']
-            ranking = Ranking(user_id=self.user.id,
-                              task_id=task.id,
-                              round_entry_id=task.round_entry.id,
-                              value=r_dict['value'])
+            ranking = Vote(user_id=self.user.id,
+                           task_id=task.id,
+                           round_entry_id=task.round_entry.id,
+                           value=r_dict['value'])
             review = r_dict.get('review') or ''
             if review:
                 ranking.flags['review'] = review
@@ -2014,7 +1976,7 @@ class JurorDAO(UserDAO):
         now = datetime.datetime.utcnow()
         for r_dict in ballot:
             task = r_dict['task']
-            ranking = self.rdb_session.query(Ranking)\
+            ranking = self.rdb_session.query(Vote)\
                                       .filter_by(task_id=task.id)\
                                       .first()
             review = r_dict.get('review') or ''
