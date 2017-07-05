@@ -126,7 +126,8 @@ class UserMiddleware(Middleware):
             return {}
 
         superuser = config.get('superuser')
-        if superuser and user.username == superuser:
+        superusers = config.get('superusers', [superuser] if superuser else [])
+        if superusers and user.username in superusers:
             su_to = request_dict and request_dict.get('su_to')
             if su_to:
                 user = (rdb_session.query(User)
