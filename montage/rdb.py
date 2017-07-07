@@ -1865,25 +1865,7 @@ class JurorDAO(UserDAO):
             )
         return results
 
-    def apply_rating(self, vote, value, review=''):
-        if not vote.user == self.user:
-            # belt and suspenders until server test covers the cross
-            # complete case
-            raise PermissionDenied()
-        now = datetime.datetime.utcnow()
-        review_stripped = review.strip()
-        
-        if len(review_stripped) > 8192:
-            raise ValueError('review must be less than 8192 characters, not %r'
-                             % len(review_stripped))
-        if review_stripped:
-            vote['flags']['review'] = review_stripped
-        self.rdb_session.add(vote)
-        vote.modified_date = now
-        vote.status = 'complete'
-        return
-
-    def edit_rating(self, vote, value):
+    def apply_rating(self, vote, value):
         if not vote.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
@@ -1896,31 +1878,6 @@ class JurorDAO(UserDAO):
         return rating
 
     def apply_ranking(self, ballot):
-        """ballot format:
-
-        [{"task": <Task object>,
-          "value": 0,
-          "review": "The light dances across the image."},
-        {...}]
-
-        ballot can be in any order, with values representing
-        ranks. ties are allowed.
-        """
-        now = datetime.datetime.utcnow()
-        for r_dict in ballot:
-            vote = r_dict['task']
-            ranking = Vote(user_id=self.user.id,
-                           round_entry_id=vote.round_entry.id,
-                           value=r_dict['value'])
-            review = r_dict.get('review') or ''
-            if review:
-                ranking.flags['review'] = review
-            vote.modified_date = now
-            vote.status = 'complete'
-            self.rdb_session.add(ranking)
-        return
-
-    def edit_ranking(self, ballot):
         """ballot format:
 
         [{"task": <Task object>,

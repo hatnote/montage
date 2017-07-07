@@ -308,7 +308,7 @@ def submit_rating(rdb_session, user, request_dict):
     if task.user != user:  # TODO: this should be handled by the dao get
         raise PermissionDenied()
     if task.status == 'active':
-        juror_dao.edit_rating(task, rating)
+        juror_dao.apply_rating(task, rating)
 
     # What should this return?
     return {'data': {'vote_id': vote_id, 'rating': rating}}
@@ -392,7 +392,7 @@ def submit_ratings(rdb_session, user, request_dict):
     if style in ('rating', 'yesno'):
         for t in tasks:
             val = id_map[t.id]
-            juror_dao.edit_rating(t, val)
+            juror_dao.apply_rating(t, val)
     elif style == 'ranking':
         # This part is designed to support ties ok though
         """
@@ -411,7 +411,7 @@ def submit_ratings(rdb_session, user, request_dict):
                 raise InvalidAction('all tasks must be complete or incomplete')
             ballot.append(cur)
 
-        juror_dao.edit_ranking(ballot)
+        juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
 
