@@ -154,6 +154,31 @@ def create_round(maint_dao, campaign_id, advance=False, debug=False):
     return rnd
 
 
+def edit_quorum(maint_dao, rnd_id, debug):
+    rnd = maint_dao.get_round(rnd_id)
+    old_quorum = rnd.quorum
+    if rnd.status != 'paused':
+        print ('-- round must be paused to edit quorum, aborting')
+        return
+    print ('!! new quorum cannot be lower than current qourum: %s' % old_quorum)
+    print ('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors))
+    new_quorum = int(raw_input('?? New quorum: '))
+    new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
+
+    maint_dao.rdb_session.commit()
+
+    print ('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
+           % (rnd.id, rnd.name, old_quorum, new_quorum))
+    print ('++ reassigned %s tasks, with mean load of %s tasks per juror'
+           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean']))
+
+    if debug:
+        import pdb;pdb.set_trace()
+
+    return new_juror_stats
+    
+
+
 def add_organizer(maint_dao, new_org_name, debug=False):
     org_user = maint_dao.add_organizer(new_org_name)
 
@@ -543,6 +568,9 @@ if __name__ == '__main__':
     parser.add_argument('--reassign',
                         help=('reassign all the rating tasks in a round'),
                         type=int)
+    parser.add_argument('--edit-quorum',
+                        help=('edit quorum in a round'),
+                        type=int)
     parser.add_argument('--retask-duplicate-ratings',
                         help=('reassign all ratings that were duplicated'),
                         type=int)
@@ -607,6 +635,10 @@ if __name__ == '__main__':
     if args.pause_round:
         rnd_id = args.pause_round
         pause_round(maint_dao, rnd_id, args.debug)
+
+    if args.edit_quorum:
+        rnd_id = args.edit_quorum
+        edit_quorum(maint_dao, rnd_id, args.debug)
 
     if args.advance_round:
         rnd_id = args.advance_round

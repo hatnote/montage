@@ -313,7 +313,7 @@ class Round(Base):
                                     .first()
             return not open_tasks
         return False
-        
+
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -1407,6 +1407,51 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_jurors', round=rnd, message=msg)
         return res
 
+    def modify_quorum(self, rnd, new_quorum, strategy=None):
+        # This only supports increasing the quorum. Decreaseing the
+        # quorum would require handling some completed tasks (eg,
+        # whose vote do you discard? Randomly choose?)
+
+        # TODO: Support decreasing the quorum.
+
+        old_quorum = rnd.quorum
+
+        if not new_quorum:
+            raise InvalidAction('must specify new quorum')
+
+        if new_quorum <= old_quorum:
+            raise NotImplemented('currently we do not support decreasing' +
+                                 'the quorum, currently quourum is %r, got %r')
+
+        jurors = self.get_active_jurors(rnd)
+        session = self.rdb_session
+
+        rnd_stats = rnd.to_details_dict()
+        if not rnd_stats['stats']['total_tasks']:
+            create_initial_tasks(session, rnd)
+
+        rnd.quorum = new_quorum
+
+        if rnd.vote_method == 'ranking':
+            raise InvalidAction('no quorum for a ranking round')
+        elif rnd.vote_method in ('yesno', 'rating'):
+            new_tpe = new_quorum - old_quorum
+            # I'm pretty sure this will fairly distribute tasks
+            created_tasks = create_initial_rating_tasks(session, rnd,
+                                                        tasks_per_entry=new_tpe)
+            ret = reassign_rating_tasks(session, rnd, jurors,
+                                        strategy=strategy, reassign_all=True)
+        else:
+            raise ValueError('invalid vote method: %r' % rnd.vote_method)
+
+        msg = ('%s changed round #%s quorum (%r -> %r), reassigned %s tasks'
+               ' (average juror task queue is now at %s)'
+               % (self.user.username, rnd.id, old_quorum, new_quorum,
+                  ret['reassigned_task_count'], ret['task_count_mean']))
+
+        self.log_action('modify_quorum', round=rnd, message=msg)
+        return ret
+
     def create_ranking_tasks(self, rnd, round_entries):
         jurors = rnd.jurors
         ret = []
@@ -1473,7 +1518,7 @@ class CoordinatorDAO(UserDAO):
 
         ranking_list = self.get_round_ranking_list(final_rnd)
 
-        ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']] 
+        ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']]
                                      for r in ret['rounds']], []))
 
         winners = []
@@ -1498,7 +1543,7 @@ class CoordinatorDAO(UserDAO):
             winners.append(cur)
 
         ret['winners'] = winners
-        
+
         ret['render_date'] = datetime.datetime.utcnow()
         ret['render_duration'] = time.time() - start_time
 
