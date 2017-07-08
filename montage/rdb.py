@@ -1421,7 +1421,7 @@ class CoordinatorDAO(UserDAO):
 
         if new_quorum <= old_quorum:
             raise NotImplemented('currently we do not support decreasing' +
-                                 'the quorum, currently quourum is %r, got %r')
+                                 'the quorum, currently quorum is %r, got %r')
 
         jurors = self.get_active_jurors(rnd)
         session = self.rdb_session
@@ -2021,11 +2021,13 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     return ret
 
 
-def create_initial_rating_tasks(rdb_session, rnd):
+def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     # TODO: deny quorum > number of jurors
     ret = []
 
-    quorum = rnd.quorum
+    if not tasks_per_entry:
+        tasks_per_entry = rnd.quorum
+
     jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
     if not jurors:
         raise InvalidAction('expected round with active jurors')
@@ -2044,10 +2046,11 @@ def create_initial_rating_tasks(rdb_session, rnd):
                                           RoundEntry.dq_user_id == None)\
                                   .order_by(rand_func).all()
 
-    to_process = itertools.chain.from_iterable([shuffled_entries] * quorum)
+    to_process = itertools.chain.from_iterable([shuffled_entries] * tasks_per_entry)
     # some pictures may get more than quorum votes
     # it's either that or some get less
-    per_juror = int(ceil(len(shuffled_entries) * (float(quorum) / len(jurors))))
+    per_juror = int(ceil(len(shuffled_entries)
+                         * (float(tasks_per_entry) / len(jurors))))
 
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
                                                  for j in jurors])
