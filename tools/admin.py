@@ -51,7 +51,7 @@ def rdb_console(maint_dao):
 
 
 
-def create_campaign(maint_dao, username):
+def create_campaign(maint_dao, username, debug=False):
     coord_user = maint_dao.get_or_create_user(username, 'coordinator')
     camp_name = raw_input('?? Campaign name: ')
 
@@ -176,7 +176,7 @@ def edit_quorum(maint_dao, rnd_id, debug):
         import pdb;pdb.set_trace()
 
     return new_juror_stats
-    
+
 
 
 def add_organizer(maint_dao, new_org_name, debug=False):
