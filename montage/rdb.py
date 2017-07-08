@@ -1492,6 +1492,10 @@ class CoordinatorDAO(UserDAO):
         jurors = self.get_active_jurors(rnd)
         session = self.rdb_session
 
+        rnd_stats = rnd.to_details_dict()
+        if not rnd_stats['stats']['total_tasks']:
+            create_initial_tasks(session, rnd)
+
         rnd.quorum = new_quorum
 
         if rnd.vote_method == 'ranking':
