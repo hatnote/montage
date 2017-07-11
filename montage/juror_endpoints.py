@@ -56,7 +56,7 @@ def make_juror_round_details(rnd, rnd_stats):
 
 # Endpoint functions
 
-def get_index(rdb_session, user):
+def get_index(user_dao):
     """
     Summary: Get juror-level index of all campaigns and rounds.
 
@@ -70,16 +70,14 @@ def get_index(rdb_session, user):
     Errors:
        403: User does not have permission to access any rounds
     """
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(user_dao)
     stats = [make_juror_round_details(rnd, rnd_stats)
              for rnd, rnd_stats
              in juror_dao.get_all_rounds_task_counts()]
-    if not stats:
-        raise Forbidden("not a juror for any rounds")
     return stats
 
 
-def get_campaign(rdb_session, user, campaign_id):
+def get_campaign(user_dao, campaign_id):
     """
     Summary: Get juror-level list of rounds, identified by campaign ID.
 
@@ -108,20 +106,18 @@ def get_campaign(rdb_session, user, campaign_id):
        403: User does not have permission to access the requested campaign
        404: Campaign not found
     """
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(user_dao)
     campaign = juror_dao.get_campaign(campaign_id)
-    if campaign is None:
-        raise Forbidden('not a juror for this campaign')
     data = campaign.to_details_dict()
     rounds = []
     for rnd in campaign.rounds:
-        rnd_stats = juror_dao.get_round_task_counts(rnd)
+        rnd_stats = user_dao.get_round_task_counts(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats))
     data['rounds'] = rounds
     return {'data': data}
 
 
-def get_round(rdb_session, user, round_id):
+def get_round(user_dao, round_id):
     """
     Summary: Get juror-level details for a round, identified by round ID.
 
@@ -154,16 +150,14 @@ def get_round(rdb_session, user, round_id):
        403: User does not have permission to access requested round
        404: Round not found
     """
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
-    rnd_stats = juror_dao.get_round_task_counts(rnd)
-    if rnd is None:
-        raise Forbidden('not a juror for this round')
-    data = make_juror_round_details(rnd, rnd_stats)
+    rnd_stats = juror_dao.get_round_task_counts(round_id)
+    data = make_juror_round_details(rnd, rnd_stats)  # TODO: add to Round model
     return {'data': data}
 
 
-def get_campaign_info(rdb_session, user, campaign_id):
+def get_campaign_info(user_dao, campaign_id):
     """
     Summary: Get juror-level info for a round, identified by campaign ID.
 
@@ -184,15 +178,13 @@ def get_campaign_info(rdb_session, user, campaign_id):
        403: User does not have permission to access requested campaign
        404: Campaign not found
     """
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(use_dao)
     campaign = juror_dao.get_campaign(campaign_id)
-    if campaign is None:
-        raise Forbidden('not a juror for this round')
-    ret = CampaignInfo(campaign)
-    return ret
+    ret = CampaignInfo(campaign)  # TODO: add as a method on the Round model?
+    return {'data': ret}
 
 
-def get_tasks(rdb_session, user, request):
+def get_tasks(user_dao, request):
     """
     Summary: Get the next tasks for a juror.
 
@@ -220,35 +212,28 @@ def get_tasks(rdb_session, user, request):
     # multiple campaigns at once.
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
-    juror_dao = JurorDAO(rdb_session, user)
+    juror_dao = JurorDAO(user_dao)
     tasks = juror_dao.get_tasks(num=count, offset=offset)
     stats = juror_dao.get_task_counts()
     data = {'stats': stats,
             'tasks': []}
-
     for task in tasks:
         data['tasks'].append(task.to_details_dict())
-
     return {'data': data}
 
 
-def get_tasks_from_round(rdb_session, user, round_id, request):
-    # TODO: get task from within a round
-    # TODO: Check permissions
+def get_tasks_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
-    juror_dao = JurorDAO(rdb_session, user)
+    juror_dao = JurorDAO(user_dao)
+    juror_dao.confirm_active(round_id)
     rnd = juror_dao.get_round(round_id)
-    if not rnd:
-        raise PermissionDenied()
-    if rnd.status != 'active':
-        raise InvalidAction('round %s (%s) is not active' % (rnd.id, rnd.name))
     if rnd.vote_method == 'ranking':
         count = MAX_RATINGS_SUBMIT  # TODO: better constant
-    tasks = juror_dao.get_tasks_from_round(rnd=rnd,
+    tasks = juror_dao.get_tasks_from_round(round_id,
                                            num=count,
                                            offset=offset)
-    stats = juror_dao.get_round_task_counts(rnd)
+    stats = juror_dao.get_round_task_counts(round_id)
     data = {'stats': stats,
             'tasks': []}
 
@@ -258,45 +243,33 @@ def get_tasks_from_round(rdb_session, user, round_id, request):
     return {'data': data}
 
 
-def get_ratings_from_round(rdb_session, user, round_id, request):
+def get_ratings_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
-    juror_dao = JurorDAO(rdb_session, user)
-    rnd = juror_dao.get_round(round_id)
-
-    if not rnd:
-        raise PermissionDenied()
-
-    ratings = juror_dao.get_ratings_from_round(rnd=rnd,
+    juror_dao = JurorDAO(user_dao)
+    ratings = juror_dao.get_ratings_from_round(round_id,
                                                num=count,
                                                offset=offset)
     data = [r.to_details_dict() for r in ratings]
     return {'data': data}
 
 
-def get_rankings_from_round(rdb_session, user, round_id):
-    juror_dao = JurorDAO(rdb_session, user)
-    rnd = juror_dao.get_round(round_id)
-
-    if not rnd:
-        raise PermissionDenied()
-
-    rankings = juror_dao.get_rankings_from_round(rnd=rnd)
+def get_rankings_from_round(user_dao, round_id):
+    juror_dao = JurorDAO(user_dao)
+    rankings = juror_dao.get_rankings_from_round(round_id)
     data = [r.to_details_dict() for r in rankings]
     data.sort(key=lambda x: x['value'])
     return {'data': data}
 
 
-def submit_rating(rdb_session, user, request_dict):
+def submit_rating(user_dao, request_dict):
     # TODO: Check permissions
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(user_dao)
     vote_id = request_dict['vote_id']
     rating = float(request_dict['rating'])
     task = juror_dao.get_task(vote_id)
     rnd = task.round_entry.round
-    if rnd.status != 'active':
-        raise InvalidAction('round must be active to submit ratings.'
-                            ' round is currently: %s' % rnd.status)
+    rnd.confirm_active()
     if rnd.vote_method == 'rating':
         if rating not in VALID_RATINGS:
             raise InvalidAction('rating expected one of %s, not %r'
@@ -314,7 +287,7 @@ def submit_rating(rdb_session, user, request_dict):
     return {'data': {'vote_id': vote_id, 'rating': rating}}
 
 
-def submit_ratings(rdb_session, user, request_dict):
+def submit_ratings(user_dao, request_dict):
     """message format:
 
     {"ratings": [{"vote_id": 10, "value": 0.0}, {"vote_id": 11, "value": 1.0}]}
@@ -324,7 +297,7 @@ def submit_ratings(rdb_session, user, request_dict):
     """
 
     # TODO: can jurors change their vote?
-    juror_dao = JurorDAO(rdb_session=rdb_session, user=user)
+    juror_dao = JurorDAO(user_dao)
 
     r_dicts = request_dict['ratings']
 
@@ -354,11 +327,7 @@ def submit_ratings(rdb_session, user, request_dict):
 
     round_id = list(round_id_set)[0]
     rnd = juror_dao.get_round(round_id)
-    if not rnd:
-        raise PermissionDenied()
-    if rnd.status != 'active':
-        raise InvalidAction('round %s (%s) is not active' % (rnd.id, rnd.name))
-
+    rnd.confirm_active()
     style = rnd.vote_method
 
     # validation
@@ -392,7 +361,7 @@ def submit_ratings(rdb_session, user, request_dict):
     if style in ('rating', 'yesno'):
         for t in tasks:
             val = id_map[t.id]
-            juror_dao.apply_rating(t, val)
+            juror_dao.edit_rating(t, val)
     elif style == 'ranking':
         # This part is designed to support ties ok though
         """

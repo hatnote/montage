@@ -31,12 +31,15 @@ from boltons.strutils import slugify
 from boltons.iterutils import chunked, first, unique_iter, bucketize
 from boltons.statsutils import mean
 
+from clastic.errors import Forbidden
+
 from utils import (format_date,
                    to_unicode,
                    json_serial,
                    get_mw_userid,
                    weighted_choice,
-                   PermissionDenied, InvalidAction)
+                   PermissionDenied, InvalidAction,
+                   DoesNotExist)
 from imgutils import make_mw_img_url
 from loaders import get_entries_from_gist_csv, load_category
 from simple_serdes import DictableBase, JSONEncodedDict
@@ -336,6 +339,11 @@ class Round(Base):
         ret['stats'] = self.get_count_map()
         ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors],
         return ret
+
+    def confirm_active(self):
+        if self.status != 'active':
+            raise InvalidAction('round %s is not active' % self.id)
+        return True
 
 rounds_t = Round.__table__
 
@@ -682,6 +690,59 @@ class UserDAO(object):
         "a call-through to the underlying session.query"
         return self.rdb_session.query(*a, **kw)
 
+    def get_campaign(self, campaign_id):
+        campaign = self.query(Campaign)\
+                       .filter(
+                           Campaign.coords.any(username=self.user.username))\
+                       .filter_by(id=campaign_id)\
+                       .one_or_none()
+        if not campaign:
+            raise Forbidden('not a coordinator on campaign %s' % campaign_id)
+        return campaign
+
+    def get_all_campaigns(self):
+        campaigns = self.query(Campaign)\
+                        .filter(
+                            Campaign.coords.any(username=self.user.username))\
+                        .all()
+        if len(campaigns) == 0:
+            raise Forbidden('not a coordinator on any campaigns')
+        return campaigns
+
+    def get_round(self, round_id):
+        rnd = self.query(Round)\
+                  .filter(
+                      Round.campaign.has(
+                          Campaign.coords.any(username=self.user.username)))\
+                  .filter_by(id=round_id)\
+                  .one_or_none()
+        if not rnd:
+            raise Forbidden('not a coordinator for round %s' % round_id)
+        return rnd
+
+    def get_or_create_user(self, user, role, **kw):
+        # kw is for including round/round_id/campaign/campaign_id
+        # which is used in the audit log if the user is created
+        if isinstance(user, User):
+            return user
+        elif not isinstance(user, basestring):
+            raise TypeError('expected user or username, not %r' % user)
+        username = user
+        user = lookup_user(self.rdb_session, username=username)
+
+        if not user:
+            creator = self.user
+            user_id = get_mw_userid(username)
+            user = User(id=user_id,
+                        username=username,
+                        created_by=creator.id if creator else None)
+            self.rdb_session.add(user)
+            msg = ('%s created user %s while adding them as a %s'
+                   % (creator.username if creator else '', username, role))
+            self.log_action('create_user', message=msg, **kw)
+
+        return user
+
     def log_action(self, action, **kw):
         # TODO: file logging here too
         user_id = self.user.id if self.user else None
@@ -734,30 +795,29 @@ class CoordinatorDAO(UserDAO):
     #   - not updateable: id, open_date, close_date, vote_method,
     #     campaign_id/seq
 
+    def __init__(self, user_dao, campaign):
+        if not type(campaign) is Campaign:
+            InvalidAction('cannot load campaign')
+        self.query = user_dao.query
+        self.rdb_session = user_dao.rdb_session
+        self.user_dao = user_dao
+        self.user = user_dao.user
+        self.get_or_create_user = user_dao.get_or_create_user
+        self.campaign = campaign
+        self.get_campaign = user_dao.get_campaign
+
+    @classmethod
+    def from_campaign(cls, user_dao, campaign_id):
+        campaign = user_dao.get_campaign(campaign_id)
+        return cls(user_dao, campaign)
+
+    @classmethod
+    def from_round(cls, user_dao, round_id):
+        rnd = user_dao.get_round(round_id)
+        campaign = rnd.campaign
+        return cls(user_dao, campaign)
+        
     # Read methods
-    def get_campaign(self, campaign_id):
-        campaign = self.query(Campaign)\
-                       .filter(
-                           Campaign.coords.any(username=self.user.username))\
-                       .filter_by(id=campaign_id)\
-                       .one_or_none()
-        return campaign
-
-    def get_all_campaigns(self):
-        campaigns = self.query(Campaign)\
-                        .filter(
-                            Campaign.coords.any(username=self.user.username))\
-                        .all()
-        return campaigns
-
-    def get_round(self, round_id):
-        round = self.query(Round)\
-                    .filter(
-                        Round.campaign.has(
-                            Campaign.coords.any(username=self.user.username)))\
-                    .filter_by(id=round_id)\
-                    .one_or_none()
-        return round
 
     def get_campaign_rounds(self, campaign, with_cancelled=False):
         q = self.query(Round).filter_by(campaign=campaign)
@@ -766,26 +826,26 @@ class CoordinatorDAO(UserDAO):
         q.order_by(Round.create_date)
         return q.all()
 
-    def get_active_jurors(self, rnd):
+    def get_active_jurors(self, round_id):
         rjs = (self.query(RoundJuror)
                .filter_by(is_active=True,
-                          round_id=rnd.id)
+                          round_id=round_id)
                .options(joinedload('user'))
                .all())
         users = [rj.user for rj in rjs]
         return users
 
-    def get_round_task_counts(self, rnd):
+    def get_round_task_counts(self, round_id):
         # the fact that these are identical for two DAOs shows it
         # should be on the Round model or somewhere else shared
-        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
+        re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
         total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=rnd.id),
+                          .filter(Vote.round_entry.has(round_id=round_id),
                                   Vote.user_id == self.user.id,
                                   Vote.status != 'cancelled')\
                           .count()
         total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=rnd.id),
+                               .filter(Vote.round_entry.has(round_id=round_id),
                                        Vote.user_id == self.user.id,
                                        Vote.status == 'active')\
                                .count()
@@ -810,36 +870,35 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     # write methods
-    def edit_campaign(self, campaign_id, campaign_dict):
-        ret = self.rdb_session.query(Campaign)\
-                              .filter_by(id=campaign_id)\
-                              .update(campaign_dict)
-
+    def edit_campaign(self, campaign_dict):
+        ret = self.query(Campaign)\
+                  .filter_by(id=self.campaign.id)\
+                  .update(campaign_dict)
+        # TODO: Logging
+        self.rdb_session.commit()
         return ret
 
-    def cancel_campaign(self, campaign):
+    def cancel_campaign(self):
         cancel_date = datetime.datetime.utcnow()
-        campaign_id = campaign.id
         rounds = (self.query(Round)
-                      .filter(Round.campaign_id == campaign_id)
+                      .filter(Round.campaign_id == self.campaign.id)
                       .all())
-        campaign.status = 'cancelled'
+        self.campaign.status = 'cancelled'
         for round in rounds:
             self.cancel_round(round)
         msg = '%s cancelled campaign "%s" and %s rounds' %\
-              (self.user.username, campaign.name, len(rounds))
-        self.log_action('cancel_campaign', campaign=campaign, message=msg)
+              (self.user.username, self.campaign.name, len(rounds))
+        self.log_action('cancel_campaign', campaign=self.campaign, message=msg)
         self.rdb_session.commit()
 
-    def create_round(self, campaign, name, description, directions, quorum,
+    def create_round(self, name, description, directions, quorum,
                      vote_method, jurors, deadline_date, config=None):
-
-        if campaign.active_round:
+        if self.campaign.active_round:
             raise InvalidAction('can only create one active/paused round at a'
                                 ' time. cancel or complete your existing'
                                 ' rounds before trying again')
         config = config or {}
-        jurors = [self.get_or_create_user(j, 'juror', campaign=campaign)
+        jurors = [self.get_or_create_user(j, 'juror', campaign=self.campaign)
                   for j in jurors]
 
         for (k, v) in DEFAULT_ROUND_CONFIG.items():
@@ -851,8 +910,8 @@ class CoordinatorDAO(UserDAO):
         rnd = Round(name=name,
                     description=description,
                     directions=directions,
-                    campaign=campaign,
-                    campaign_seq=len(campaign.rounds),
+                    campaign=self.campaign,
+                    campaign_seq=len(self.campaign.rounds),
                     status='paused',
                     quorum=quorum,
                     deadline_date=deadline_date,
@@ -865,15 +924,15 @@ class CoordinatorDAO(UserDAO):
         j_names = [j.username for j in jurors]
         msg = ('%s created %s round "%s" (#%s) with jurors %r for'
                ' campaign "%s"' % (self.user.username, vote_method,
-                                   rnd.name, rnd.id, j_names, campaign.name))
+                                   rnd.name, rnd.id, j_names, self.campaign.name))
         self.log_action('create_round', round=rnd, message=msg)
-
+        self.rdb_session.commit()
         return rnd
 
-    def autodisqualify_by_date(self, rnd, preview=False):
-        campaign = rnd.campaign
-        min_date = campaign.open_date
-        max_date = campaign.close_date
+    def autodisqualify_by_date(self, round_id, preview=False):
+        rnd = self.get_round(round_id)
+        min_date = self.campaign.open_date
+        max_date = self.campaign.close_date
 
         if (not min_date or not max_date):
             round_entries = []
@@ -887,7 +946,7 @@ class CoordinatorDAO(UserDAO):
 
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
-                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(RoundEntry.round_id == round_id)\
                             .filter((Entry.upload_date < min_date) |
                                     (Entry.upload_date > max_date))\
                             .all()
@@ -913,13 +972,13 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_resolution(self, rnd, preview=False):
+    def autodisqualify_by_resolution(self, round_id, preview=False):
         # TODO: get from config
+        rnd = self.get_round(round_id)
         min_res = rnd.config.get('min_resolution', DEFAULT_MIN_RESOLUTION)
-
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
-                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(RoundEntry.round_id == round_id)\
                             .filter(Entry.resolution < min_res)\
                             .all()
 
@@ -946,11 +1005,12 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def autodisqualify_by_filetype(self, rnd, preview=False):
+    def autodisqualify_by_filetype(self, round_id, preview=False):
+        rnd = self.get_round(round_id)
         allowed_filetypes = rnd.config.get('allowed_filetypes')
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
-                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(RoundEntry.round_id == round_id)\
                             .filter(~Entry.mime_minor.in_(allowed_filetypes))\
                             .all()
 
@@ -972,18 +1032,18 @@ class CoordinatorDAO(UserDAO):
         msg = ('%s disqualified %s entries by filetype not in %s'
                % (self.user.username, len(round_entries), allowed_filetypes))
         self.log_action('autodisqualify_by_filetype', round=rnd, message=msg)
-
         return round_entries
 
-    def autodisqualify_by_uploader(self, rnd, preview=False):
+    def autodisqualify_by_uploader(self, round_id, preview=False):
         dq_group = {}
+        rnd = self.get_round(round_id)
         dq_usernames = [j.username for j in rnd.jurors]
 
         for username in dq_usernames:
             dq_group[username] = 'juror'
 
         if rnd.config.get('dq_coords'):
-            coord_usernames = [c.username for c in rnd.campaign.coords]
+            coord_usernames = [c.username for c in self.campaign.coords]
             dq_usernames += coord_usernames
             for username in coord_usernames:
                 dq_group[username] = 'coordinator'
@@ -1006,7 +1066,7 @@ class CoordinatorDAO(UserDAO):
 
         round_entries = self.query(RoundEntry)\
                             .join(Entry)\
-                            .filter(RoundEntry.round_id == rnd.id)\
+                            .filter(RoundEntry.round_id == round_id)\
                             .filter(Entry.upload_user_text.in_(dq_usernames))\
                             .all()
 
@@ -1032,15 +1092,16 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
-    def pause_round(self, rnd):
+    def pause_round(self, round_id):
+        rnd = self.user_dao.get_round(round_id)
         rnd.status = 'paused'
-
         msg = '%s paused round "%s"' % (self.user.username, rnd.name)
         self.log_action('pause_round', round=rnd, message=msg)
 
         return rnd
 
-    def activate_round(self, rnd):
+    def activate_round(self, round_id):
+        rnd = self.user_dao.get_round(round_id)
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
@@ -1064,7 +1125,8 @@ class CoordinatorDAO(UserDAO):
 
         return
 
-    def add_entries_from_cat(self, rnd, cat_name):
+    def add_entries_from_cat(self, round_id, cat_name):
+        rnd = self.user_dao.get_round(round_id)
         entries = load_category(cat_name)
 
         entries, new_entry_count = self.add_entries(rnd, entries)
@@ -1075,10 +1137,10 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_from_csv_gist(self, rnd, gist_url):
+    def add_entries_from_csv_gist(self, round_id, gist_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
-
+        rnd = self.user_dao.get_round(round_id)
         entries = get_entries_from_gist_csv(gist_url)
 
         entries, new_entry_count = self.add_entries(rnd, entries)
@@ -1110,16 +1172,20 @@ class CoordinatorDAO(UserDAO):
 
         return ret, new_entry_count
 
-    def add_round_entries(self, rnd, entries, source=''):
+    def add_round_entries(self, round_id, entries, source=''):
+        rnd = self.user_dao.get_round(round_id)
         if rnd.status != 'paused':
             raise InvalidAction('round must be paused to add new entries')
         existing_names = set(self.rdb_session.query(Entry.name).
                              join(RoundEntry).
                              filter_by(round=rnd).
                              all())
-        new_entries = [e for e
-                       in unique_iter(entries, key=lambda e: e.name)
-                       if e.name not in existing_names]
+        try:
+            new_entries = [e for e
+                           in unique_iter(entries, key=lambda e: e.name)
+                           if e.name not in existing_names]
+        except Exception as e:
+            import pdb;pdb.set_trace()
 
         rnd.entries.extend(new_entries)
 
@@ -1131,32 +1197,10 @@ class CoordinatorDAO(UserDAO):
 
         return new_entries
 
-    def get_or_create_user(self, user, role, **kw):
-        # kw is for including round/round_id/campaign/campaign_id
-        # which is used in the audit log if the user is created
-        if isinstance(user, User):
-            return user
-        elif not isinstance(user, basestring):
-            raise TypeError('expected user or username, not %r' % user)
-        username = user
-        user = lookup_user(self.rdb_session, username=username)
-
-        if not user:
-            creator = self.user
-            user_id = get_mw_userid(username)
-            user = User(id=user_id,
-                        username=username,
-                        created_by=creator.id if creator else None)
-            self.rdb_session.add(user)
-            msg = ('%s created user %s while adding them as a %s'
-                   % (creator.username if creator else '', username, role))
-            self.log_action('create_user', message=msg, **kw)
-
-        return user
-
-    def cancel_round(self, rnd):
-        votes = self.query(Vote)\
-                    .filter(Vote.round_entry.has(round_id=rnd.id))\
+    def cancel_round(self, round_id):
+        rnd = self.get_round(round_id)
+        tasks = self.query(Task)\
+                    .filter(Task.round_entry.has(round_id=round_id))\
                     .all()
         cancel_date = datetime.datetime.utcnow()
 
@@ -1174,24 +1218,52 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
-    def finalize_rating_round(self, rnd, threshold):
+    def make_vote_table(self, round_id):
+        rnd = self.get_round(round_id)
+        if rnd.vote_method == 'ranking':
+            all_ratings = self.get_all_rankings(round_id)
+        else:
+            all_ratings = self.get_all_ratings(round_id)
+        all_tasks = self.get_all_tasks(round_id)
+
+        results_by_name = defaultdict(dict)
+        ratings_dict = {r.task_id: r.value for r in all_ratings}
+
+        for (task, entry) in all_tasks:
+            rating = ratings_dict.get(task.id, {})
+            filename = entry.name
+            username = task.user.username
+
+            if task.complete_date:
+                results_by_name[filename][username] = rating
+            else:
+                # tbv = to be voted
+                # there should be no empty tasks in a fully finalized round
+                results_by_name[filename][username] = 'tbv'
+
+        return results_by_name
+
+
+    def finalize_rating_round(self, round_id, threshold):
+        rnd = self.get_round(round_id)
         assert rnd.vote_method in ('rating', 'yesno')
-        # TODO: assert all votes complete
+        # TODO: assert all tasks complete
 
         rnd.close_date = datetime.datetime.utcnow()
         rnd.status = 'finalized'
         rnd.config['final_threshold'] = threshold
 
-        advance_count = len(self.get_rating_advancing_group(rnd, threshold))
+        advance_group = self.get_rating_advancing_group(round_id, threshold)
 
         msg = ('%s finalized rating round "%s" at threshold %s,'
                ' with %s entries advancing'
-               % (self.user.username, rnd.name, threshold, advance_count))
+               % (self.user.username, rnd.name, threshold, len(advance_group)))
         self.log_action('finalize_round', round=rnd, message=msg)
 
-        return advance_count
+        return advance_group
 
-    def finalize_ranking_round(self, rnd):
+    def finalize_ranking_round(self, round_id):
+        rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
 
         # TODO: Ranking method?
@@ -1202,31 +1274,42 @@ class CoordinatorDAO(UserDAO):
 
         summary = self.build_campaign_report(rnd.campaign)
 
-        result_summary = RoundResultsSummary(round_id=rnd.id,
+        result_summary = RoundResultsSummary(round_id=round_id,
                                              campaign_id=rnd.campaign.id,
                                              summary=summary)
         self.rdb_session.add(result_summary)
-        self.rdb_session.commit()
         msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
                (self.user.username, rnd.name, rnd.id, result_summary.id))
         self.log_action('finalize_ranking_round', round=rnd, message=msg)
         self.rdb_session.commit()
         return result_summary
 
-    def get_campaign_report(self, campaign):
-        campaign_id = campaign.id
+    def finalize_campaign(self):
+        last_rnd = self.campaign.rounds[-1]
+        self.campaign.status = 'finalized'
+        #self.campaign.close_date = datetime.datetime.utcnow() # TODO
+        msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
+               % (self.user.username, self.campaign.name, self.campaign.id,
+                  last_rnd.vote_method, last_rnd.name))
+        self.log_action('finalize_campaign', campaign=self.campaign, message=msg)
+        return self.campaign
+
+    def get_campaign_report(self):
+        if self.campaign.status != 'finalized':
+            raise Forbidden('cannot open report for campaign %s' % self.campaign.id)
         summary = self.query(RoundResultsSummary)\
                       .filter(
                           RoundResultsSummary.campaign.has(
-                            Campaign.coords.any(username=self.user.username)))\
-                      .filter_by(campaign_id=campaign_id)\
+                              Campaign.coords.any(username=self.user.username)))\
+                      .filter_by(campaign_id=self.campaign.id)\
                       .one_or_none()
         return summary
 
-    def get_rating_advancing_group(self, rnd, threshold=None):
-        assert rnd.vote_method in ('rating', 'yesno')
+    def get_rating_advancing_group(self, round_id, threshold=None):
+        #assert rnd.vote_method in ('rating', 'yesno')
 
         if threshold is None:
+            rnd = self.get_round(round_id)
             threshold = rnd.config.get('final_threshold')
         if threshold is None:
             raise ValueError('expected threshold or finalized round')
@@ -1237,7 +1320,7 @@ class CoordinatorDAO(UserDAO):
 
         results = self.query(RoundEntry, Vote, avg)\
                       .options(joinedload('entry'))\
-                      .filter_by(dq_user_id=None, round_id=rnd.id)\
+                      .filter_by(dq_user_id=None, round_id=round_id)\
                       .join(Vote)\
                       .group_by(Vote.round_entry_id)\
                       .having(avg >= threshold)\
@@ -1247,10 +1330,10 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def get_round_average_rating_map(self, rnd):
+    def get_round_average_rating_map(self, round_id):
         results = self.query(Vote, func.avg(Vote.value).label('average'))\
                       .join(RoundEntry)\
-                      .filter(Vote.round_entry.has(round_id=rnd.id),
+                      .filter(Vote.round_entry.has(round_id=round_id),
                               Vote.status == 'complete')\
                       .group_by(Vote.round_entry_id)\
                       .all()
@@ -1260,10 +1343,10 @@ class CoordinatorDAO(UserDAO):
 
         return dict(rating_ctr)
 
-    def get_round_ranking_list(self, rnd, notation=None):
+    def get_round_ranking_list(self, round_id, notation=None):
         res = (self.query(Vote)
                .options(joinedload('round_entry'))
-               .filter(Vote.round_entry.has(round_id=rnd.id),
+               .filter(Vote.round_entry.has(round_id=round_id),
                        Vote.status == 'complete')
                .all())
         all_inputs = []
@@ -1347,16 +1430,16 @@ class CoordinatorDAO(UserDAO):
                       .all()
         return results
 
-    def get_disqualified(self, rnd):
+    def get_disqualified(self, round_id):
         results = self.query(RoundEntry)\
                       .options(joinedload('entry'))\
-                      .filter_by(round_id=rnd.id)\
+                      .filter_by(round_id=round_id)\
                       .filter(RoundEntry.dq_user_id != None)\
                       .all()
 
         return results
 
-    def modify_jurors(self, rnd, new_jurors):
+    def modify_jurors(self, round_id, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with
         # changing the quorum, which would remove tasks, but carries the
         # issue of possibly having to reweight or discard completed ratings.
@@ -1364,6 +1447,8 @@ class CoordinatorDAO(UserDAO):
         # TODO: check to make sure only certain round actions can happen
         # when paused, others only when active, basically none when the
         # round is complete or cancelled.
+        rnd = self.get_round(round_id)
+
         if not getattr(new_jurors, 'username', None):
             new_jurors = [self.get_or_create_user(j, 'juror', round=rnd)
                           for j in new_jurors]
@@ -1379,7 +1464,7 @@ class CoordinatorDAO(UserDAO):
                                 ' (%s) for round #%s'
                                 % (len(new_jurors), rnd.quorum, rnd.id))
         new_juror_names = sorted([nj.username for nj in new_jurors])
-        old_jurors = self.get_active_jurors(rnd)
+        old_jurors = self.get_active_jurors(rnd.id)
         old_juror_names = sorted([oj.username for oj in old_jurors])
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
@@ -1404,12 +1489,13 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_jurors', round=rnd, message=msg)
         return res
 
-    def modify_quorum(self, rnd, new_quorum, strategy=None):
+    def modify_quorum(self, round_id, new_quorum, strategy=None):
         # This only supports increasing the quorum. Decreaseing the
         # quorum would require handling some completed tasks (eg,
         # whose vote do you discard? Randomly choose?)
 
         # TODO: Support decreasing the quorum.
+        rnd = self.get_round(round_id)
 
         old_quorum = rnd.quorum
 
@@ -1421,7 +1507,7 @@ class CoordinatorDAO(UserDAO):
                                       'decreases. current quorum is %r, got %r'
                                       % (old_quorum, new_quorum))
 
-        jurors = self.get_active_jurors(rnd)
+        jurors = self.get_active_jurors(rnd.id)
         session = self.rdb_session
 
         rnd.quorum = new_quorum
@@ -1462,12 +1548,11 @@ class CoordinatorDAO(UserDAO):
         prev_finalized_rnd = final_rnds[-1]  # TODO: these are ordered by date?
         assert prev_finalized_rnd.vote_method != 'ranking'
 
-        advancing_group = self.get_rating_advancing_group(prev_finalized_rnd)
+        advancing_group = self.get_rating_advancing_group(prev_finalized_rnd.id)
 
         assert 1 < len(advancing_group) <= 40  # TODO: configurable max
 
-        rnd = self.create_round(campaign,
-                                name=name,
+        rnd = self.create_round(name=name,
                                 jurors=jurors,
                                 quorum=len(jurors),
                                 vote_method='ranking',
@@ -1512,7 +1597,7 @@ class CoordinatorDAO(UserDAO):
                 ret[juror_alias_map[k]] = v
             return ret
 
-        ranking_list = self.get_round_ranking_list(final_rnd)
+        ranking_list = self.get_round_ranking_list(final_rnd.id)
 
         ret['all_jurors'] = set(sum([[j['username'] for j in r['jurors']]
                                      for r in ret['rounds']], []))
@@ -1546,20 +1631,31 @@ class CoordinatorDAO(UserDAO):
         return ret
 
 
-class OrganizerDAO(CoordinatorDAO):
-    def add_coordinator(self, campaign, username):
+class OrganizerDAO(object):
+    def __init__(self, user_dao):
+        self.user = user_dao.user
+        if not (self.user.is_maintainer or self.user.is_organizer):
+            raise Forbidden('must have maintainer permissions')
+        self.user_dao = user_dao
+        self.query = user_dao.query
+        self.rdb_session = user_dao.rdb_session
+        self.get_or_create_user = user_dao.get_or_create_user
+        self.log_action = user_dao.log_action
+
+    def add_coordinator(self, campaign_id, username):
+        campaign = self.user_dao.get_campaign(campaign_id)
         user = self.get_or_create_user(username, 'coordinator',
                                        campaign=campaign)
         if user in campaign.coords:
             raise InvalidAction('user is already a coordinator')
         campaign.coords.append(user)
         self.rdb_session.add(user)
-        self.rdb_session.commit()
 
         msg = ('%s added %s as a coordinator of campaign "%s"'
                % (self.user.username, user.username, campaign.name))
         self.log_action('add_coordinator', campaign_id=campaign.id,
                         message=msg)
+        self.rdb_session.commit()
         return user
 
     def create_campaign(self, name, open_date, close_date, coords=None):
@@ -1572,34 +1668,25 @@ class OrganizerDAO(CoordinatorDAO):
                             close_date=close_date,
                             status='active',
                             coords=coords)
-
         self.rdb_session.add(campaign)
 
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
         self.log_action('create_campaign', campaign=campaign, message=msg)
-
+        self.rdb_session.commit()
         return campaign
 
-    # Read methods
-    def get_all_campaigns(self):
-        campaigns = self.query(Campaign)\
-                        .all()
-        return campaigns
 
-    def get_campaign(self, campaign_id):
-        campaign = self.query(Campaign)\
-                       .filter_by(id=campaign_id)\
-                       .one_or_none()
-        return campaign
-
-    def get_round(self, round_id):
-        round = self.query(Round)\
-                    .filter_by(id=round_id)\
-                    .one_or_none()
-        return round
-
-
-class MaintainerDAO(OrganizerDAO):
+class MaintainerDAO(object):
+    def __init__(self, user_dao):
+        self.user = user_dao.user
+        if not self.user.is_maintainer:
+            raise Forbidden('must have Maintainer permission')
+        self.user_dao = user_dao
+        self.query = user_dao.query
+        self.rdb_session = user_dao.rdb_session
+        self.get_or_create_user = user_dao.get_or_create_user
+        self.log_action = user_dao.log_action
+        
     def get_audit_log(self, limit=100, offset=0):
         audit_logs = self.query(AuditLogEntry)\
                          .order_by(AuditLogEntry.create_date.desc())\
@@ -1642,30 +1729,85 @@ def bootstrap_maintainers(rdb_session):
     return ret
 
 
-class JurorDAO(UserDAO):
+class JurorDAO(object):
     """A Data Access Object for the Juror's view"""
-    # Read methods
-    def get_all_rounds(self):
-        rounds = self.query(Round)\
-                     .filter(Round.jurors.any(username=self.user.username))\
-                     .all()
-        return rounds
+    def __init__(self, user_dao):
+        self.user = user_dao.user
+        self.user_dao = user_dao
+        self.query = user_dao.query
+        self.rdb_session = user_dao.rdb_session
+        self.get_or_create_user = user_dao.get_or_create_user
+        self.log_action = user_dao.log_action
 
+    # Read methods
     def get_campaign(self, campaign_id):
+        if self.user.is_maintainer or self.user.is_organizer:
+            return self.get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
                            Round.jurors.any(username=self.user.username)))\
                        .filter_by(id=campaign_id)\
                        .one_or_none()
+        if not campaign:
+            raise Forbidden('not a juror on campaign %s' % campaign_id)
+        return campaign
+
+    def get_any_campaign(self, campaign_id):
+        campaign = (self.query(Campaign)
+                    .filter_by(id=campaign_id)
+                    .one_or_none())
+        if not campaign:
+            raise DoesNotExist('campaign %s does not exist' % campaign_id)
         return campaign
 
     def get_round(self, round_id):
-        round = self.query(Round)\
-                    .filter(
-                        Round.jurors.any(username=self.user.username),
-                        Round.id == round_id)\
-                    .one_or_none()
-        return round
+        if self.user.is_maintainer or self.user.is_organizer:
+            return self.get_any_round(round_id)
+        rnd = self.query(Round)\
+                  .filter(
+                      Round.jurors.any(username=self.user.username),
+                      Round.id == round_id)\
+                  .one_or_none()
+        if not rnd:
+            raise Forbidden('not a juror for round %s' % round_id)
+        return rnd
+
+    def get_any_round(self, round_id):
+        rnd = (self.query(Round)
+               .filter_by(id=round_id)
+               .one_or_none())
+
+        if not rnd:
+            raise DoesNotExist('round %s does not exist' % round_id)
+        return rnd
+
+    def confirm_active(self, round_id):
+        rnd = self.get_round(round_id)
+        return rnd.confirm_active()
+
+    def get_round_task_counts(self, round_id):
+        # the fact that these are identical for two DAOs shows it
+        # should be on the Round model or somewhere else shared
+        re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
+        total_tasks = self.query(Vote)\
+                          .filter(Vote.round_entry.has(round_id=round_id),
+                                  Vote.user_id == self.user.id,
+                                  Vote.status != 'cancelled')\
+                          .count()
+        total_open_tasks = self.query(Vote)\
+                               .filter(Vote.round_entry.has(round_id=round_id),
+                                       Vote.user_id == self.user.id,
+                                       Vote.status == 'active')\
+                               .count()
+
+        if total_tasks:
+            percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
+        else:
+            percent_open = 0.0
+        return {'total_round_entries': re_count,
+                'total_tasks': total_tasks,
+                'total_open_tasks': total_open_tasks,
+                'percent_tasks_open': percent_open}
 
     def get_task(self, vote_id):
         task = self.query(Vote)\
@@ -1681,6 +1823,8 @@ class JurorDAO(UserDAO):
                     .limit(num)\
                     .offset(offset)\
                     .all()
+        if not tasks:
+            raise Forbidden('no assigned tasks')
         return tasks
 
     def get_total_tasks(self):
@@ -1701,34 +1845,36 @@ class JurorDAO(UserDAO):
                .all())
         return ret
 
-    def get_tasks_from_round(self, rnd, num=1, offset=0):
+    def get_tasks_from_round(self, round_id, num=1, offset=0):
         tasks = self.query(Vote)\
                     .filter(Vote.user == self.user,
                             Vote.status == 'active',
-                            Vote.round_entry.has(round_id=rnd.id))\
+                            Vote.round_entry.has(round_id=round_id))\
                     .limit(num)\
                     .offset(offset)\
                     .all()
         return tasks
 
-    def get_ratings_from_round(self, rnd, num, offset=0):
+    def get_ratings_from_round(self, round_id, num, offset=0):
         # all the filter fields but cancel_date are actually on Vote
         # already
         ratings = self.query(Vote)\
                       .options(joinedload('round_entry'))\
                       .filter(Vote.user == self.user,
                               Vote.status == 'complete',
-                              Vote.round_entry.has(round_id=rnd.id))\
+                              Vote.round_entry.has(round_id=round_id))\
                       .limit(num)\
                       .offset(offset)\
                       .all()
+        if not ratings:
+            raise Forbidden('no complete ratings')
         return ratings
 
-    def get_rankings_from_round(self, rnd):
+    def get_rankings_from_round(self, round_id):
         rankings = self.query(Vote)\
                        .filter(Vote.user == self.user,
                                Vote.status == 'complete',
-                               Vote.round_entry.has(round_id=rnd.id))\
+                               Vote.round_entry.has(round_id=round_id))\
                        .options(joinedload('round_entry'))\
                        .all()
         return rankings
@@ -1754,20 +1900,6 @@ class JurorDAO(UserDAO):
                           .count()
         total_open_tasks = self.query(Vote)\
                                .filter(Vote.user_id == self.user.id,
-                                       Vote.status == 'active')\
-                               .count()
-        return self._build_round_stats(re_count, total_tasks, total_open_tasks)
-
-    def get_round_task_counts(self, rnd):
-        re_count = self.query(RoundEntry).filter_by(round_id=rnd.id).count()
-        total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=rnd.id),
-                                  Vote.user_id == self.user.id,
-                                  Vote.status != 'cancelled')
-        total_tasks = total_tasks.count()
-        total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=rnd.id),
-                                       Vote.user_id == self.user.id,
                                        Vote.status == 'active')\
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
@@ -1865,12 +1997,30 @@ class JurorDAO(UserDAO):
             )
         return results
 
-    def apply_rating(self, vote, value):
+    def apply_rating(self, vote, value, review=''):
         if not vote.user == self.user:
+            # belt and suspenders until server test covers the cross
+            # complete case
+            raise PermissionDenied()
+        now = datetime.datetime.utcnow()
+        review_stripped = review.strip()
+        if len(review_stripped) > 8192:
+            raise ValueError('review must be less than 8192 characters, not %r'
+                             % len(review_stripped))
+        if review_stripped:
+            vote['flags']['review'] = review_stripped
+        vote.complete_date = now
+        vote.status = 'complete'
+        self.rdb_session.add(vote)
+        self.rdb_session.commit()
+        return vote
+
+    def edit_rating(self, task, value):
+        if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
         rating = self.rdb_session.query(Vote)\
-                                 .filter_by(id=vote.id)\
+                                 .filter_by(id=task.id)\
                                  .first()
         rating.value = value
         rating.modified_date = now
