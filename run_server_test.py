@@ -95,6 +95,17 @@ def full_run(url_base, remote):
     data = {'username': 'Yarl'}
     resp = fetch_json(url_base + '/admin/add_organizer', data)
 
+    # Add annother organizer, who we will later regret
+    # - as maintainer
+    data = {'username': 'Slaporte (WMF)'}
+    resp = fetch_json(url_base + '/admin/add_organizer', data)
+
+    # Remove  organizer
+    # - as maintainer
+    data = {'username': 'Slaporte (WMF)'}
+    resp = fetch_json(url_base + '/admin/remove_organizer', data)
+
+
     # Create a campaign
     # - as organizer
     data = {'name': 'Another Test Campaign 2016 - again',
@@ -135,6 +146,11 @@ def full_run(url_base, remote):
     data = {'username': 'Effeietsanders'}
     resp = fetch_json(url_base + '/admin/campaign/%s/add_coordinator' % campaign_id,
                       data, su_to='Yarl')
+    # Remove coordinator
+    data = {'username': 'Effeietsanders'}
+    resp = fetch_json(url_base + '/admin/campaign/%s/remove_coordinator' % campaign_id,
+                      data, su_to='Yarl')
+    
 
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
@@ -326,7 +342,7 @@ def full_run(url_base, remote):
 
     # Get the audit logs
     # - as maintainer
-    resp = fetch_json(url_base + '/maintainer/audit_logs')
+    resp = fetch_json(url_base + '/logs/audit')
 
     # Jury endpoints
     # --------------

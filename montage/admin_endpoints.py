@@ -22,6 +22,7 @@ def get_admin_routes():
     """
     ret = [GET('/admin', get_index),
            POST('/admin/add_organizer', add_organizer),
+           POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
@@ -30,6 +31,8 @@ def get_admin_routes():
                 create_round),
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),
+           POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
+                remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
                'report.html'),
@@ -49,11 +52,7 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_disqualification',
                 preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
-           GET('/admin/round/<round_id:int>/download', download_results_csv),
-           GET('/maintainer', get_index), # TODO: is this necessary?
-           GET('/maintainer/active_users', get_active_users),
-           # TODO: split out into round/campaign log endpoints
-           GET('/maintainer/audit_logs', get_audit_logs)]
+           GET('/admin/round/<round_id:int>/download', download_results_csv)]
     return ret
 
 
@@ -92,17 +91,6 @@ def make_admin_round_details(rnd, rnd_stats):
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     # TODO: add total num of entries, total num of uploaders, round source info
     return ret
-
-
-def get_active_users(user_dao):
-    maint_dao = MaintainerDAO(user_dao)
-    users = maint_dao.get_active_users()
-    data = []
-    for user in users:
-        ud = user.to_details_dict()
-        ud['last_active_date'] = ud['last_active_date'].isoformat()
-        data.append(ud)
-    return {'data': data}
 
 
 # TODO: (clastic) some way to mark arguments as injected from the
@@ -223,7 +211,6 @@ def activate_round(user_dao, round_id, request_dict):
 def pause_round(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     coord_dao.pause_round(round_id)
-
     return {'data': 'paused'}
 
 
@@ -316,52 +303,8 @@ def edit_round(user_dao, round_id, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    column_names = ['name', 'description', 'directions',
-                    'config', 'new_jurors', 'deadline_date',
-                    'quorum']
-
-    # Use specific methods to edit other columns:
-    #  - status: activate_round, pause_round
-    #  - quorum: [requires reallocation]
-    #  - active_jurors: [requires reallocation]
-
-    pause_column_names = ['quorum', 'new_jurors']
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    rnd = coord_dao.get_round(round_id)
-    new_val_map = {}
-
-    for column_name in column_names:
-        # val = request_dict.pop(column_name, None)  # see note below
-        val = request_dict.get(column_name)
-        if val is not None and column_name not in pause_column_names:
-            if column_name == 'deadline_date':
-                val = js_isoparse(val)
-            setattr(rnd, column_name, val)
-            new_val_map[column_name] = val
-
-    # can't do this yet because stuff like su_to is hanging out in there.
-    # if request_dict:
-    #     raise InvalidAction('unable to modify round attributes: %r'
-    #                         % request_dict.keys())
-
-    new_juror_names = request_dict.get('new_jurors')
-    cur_jurors = coord_dao.get_active_jurors(round_id)
-    cur_juror_names = [u.username for u in cur_jurors]
-
-    if new_juror_names and set(new_juror_names) != set(cur_juror_names):
-        if rnd.status != 'paused':
-            raise InvalidAction('round must be paused to edit jurors')
-        else:
-            new_juror_stats = coord_dao.modify_jurors(round_id, new_juror_names)
-
-    new_quorum = request_dict.get('quorum')
-
-    if new_quorum and new_quorum != rnd.quorum:
-        if rnd.status != 'paused':
-            raise InvalidAction('round must be paused to edit quorum')
-        else:
-            new_juror_stats = coord_dao.modify_quorum(round_id, new_quorum)
-
+    new_val_map = coord_dao.edit_round(round_id, request_dict)
     return {'data': new_val_map}
 
 
@@ -556,14 +499,8 @@ def get_round(user_dao, round_id):
 
 def get_results(user_dao, round_id, request_dict):
     # TODO: Docs
-    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    
-    # TODO: Confirm round is finalized
-    #if not user.is_maintainer and rnd.status != 'finalized':
-    #    raise DoesNotExist('round results not yet finalized')
-
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)    
     results_by_name = coord_dao.make_vote_table(user_dao, round_id)
-
     return {'data': results_by_name}
 
 
@@ -670,15 +607,6 @@ def get_disqualified(user_dao, round_id):
     return {'data': data}
 
 # Endpoints restricted to maintainers
-def get_audit_logs(user_dao, request):
-    # TODO: Docs
-    maint_dao = MaintainerDAO(user_dao)
-    limit = request.values.get('limit', 10)
-    offset = request.values.get('offset', 0)
-    audit_logs = maint_dao.get_audit_log(limit=limit, offset=offset)
-    data = [l.to_info_dict() for l in audit_logs]
-    return {'data': data}
-
 
 def add_organizer(user_dao, request_dict):
     """
@@ -705,6 +633,17 @@ def add_organizer(user_dao, request_dict):
     return {'data': data}
 
 
+def remove_organizer(user_dao, request_dict):
+    maint_dao = MaintainerDAO(user_dao)
+    username = request_dict.get('username')
+    old_organizer = maint_dao.remove_organizer(username)
+    data = {'username': username,
+            'last_active_date': format_date(old_organizer.last_active_date)}
+    return {'data': data}
+
+
+# Endpoints restricted to organizers
+
 def add_coordinator(user_dao, campaign_id, request_dict):
     """
     Summary: -
@@ -729,6 +668,16 @@ def add_coordinator(user_dao, campaign_id, request_dict):
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
             'last_active_date': format_date(new_coord.last_active_date)}
+    return {'data': data}
+
+
+def remove_coordinator(user_dao, campaign_id, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+    username = request_dict.get('username')
+    old_coord = org_dao.remove_coordinator(campaign_id, username)
+    data = {'username': username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(old_coord.last_active_date)}
     return {'data': data}
 
 
