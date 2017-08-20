@@ -887,18 +887,6 @@ class CoordinatorDAO(UserDAO):
         self.log_action('edit_campaign', campaign=self.campaign, message=msg)
         return ret
 
-    def cancel_campaign(self):
-        cancel_date = datetime.datetime.utcnow()
-        rounds = (self.query(Round)
-                      .filter(Round.campaign_id == self.campaign.id)
-                      .all())
-        self.campaign.status = CANCELLED_STATUS
-        for round in rounds:
-            self.cancel_round(round)
-        msg = '%s cancelled campaign "%s" and %s rounds' %\
-              (self.user.username, self.campaign.name, len(rounds))
-        self.log_action('cancel_campaign', campaign=self.campaign, message=msg)
-
     def create_round(self, name, description, directions, quorum,
                      vote_method, jurors, deadline_date, config=None):
         if self.campaign.active_round:
@@ -1251,11 +1239,11 @@ class CoordinatorDAO(UserDAO):
 
     def cancel_round(self, round_id):
         rnd = self.get_round(round_id)
-        tasks = self.query(Task)\
-                    .filter(Task.round_entry.has(round_id=round_id))\
+        votes = self.query(Vote)\
+                    .filter(Vote.round_entry.has(round_id=round_id),
+                            Vote.status == 'active')\
                     .all()
         cancel_date = datetime.datetime.utcnow()
-
         rnd.status = CANCELLED_STATUS
         rnd.close_date = cancel_date
 
@@ -1732,11 +1720,24 @@ class OrganizerDAO(object):
                             status=ACTIVE_STATUS,
                             coords=coords)
         self.rdb_session.add(campaign)
-
+        self.rdb_session.flush()  # to get a campaign id
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)
         self.log_action('create_campaign', campaign=campaign, message=msg,
                         role='organizer')
         return campaign
+
+    def cancel_campaign(self, campaign_id):
+        cancel_date = datetime.datetime.utcnow()
+        campaign = self.user_dao.get_campaign(campaign_id)
+        rounds = (self.query(Round)
+                      .filter(Round.campaign_id == campaign_id)                  
+                      .all())
+        campaign.status = CANCELLED_STATUS
+        for round in rounds:
+            self.cancel_round(round)
+        msg = '%s cancelled campaign "%s" and %s rounds' %\
+              (self.user.username, campaign.name, len(rounds))
+        self.log_action('cancel_campaign', campaign=campaign, message=msg)
 
 
 class MaintainerDAO(object):
