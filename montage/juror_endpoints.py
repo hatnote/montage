@@ -313,8 +313,11 @@ def submit_ratings(user_dao, request_dict):
         if len(review_stripped) > 8192:
             raise ValueError('review must be less than 8192 chars,'
                              ' not %r' % len(review_stripped))
-
-    id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
+    try:
+        id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
+    except KeyError as e:
+        # fallback for old versions
+        id_map = dict([(r['task_id'], r['value']) for r in r_dicts])
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
 
@@ -373,7 +376,10 @@ def submit_ratings(user_dao, request_dict):
         is_edit = False
         for rd in r_dicts:
             cur = dict(rd)
-            cur['vote'] = task_map[rd['vote_id']]
+            vote_id = rd.get('vote_id')
+            if not vote_id:
+                vote_id = rd.get('task_id')  # fallback for old versions of the client
+            cur['vote'] = task_map[vote_id]
             if cur['vote'].status == 'complete':
                 is_edit = True
             elif is_edit:

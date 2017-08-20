@@ -1150,14 +1150,13 @@ class CoordinatorDAO(UserDAO):
             raise InvalidAction('can only activate round in a paused state,'
                                 ' not %r' % (rnd.status,))
 
-        if not rnd.open_date:
-            tasks = create_initial_tasks(self.rdb_session, rnd)
-            rnd.open_date = datetime.datetime.utcnow()
+        tasks = create_initial_tasks(self.rdb_session, rnd)
+        rnd.open_date = datetime.datetime.utcnow()
 
-            msg = ('%s opened round %s with %s tasks'
-                   % (self.user.username, rnd.name, len(tasks)))
-            self.log_action('open_round', round=rnd, message=msg)
-
+        msg = ('%s opened round %s with %s tasks'
+               % (self.user.username, rnd.name, len(tasks)))
+        self.log_action('open_round', round=rnd, message=msg)
+            
         rnd.status = ACTIVE_STATUS
 
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
@@ -1192,6 +1191,8 @@ class CoordinatorDAO(UserDAO):
         return entries
 
     def add_entries(self, rnd, entries):
+        # TODO: you shouldn't be able to use this method to add
+        # entries to anything other than the first round in a campaign
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
         new_entry_count = 0
@@ -2156,10 +2157,13 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
         rand_func = func.random()
 
     # this does the shuffling in the database
-    shuffled_entries = rdb_session.query(RoundEntry)\
-                                  .filter(RoundEntry.round_id == rnd.id,
-                                          RoundEntry.dq_user_id == None)\
-                                  .order_by(rand_func).all()
+    shuffled_entries = (rdb_session.query(RoundEntry)
+                                   .filter(RoundEntry.round_id == rnd.id,
+                                           RoundEntry.dq_user_id == None,
+                                           RoundEntry.vote == None)
+                                   .order_by(rand_func).all())
+    if not shuffled_entries:
+        return []
 
     for juror in jurors:
         for entry in shuffled_entries:
@@ -2193,10 +2197,16 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
         rand_func = func.random()
 
     # this does the shuffling in the database
-    shuffled_entries = rdb_session.query(RoundEntry)\
-                                  .filter(RoundEntry.round_id == rnd.id,
-                                          RoundEntry.dq_user_id == None)\
-                                  .order_by(rand_func).all()
+    shuffled_entries = (rdb_session.query(RoundEntry)
+                                   .filter(RoundEntry.round_id == rnd.id,
+                                           RoundEntry.dq_user_id == None,
+                                           RoundEntry.vote == None)
+                                   .order_by(rand_func).all())
+    if not shuffled_entries:
+        return []
+    # Note: It's only creating tasks for entries with no tasks. A
+    # better approach would be to check if each entry meets the
+    # quorum, and create tasks accordingly
 
     to_process = itertools.chain.from_iterable([shuffled_entries] * tasks_per_entry)
     # some pictures may get more than quorum votes

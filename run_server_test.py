@@ -159,7 +159,7 @@ def full_run(url_base, remote):
     # - as coordinator
     rnd_data = {'name': 'Test yes/no round',
                 'vote_method': 'yesno',
-                'quorum': 1,
+                'quorum': 3,
                 'deadline_date': "2016-10-15T00:00:00",
                 'jurors': [u'Slaporte',
                            u'MahmoudHashemi',
@@ -208,7 +208,7 @@ def full_run(url_base, remote):
 
     # Import entries to a round from a gistcsv
     # - as coordinator
-    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+    gist_url = 'https://gist.githubusercontent.com/slaporte/2074004d1fb76893b23f91fc2d4951a1/raw/26d49a976b6f5c13ecc0bee28747f9c1dce4a5ef/gistfile1.txt'
     data = {'import_method': 'gistcsv',
             'gist_url': gist_url}
     resp = fetch_json(url_base + '/admin/round/%s/import' % round_id,
@@ -241,6 +241,15 @@ def full_run(url_base, remote):
     data = {'post': True}
     resp = fetch_json(url_base + '/admin/round/%s/pause' % round_id,
                       data, su_to='LilyOfTheWest')
+
+    # Import entries to a round from a gistcsv
+    # - as coordinator
+    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+    data = {'import_method': 'gistcsv',
+            'gist_url': gist_url}
+    resp = fetch_json(url_base + '/admin/round/%s/import' % round_id,
+                      data, su_to='LilyOfTheWest')
+
 
     # Preview disqualifications
     resp = fetch_json(url_base + '/admin/round/%s/preview_disqualification' % round_id,
