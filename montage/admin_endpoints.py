@@ -163,21 +163,27 @@ def import_entries(user_dao, round_id, request_dict):
 
     Response model name: EntryImportDetails
     """
+    GISTCSV_METHOD = 'gistcsv'
+    CATEGORY_METHOD = 'category'
+    ROUND_METHOD = 'round'
+    SELECTED_METHOD = 'selected'
+
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     import_method = request_dict.get('import_method')
 
-    if import_method == 'gistcsv':
+    if import_method == GISTCSV_METHOD:
         gist_url = request_dict.get('gist_url')
         entries = coord_dao.add_entries_from_csv_gist(round_id, gist_url)
-        source = 'gistcsv(%s)' % gist_url
-    elif import_method == 'category':
+    elif import_method == CATEGORY_METHOD:
         cat_name = request_dict.get('category')
         if not cat_name:
             raise InvalidAction('needs category name for import')
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
-        source = 'category(%s)' % cat_name
+    elif import_method == ROUND_METHOD:
+        pass
+    elif import_method == SELECTED_METHOD:
+        pass
     else:
-        # TODO: What other import methods should be supported?
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(round_id, entries, source=source)

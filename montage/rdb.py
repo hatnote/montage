@@ -503,6 +503,22 @@ class RoundEntry(Base):
 round_entries_t = RoundEntry.__table__
 
 
+class RoundSource(Base):
+    __tablename__ = 'round_sources'
+
+    id = Column(Integer, primary_key=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'))
+    
+    type = Column(String(255))
+    value = Column(Text)
+    criteria = Column(JSONEncodedDict)
+
+    date = Column(TIMESTAMP, server_default=func.now()) 
+    user = relationship('User')
+
+    flags = Column(JSONEncodedDict)
+
+
 class Vote(Base):
     __tablename__ = 'votes'
 
