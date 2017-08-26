@@ -31,7 +31,7 @@ def fetchall_from_commonswiki(query, params):
 def get_files(category_name):
     query = '''
     SELECT *
-    FROM image
+    FROM commonswiki_p.image
     JOIN page
     ON page_namespace = 6
     AND page_title = img_name
@@ -50,13 +50,13 @@ def get_files(category_name):
 def get_file_info(filename):
     query = '''
     SELECT *
-    FROM image
+    FROM commonswiki_p.image
     WHERE img_name = ?;
     '''
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
 
-    return results
+    return results[0]
 
 
 if __name__ == '__main__':
