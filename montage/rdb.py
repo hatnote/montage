@@ -787,7 +787,7 @@ class UserDAO(object):
                         .filter(
                             Campaign.coords.any(username=self.user.username))\
                         .all()
-        if len(campaigns) == 0:
+        if not campaigns and not self.user.is_organizer:
             raise Forbidden('not a coordinator on any campaigns')
         return campaigns
 
