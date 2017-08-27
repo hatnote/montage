@@ -509,12 +509,12 @@ class RoundSource(Base):
     id = Column(Integer, primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
-    
+
     method = Column(String(255))
     params = Column(JSONEncodedDict)
     dq_params = Column(JSONEncodedDict)
 
-    create_date = Column(TIMESTAMP, server_default=func.now()) 
+    create_date = Column(TIMESTAMP, server_default=func.now())
     user = relationship('User')
 
     flags = Column(JSONEncodedDict)
@@ -522,14 +522,14 @@ class RoundSource(Base):
 
 class Flag(Base):
     __tablename__ = 'flags'
-    
+
     id = Column(Integer, primary_key=True)
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
 
     reason = Column(Text)
 
-    create_date = Column(TIMESTAMP, server_default=func.now()) 
+    create_date = Column(TIMESTAMP, server_default=func.now())
     user = relationship('User')
 
     flags = Column(JSONEncodedDict)
@@ -541,19 +541,19 @@ class Favorite(Base):
     id = Column(Integer, primary_key=True)
     entry_id = Column(Integer, ForeignKey('entries.id'))
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))    
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
 
-    status = Column(String)  # active, cancelled
+    status = Column(String(255))  # active, cancelled
 
     user = relationship('User')
     campaign = relationship('Campaign')
 
-    create_date = Column(TIMESTAMP, server_default=func.now()) 
+    create_date = Column(TIMESTAMP, server_default=func.now())
     modified_date = Column(DateTime)
 
     flags = Column(JSONEncodedDict)
-    
+
 
 class Vote(Base):
     __tablename__ = 'votes'
@@ -563,7 +563,7 @@ class Vote(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
 
     value = Column(Float)
-    status = Column(String)  # active, cancelled, complete
+    status = Column(String(255))  # active, cancelled, complete
 
     user = relationship('User', back_populates='ratings')
     round_entry = relationship('RoundEntry', back_populates='vote')
@@ -664,10 +664,10 @@ class RoundResultsSummary(Base):
     campaign = relationship('Campaign')
 
     summary = Column(JSONEncodedDict)
-    status = Column(String)  # private, public
-    language = Column(String)
+    status = Column(String(255))  # private, public
+    language = Column(String(255))
 
-    version = Column(String)
+    version = Column(String(255))
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     modified_date = Column(DateTime)
@@ -880,7 +880,7 @@ class CoordinatorDAO(UserDAO):
         rnd = user_dao.get_round(round_id)
         campaign = rnd.campaign
         return cls(user_dao, campaign)
-        
+
     # Read methods
 
     def get_campaign_rounds(self, campaign, with_cancelled=False):
@@ -938,8 +938,8 @@ class CoordinatorDAO(UserDAO):
         ret = self.query(Campaign)\
                   .filter_by(id=self.campaign.id)\
                   .update(campaign_dict)
-        msg = ('%s edited these columns in campaign "%s" (#%s): %r' 
-               % (self.user.username, self.campaign.name, self.campaign.id, 
+        msg = ('%s edited these columns in campaign "%s" (#%s): %r'
+               % (self.user.username, self.campaign.name, self.campaign.id,
                   campaign_dict.keys()))
         self.log_action('edit_campaign', campaign=self.campaign, message=msg)
         return ret
@@ -1008,7 +1008,7 @@ class CoordinatorDAO(UserDAO):
         new_juror_names = round_dict.get('new_jurors')
         cur_jurors = self.get_active_jurors(round_id)
         cur_juror_names = [u.username for u in cur_jurors]
-        if new_juror_names and set(new_juror_names) != set(cur_juror_names):            
+        if new_juror_names and set(new_juror_names) != set(cur_juror_names):
             if rnd.status != PAUSED_STATUS:
                 raise InvalidAction('round must be paused to edit jurors')
             else:
@@ -1021,7 +1021,7 @@ class CoordinatorDAO(UserDAO):
             else:
                 new_juror_stats = self.modify_quorum(round_id, new_quorum)
                 new_val_map['quorum'] = new_quorum
-        msg = ('%s edited these columns in round "%s" (#%s): %r' 
+        msg = ('%s edited these columns in round "%s" (#%s): %r'
                % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
         self.log_action('edit_round', round=rnd, message=msg)
         return new_val_map
@@ -1213,7 +1213,7 @@ class CoordinatorDAO(UserDAO):
         msg = ('%s opened round %s with %s tasks'
                % (self.user.username, rnd.name, len(tasks)))
         self.log_action('open_round', round=rnd, message=msg)
-            
+
         rnd.status = ACTIVE_STATUS
 
         msg = '%s activated round "%s"' % (self.user.username, rnd.name)
@@ -1254,7 +1254,7 @@ class CoordinatorDAO(UserDAO):
                                    user=self.user)
         self.rdb_session.add(round_source)
         return round_source
-    
+
 
     def add_entries(self, rnd, entries):
         # TODO: you shouldn't be able to use this method to add
@@ -1794,7 +1794,7 @@ class OrganizerDAO(object):
         cancel_date = datetime.datetime.utcnow()
         campaign = self.user_dao.get_campaign(campaign_id)
         rounds = (self.query(Round)
-                      .filter(Round.campaign_id == campaign_id)                  
+                      .filter(Round.campaign_id == campaign_id)
                       .all())
         campaign.status = CANCELLED_STATUS
         for round in rounds:
@@ -1814,7 +1814,7 @@ class MaintainerDAO(object):
         self.rdb_session = user_dao.rdb_session
         self.get_or_create_user = user_dao.get_or_create_user
         self.log_action = user_dao.log_action
-        
+
     def get_audit_log(self, limit=100, offset=0):
         audit_logs = self.query(AuditLogEntry)\
                          .order_by(AuditLogEntry.create_date.desc())\
