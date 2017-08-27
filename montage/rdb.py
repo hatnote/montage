@@ -1304,17 +1304,14 @@ class CoordinatorDAO(UserDAO):
         rnd = self.user_dao.get_round(round_id)
         if rnd.status != PAUSED_STATUS:
             raise InvalidAction('round must be paused to add new entries')
-        existing_names = set(self.rdb_session.query(Entry.name).
-                             join(RoundEntry).
-                             filter_by(round=rnd).
-                             all())
-        try:
-            new_entries = [e for e
-                           in unique_iter(entries, key=lambda e: e.name)
-                           if e.name not in existing_names]
-        except Exception as e:
-            import pdb;pdb.set_trace()
-
+        existing_names = (self.rdb_session.query(Entry.name).
+                          join(RoundEntry).
+                          filter_by(round=rnd).
+                          all())
+        existing_names = set([n[0] for n in existing_names])
+        new_entries = [e for e
+                       in unique_iter(entries, key=lambda e: e.name)
+                       if e.name not in existing_names]
         rnd.entries.extend(new_entries)
         self.add_round_source(round_id, source, params)
         msg = ('%s added %s round entries, %s new'
