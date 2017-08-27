@@ -508,16 +508,52 @@ class RoundSource(Base):
 
     id = Column(Integer, primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
     
-    type = Column(String(255))
-    value = Column(Text)
-    criteria = Column(JSONEncodedDict)
+    method = Column(String(255))
+    params = Column(JSONEncodedDict)
+    dq_params = Column(JSONEncodedDict)
 
-    date = Column(TIMESTAMP, server_default=func.now()) 
+    create_date = Column(TIMESTAMP, server_default=func.now()) 
     user = relationship('User')
 
     flags = Column(JSONEncodedDict)
 
+
+class Flag(Base):
+    __tablename__ = 'flags'
+    
+    id = Column(Integer, primary_key=True)
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    reason = Column(Text)
+
+    create_date = Column(TIMESTAMP, server_default=func.now()) 
+    user = relationship('User')
+
+    flags = Column(JSONEncodedDict)
+
+
+class Favorite(Base):
+    __tablename__ = 'favorites'
+
+    id = Column(Integer, primary_key=True)
+    entry_id = Column(Integer, ForeignKey('entries.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'))    
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    status = Column(String)  # active, cancelled
+
+    user = relationship('User')
+    campaign = relationship('Campaign')
+
+    create_date = Column(TIMESTAMP, server_default=func.now()) 
+    modified_date = Column(DateTime)
+
+    flags = Column(JSONEncodedDict)
+    
 
 class Vote(Base):
     __tablename__ = 'votes'
@@ -628,8 +664,13 @@ class RoundResultsSummary(Base):
     campaign = relationship('Campaign')
 
     summary = Column(JSONEncodedDict)
+    status = Column(String)  # private, public
+    language = Column(String)
+
+    version = Column(String)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
+    modified_date = Column(DateTime)
 
 '''
 class CampaignResults(Base):
@@ -1183,7 +1224,7 @@ class CoordinatorDAO(UserDAO):
     def add_entries_from_cat(self, round_id, cat_name):
         rnd = self.user_dao.get_round(round_id)
         entries = load_category(cat_name)
-
+        params = {'category': cat_name}
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from category (%s), %s new entries added'
@@ -1197,7 +1238,6 @@ class CoordinatorDAO(UserDAO):
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
         entries = get_entries_from_gist_csv(gist_url)
-
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
@@ -1205,6 +1245,16 @@ class CoordinatorDAO(UserDAO):
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries
+
+    def add_round_source(self, round_id, import_method, params, dq_params=None):
+        round_source = RoundSource(round_id=round_id,
+                                   method=import_method,
+                                   params=params,
+                                   dq_params=dq_params,
+                                   user=self.user)
+        self.rdb_session.add(round_source)
+        return round_source
+    
 
     def add_entries(self, rnd, entries):
         # TODO: you shouldn't be able to use this method to add
@@ -1229,7 +1279,7 @@ class CoordinatorDAO(UserDAO):
 
         return ret, new_entry_count
 
-    def add_round_entries(self, round_id, entries, source=''):
+    def add_round_entries(self, round_id, entries, source, params):
         rnd = self.user_dao.get_round(round_id)
         if rnd.status != PAUSED_STATUS:
             raise InvalidAction('round must be paused to add new entries')
@@ -1245,13 +1295,12 @@ class CoordinatorDAO(UserDAO):
             import pdb;pdb.set_trace()
 
         rnd.entries.extend(new_entries)
-
+        self.add_round_source(round_id, source, params)
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if source:
             msg += ' (from %s)' % (source,)
         self.log_action('add_round_entries', message=msg, round=rnd)
-
         return new_entries
 
     def cancel_round(self, round_id):
@@ -1298,7 +1347,6 @@ class CoordinatorDAO(UserDAO):
 
         return results_by_name
 
-
     def finalize_rating_round(self, round_id, threshold):
         rnd = self.get_round(round_id)
         assert rnd.vote_method in ('rating', 'yesno')
@@ -1314,7 +1362,6 @@ class CoordinatorDAO(UserDAO):
                ' with %s entries advancing'
                % (self.user.username, rnd.name, threshold, len(advance_group)))
         self.log_action('finalize_round', round=rnd, message=msg)
-
         return advance_group
 
     def finalize_ranking_round(self, round_id):
