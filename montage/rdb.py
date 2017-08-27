@@ -528,11 +528,22 @@ class Flag(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
 
     reason = Column(Text)
+    
+    round_entry = relationship('RoundEntry')
 
     create_date = Column(TIMESTAMP, server_default=func.now()) 
     user = relationship('User')
 
     flags = Column(JSONEncodedDict)
+
+    def to_details_dict(self):
+        ret = {'round': self.round_entry.round.id,
+               'entry_id': self.round_entry.entry.id,
+               'entry_name': self.round_entry.entry.name,
+               'user': self.user.username,
+               'reason': self.reason,
+               'date': format_date(self.create_date)}
+        return ret
 
 
 class Favorite(Base):
@@ -548,12 +559,14 @@ class Favorite(Base):
 
     user = relationship('User')
     campaign = relationship('Campaign')
+    round_entry = relationship('RoundEntry')
+    entry = relationship('Entry')
 
     create_date = Column(TIMESTAMP, server_default=func.now()) 
     modified_date = Column(DateTime)
 
     flags = Column(JSONEncodedDict)
-    
+
 
 class Vote(Base):
     __tablename__ = 'votes'
@@ -932,6 +945,14 @@ class CoordinatorDAO(UserDAO):
             name = entry.name
             ret[name] = entry
         return ret
+
+    def get_flags(self, round_id, limit=10, offset=0):
+        flags = (self.query(Flag)
+                 .filter(Flag.round_entry.has(round_id=round_id))
+                 .limit(10)
+                 .offset(0)
+                 .all())
+        return flags
 
     # write methods
     def edit_campaign(self, campaign_dict):
@@ -1919,6 +1940,18 @@ class JurorDAO(object):
             raise DoesNotExist('round %s does not exist' % round_id)
         return rnd
 
+    def get_round_entry(self, round_id, entry_id):
+        # Note, this doesn't check permissions. Are you really a juror
+        # on this round?
+        round_entry = (self.query(RoundEntry)
+                       .filter_by(round_id=round_id,
+                                  entry_id=entry_id)
+                       .one_or_none())
+        
+        if not round_entry:
+            raise DoesNotExist('round entry %s does not exist' % round_entry_id)
+        return round_entry
+
     def confirm_active(self, round_id):
         rnd = self.get_round(round_id)
         return rnd.confirm_active()
@@ -1992,6 +2025,17 @@ class JurorDAO(object):
                     .offset(offset)\
                     .all()
         return tasks
+
+    def get_favtes(self, limit=10, offset=0):
+        faves = (self.query(Favorite)
+                 .filter_by(user=self.user,
+                            status=ACTIVE_STATUS)
+                 .order_by(Favorite.create_date.desc())
+                 .limit(limit)
+                 .offset(0)
+                 .all())
+        ret = [(f.create_date, f.entry) for f in faves]
+        return ret
 
     def get_ratings_from_round(self, round_id, num, offset=0):
         # all the filter fields but cancel_date are actually on Vote
@@ -2187,6 +2231,30 @@ class JurorDAO(object):
             vote.status = COMPLETED_STATUS
             self.rdb_session.add(vote)
         return
+
+    def fave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        fav = Favorite(entry_id=round_entry.entry.id,
+                       round_entry_id = round_entry.id,
+                       campaign_id=round_entry.round.campaign.id,
+                       user=self.user,
+                       status=ACTIVE_STATUS)
+        self.rdb_session.add(fav)
+
+    def unfave(self, round_id, entry_id):
+        fav = (self.query(Favorite)
+               .filter_by(entry_id=entry_id)
+               .filter(Favorite.round_entry.has(round_id=round_id))
+               .one())
+        fav.status = CANCELLED_STATUS
+        fav.modified_date = datetime.datetime.utcnow()
+
+    def flag(self, round_id, entry_id, reason=None):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        flag = Flag(round_entry_id = round_entry.id,
+                    user=self.user,
+                    reason=reason)
+        self.rdb_session.add(flag)
 
 
 def lookup_user(rdb_session, username):

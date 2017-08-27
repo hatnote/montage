@@ -394,6 +394,30 @@ def full_run(url_base, remote):
     resp = fetch_json(url_base + '/juror/round/%s/tasks/submit' % round_id,
                       data, su_to='Jimbo Wales')
 
+    # Submit a favorite
+    # - as juror
+    entry_id = tasks[-1]['entry']['id']
+    data = {'post': True}
+    resp = fetch_json(url_base + '/juror/round/%s/%s/fave' % 
+                      (round_id, entry_id), data, su_to='Jimbo Wales')
+
+    # Get a list of faves
+    resp = fetch_json(url_base + '/juror/faves', su_to='Jimbo Wales')
+
+    # Oh no! That's not a favorite. Cancel that fave.
+    data = {'post': True}
+    resp = fetch_json(url_base + '/juror/round/%s/%s/unfave' % 
+                      (round_id, entry_id), data, su_to='Jimbo Wales')
+
+
+    # Flag the entry
+    data = {'post': True,
+            'reason': 'I really do not like this photo, I am sorry.'}
+    resp = fetch_json(url_base + '/juror/round/%s/%s/flag' % (round_id, entry_id),
+                      data, su_to='Jimbo Wales')
+
+    
+
     # Attempt to submit or get tasks while the round is paused
 
     # Pause the round
@@ -644,6 +668,10 @@ def submit_ratings(url_base, round_id, coord_user='Yarl'):
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                     if value == 1.0:
                         review = '%s loves this' % j_username
+                        data = {'post': True}
+                        resp = fetch_json(url_base + '/juror/round/%s/%s/fave' % 
+                                          (round_id, t_dict['entry']['id']), 
+                                          data, su_to=j_username)
                 elif r_dict['vote_method'] == 'ranking':
                     value = (i + len(j_username)) % len(t_dicts)
                     if value == 0:

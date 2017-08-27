@@ -50,6 +50,7 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
+           GET('/admin/round/<round_id:int>/flags', get_flags),
            GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
@@ -614,6 +615,15 @@ def preview_disqualification(user_dao, round_id):
                           for re in by_filetype]
 
     return {'data': ret}
+
+
+def get_flags(user_dao, round_id, request_dict):
+    limit = request_dict.get('limit', 10)
+    offset = request_dict.get('offset', 0)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    flags = coord_dao.get_flags(round_id, limit, offset)
+    data = [f.to_details_dict() for f in flags]
+    return {'data': data}
 
 
 def get_disqualified(user_dao, round_id):

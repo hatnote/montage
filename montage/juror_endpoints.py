@@ -32,7 +32,12 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
            GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
-           GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round)]
+           GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round),
+           POST('/juror/round/<round_id:int>/<entry_id:int>/fave', submit_fave),
+           POST('/juror/round/<round_id:int>/<entry_id:int>/unfave',
+                remove_fave),
+           POST('/juror/round/<round_id:int>/<entry_id:int>/flag', submit_flag),
+           GET('/juror/faves', get_faves)]
     return ret
 
 
@@ -262,6 +267,14 @@ def get_rankings_from_round(user_dao, round_id):
     return {'data': data}
 
 
+def get_faves(user_dao, request_dict):
+    juror_dao = JurorDAO(user_dao)
+    limit = request_dict.get('limit', 10)
+    offset = request_dict.get('offset', 0)
+    faves = juror_dao.get_favtes(limit, offset)
+    return {'data': faves}
+
+
 def submit_rating(user_dao, request_dict):
     # TODO: Check permissions
     juror_dao = JurorDAO(user_dao)
@@ -389,6 +402,23 @@ def submit_ratings(user_dao, request_dict):
         juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
+
+
+def submit_fave(user_dao, round_id, entry_id):
+    juror_dao = JurorDAO(user_dao)
+    juror_dao.fave(round_id, entry_id)
+
+
+def remove_fave(user_dao, round_id, entry_id):
+    juror_dao = JurorDAO(user_dao)
+    juror_dao.unfave(round_id, entry_id)
+
+
+def submit_flag(user_dao, round_id, entry_id, request_dict):
+    juror_dao = JurorDAO(user_dao)
+    reason = request_dict.get('reason')
+    juror_dao.flag(round_id, entry_id, reason)
+
 
 
 JUROR_ROUTES = get_juror_routes()
