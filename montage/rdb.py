@@ -140,6 +140,11 @@ class User(Base):
     def is_maintainer(self):
         return self.username in MAINTAINERS
 
+    def to_dict(self):
+        ret = super(User, self).to_dict()
+        ret['is_organizer'] = ret.get('is_organizer') or self.is_maintainer
+        return ret
+
     def to_info_dict(self):
         ret = {'id': self.id,
                'username': self.username,
@@ -528,7 +533,7 @@ class Flag(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
 
     reason = Column(Text)
-    
+
     round_entry = relationship('RoundEntry')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1944,7 +1949,7 @@ class JurorDAO(object):
                        .filter_by(round_id=round_id,
                                   entry_id=entry_id)
                        .one_or_none())
-        
+
         if not round_entry:
             raise DoesNotExist('round entry %s does not exist' % round_entry_id)
         return round_entry
