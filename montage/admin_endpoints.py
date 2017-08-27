@@ -15,6 +15,11 @@ from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
+GISTCSV_METHOD = 'gistcsv'
+CATEGORY_METHOD = 'category'
+ROUND_METHOD = 'round'
+SELECTED_METHOD = 'selected'
+
 
 def get_admin_routes():
     """
@@ -163,33 +168,35 @@ def import_entries(user_dao, round_id, request_dict):
 
     Response model name: EntryImportDetails
     """
-    GISTCSV_METHOD = 'gistcsv'
-    CATEGORY_METHOD = 'category'
-    ROUND_METHOD = 'round'
-    SELECTED_METHOD = 'selected'
-
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    import_method = request_dict.get('import_method')
+    import_method = request_dict['import_method']
 
     if import_method == GISTCSV_METHOD:
-        gist_url = request_dict.get('gist_url')
+        gist_url = request_dict['gist_url']
         entries = coord_dao.add_entries_from_csv_gist(round_id, gist_url)
+        params = {'gist_url': gist_url}
     elif import_method == CATEGORY_METHOD:
-        cat_name = request_dict.get('category')
-        if not cat_name:
-            raise InvalidAction('needs category name for import')
+        cat_name = request_dict['category']
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
+        params = {'category': category}
     elif import_method == ROUND_METHOD:
-        pass
+        threshold = request_dict['threshold']
+        prev_round_id = request_dict['previous_round_id']
+        entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
+        params = {'threshold': threshold,
+                  'round_id': prev_round_id}
     elif import_method == SELECTED_METHOD:
         pass
     else:
         raise NotImplementedError()
-
-    new_entries = coord_dao.add_round_entries(round_id, entries, source=source)
+    
+    new_entries = coord_dao.add_round_entries(round_id, entries,
+                                              source=import_method, params=params)
     rnd = coord_dao.get_round(round_id) # TODO: The stats below should
                                         # returned by
                                         # add_round_entries
+
+
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
@@ -389,7 +396,10 @@ def advance_round(user_dao, round_id, request_dict):
 
     next_rnd = coord_dao.create_round(**nrp)
     source = 'round(#%s)' % round_id
-    coord_dao.add_round_entries(next_rnd.id, adv_group, source=source)
+    params = {'round': round_id,
+              'threshold': threshold}
+    coord_dao.add_round_entries(next_rnd.id, adv_group,
+                                source=ROUND_METHOD, params=params)
 
     # NOTE: disqualifications are not repeated, as they should have
     # been performed the first round.
