@@ -179,7 +179,7 @@ def import_entries(user_dao, round_id, request_dict):
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
-        params = {'category': category}
+        params = {'category': cat_name}
     elif import_method == ROUND_METHOD:
         threshold = request_dict['threshold']
         prev_round_id = request_dict['previous_round_id']
@@ -190,9 +190,10 @@ def import_entries(user_dao, round_id, request_dict):
         pass
     else:
         raise NotImplementedError()
-    
+
     new_entries = coord_dao.add_round_entries(round_id, entries,
-                                              source=import_method, params=params)
+                                              source=import_method,
+                                              params=params)
     rnd = coord_dao.get_round(round_id) # TODO: The stats below should
                                         # returned by
                                         # add_round_entries
@@ -500,7 +501,7 @@ def get_round(user_dao, round_id):
         round_id
 
     Response model name: AdminRoundDetails
-    
+
     Errors:
        403: User does not have permission to access requested round
        404: Round not found
@@ -516,14 +517,14 @@ def get_round(user_dao, round_id):
 
 def get_results(user_dao, round_id, request_dict):
     # TODO: Docs
-    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)    
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     results_by_name = coord_dao.make_vote_table(user_dao, round_id)
     return {'data': results_by_name}
 
 
 def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    
+
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
 
