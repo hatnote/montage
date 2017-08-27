@@ -2,6 +2,7 @@
 import datetime
 
 from clastic import redirect
+from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
 
 from mw import public
@@ -55,7 +56,7 @@ def logout(request, cookie, root_path):
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session):
+def complete_login(request, consumer_token, cookie, rdb_session, root_path):
     # TODO: Remove or standardize the DEBUG option
     if DEBUG:
         identity = {'sub': 6024474,
@@ -63,8 +64,18 @@ def complete_login(request, consumer_token, cookie, rdb_session):
     else:
         handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
-        req_token = RequestToken(cookie['request_token_key'],
-                                 cookie['request_token_secret'])
+        try:
+            rt_key = cookie['request_token_key']
+            rt_secret = cookie['request_token_secret']
+        except KeyError:
+            # in some rare cases, stale cookies are left behind
+            # and users have to click login again
+            # TODO: clear cookie and redirect home instead
+            # redirect(root_path)
+            return BadRequest('Invalid cookie. Try clearing your cookies'
+                              ' and logging in again.')
+
+        req_token = RequestToken(rt_key, rt_secret)
 
         access_token = handshaker.complete(req_token,
                                            request.query_string)
