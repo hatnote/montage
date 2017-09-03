@@ -54,7 +54,8 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
-           GET('/admin/round/<round_id:int>/flags', get_flags),
+           GET('/admin/round/<round_id:int>/flags', get_flagged_entries),
+           GET('/admin/round/<round_id:int>/all_flags', get_all_flags),
            GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
@@ -177,6 +178,8 @@ def create_campaign(user_dao, request_dict):
 
     if close_date:
         close_date = js_isoparse(close_date)
+    
+    url = request_dict['url']
 
     series_id = request_dict.get('series_id', 0)
 
@@ -191,6 +194,7 @@ def create_campaign(user_dao, request_dict):
                                        open_date=open_date,
                                        close_date=close_date,
                                        series_id=series_id,
+                                       url=url,
                                        coords=set(coords))
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
@@ -669,7 +673,23 @@ def preview_disqualification(user_dao, round_id):
     return {'data': ret}
 
 
-def get_flags(user_dao, round_id, request_dict):
+def get_flagged_entries(user_dao, round_id):
+    # TODO: include a limit?
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    flagged_entries = coord_dao.get_grouped_flags(round_id)
+    ret = []
+    for fe in flagged_entries:
+        entry = fe.entry.to_details_dict()
+        entry['flaggings'] = [f.to_details_dict()
+                              for f
+                              in fe.flaggings]
+        ret.append(entry)
+    return {'data': ret}
+
+
+def get_all_flags(user_dao, round_id, request_dict):
+    if not request_dict:
+        request_dict = {}
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)

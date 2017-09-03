@@ -75,6 +75,12 @@ FINALIZED_STATUS = 'finalized'
 COMPLETED_STATUS = 'completed'
 PUBLISHED_STATUS = 'published'
 PRIVATE_STATUS = 'private'
+
+VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
+                FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
+                PRIVATE_STATUS]
+
+
 """
 Column ordering and groupings:
 * ID
@@ -193,7 +199,7 @@ class Campaign(Base):
     # actually uploaded during the contest window
     open_date = Column(DateTime)
     close_date = Column(DateTime)
-    #url = Column(String(255))
+    url = Column(Text)
     status = Column(String(255))  # active, cancelled, finalized
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -516,6 +522,7 @@ class RoundEntry(Base):
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
     vote = relationship('Vote', back_populates='round_entry')
+    flaggings = relationship('Flag')
 
     def __init__(self, entry=None, round=None):
         if entry is not None:
@@ -560,7 +567,7 @@ class Flag(Base):
 
     reason = Column(Text)
 
-    round_entry = relationship('RoundEntry')
+    round_entry = relationship('RoundEntry', back_populates='flaggings')
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     user = relationship('User')
@@ -996,6 +1003,15 @@ class CoordinatorDAO(UserDAO):
                  .offset(0)
                  .all())
         return flags
+
+    def get_grouped_flags(self, round_id):
+        flagged_entries = (self.query(RoundEntry)
+                           .filter_by(round_id=round_id)
+                           .join(RoundEntry.flaggings)
+                           .group_by(RoundEntry)
+                           .order_by(func.count(RoundEntry.flaggings).desc())
+                           .all())
+        return flagged_entries
 
     # write methods
     def edit_campaign(self, campaign_dict):
@@ -1821,9 +1837,14 @@ class OrganizerDAO(object):
         self.get_or_create_user = user_dao.get_or_create_user
         self.log_action = user_dao.log_action
 
+    def _get_campaigns_named(self, name):
+        campaigns = (self.query(Campaign)
+                     .filter_by(name=name)
+                     .all())
+        return campaigns
+
     def create_series(self, name, description, url, status=None):
-        # TODO: Check if status is valid
-        if not status:
+        if not status or status not in VALID_STATUS:
             status = ACTIVE_STATUS
         new_series = Series(name=name,
                             description=description,
@@ -1877,8 +1898,10 @@ class OrganizerDAO(object):
                         role='organizer')
         return removed
 
-    def create_campaign(self, name, open_date, close_date, series_id, coords=None):
-        # TODO: Check if campaign with this name already exists?
+    def create_campaign(self, name, url, open_date, close_date, series_id, coords=None):
+        other_campaigns = self._get_campaigns_named(name)
+        if other_campaigns:
+            raise InvalidAction('A campaign named %s already exists' % name)
         if not coords:
             coords = [self.user]
 
@@ -1887,6 +1910,7 @@ class OrganizerDAO(object):
                             close_date=close_date,
                             status=ACTIVE_STATUS,
                             series_id=series_id,
+                            url=url,
                             coords=coords)
         self.rdb_session.add(campaign)
         self.rdb_session.flush()  # to get a campaign id
