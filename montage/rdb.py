@@ -1037,13 +1037,12 @@ class CoordinatorDAO(UserDAO):
                     config=full_config)
 
         self.rdb_session.add(rnd)
-
+        self.rdb_session.flush()
         j_names = [j.username for j in jurors]
         msg = ('%s created %s round "%s" (#%s) with jurors %r for'
                ' campaign "%s"' % (self.user.username, vote_method,
                                    rnd.name, rnd.id, j_names, self.campaign.name))
         self.log_action('create_round', round=rnd, message=msg)
-        self.rdb_session.commit()
         return rnd
 
     def edit_round(self, round_id, round_dict):
@@ -1347,10 +1346,10 @@ class CoordinatorDAO(UserDAO):
         rnd = self.user_dao.get_round(round_id)
         if rnd.status != PAUSED_STATUS:
             raise InvalidAction('round must be paused to add new entries')
-        existing_names = (self.rdb_session.query(Entry.name).
-                          join(RoundEntry).
-                          filter_by(round=rnd).
-                          all())
+        existing_names = (self.rdb_session.query(Entry.name)
+                          .join(RoundEntry)
+                          .filter_by(round=rnd)
+                          .all())
         existing_names = set([n[0] for n in existing_names])
         new_entries = [e for e
                        in unique_iter(entries, key=lambda e: e.name)
