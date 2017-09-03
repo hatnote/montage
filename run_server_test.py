@@ -639,6 +639,22 @@ def full_run(url_base, remote):
 
     resp = fetch_json(url_base + '/juror/round/%s/rankings' % rnd_3_id,
                       su_to='Jimbo Wales')
+
+    # Publish the campaign results for the public
+    resp = fetch_json(url_base + '/admin/campaign/%s/publish' % campaign_id,
+                          {'post': True}, su_to='LilyOfTheWest')
+
+    # Unpublish the campaign results
+    resp = fetch_json(url_base + '/admin/campaign/%s/unpublish' % campaign_id,
+                          {'post': True}, su_to='LilyOfTheWest')
+
+    import pdb;pdb.set_trace()
+
+    # Publish them again
+    resp = fetch_json(url_base + '/admin/campaign/%s/publish' % campaign_id,
+                          {'post': True}, su_to='LilyOfTheWest')
+
+
     pprint(resp['data'])
 
     print cookies

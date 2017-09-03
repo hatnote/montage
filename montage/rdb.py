@@ -47,7 +47,6 @@ from simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
-
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
@@ -74,7 +73,8 @@ PAUSED_STATUS = 'paused'
 CANCELLED_STATUS = 'cancelled'
 FINALIZED_STATUS = 'finalized'
 COMPLETED_STATUS = 'completed'
-
+PUBLISHED_STATUS = 'published'
+PRIVATE_STATUS = 'private'
 """
 Column ordering and groupings:
 * ID
@@ -716,31 +716,13 @@ class RoundResultsSummary(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     modified_date = Column(DateTime)
 
-'''
-class CampaignResults(Base):
-    """
-    (Same as last round results?)
-
-    On the frontend I'd like to see:
-
-    * Ranked winners
-    * Total number of entries
-    * Total number of votes
-    * Summary of each round (with jurors)
-    * Organizers and coordinators
-    * Dates
-
-    """
-    __tablename__ = 'campaign_results'
-
-    id = Column(Integer, primary_key=True)
-
-    campaign_id = Column(Integer, ForeignKey('campaign.id'))
-
-    summary = Column(JSONEncodedDict)
-
-    create_date = Column(TIMESTAMP, server_default=func.now())
-'''
+    
+    def to_dict(self):
+        ret = {'campaign_id': self.campaign_id,
+               'campaign_name': self.campaign.name,
+               'date': format_date(self.modified_date),
+               'version': self.version}
+        return ret
 
 
 class AuditLogEntry(Base):
@@ -774,7 +756,41 @@ class AuditLogEntry(Base):
         return ret
 
 
-class UserDAO(object):
+class PublicDAO(object):
+    def __init__(self, rdb_session):
+        self.rdb_session = rdb_session
+
+    def query(self, *a, **kw):
+        "a call-through to the underlying session.query"
+        return self.rdb_session.query(*a, **kw)
+
+    def get_series(self, series_id):
+        series = (self.query(Series)
+                  .filter_by(id=series_id)
+                  .all())
+        return series
+
+    def get_all_series(self):
+        series = (self.query(Series)
+                  .filter_by(status=ACTIVE_STATUS)
+                  .all())
+        return series
+
+    def get_report(self, campaign_id):
+        summary = (self.query(RoundResultsSummary)
+                   .filter_by(campaign_id=campaign_id,
+                              status=PUBLISHED_STATUS)
+                   .one_or_none())
+        return summary
+
+    def get_all_reports(self):
+        reports = (self.query(RoundResultsSummary)
+                   .filter_by(status=PUBLISHED_STATUS)
+                   .all())
+        return reports
+
+
+class UserDAO(PublicDAO):
     """The Data Acccess Object wraps the rdb_session and active user
     model, providing a layer for model manipulation through
     expressively-named methods.
@@ -793,22 +809,6 @@ class UserDAO(object):
         cn_role = self.__class__.__name__.replace('DAO', '').lower()
         # allow overriding with _role attribute
         return getattr(self, '_role', cn_role)
-
-    def query(self, *a, **kw):
-        "a call-through to the underlying session.query"
-        return self.rdb_session.query(*a, **kw)
-
-    def get_series(self, series_id):
-        series = (self.query(Series)
-                  .filter_by(id=series_id)
-                  .all())
-        return series
-
-    def get_all_series(self):
-        series = (self.query(Series)
-                  .filter_by(status=ACTIVE_STATUS)
-                  .all())
-        return series
 
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
@@ -1791,6 +1791,23 @@ class CoordinatorDAO(UserDAO):
         ret['render_date'] = datetime.datetime.utcnow()
         ret['render_duration'] = time.time() - start_time
 
+        return ret
+
+    def update_report(self, report_dict):
+        report_dict['modified_date'] = datetime.datetime.utcnow()
+        ret = (self.query(RoundResultsSummary)
+               .filter_by(campaign_id=self.campaign.id)
+               .update(report_dict))
+        return ret
+
+    def publish_report(self):
+        report = {'status': PUBLISHED_STATUS}
+        ret = self.update_report(report)
+        return ret
+
+    def unpublish_report(self):
+        report = {'status': PRIVATE_STATUS}
+        ret = self.update_report(report)
         return ret
 
 

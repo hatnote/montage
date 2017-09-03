@@ -41,8 +41,8 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
                 remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
-           #POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
-           #POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
+           POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
+           POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
                'report.html'),
            POST('/admin/round/<round_id:int>/import', import_entries),
@@ -98,12 +98,14 @@ def edit_series(user_dao, series_id, request_dict):
     return {'data': new_series}
 
 
-def publish_report():
-    pass
+def publish_report(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.publish_report()
 
 
-def unpublish_report():
-    pass
+def unpublish_report(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.unpublish_report()
 
 
 def js_isoparse(date_str):
