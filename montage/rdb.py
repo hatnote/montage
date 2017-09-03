@@ -1962,14 +1962,13 @@ def ensure_series(rdb_session):
     org_user = OrganizerDAO(user_dao)
     series = load_default_series()
     name = series['name']
-    cur_series = lookup_series(rdb_session,
-                               name=name)
+    cur_series = lookup_series(rdb_session, name=name)
     ret = None
     if not cur_series:
         ret = org_user.create_series(name=series['name'],
                                      description=series['description'],
                                      url=series['url'],
-                                     status=series['status'])
+                                     status=ACTIVE_STATUS)
     return ret
 
 

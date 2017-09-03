@@ -93,7 +93,7 @@ def edit_series(user_dao, series_id, request_dict):
     status = request_dict.get('status')
     if status:
         series_dict['status'] = status
-    
+
     new_series = org_dao.edit_series(series_id, series_dict)
     return {'data': new_series}
 
@@ -398,7 +398,9 @@ def get_round_results_preview(user_dao, round_id):
     elif rnd.vote_method == 'ranking':
         if not is_closeable:
             # TODO: should this sort of check apply to ratings as well?
+            import pdb;pdb.set_trace()
             raise InvalidAction('round must be closeable to preview results')
+
         rankings = coord_dao.get_round_ranking_list(round_id)
 
         data['rankings'] = [r.to_dict() for r in rankings]

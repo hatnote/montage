@@ -41,6 +41,11 @@ class InvalidAction(BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
 
 
+DEFAULT_SERIES = {'name': 'Unofficial',
+                  'description': 'For unofficial campaigns, whether for testing or just for fun!',
+                  'url': 'TODO add docs url'}  # TODO: status is always active
+
+
 def to_unicode(obj):
     try:
         return unicode(obj)
@@ -116,7 +121,7 @@ def load_env_config(env_name=None):
 def load_default_series():
     series_file_name = 'series.yaml'
     series_file_path = os.path.join(PROJ_PATH, series_file_name)
-    
+
     series = yaml.load(open(series_file_path))
 
     return series
@@ -154,7 +159,7 @@ def json_serial(obj):
         return serial
     elif isinstance(obj, set):
         return list(obj)
-    raise TypeError ("Type %s not serializable" % type(obj))
+    raise TypeError("type %s not serializable" % type(obj))
 
 
 def parse_date(date):
