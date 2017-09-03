@@ -6,9 +6,9 @@ from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
 
 from mw import public
-from rdb import User
+from rdb import User, PublicDAO
 
-from utils import load_env_config
+from utils import load_env_config, DoesNotExist
 
 config = load_env_config()
 DEBUG = config.get('debug', False)
@@ -22,7 +22,10 @@ def get_public_routes():
            ('/logout', logout),
            ('/complete_login', complete_login),
            ('/series/<series_id?int>', get_series),
-           ('/series', get_series)]
+           ('/series', get_series),
+           ('/campaign/<campaign_id:int>', get_report,
+            'report.html'),
+           ('/campaign', get_all_reports)]
     return ret
 
 
@@ -116,13 +119,33 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path):
         return_to_url = '/'
     return redirect(return_to_url)
 
+
 @public
-def get_series(user_dao, series_id=None):
+def get_series(rdb_session, series_id=None):
+    dao = PublicDAO(rdb_session)
     if series_id:
-        series = user_dao.get_series(series_id)
+        series = dao.get_series(series_id)
     else:
-        series = user_dao.get_all_series()
+        series = dao.get_all_series()
     return {'data': [s.to_details_dict() for s in series]}
 
+
+@public
+def get_report(rdb_session, campaign_id):
+    dao = PublicDAO(rdb_session)
+    report = dao.get_report(campaign_id)
+    if not report:
+        raise DoesNotExist('no report for this campaign')
+    ctx = report.summary
+    ctx['use_ashes'] = True
+    return ctx
+
+
+@public
+def get_all_reports(rdb_session):
+    dao = PublicDAO(rdb_session)
+    reports = dao.get_all_reports()
+    return {'data': [r.to_dict() for r in reports]}
+    
 
 PUBLIC_ROUTES = get_public_routes()
