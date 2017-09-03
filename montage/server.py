@@ -56,7 +56,7 @@ from mw import (UserMiddleware,
                 MessageMiddleware,
                 ReplayLogMiddleware,
                 DBSessionMiddleware)
-from rdb import Base, bootstrap_maintainers
+from rdb import Base, bootstrap_maintainers, ensure_series
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
 
@@ -107,6 +107,11 @@ def create_app(env_name='prod'):
     musers = bootstrap_maintainers(tmp_rdb_session)
     if musers:
         print '++ created new users for maintainers: %r' % (musers,)
+
+    new_series = ensure_series(tmp_rdb_session)
+    if new_series:
+        print '++ created new series: %r' % new_series
+
     tmp_rdb_session.commit()
 
     engine.echo = config.get('db_echo', False)

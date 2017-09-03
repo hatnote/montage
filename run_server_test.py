@@ -90,6 +90,20 @@ def full_run(url_base, remote):
     # - as maintainer
     # resp = fetch(url_base + '/complete_login').read()
 
+    # Create a new series
+    data = {'name': 'test series',
+            'description': 'test',
+            'url': 'test'}
+    resp = fetch_json(url_base + '/admin/add_series', data)
+
+    # Get a list of series
+    resp = fetch_json(url_base + '/series')
+
+    # Cancel the most recent series
+    most_recent_series = resp['data'][-1]['id']
+    data = {'status': 'cancelled'}
+    resp = fetch_json(url_base + '/admin/series/%s/edit' % most_recent_series, data)
+
     # Add an organizer
     # - as maintainer
     data = {'username': 'Yarl'}
@@ -105,13 +119,17 @@ def full_run(url_base, remote):
     data = {'username': 'Slaporte (WMF)'}
     resp = fetch_json(url_base + '/admin/remove_organizer', data)
 
+    # Get the default series
+    resp = fetch_json(url_base + '/series')
+    series_id = resp['data'][0]['id']
 
     # Create a campaign
     # - as organizer
     data = {'name': 'Another Test Campaign 2016 - again',
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
-                             u'Yarl']}
+                             u'Yarl'],
+            'series_id': series_id}
     resp = fetch_json(url_base + '/admin/add_campaign', data,
                       su_to='Yarl')
 

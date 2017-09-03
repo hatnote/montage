@@ -39,7 +39,8 @@ from utils import (format_date,
                    get_mw_userid,
                    weighted_choice,
                    PermissionDenied, InvalidAction,
-                   DoesNotExist)
+                   DoesNotExist,
+                   load_default_series)
 from imgutils import make_mw_img_url
 from loaders import get_entries_from_gist_csv, load_category
 from simple_serdes import DictableBase, JSONEncodedDict
@@ -99,7 +100,6 @@ flags attribute.
 
 MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest']
 
-
 """
 class RDBSession(sessionmaker()):
     def __init__(self, *a, **kw):
@@ -154,22 +154,48 @@ class User(Base):
         return ret
 
 
+class Series(Base):
+    __tablename__ = 'series'
+    # defaults: wlm, unofficial
+    id = Column(Integer, primary_key=True)
+
+    name = Column(String(255))
+    description = Column(Text)
+    url = Column(Text)
+
+    status = Column(String(255))  # active, cancelled
+    create_date = Column(TIMESTAMP, server_default=func.now())
+    flags = Column(JSONEncodedDict)
+
+    campaigns = relationship('Campaign', back_populates='series')
+
+    def to_details_dict(self):
+        return {'id': self.id,
+                'name': self.name,
+                'url': self.url,
+                'description': self.description,
+                'status': self.status}
+
+
 class Campaign(Base):
     __tablename__ = 'campaigns'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255))
+    series_id = Column(Integer, ForeignKey('series.id'))
 
+    name = Column(String(255))
     # open/close can be used to select/verify that images were
     # actually uploaded during the contest window
     open_date = Column(DateTime)
     close_date = Column(DateTime)
+    #url = Column(String(255))
     status = Column(String(255))  # active, cancelled, finalized
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
     rounds = relationship('Round', back_populates='campaign')
+    series = relationship('Series')
     campaign_coords = relationship('CampaignCoord',
                                    cascade="save-update, merge, delete, delete-orphan")
     coords = association_proxy('campaign_coords', 'user',
@@ -766,6 +792,18 @@ class UserDAO(object):
     def query(self, *a, **kw):
         "a call-through to the underlying session.query"
         return self.rdb_session.query(*a, **kw)
+
+    def get_series(self, series_id):
+        series = (self.query(Series)
+                  .filter_by(id=series_id)
+                  .all())
+        return series
+
+    def get_all_series(self):
+        series = (self.query(Series)
+                  .filter_by(status=ACTIVE_STATUS)
+                  .all())
+        return series
 
     def get_campaign(self, campaign_id):
         campaign = self.query(Campaign)\
@@ -1761,6 +1799,32 @@ class OrganizerDAO(object):
         self.get_or_create_user = user_dao.get_or_create_user
         self.log_action = user_dao.log_action
 
+    def create_series(self, name, description, url, status=None):
+        # TODO: Check if status is valid
+        if not status:
+            status = ACTIVE_STATUS
+        new_series = Series(name=name,
+                            description=description,
+                            url=url,
+                            status=status)
+        self.rdb_session.add(new_series)
+        self.rdb_session.flush()
+        msg = '%s created series %s (%s)' % (self.user.username,
+                                              new_series.name,
+                                              new_series.id)
+        self.log_action('create_series', message=msg, role='organizer')
+        return new_series
+
+    def edit_series(self, series_id, series_dict):
+        series = (self.query(Series)
+                  .filter_by(id=series_id)
+                  .update(series_dict))
+        msg = ('%s edited these columns in series %s: %r'
+               % (self.user.username, series_id,
+                  series_dict.keys()))
+        self.log_action('edit_series', message=msg, role='organizer')
+        return series
+
     def add_coordinator(self, campaign_id, username):
         campaign = self.user_dao.get_campaign(campaign_id)
         user = self.get_or_create_user(username, 'coordinator',
@@ -1791,7 +1855,7 @@ class OrganizerDAO(object):
                         role='organizer')
         return removed
 
-    def create_campaign(self, name, open_date, close_date, coords=None):
+    def create_campaign(self, name, open_date, close_date, series_id, coords=None):
         # TODO: Check if campaign with this name already exists?
         if not coords:
             coords = [self.user]
@@ -1800,6 +1864,7 @@ class OrganizerDAO(object):
                             open_date=open_date,
                             close_date=close_date,
                             status=ACTIVE_STATUS,
+                            series_id=series_id,
                             coords=coords)
         self.rdb_session.add(campaign)
         self.rdb_session.flush()  # to get a campaign id
@@ -1882,6 +1947,23 @@ def bootstrap_maintainers(rdb_session):
                         created_by=None)
             rdb_session.add(user)
             ret.append(user)
+    return ret
+
+
+def ensure_series(rdb_session):
+    user = lookup_user(rdb_session, MAINTAINERS[0])
+    user_dao = UserDAO(rdb_session, user)
+    org_user = OrganizerDAO(user_dao)
+    series = load_default_series()
+    name = series['name']
+    cur_series = lookup_series(rdb_session,
+                               name=name)
+    ret = None
+    if not cur_series:
+        ret = org_user.create_series(name=series['name'],
+                                     description=series['description'],
+                                     url=series['url'],
+                                     status=series['status'])
     return ret
 
 
@@ -2258,6 +2340,11 @@ def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()
     return user
 
+def lookup_series(rdb_session, name):
+    series = (rdb_session.query(Series)
+              .filter_by(name=name)
+              .one_or_none())
+    return series
 
 def create_initial_tasks(rdb_session, rnd):
     if rnd.vote_method in ('yesno', 'rating'):

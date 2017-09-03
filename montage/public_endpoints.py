@@ -20,7 +20,9 @@ def get_public_routes():
     ret = [('/', home),
            ('/login', login),
            ('/logout', logout),
-           ('/complete_login', complete_login)]
+           ('/complete_login', complete_login),
+           ('/series/<series_id?int>', get_series),
+           ('/series', get_series)]
     return ret
 
 
@@ -113,6 +115,14 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path):
     else:
         return_to_url = '/'
     return redirect(return_to_url)
+
+@public
+def get_series(user_dao, series_id=None):
+    if series_id:
+        series = user_dao.get_series(series_id)
+    else:
+        series = user_dao.get_all_series()
+    return {'data': [s.to_details_dict() for s in series]}
 
 
 PUBLIC_ROUTES = get_public_routes()

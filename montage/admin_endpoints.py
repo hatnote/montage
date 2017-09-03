@@ -26,6 +26,8 @@ def get_admin_routes():
     /role/(object/id/object/id/...)verb is the guiding principle
     """
     ret = [GET('/admin', get_index),
+           POST('/admin/add_series', add_series),
+           POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
@@ -39,6 +41,8 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
                 remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
+           #POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
+           #POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
                'report.html'),
            POST('/admin/round/<round_id:int>/import', import_entries),
@@ -60,6 +64,46 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/download', download_results_csv)]
     return ret
+
+
+def add_series(user_dao, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+
+    name = request_dict['name']
+    description = request_dict['description']
+    url = request_dict['url']
+    status = request_dict.get('status')
+
+    new_series = org_dao.create_series(name, description, url, status)
+    return {'data': new_series}
+
+
+def edit_series(user_dao, series_id, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+    series_dict = {}
+    name = request_dict.get('name')
+    if name:
+        series_dict['name'] = name
+    description = request_dict.get('description')
+    if description:
+        series_dict['description'] = description
+    url = request_dict.get('url')
+    if url:
+        series_dict['url'] = url
+    status = request_dict.get('status')
+    if status:
+        series_dict['status'] = status
+    
+    new_series = org_dao.edit_series(series_id, series_dict)
+    return {'data': new_series}
+
+
+def publish_report():
+    pass
+
+
+def unpublish_report():
+    pass
 
 
 def js_isoparse(date_str):
@@ -132,6 +176,8 @@ def create_campaign(user_dao, request_dict):
     if close_date:
         close_date = js_isoparse(close_date)
 
+    series_id = request_dict.get('series_id', 0)
+
     coord_names = request_dict.get('coordinators')
 
     coords = [user_dao.user]  # Organizer is included as a coordinator by default
@@ -142,6 +188,7 @@ def create_campaign(user_dao, request_dict):
     campaign = org_dao.create_campaign(name=name,
                                        open_date=open_date,
                                        close_date=close_date,
+                                       series_id=series_id,
                                        coords=set(coords))
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
