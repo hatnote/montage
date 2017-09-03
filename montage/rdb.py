@@ -716,7 +716,6 @@ class RoundResultsSummary(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     modified_date = Column(DateTime)
 
-    
     def to_dict(self):
         ret = {'campaign_id': self.campaign_id,
                'campaign_name': self.campaign.name,
@@ -1442,6 +1441,7 @@ class CoordinatorDAO(UserDAO):
                                              campaign_id=rnd.campaign.id,
                                              summary=summary)
         self.rdb_session.add(result_summary)
+        self.rdb_session.flush()
         msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
                (self.user.username, rnd.name, rnd.id, result_summary.id))
         self.log_action('finalize_ranking_round', round=rnd, message=msg)
