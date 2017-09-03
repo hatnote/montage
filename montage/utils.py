@@ -119,12 +119,7 @@ def load_env_config(env_name=None):
 
 
 def load_default_series():
-    series_file_name = 'series.yaml'
-    series_file_path = os.path.join(PROJ_PATH, series_file_name)
-
-    series = yaml.load(open(series_file_path))
-
-    return series
+    return DEFAULT_SERIES
 
 
 def check_schema(db_url, base_type, echo=False, autoexit=False):
