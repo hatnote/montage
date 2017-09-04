@@ -301,8 +301,6 @@ def full_run(url_base, remote):
                  {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
                  as_user='LilyOfTheWest')
 
-    import pdb;pdb.set_trace()
-
     resp = fetch('coordinator: preview disqualifications',
                  '/admin/round/%s/preview_disqualification' % round_id,
                  as_user='LilyOfTheWest')
@@ -472,7 +470,7 @@ def full_run(url_base, remote):
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
-    
+
     # Attempt to submit or get tasks while the round is paused
 
     # Pause the round
