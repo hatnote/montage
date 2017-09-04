@@ -7,6 +7,7 @@ from mwoauth import Handshaker, RequestToken
 
 from mw import public
 from rdb import User, PublicDAO
+from labs import get_files, get_file_info
 
 from utils import load_env_config, DoesNotExist
 
@@ -25,8 +26,33 @@ def get_public_routes():
            ('/series', get_series),
            ('/campaign/<campaign_id:int>', get_report,
             'report.html'),
-           ('/campaign', get_all_reports)]
+           ('/campaign', get_all_reports),
+           ('/utils/category', get_file_info_by_category),
+           ('/utils/file', get_files_info_by_name)]
     return ret
+
+
+@public
+def get_file_info_by_category(request_dict):
+    try:
+        category_name = request_dict['name']
+    except Exception:
+        raise InvalidAction('missing name=category_name query parameter')
+    files = get_files(category_name)
+    return {'file_infos': files}
+
+
+@public
+def get_files_info_by_name(request_dict):
+    try:
+        file_names = request_dict['names']
+    except Exception:
+        raise InvalidAction('must provide a list of names')
+    files = []
+    for file_name in file_names:
+        file_info = get_file_info(file_name)
+        ret.append(file_info)
+    return {'file_infos': files}
 
 
 @public
