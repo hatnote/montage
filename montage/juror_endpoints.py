@@ -271,7 +271,7 @@ def get_faves(user_dao, request_dict):
     juror_dao = JurorDAO(user_dao)
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
-    faves = juror_dao.get_favtes(limit, offset)
+    faves = juror_dao.get_faves(limit, offset)
     return {'data': faves}
 
 

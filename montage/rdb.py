@@ -113,7 +113,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
 
-    username = Column(String(255))
+    username = Column(String(255), index=True)
     is_organizer = Column(Boolean, default=False)
     last_active_date = Column(DateTime)
 
@@ -164,11 +164,11 @@ class Series(Base):
     # defaults: wlm, unofficial
     id = Column(Integer, primary_key=True)
 
-    name = Column(String(255))
+    name = Column(String(255), index=True)
     description = Column(Text)
     url = Column(Text)
 
-    status = Column(String(255))  # active, cancelled
+    status = Column(String(255), index=True)  # active, cancelled
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
@@ -186,15 +186,15 @@ class Campaign(Base):
     __tablename__ = 'campaigns'
 
     id = Column(Integer, primary_key=True)
-    series_id = Column(Integer, ForeignKey('series.id'))
+    series_id = Column(Integer, ForeignKey('series.id'), index=True)
 
-    name = Column(String(255))
+    name = Column(String(255), index=True)
     # open/close can be used to select/verify that images were
     # actually uploaded during the contest window
     open_date = Column(DateTime)
     close_date = Column(DateTime)
     #url = Column(String(255))
-    status = Column(String(255))  # active, cancelled, finalized
+    status = Column(String(255), index=True)  # active, cancelled, finalized
 
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
@@ -254,12 +254,13 @@ class Round(Base):
     __tablename__ = 'rounds'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255))
+    name = Column(String(255), index=True)
     description = Column(Text)
     directions = Column(Text)
     open_date = Column(DateTime)
     close_date = Column(DateTime)
-    status = Column(String(255))  # active, paused, cancelled finalized
+    # active, paused, cancelled, finalized
+    status = Column(String(255), index=True)
     vote_method = Column(String(255))
     quorum = Column(Integer)
 
@@ -269,7 +270,7 @@ class Round(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'), index=True)
     campaign_seq = Column(Integer)
 
     campaign = relationship('Campaign', back_populates='rounds')
@@ -467,9 +468,9 @@ class Entry(Base):
     resolution = Column(Integer)
     # if we ever figure out how to get the monument ID
     subject_id = Column(String(255))
-    upload_user_id = Column(Integer)
-    upload_user_text = Column(String(255))
-    upload_date = Column(DateTime)
+    upload_user_id = Column(Integer, index=True)
+    upload_user_text = Column(String(255), index=True)
+    upload_date = Column(DateTime, index=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -504,10 +505,10 @@ class RoundEntry(Base):
     __tablename__ = 'round_entries'
 
     id = Column(Integer, primary_key=True)
-    entry_id = Column(Integer, ForeignKey('entries.id'))
-    round_id = Column(Integer, ForeignKey('rounds.id'))
+    entry_id = Column(Integer, ForeignKey('entries.id'), index=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
 
-    dq_user_id = Column(Integer, ForeignKey('users.id'))
+    dq_user_id = Column(Integer, ForeignKey('users.id'), index=True)
     dq_reason = Column(String(255))  # in case it's disqualified
     # examples: too low resolution, out of date range
     # TODO: dq_date?
@@ -538,8 +539,8 @@ class RoundSource(Base):
     __tablename__ = 'round_sources'
 
     id = Column(Integer, primary_key=True)
-    round_id = Column(Integer, ForeignKey('rounds.id'))
-    user_id = Column(Integer, ForeignKey('users.id'))
+    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     method = Column(String(255))
     params = Column(JSONEncodedDict)
@@ -555,8 +556,8 @@ class Flag(Base):
     __tablename__ = 'flags'
 
     id = Column(Integer, primary_key=True)
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
-    user_id = Column(Integer, ForeignKey('users.id'))
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'), index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     reason = Column(Text)
 
@@ -581,12 +582,12 @@ class Favorite(Base):
     __tablename__ = 'favorites'
 
     id = Column(Integer, primary_key=True)
-    entry_id = Column(Integer, ForeignKey('entries.id'))
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
-    user_id = Column(Integer, ForeignKey('users.id'))
+    entry_id = Column(Integer, ForeignKey('entries.id'), index=True)
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'), index=True)
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'), index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
-    status = Column(String(255))  # active, cancelled
+    status = Column(String(255), index=True)  # active, cancelled
 
     user = relationship('User')
     campaign = relationship('Campaign')
@@ -603,11 +604,11 @@ class Vote(Base):
     __tablename__ = 'votes'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'), index=True)
 
     value = Column(Float)
-    status = Column(String(255))  # active, cancelled, complete
+    status = Column(String(255), index=True)  # active, cancelled, complete
 
     user = relationship('User', back_populates='ratings')
     round_entry = relationship('RoundEntry', back_populates='vote')
@@ -702,13 +703,13 @@ class RoundResultsSummary(Base):
 
     id = Column(Integer, primary_key=True)
 
-    round_id = Column(Integer, ForeignKey('rounds.id'))
+    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
     round = relationship('Round')
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'), index=True)
     campaign = relationship('Campaign')
 
     summary = Column(JSONEncodedDict)
-    status = Column(String(255))  # private, public
+    status = Column(String(255), index=True)  # private, public
     language = Column(String(255))
 
     version = Column(String(255))
@@ -729,10 +730,10 @@ class AuditLogEntry(Base):
 
     id = Column(Integer, primary_key=True)
 
-    user_id = Column(Integer, ForeignKey('users.id'))
-    campaign_id = Column(Integer, ForeignKey('campaigns.id'))
-    round_id = Column(Integer, ForeignKey('rounds.id'))
-    round_entry_id = Column(Integer, ForeignKey('round_entries.id'))
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
+    campaign_id = Column(Integer, ForeignKey('campaigns.id'), index=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
+    round_entry_id = Column(Integer, ForeignKey('round_entries.id'), index=True)
 
     role = Column(String(255))
     action = Column(String(255))
@@ -740,7 +741,7 @@ class AuditLogEntry(Base):
 
     flags = Column(JSONEncodedDict)
 
-    create_date = Column(TIMESTAMP, server_default=func.now())
+    create_date = Column(TIMESTAMP, server_default=func.now(), index=True)
 
     def to_info_dict(self):
         ret = {'id': self.id,
@@ -2126,7 +2127,7 @@ class JurorDAO(object):
                     .all()
         return tasks
 
-    def get_favtes(self, limit=10, offset=0):
+    def get_faves(self, limit=10, offset=0):
         faves = (self.query(Favorite)
                  .filter_by(user=self.user,
                             status=ACTIVE_STATUS)
