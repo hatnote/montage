@@ -440,6 +440,31 @@ def full_run(url_base, remote):
                  {'reason': 'I really do not like this photo, I am sorry.'},
                  as_user='Jimbo Wales')
 
+    resp = fetch('coordinator: get list of flagged files',
+                 '/admin/round/%s/flags' % (round_id),
+                 as_user='LilyOfTheWest')
+
+    entry_id = resp['data'][0]['id']
+    resp = fetch('coordinator: pause round for manual disqualification',
+                 '/admin/round/%s/pause' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: disqualify particular file',
+                 '/admin/round/%s/%s/disqualify' % (round_id, entry_id),
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: requalify (undisqualify) particular file',
+                 '/admin/round/%s/%s/requalify' % (round_id, entry_id),
+                 {'post': True},                 as_user='LilyOfTheWest')
+
+
+    resp = fetch('coordinator: reactivate the round to continue',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+    
     # Attempt to submit or get tasks while the round is paused
 
     # Pause the round
