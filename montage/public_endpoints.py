@@ -9,7 +9,7 @@ from mw import public
 from rdb import User, PublicDAO
 from labs import get_files, get_file_info
 
-from utils import load_env_config, DoesNotExist
+from utils import load_env_config, DoesNotExist, InvalidAction
 
 config = load_env_config()
 DEBUG = config.get('debug', False)
@@ -51,7 +51,7 @@ def get_files_info_by_name(request_dict):
     files = []
     for file_name in file_names:
         file_info = get_file_info(file_name)
-        ret.append(file_info)
+        files.append(file_info)
     return {'file_infos': files}
 
 
@@ -172,6 +172,6 @@ def get_all_reports(rdb_session):
     dao = PublicDAO(rdb_session)
     reports = dao.get_all_reports()
     return {'data': [r.to_dict() for r in reports]}
-    
+
 
 PUBLIC_ROUTES = get_public_routes()
