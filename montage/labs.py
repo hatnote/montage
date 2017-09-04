@@ -9,6 +9,16 @@ except ImportError:
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
 
 
+IMAGE_COLS = ['img_width',
+              'img_height',
+              'img_name',
+              'img_major_mime',
+              'img_minor_mime',
+              'img_user',
+              'img_user_text',
+              'img_timestamp']
+
+
 class MissingMySQLClient(RuntimeError):
     pass
 
@@ -30,7 +40,7 @@ def fetchall_from_commonswiki(query, params):
 
 def get_files(category_name):
     query = '''
-    SELECT *
+    SELECT %s
     FROM commonswiki_p.image
     JOIN page
     ON page_namespace = 6
@@ -39,7 +49,7 @@ def get_files(category_name):
     ON cl_from = page_id
     AND cl_type = 'file'
     AND cl_to = ?;
-    '''
+    ''' % ', '.join(IMAGE_COLS)
     params = (category_name.replace(' ', '_'),)
 
     results = fetchall_from_commonswiki(query, params)
@@ -49,10 +59,10 @@ def get_files(category_name):
 
 def get_file_info(filename):
     query = '''
-    SELECT *
+    SELECT %s
     FROM commonswiki_p.image
     WHERE img_name = ?;
-    '''
+    ''' % ', '.join(IMAGE_COLS)
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
 
