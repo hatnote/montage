@@ -1,10 +1,14 @@
+ashes==17.0.0
 boltons==16.5.0
 clastic==0.4.3
 lithoxyl==0.4.0
+Markdown==2.6.9
 mwoauth==0.2.8
 oauthlib==1.1.2
 phpserialize==1.3
 PyJWT==1.4.2
+python-graph-core==1.8.2
+-e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core
 PyYAML==3.11
 requests==2.11.1
 requests-oauthlib==0.6.2
@@ -12,4 +16,3 @@ six==1.10.0
 SQLAlchemy==1.0.14
 unicodecsv==0.14.1
 Werkzeug==0.9.4
--e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core
