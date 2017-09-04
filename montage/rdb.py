@@ -522,7 +522,7 @@ class RoundEntry(Base):
 
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
-    vote = relationship('Vote', back_populates='round_entry')
+    votes = relationship('Vote', back_populates='round_entry')
     flaggings = relationship('Flag')
 
     def __init__(self, entry=None, round=None):
@@ -618,7 +618,7 @@ class Vote(Base):
     status = Column(String(255), index=True)  # active, cancelled, complete
 
     user = relationship('User', back_populates='ratings')
-    round_entry = relationship('RoundEntry', back_populates='vote')
+    round_entry = relationship('RoundEntry', back_populates='votes')
 
     entry = association_proxy('round_entry', 'entry',
                               creator=lambda e: RoundEntry(entry=e))
@@ -1149,6 +1149,57 @@ class CoordinatorDAO(UserDAO):
 
         return round_entries
 
+    def disqualify(self, round_id, entry_id, reason=None):
+        rnd = self.get_round(round_id)
+        if rnd.status != PAUSED_STATUS:
+            raise InvalidAction('round must be paused to disqualify files')
+        if not reason:
+            reason = 'no reason specified'
+        round_entry = (self.query(RoundEntry)
+                       .filter_by(round_id=round_id)
+                       .join(Entry)
+                       .filter(Entry.id == entry_id,
+                               RoundEntry.dq_reason == None)
+                       .one_or_none())
+        if not round_entry:
+            raise InvalidAction('cannot disqualify this entry')
+        cancel_date = datetime.datetime.utcnow()
+        round_entry.dq_reason = ('specifically disqualified by %s (%s)'
+                                 % (self.user.username, reason))
+        round_entry.dq_user_id = self.user.id
+        for vote in round_entry.votes:
+            vote.status = CANCELLED_STATUS
+            vote.modified_date = cancel_date
+        msg = ('%s manually disqualified entry %s in round %s (%s)'
+               % (self.user.username, entry_id, round_id, reason))
+        self.log_action('disqualify', round_id=round_id, message=msg)
+        return round_entry
+
+    def requalify(self, round_id, entry_id, reason=None):
+        rnd = self.get_round(round_id)
+        requalify_date = datetime.datetime.utcnow()
+        if rnd.status != PAUSED_STATUS:
+            raise InvalidAction('round must be paused to requalify files')
+        if not reason:
+            reason = 'no reason specified'
+        round_entry = (self.query(RoundEntry)
+                       .filter_by(round_id=round_id)
+                       .join(Entry)
+                       .filter(Entry.id == entry_id,
+                               RoundEntry.dq_reason != None)
+                       .one_or_none())
+        if not round_entry:
+            raise InvalidAction('cannot requalify this entry')
+        round_entry.dq_reason = None
+        round_entry.dq_user_id = None
+        for vote in round_entry.votes:
+            vote.status = ACTIVE_STATUS
+            vote.modified_date = requalify_date
+        msg = ('%s manually requalified entry %s in round %s (%s)'
+               % (self.user.username, entry_id, round_id, reason))
+        self.log_action('requalify', round_id=round_id, message=msg)
+        return round_entry
+
     def autodisqualify_by_resolution(self, round_id, preview=False):
         # TODO: get from config
         rnd = self.get_round(round_id)
@@ -1172,7 +1223,7 @@ class CoordinatorDAO(UserDAO):
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
 
-            for vote in r_ent.vote:
+            for vote in r_ent.votes:
                 vote.status = CANCELLED_STATUS
                 vote.modified_date = datetime.datetime.utcnow()
 
@@ -1202,7 +1253,7 @@ class CoordinatorDAO(UserDAO):
             r_ent.dq_reason = dq_reason
             r_ent.dq_user_id = self.user.id
 
-            for vote in r_ent.vote:
+            for vote in r_ent.votes:
                 vote.status = CANCELLED_STATUS
                 vote.modified_date = datetime.datetime.utcnow()
 
@@ -1246,7 +1297,6 @@ class CoordinatorDAO(UserDAO):
                             .filter(RoundEntry.round_id == round_id)\
                             .filter(Entry.upload_user_text.in_(dq_usernames))\
                             .all()
-
         if preview:
             return round_entries
 
@@ -2421,7 +2471,7 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     shuffled_entries = (rdb_session.query(RoundEntry)
                                    .filter(RoundEntry.round_id == rnd.id,
                                            RoundEntry.dq_user_id == None,
-                                           RoundEntry.vote == None)
+                                           RoundEntry.votes == None)
                                    .order_by(rand_func).all())
     if not shuffled_entries:
         return []
@@ -2461,7 +2511,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     shuffled_entries = (rdb_session.query(RoundEntry)
                                    .filter(RoundEntry.round_id == rnd.id,
                                            RoundEntry.dq_user_id == None,
-                                           RoundEntry.vote == None)
+                                           RoundEntry.votes == None)
                                    .order_by(rand_func).all())
     if not shuffled_entries:
         return []

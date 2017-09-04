@@ -60,11 +60,28 @@ def get_admin_routes():
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
                 autodisqualify),
+           POST('/admin/round/<round_id:int>/<entry_id:int>/disqualify',
+                disqualify_entry),
+           POST('/admin/round/<round_id:int>/<entry_id:int>/requalify',
+                requalify_entry),
            GET('/admin/round/<round_id:int>/preview_disqualification',
                 preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/download', download_results_csv)]
     return ret
+
+
+def disqualify_entry(user_dao, round_id, entry_id, request_dict):
+    if not request_dict:
+        request_dict = {}
+    reason = request_dict.get('reason')
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.disqualify(round_id, entry_id, reason)
+    
+
+def requalify_entry(user_dao, round_id, entry_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.requalify(round_id, entry_id)
 
 
 def add_series(user_dao, request_dict):
