@@ -257,6 +257,7 @@ def full_run(url_base, remote):
 
     # Import entries to a round from a gistcsv
     # - as coordinator
+    """
     gist_url = 'https://gist.githubusercontent.com/slaporte/2074004d1fb76893b23f91fc2d4951a1/raw/26d49a976b6f5c13ecc0bee28747f9c1dce4a5ef/gistfile1.txt'
     resp = fetch('coordinator: import entries from gist csv',
                  '/admin/round/%s/import' % round_id,
@@ -269,7 +270,7 @@ def full_run(url_base, remote):
     resp = fetch('coordinator: import entries from a category',
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
-    """
+
 
     resp = fetch('coordinator: activate a round',
                  '/admin/round/%s/activate' % round_id,

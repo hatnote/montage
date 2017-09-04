@@ -1,11 +1,14 @@
 
 import datetime
 import urllib2
+import json
 
 from unicodecsv import DictReader
 
 import rdb
 from labs import get_files, get_file_info
+
+REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage-dev/utils/'
 
 CSV_FULL_COLS = ['img_name',
                  'img_major_mime',
@@ -82,10 +85,23 @@ def get_entries_from_gist_csv(raw_url):
     return ret
 
 
-def load_category(category_name):
-    ret = []
-    files = get_files(category_name)
+def get_from_category_remote(category_name):
+    params = {'name': category_name}
+    content_type = {'Content-Type': 'application/json'}
+    url = REMOTE_UTILS_URL + '/category'
+    data = json.dumps(params)
+    request = urllib2.Request(url, data, content_type)
+    response = urllib2.urlopen(request)
+    resp_json = json.load(response)
+    file_infos = resp_json['file_infos']
+    return file_infos
 
+def load_category(category_name, source='local'):
+    ret = []
+    if source == 'remote':
+        files = get_from_category_remote(category_name)
+    else:
+        files = get_files(category_name)
     for edict in files:
         entry = make_entry(edict)
         ret.append(entry)
@@ -107,5 +123,5 @@ TODO:
 
 if __name__ == '__main__':
     #imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
-    imgs = get_entries_from_gist_csv('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
+    #imgs = get_entries_from_gist_csv('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
     import pdb; pdb.set_trace()

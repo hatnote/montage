@@ -38,9 +38,10 @@ from utils import (format_date,
                    weighted_choice,
                    PermissionDenied, InvalidAction, NotImplementedResponse,
                    DoesNotExist,
+                   get_env_name,
                    load_default_series)
 from imgutils import make_mw_img_url
-from loaders import get_entries_from_gist_csv, load_category
+import loaders
 from simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
@@ -78,6 +79,7 @@ VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
                 PRIVATE_STATUS]
 
+ENV_NAME = get_env_name()
 
 """
 Column ordering and groupings:
@@ -1351,7 +1353,11 @@ class CoordinatorDAO(UserDAO):
 
     def add_entries_from_cat(self, round_id, cat_name):
         rnd = self.user_dao.get_round(round_id)
-        entries = load_category(cat_name)
+        if ENV_NAME == 'dev':
+            source = 'remote'
+        else:
+            source = 'local'
+        entries = loaders.load_category(cat_name, source=source)
         params = {'category': cat_name}
         entries, new_entry_count = self.add_entries(rnd, entries)
 
@@ -1365,7 +1371,7 @@ class CoordinatorDAO(UserDAO):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
-        entries = get_entries_from_gist_csv(gist_url)
+        entries = loaders.get_entries_from_gist_csv(gist_url)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
