@@ -80,3 +80,13 @@ A bit of space for dev bookkeeping.
 Ratings closing round interface:
 
 * Specify threshold (1, 2, 3, 4, 5 stars, etc.)
+
+
+## Cron job
+
+* Look up open rounds
+* Look up round sources with open rounds
+* Ignore "round" and "selection" methods
+* For gists, redownload the gist and add_round_entries as need be
+* For categories, recheck the db and add_round_entries as need be
+* For removed entries, do nothing (current behavior) or disqualify
