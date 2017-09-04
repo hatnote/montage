@@ -48,7 +48,7 @@ def get_files(category_name):
     JOIN categorylinks
     ON cl_from = page_id
     AND cl_type = 'file'
-    AND cl_to = ?;
+    AND cl_to = %s;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (category_name.replace(' ', '_'),)
 
@@ -61,7 +61,7 @@ def get_file_info(filename):
     query = '''
     SELECT {cols}
     FROM commonswiki_p.image
-    WHERE img_name = ?;
+    WHERE img_name = %s;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
