@@ -559,9 +559,10 @@ class RoundSource(Base):
     __tablename__ = 'round_sources'
 
     id = Column(Integer, primary_key=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
     user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
-    method = Column(String(255))
+    method = Column(String(255), index=True)
     params = Column(JSONEncodedDict)
     dq_params = Column(JSONEncodedDict)
 
@@ -1413,10 +1414,24 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_round_source(self, round_id, import_method, params, dq_params=None):
+    def get_round_sources(self, round_id, import_method):
+        round_sources = (self.query(RoundSource)
+                         .filter_by(round_id=round_id,
+                                    method=import_method)
+                         .all())
+        return round_sources
+
+    def get_or_create_round_source(self, round_id, import_method,
+                                  params, dq_params=None):
+        existing_sources = self.get_round_sources(round_id, import_method)
+        if existing_sources:
+            for existing_source in existing_sources:
+                if existing_source.params == params:
+                    return existing_source
         round_source = RoundSource(method=import_method,
                                    params=params,
                                    dq_params=dq_params,
+                                   round_id=round_id,
                                    user=self.user)
         self.rdb_session.add(round_source)
         return round_source
@@ -1445,7 +1460,7 @@ class CoordinatorDAO(UserDAO):
 
         return ret, new_entry_count
 
-    def add_round_entries(self, round_id, entries, source, params):
+    def add_round_entries(self, round_id, entries, method, params):
         rnd = self.user_dao.get_round(round_id)
         if rnd.status != PAUSED_STATUS:
             raise InvalidAction('round must be paused to add new entries')
@@ -1459,7 +1474,7 @@ class CoordinatorDAO(UserDAO):
                        if e.name not in existing_names]
         if not new_entries:
             return new_entries
-        round_source = self.add_round_source(round_id, source, params)
+        round_source = self.get_or_create_round_source(round_id, method, params)
         self.rdb_session.flush()
         for new_entry in new_entries:
             new_round_entry = RoundEntry(entry_id=new_entry.id,
@@ -1468,8 +1483,8 @@ class CoordinatorDAO(UserDAO):
             self.rdb_session.add(new_round_entry)
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
-        if source:
-            msg += ' (from %s)' % (source,)
+        if method:
+            msg += ' (from %s)' % (method,)
         self.log_action('add_round_entries', message=msg, round=rnd)
         return new_entries
 

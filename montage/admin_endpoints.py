@@ -291,7 +291,7 @@ def import_entries(user_dao, round_id, request_dict):
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(round_id, entries,
-                                              source=import_method,
+                                              method=import_method,
                                               params=params)
     rnd = coord_dao.get_round(round_id) # TODO: The stats below should
                                         # returned by
@@ -502,7 +502,7 @@ def advance_round(user_dao, round_id, request_dict):
     params = {'round': round_id,
               'threshold': threshold}
     coord_dao.add_round_entries(next_rnd.id, adv_group,
-                                source=ROUND_METHOD, params=params)
+                                method=ROUND_METHOD, params=params)
 
     # NOTE: disqualifications are not repeated, as they should have
     # been performed the first round.
