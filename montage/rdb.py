@@ -8,7 +8,6 @@ import datetime
 import itertools
 from collections import Counter, defaultdict
 from math import ceil
-from json import dumps
 
 from pyvotecore.schulze_npr import SchulzeNPR
 from sqlalchemy import (Text,
@@ -35,10 +34,9 @@ from clastic.errors import Forbidden
 
 from utils import (format_date,
                    to_unicode,
-                   json_serial,
                    get_mw_userid,
                    weighted_choice,
-                   PermissionDenied, InvalidAction,
+                   PermissionDenied, InvalidAction, NotImplementedResponse,
                    DoesNotExist,
                    load_default_series)
 from imgutils import make_mw_img_url
@@ -1732,9 +1730,9 @@ class CoordinatorDAO(UserDAO):
             raise InvalidAction('must specify new quorum')
 
         if new_quorum <= old_quorum:
-            raise NotImplementedError('currently we do not support quorum '
-                                      'decreases. current quorum is %r, got %r'
-                                      % (old_quorum, new_quorum))
+            raise NotImplementedResponse('currently we do not support quorum '
+                                         'decreases. current quorum is %r, got %r'
+                                         % (old_quorum, new_quorum))
 
         jurors = self.get_active_jurors(rnd.id)
         session = self.rdb_session
@@ -2685,12 +2683,7 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
     while reassg_queue:
         vote = reassg_queue.pop()
         vote.user = choose_eligible(elig_map[vote.round_entry])
-
-        # try:  # consider uncommenting this try/except if there are issues
         elig_map[vote.round_entry].remove(vote.user)
-        # except ValueError:
-        #    pass
-
         target_work_map[vote.user].append(vote)
 
     vote_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
