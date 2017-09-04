@@ -377,7 +377,7 @@ def full_run(url_base, remote):
                  '/admin/round/%s/edit' % round_id,
                  {'quorum': 1},
                  as_user='LilyOfTheWest',
-                 error_code=500)  # TODO: make 400
+                 error_code=400)
 
     resp = fetch('coordinator: reactivate our round',
                  '/admin/round/%s/activate' % round_id,

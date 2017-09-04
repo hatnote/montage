@@ -9,7 +9,6 @@ import os.path
 import datetime
 from urllib import urlencode
 from urllib2 import urlopen
-from collections import Counter
 
 import yaml
 from clastic.errors import Forbidden, NotFound, BadRequest
@@ -39,6 +38,10 @@ class DoesNotExist(NotFound):
 
 class InvalidAction(BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
+
+
+class NotImplementedResponse(BadRequest, NotImplementedError):
+    "Raised when a feature hasn't yet been implemented"
 
 
 DEFAULT_SERIES = {'name': 'Unofficial',

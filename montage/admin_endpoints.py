@@ -9,7 +9,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
+from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist, NotImplementedResponse
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
@@ -178,7 +178,7 @@ def create_campaign(user_dao, request_dict):
 
     if close_date:
         close_date = js_isoparse(close_date)
-    
+
     url = request_dict['url']
 
     series_id = request_dict.get('series_id', 0)
@@ -242,7 +242,7 @@ def import_entries(user_dao, round_id, request_dict):
     elif import_method == SELECTED_METHOD:
         pass
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     new_entries = coord_dao.add_round_entries(round_id, entries,
                                               source=import_method,
@@ -412,7 +412,7 @@ def get_round_results_preview(user_dao, round_id):
         data['rankings'] = [r.to_dict() for r in rankings]
 
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     return {'data': data}
 
@@ -437,7 +437,7 @@ def advance_round(user_dao, round_id, request_dict):
     rnd = coord_dao.get_round(round_id)
 
     if rnd.vote_method not in ('rating', 'yesno'):
-        raise NotImplementedError()  # see docstring above
+        raise NotImplementedResponse()  # see docstring above
     threshold = float(request_dict['threshold'])
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
