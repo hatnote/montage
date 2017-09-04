@@ -162,6 +162,7 @@ def full_run(url_base, remote):
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl'],
+            'url': 'http://hatnote.com',
             'series_id': series_id}
     resp = fetch('organizer: create campaign',
                  '/admin/add_campaign',
@@ -710,13 +711,22 @@ def submit_ratings(url_base, round_id, fetch, coord_user='Yarl'):
                         review = '%s likes this' % j_username
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
+                    entry_id = t_dict['entry']['id']
                     if value == 1.0:
                         review = '%s loves this' % j_username
                         data = {'post': True}
                         resp = fetch('juror: submit fave',
                                      '/juror/round/%s/%s/fave' %
-                                     (round_id, t_dict['entry']['id']),
+                                     (round_id, entry_id),
                                      data, as_user=j_username)
+                    '''
+                    # Note: only if you want some extra flags for testing
+                    if value <0.25:
+                        resp = fetch('juror: flag an entry',
+                                     '/juror/round/%s/%s/flag' % (round_id, entry_id),
+                                     {'reason': 'not cool'},
+                                     as_user=j_username)
+                    '''
                 elif r_dict['vote_method'] == 'ranking':
                     value = (i + len(j_username)) % len(t_dicts)
                     if value == 0:
