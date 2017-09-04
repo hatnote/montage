@@ -1,9 +1,12 @@
 
+import os
 import datetime
 
-from clastic import redirect
+from clastic import redirect, render_basic
 from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
+from markdown import Markdown
+from markdown.extensions.codehilite import CodeHiliteExtension
 
 from mw import public
 from rdb import User, PublicDAO
@@ -14,7 +17,16 @@ from utils import load_env_config, DoesNotExist, InvalidAction
 config = load_env_config()
 DEBUG = config.get('debug', False)
 
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
+DOCS_PATH = CUR_PATH + '/docs'
+
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
+
+MD_EXTENSIONS = ['markdown.extensions.def_list',
+                 'markdown.extensions.footnotes',
+                 'markdown.extensions.fenced_code',
+                 'markdown.extensions.tables',
+                 CodeHiliteExtension(pygments_style='emacs')]
 
 
 def get_public_routes():
@@ -27,9 +39,29 @@ def get_public_routes():
            ('/campaign/<campaign_id:int>', get_report,
             'report.html'),
            ('/campaign', get_all_reports),
+           ('/docs/<path*>', get_doc, render_basic),
            ('/utils/category', get_file_info_by_category),
            ('/utils/file', get_files_info_by_name)]
     return ret
+
+
+@public
+def get_doc(ashes_renderer, path):
+    if not path:
+        path = ['index']
+    render = ashes_renderer('docs/base.html')
+    doc_path = DOCS_PATH + '/' + '/'.join(path) + '.md'
+    doc_path = os.path.normpath(doc_path)
+    if not doc_path.startswith(DOCS_PATH):
+        raise BadRequest('invalid doc path: %r' % doc_path)
+    try:
+        doc_md = open(doc_path, 'rb').read()
+    except OSError:
+        raise BadRequest('could not open doc: %r' % '/'.join(path))
+    md_converter = Markdown(extensions=MD_EXTENSIONS)
+    content = md_converter.convert(doc_md)
+    # TODO: cached version
+    return render({'content': content})
 
 
 @public

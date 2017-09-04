@@ -70,7 +70,7 @@ DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
-TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
 
 def create_app(env_name='prod'):
@@ -165,7 +165,8 @@ def create_app(env_name='prod'):
 
     resources = {'config': config,
                  'consumer_token': consumer_token,
-                 'root_path': root_path}
+                 'root_path': root_path,
+                 'ashes_renderer': renderer}
 
     app = Application(routes, resources, middlewares=middlewares,
                       render_factory=renderer)
