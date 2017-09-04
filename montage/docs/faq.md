@@ -1,5 +1,7 @@
 # Frequently Asked Questions
 
+[TOC]
+
 ## How many jurors should I have for my rounds?
 
 It's all about balance. When do you want to make your announcement and

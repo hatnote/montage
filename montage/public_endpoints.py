@@ -7,6 +7,7 @@ from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
 from markdown import Markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
+from chert import hypertext as html_utils
 
 from mw import public
 from rdb import User, PublicDAO
@@ -50,18 +51,35 @@ def get_doc(ashes_renderer, path):
     if not path:
         path = ['index']
     render = ashes_renderer('docs/base.html')
-    doc_path = DOCS_PATH + '/' + '/'.join(path) + '.md'
+    doc_rel_path = '/'.join(path)
+    doc_path = DOCS_PATH + '/' + doc_rel_path + '.md'
     doc_path = os.path.normpath(doc_path)
     if not doc_path.startswith(DOCS_PATH):
         raise BadRequest('invalid doc path: %r' % doc_path)
     try:
         doc_md = open(doc_path, 'rb').read()
     except OSError:
-        raise BadRequest('could not open doc: %r' % '/'.join(path))
+        raise BadRequest('could not open doc: %r' % doc_rel_path)
+
+    lines = doc_md.splitlines()
+    if not lines:
+        raise BadRequest('empty doc: %r' % doc_rel_path)
+    title_line, body_md = lines[0], '\n'.join(lines[1:])
+    _, sep, title = title_line.partition('#')
+    if not sep or not title:
+        raise BadRequest('bad doc title. expected "# Title", not: %r'
+                         % title_line)
+
     md_converter = Markdown(extensions=MD_EXTENSIONS)
-    content = md_converter.convert(doc_md)
+    body_html = md_converter.convert(body_md)
+
+    html_tree = html_utils.html_text_to_tree(body_html)
+    html_utils.retarget_links(html_tree)
+    html_utils.add_toc(html_tree)
+    body_html = html_utils.html_tree_to_text(html_tree)
+
     # TODO: cached version
-    return render({'content': content})
+    return render({'title': title, 'body': body_html})
 
 
 @public
