@@ -85,16 +85,20 @@ def get_entries_from_gist_csv(raw_url):
     return ret
 
 
-def get_from_category_remote(category_name):
-    params = {'name': category_name}
-    content_type = {'Content-Type': 'application/json'}
-    url = REMOTE_UTILS_URL + '/category'
-    data = json.dumps(params)
-    request = urllib2.Request(url, data, content_type)
-    response = urllib2.urlopen(request)
-    resp_json = json.load(response)
-    file_infos = resp_json['file_infos']
-    return file_infos
+def load_by_filename(file_names, source='local'):
+    ret = []
+    if source == 'remote':
+        files = get_by_filename_remote(file_names)
+    else:
+        files = []
+        for file_name in file_names:
+            file_info = get_file_info(file_name)
+            files.append(file_info)
+    for edict in files:
+        entry = make_entry(edict)
+        ret.append(entry)
+    return ret
+
 
 def load_category(category_name, source='local'):
     ret = []
@@ -107,6 +111,31 @@ def load_category(category_name, source='local'):
         ret.append(entry)
 
     return ret
+        
+
+def get_from_category_remote(category_name):
+    params = {'name': category_name}
+    url = REMOTE_UTILS_URL + '/category'
+    file_infos = get_from_remote(url, params)
+    return file_infos
+
+
+def get_from_remote(url, params):
+    content_type = {'Content-Type': 'application/json'}
+    data = json.dumps(params)
+    request = urllib2.Request(url, data, content_type)
+    response = urllib2.urlopen(request)
+    resp_json = json.load(response)
+    file_infos = resp_json['file_infos']
+    return file_infos
+
+
+def get_by_filename_remote(file_names):
+    # TODO: should this be chunked, if there are too many file names?
+    params = {'names': file_names}
+    url = REMOTE_UTILS_URL + '/file'
+    file_infos = get_from_remote(url, params)
+    return file_infos
 
 
 """

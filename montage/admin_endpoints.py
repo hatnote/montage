@@ -258,6 +258,8 @@ def import_entries(user_dao, round_id, request_dict):
                   'round_id': prev_round_id}
     elif import_method == SELECTED_METHOD:
         file_names = request_dict['file_names']
+        entries = coord_dao.add_entries_by_name(round_id, file_names)
+        params = {'file_names': file_names}
     else:
         raise NotImplementedError()
 

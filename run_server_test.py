@@ -266,7 +266,7 @@ def full_run(url_base, remote):
 
     """
     data = {'import_method': 'category',
-            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Pakistan'}
+            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
     resp = fetch('coordinator: import entries from a category',
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
@@ -295,6 +295,13 @@ def full_run(url_base, remote):
                  '/admin/round/%s/import' % round_id,
                  {'import_method': 'gistcsv', 'gist_url': gist_url},
                  as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: import files selected by name',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
+                 as_user='LilyOfTheWest')
+
+    import pdb;pdb.set_trace()
 
     resp = fetch('coordinator: preview disqualifications',
                  '/admin/round/%s/preview_disqualification' % round_id,
