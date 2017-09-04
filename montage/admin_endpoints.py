@@ -67,8 +67,35 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_disqualification',
                 preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
-           GET('/admin/round/<round_id:int>/download', download_results_csv)]
+           GET('/admin/round/<round_id:int>/results/download', download_results_csv),
+           GET('/admin/round/<round_id:int>/entries', get_round_entries),
+           GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv)]
     return ret
+
+
+def get_round_entries(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+    return {'file_infos': entry_infos}
+
+
+def download_round_entries_csv(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+    output_name = 'montage_entries-%s.csv' % (rnd.name,)
+    output = io.BytesIO()
+    csv_fieldnames = sorted(entry_infos[0].keys())
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
+    csv_writer.writeheader()
+    csv_writer.writerows(entry_infos)
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers["Content-Disposition"] = "attachment; filename=%s" % (output_name,)
+    return resp    
 
 
 def disqualify_entry(user_dao, round_id, entry_id, request_dict):

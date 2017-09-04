@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Relational database models for Montage
+import json
 import time
 import random
 import string
@@ -506,6 +507,17 @@ class Entry(Base):
             ret['upload_user_text'] = self.upload_user_text
         return ret
 
+    def to_export_dict(self):
+        ret = {'img_name': self.name,
+               'img_major_mime': self.mime_major,
+               'img_minor_mime': self.mime_minor,
+               'img_width': self.width,
+               'img_height': self.height,
+               'img_user': self.upload_user_id,
+               'img_user_text': self.upload_user_text,
+               'img_timestamp': format_date(self.upload_date)}
+        return ret
+
 
 class RoundEntry(Base):
     __tablename__ = 'round_entries'
@@ -513,6 +525,7 @@ class RoundEntry(Base):
     id = Column(Integer, primary_key=True)
     entry_id = Column(Integer, ForeignKey('entries.id'), index=True)
     round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
+    round_source_id = Column(Integer, ForeignKey('round_sources.id'), index=True)
 
     dq_user_id = Column(Integer, ForeignKey('users.id'), index=True)
     dq_reason = Column(String(255))  # in case it's disqualified
@@ -523,20 +536,20 @@ class RoundEntry(Base):
     entry = relationship(Entry, back_populates='entered_rounds')
     round = relationship(Round, back_populates='round_entries')
     votes = relationship('Vote', back_populates='round_entry')
+    round_source = relationship('RoundSource')
     flaggings = relationship('Flag')
-
-    def __init__(self, entry=None, round=None):
-        if entry is not None:
-            self.entry = entry
-        if round is not None:
-            self.round = round
-        return
 
     def to_dq_details(self):
         ret = {'entry': self.entry.to_details_dict(),
                'dq_reason': self.dq_reason,
                'dq_user_id': self.dq_user_id}
         return ret
+
+    def to_export_dict(self):
+        entry = self.entry.to_export_dict()
+        entry['source_method'] = self.round_source.method
+        entry['source_params'] = json.dumps(self.round_source.params)
+        return entry
 
 
 round_entries_t = RoundEntry.__table__
@@ -546,7 +559,6 @@ class RoundSource(Base):
     __tablename__ = 'round_sources'
 
     id = Column(Integer, primary_key=True)
-    round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
     user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     method = Column(String(255))
@@ -962,6 +974,13 @@ class CoordinatorDAO(UserDAO):
                .all())
         users = [rj.user for rj in rjs]
         return users
+
+    def get_round_entries(self, round_id):
+        round_entries = (self.query(RoundEntry)
+                         .filter_by(round_id=round_id,
+                                    dq_reason=None)
+                         .all())
+        return round_entries
 
     def get_round_task_counts(self, round_id):
         # the fact that these are identical for two DAOs shows it
@@ -1395,8 +1414,7 @@ class CoordinatorDAO(UserDAO):
         return entries
 
     def add_round_source(self, round_id, import_method, params, dq_params=None):
-        round_source = RoundSource(round_id=round_id,
-                                   method=import_method,
+        round_source = RoundSource(method=import_method,
                                    params=params,
                                    dq_params=dq_params,
                                    user=self.user)
@@ -1439,8 +1457,15 @@ class CoordinatorDAO(UserDAO):
         new_entries = [e for e
                        in unique_iter(entries, key=lambda e: e.name)
                        if e.name not in existing_names]
-        rnd.entries.extend(new_entries)
-        self.add_round_source(round_id, source, params)
+        if not new_entries:
+            return new_entries
+        round_source = self.add_round_source(round_id, source, params)
+        self.rdb_session.flush()
+        for new_entry in new_entries:
+            new_round_entry = RoundEntry(entry_id=new_entry.id,
+                                         round_id=round_id,
+                                         round_source_id=round_source.id)
+            self.rdb_session.add(new_round_entry)
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if source:
