@@ -45,6 +45,7 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
                'report.html'),
+           GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -253,6 +254,13 @@ def get_campaign_report(user_dao, campaign_id):
     ctx = summary.summary
     ctx['use_ashes'] = True
     return ctx
+
+
+def get_campaign_log(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    audit_logs = coord_dao.get_audit_log()  # TODO: should this paginate?
+    ret = [a.to_info_dict() for a in audit_logs]
+    return {'data': ret}
 
 
 def import_entries(user_dao, round_id, request_dict):

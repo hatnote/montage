@@ -208,6 +208,7 @@ class Campaign(Base):
 
     rounds = relationship('Round', back_populates='campaign')
     series = relationship('Series')
+    results_summary = relationship('RoundResultsSummary')
     campaign_coords = relationship('CampaignCoord',
                                    cascade="save-update, merge, delete, delete-orphan")
     coords = association_proxy('campaign_coords', 'user',
@@ -726,7 +727,7 @@ class RoundResultsSummary(Base):
     round_id = Column(Integer, ForeignKey('rounds.id'), index=True)
     round = relationship('Round')
     campaign_id = Column(Integer, ForeignKey('campaigns.id'), index=True)
-    campaign = relationship('Campaign')
+    campaign = relationship('Campaign', back_populates='results_summary')
 
     summary = Column(JSONEncodedDict)
     status = Column(String(255), index=True)  # private, public
@@ -809,6 +810,48 @@ class PublicDAO(object):
                    .all())
         return reports
 
+    def _get_entry_by_name(self, entry_name):
+        entry = (self.query(Entry)
+                 .filter_by(name=entry_name)
+                 .one_or_none())
+        if not entry:
+            raise DoesNotExist('no entry named %s' % entry_name)
+        return entry
+        
+    def get_public_entry_info(self, entry_name):
+        entry = self._get_entry_by_name(entry_name)
+        ret = entry.to_details_dict()
+        ret['campaigns'] = []
+        round_entries = entry.entered_rounds
+        for round_entry in round_entries:
+            campaign_id = round_entry.round.campaign.id,
+            disqualified = False
+            results_published = False
+            if campaign_id in [c['campaign_id'] for c in ret['campaigns']]:
+                # Only need the first round in a campaign
+                continue
+            if round_entry.dq_reason:
+                disqualified = True  # Should montage let people see
+                                     # if their photo was dq'ed?
+            summary = round_entry.round.campaign.results_summary
+            if summary:
+                summary = summary[0]
+                results_published = True  # If it's published, you can
+                                          # visit the campaign report
+                                          # to see the results
+                '''
+                # TODO: show the ranking, if it's a winner?
+                winners = [(e['entry']['name'],
+                            e['ranking']) for e in results['winners']]
+                '''
+            re_info = {'campaign_id': campaign_id,
+                       'campaign_name': round_entry.round.campaign.name,
+                       'campaign_status': round_entry.round.campaign.status,
+                       'campaign_results_published': results_published,
+                       'disqualified': disqualified,
+                       'source': round_entry.round_source.params}
+            ret['campaigns'].append(re_info)
+        return ret
 
 class UserDAO(PublicDAO):
     """The Data Acccess Object wraps the rdb_session and active user
@@ -1553,13 +1596,11 @@ class CoordinatorDAO(UserDAO):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
 
-        # TODO: Ranking method?
-
         rnd.close_date = datetime.datetime.utcnow()
         rnd.status = FINALIZED_STATUS
         # rnd.config['ranking_method'] = method
 
-        summary = self.build_campaign_report(rnd.campaign)
+        summary = self.build_campaign_report()
 
         result_summary = RoundResultsSummary(round_id=round_id,
                                              campaign_id=rnd.campaign.id,
@@ -1592,6 +1633,13 @@ class CoordinatorDAO(UserDAO):
                       .one_or_none()
         return summary
 
+    def get_audit_log(self):
+        audit_logs = (self.query(AuditLogEntry)
+                      .filter_by(campaign_id=self.campaign.id)
+                      .order_by(AuditLogEntry.create_date.asc())
+                      .all())
+        return audit_logs
+    
     def get_rating_advancing_group(self, round_id, threshold=None):
         #assert rnd.vote_method in ('rating', 'yesno')
 
@@ -1781,7 +1829,6 @@ class CoordinatorDAO(UserDAO):
         # quorum would require handling some completed tasks (eg,
         # whose vote do you discard? Randomly choose?)
 
-        # TODO: Support decreasing the quorum.
         rnd = self.get_round(round_id)
 
         old_quorum = rnd.quorum
@@ -1847,9 +1894,9 @@ class CoordinatorDAO(UserDAO):
         source = 'round(#%s)' % prev_finalized_rnd.id
         self.add_round_entries(rnd, advancing_group, source=source)
 
-    def build_campaign_report(self, campaign):
-        # TODO: must be a coordinator on the campaign
-        # TODO: assert campaign is finalized
+    def build_campaign_report(self):
+        campaign = self.campaign
+        # assert campaign.status is FINALIZED_STATUS
 
         ret = {}
         start_time = time.time()
@@ -1857,7 +1904,7 @@ class CoordinatorDAO(UserDAO):
         ret["campaign"] = campaign.to_info_dict()
 
         ret["rounds"] = [r.to_details_dict() for r in campaign.rounds
-                         if r.status != CANCELLED_STATUS]  # TODO: switch to == FINALIZED_STATUS
+                         if r.status == FINALIZED_STATUS]
 
         ret["coordinators"] = [cc.user.to_info_dict() for cc in
                                campaign.campaign_coords]

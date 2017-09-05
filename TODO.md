@@ -71,6 +71,14 @@ A bit of space for dev bookkeeping.
 * Load dates (?)
 * create round from previous round
 
+... [stephen on the train]
+
+* Endpoint to view reviews
+* Handle NONE user in UserDAO
+* check entry existance before getting from db or remote source
+* what should happen when someone closes a round with open votes?
+* 
+
 ## Frontend
 
 * Make URLs configurable for different backend paths (e.g., Labs versus localhost)
