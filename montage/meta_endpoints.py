@@ -11,15 +11,19 @@ from rdb import MaintainerDAO
 
 DEFAULT_LINE_COUNT = 500
 
+# These are populated at the bottom of the module
+META_API_ROUTES, META_UI_ROUTES = None, None
+
 
 def get_meta_routes():
-    ret = [GET('/maintainer/active_users', get_active_users),
+    api = [GET('/maintainer/active_users', get_active_users),
            GET('/logs/audit', get_audit_logs),
            GET('/logs/api', get_api_log_tail, render_basic),
            GET('/logs/api_exc', get_api_exc_log_tail, render_basic),
            GET('/logs/feel', get_frontend_error_log, render_basic),
            POST('/logs/feel', post_frontend_error_log, render_basic)]
-    return ret
+    ui = []
+    return api, ui
 
 
 def get_active_users(user_dao):
@@ -114,4 +118,4 @@ def get_frontend_error_log(config, request_dict):
     return _get_tail_from_path(feel_path, count=count)
 
 
-META_ROUTES = get_meta_routes()
+META_API_ROUTES, META_UI_ROUTES = get_meta_routes()

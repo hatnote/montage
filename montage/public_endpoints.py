@@ -31,19 +31,19 @@ MD_EXTENSIONS = ['markdown.extensions.def_list',
 
 
 def get_public_routes():
-    ret = [('/', home),
-           ('/login', login),
-           ('/logout', logout),
-           ('/complete_login', complete_login),
+    ui = [('/', home),
+          ('/login', login),
+          ('/logout', logout),
+          ('/complete_login', complete_login),
+          ('/campaign/<campaign_id:int>', get_report,
+           'report.html'),
+          ('/docs/<path*>', get_doc, render_basic)]
+    api = [('/campaign', get_all_reports),
            ('/series/<series_id?int>', get_series),
            ('/series', get_series),
-           ('/campaign/<campaign_id:int>', get_report,
-            'report.html'),
-           ('/campaign', get_all_reports),
-           ('/docs/<path*>', get_doc, render_basic),
            ('/utils/category', get_file_info_by_category),
            ('/utils/file', get_files_info_by_name)]
-    return ret
+    return api, ui
 
 
 @public
@@ -224,4 +224,4 @@ def get_all_reports(rdb_session):
     return {'data': [r.to_dict() for r in reports]}
 
 
-PUBLIC_ROUTES = get_public_routes()
+PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES = get_public_routes()

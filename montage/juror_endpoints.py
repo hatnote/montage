@@ -13,6 +13,10 @@ VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
 VALID_YESNO = (0.0, 1.0)
 
 
+# these are set at the bottom of the module
+JUROR_API_ROUTES, JUROR_UI_ROUTES = None, None
+
+
 def get_juror_routes():
     """\
     The refactored routes for jurors, coming soon.
@@ -26,7 +30,7 @@ def get_juror_routes():
       and POST('/juror/submit/rating', submit_rating) in favor of the
       unified submission URL which includes the round_id
     """
-    ret = [GET('/juror', get_index),
+    api = [GET('/juror', get_index),
            GET('/juror/campaign/<campaign_id:int>', get_campaign),
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
@@ -38,7 +42,8 @@ def get_juror_routes():
                 remove_fave),
            POST('/juror/round/<round_id:int>/<entry_id:int>/flag', submit_flag),
            GET('/juror/faves', get_faves)]
-    return ret
+    ui = []
+    return api, ui
 
 
 def make_juror_round_details(rnd, rnd_stats):
@@ -421,7 +426,7 @@ def submit_flag(user_dao, round_id, entry_id, request_dict):
 
 
 
-JUROR_ROUTES = get_juror_routes()
+JUROR_API_ROUTES, JUROR_UI_ROUTES = get_juror_routes()
 
 # TODO: Cave -> key-value store
 # TODO: flag RoundEntries (only applicable on ratings rounds?)

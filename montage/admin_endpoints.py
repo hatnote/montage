@@ -21,11 +21,15 @@ ROUND_METHOD = 'round'
 SELECTED_METHOD = 'selected'
 
 
+# These are populated at the bottom of the module
+ADMIN_API_ROUTES, ADMIN_UI_ROUTES = None, None
+
+
 def get_admin_routes():
     """
     /role/(object/id/object/id/...)verb is the guiding principle
     """
-    ret = [GET('/admin', get_index),
+    api = [GET('/admin', get_index),
            POST('/admin/add_series', add_series),
            POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
@@ -43,8 +47,6 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
            POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
-           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
-               'report.html'),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -70,7 +72,11 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/results/download', download_results_csv),
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
            GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv)]
-    return ret
+    ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
+              'report.html')]
+    # TODO: arguably download URLs should go into "ui" as well,
+    # anything that generates a response directly (or doesn't return json)
+    return api, ui
 
 
 def get_round_entries(user_dao, round_id):
@@ -95,7 +101,7 @@ def download_round_entries_csv(user_dao, round_id):
     resp = Response(ret, mimetype='text/csv')
     resp.mimetype_params['charset'] = 'utf-8'
     resp.headers["Content-Disposition"] = "attachment; filename=%s" % (output_name,)
-    return resp    
+    return resp
 
 
 def disqualify_entry(user_dao, round_id, entry_id, request_dict):
@@ -104,7 +110,7 @@ def disqualify_entry(user_dao, round_id, entry_id, request_dict):
     reason = request_dict.get('reason')
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     coord_dao.disqualify(round_id, entry_id, reason)
-    
+
 
 def requalify_entry(user_dao, round_id, entry_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
@@ -222,7 +228,7 @@ def create_campaign(user_dao, request_dict):
 
     if close_date:
         close_date = js_isoparse(close_date)
-    
+
     url = request_dict['url']
 
     series_id = request_dict.get('series_id', 0)
@@ -825,7 +831,7 @@ def remove_coordinator(user_dao, campaign_id, request_dict):
     return {'data': data}
 
 
-ADMIN_ROUTES = get_admin_routes()
+ADMIN_API_ROUTES, ADMIN_UI_ROUTES = get_admin_routes()
 
 
 # - cancel round

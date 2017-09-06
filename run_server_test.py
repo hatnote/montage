@@ -78,11 +78,13 @@ def fetch_url(url, data=None, act=None, **kw):
 # "role" of current route being tested
 class TestClient(object):
     def __init__(self, base_url, default_role='public'):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('/')
         self.default_role = default_role
         # TODO: default user?
 
     def fetch(self, role_action, url, data=None, **kw):
+        if not url.startswith('/'):
+            raise ValueError('expected url starting with "/", not: %r' % url)
         role, sep, action = role_action.partition(':')
         role, action = (role, action) if sep else (self.default_role, role)
         print '>>', action, 'as', role,
@@ -115,20 +117,21 @@ class TestClient(object):
         return data_dict
 
 
-def full_run(url_base, remote):
+def full_run(base_url, remote):
     # Admin endpoints
     # ---------------
 
     # Get the home page
     # - as maintainer
-    client = TestClient(base_url=url_base)  # TODO
+    base_api_url = base_url + '/v1/'
+    client = TestClient(base_url=base_api_url)  # TODO
     fetch = client.fetch
 
-    resp = fetch_raw(url_base).read()
+    resp = fetch_raw(base_url).read()
 
     # Login - TODO: this approach does not work
     # - as maintainer
-    # resp = fetch_raw(url_base + '/complete_login').read()
+    # resp = fetch_raw(base_url + '/complete_login').read()
 
     resp = fetch('organizer: create a new series',
                  '/admin/add_series',
@@ -536,7 +539,7 @@ def full_run(url_base, remote):
 
     # submit all remaining tasks for the round
 
-    submit_ratings(url_base, round_id, fetch=fetch)
+    submit_ratings(client, round_id)
 
     resp = fetch('coordinator: preview round results in prep for closing',
                  '/admin/round/%s/preview_results' % round_id,
@@ -559,14 +562,14 @@ def full_run(url_base, remote):
     rnd_2_id = resp['data']['id']
 
     # TODO: test getting a csv of final round results
-    #resp = fetch_raw(url_base + '/admin/round/%s/download' % round_id,
+    #resp = fetch_raw(base_url + '/admin/round/%s/download' % round_id,
     #                  as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
                  {'post': True}, as_user='LilyOfTheWest')
 
-    submit_ratings(url_base, rnd_2_id, fetch=fetch)
+    submit_ratings(client, rnd_2_id)
 
     resp = fetch('coordinator: preview results from second round',
                  '/admin/round/%s/preview_results' % rnd_2_id,
@@ -664,7 +667,7 @@ def full_run(url_base, remote):
     #import pdb;pdb.set_trace()
 
     # submit the remaining ratings
-    submit_ratings(url_base, rnd_3_id, fetch=fetch)
+    submit_ratings(client, rnd_3_id)
 
     resp = fetch('coordinator: preview round 3 results',
                  '/admin/round/%s/preview_results' % rnd_3_id,
@@ -675,7 +678,7 @@ def full_run(url_base, remote):
                  {'post': True}, as_user='LilyOfTheWest')
 
     # view the final campaign report (note: fetch_url, as this is an html page)
-    resp = fetch_url(url_base + '/admin/campaign/%s/report' % campaign_id,
+    resp = fetch_url(base_url + '/admin/campaign/%s/report' % campaign_id,
                      as_user='LilyOfTheWest', content_type='text/html')
 
     resp = fetch('juror: view own rankings for round 3',
@@ -702,7 +705,7 @@ def full_run(url_base, remote):
 
 
 @script_log.wrap('critical', verbose=True)
-def submit_ratings(url_base, round_id, fetch, coord_user='Yarl'):
+def submit_ratings(client, round_id, coord_user='Yarl'):
     """
     A reminder of our key players:
 
@@ -711,6 +714,7 @@ def submit_ratings(url_base, round_id, fetch, coord_user='Yarl'):
       * Coordinators: LilyOfTheWest, Slaporte, Yarl, Effeietsanders
       * Jurors: (coordinators) + "Jean-Frédéric" + "Jimbo Wales"
     """
+    fetch = client.fetch
     r_dict = fetch('coordinator: get round details/jurors for submit_ratings',
                    '/admin/round/%s' % round_id,
                    as_user=coord_user)['data']
@@ -795,11 +799,11 @@ def main():
     args = prs.parse_args()
 
     if args.remote:
-        url_base = 'https://tools.wmflabs.org/montage-dev'
+        base_url = 'https://tools.wmflabs.org/montage-dev'
     else:
-        url_base = 'http://localhost:5000'
+        base_url = 'http://localhost:5000'
 
-    parsed_url = urlparse.urlparse(url_base)
+    parsed_url = urlparse.urlparse(base_url)
 
     domain = parsed_url.netloc.partition(':')[0]
     if domain.startswith('localhost'):
@@ -819,7 +823,7 @@ def main():
                           rfc2109=False)
     cookies.set_cookie(ck)
 
-    full_run(url_base, remote=args.remote)
+    full_run(base_url, remote=args.remote)
 
 
 if __name__ == '__main__':
