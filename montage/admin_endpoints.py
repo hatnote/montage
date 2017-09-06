@@ -47,6 +47,7 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
            POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
+           GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -67,7 +68,7 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/<entry_id:int>/requalify',
                 requalify_entry),
            GET('/admin/round/<round_id:int>/preview_disqualification',
-                preview_disqualification),
+               preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/results/download', download_results_csv),
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
@@ -261,6 +262,13 @@ def get_campaign_report(user_dao, campaign_id):
     return ctx
 
 
+def get_campaign_log(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    audit_logs = coord_dao.get_audit_log()  # TODO: should this paginate?
+    ret = [a.to_info_dict() for a in audit_logs]
+    return {'data': ret}
+
+
 def import_entries(user_dao, round_id, request_dict):
     """
     Summary: Load entries into a new round identified by a round ID.
@@ -297,7 +305,7 @@ def import_entries(user_dao, round_id, request_dict):
         raise NotImplementedError()
 
     new_entries = coord_dao.add_round_entries(round_id, entries,
-                                              source=import_method,
+                                              method=import_method,
                                               params=params)
     rnd = coord_dao.get_round(round_id) # TODO: The stats below should
                                         # returned by
@@ -508,7 +516,7 @@ def advance_round(user_dao, round_id, request_dict):
     params = {'round': round_id,
               'threshold': threshold}
     coord_dao.add_round_entries(next_rnd.id, adv_group,
-                                source=ROUND_METHOD, params=params)
+                                method=ROUND_METHOD, params=params)
 
     # NOTE: disqualifications are not repeated, as they should have
     # been performed the first round.

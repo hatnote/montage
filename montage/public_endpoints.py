@@ -35,12 +35,13 @@ def get_public_routes():
           ('/login', login),
           ('/logout', logout),
           ('/complete_login', complete_login),
-          ('/campaign/<campaign_id:int>', get_report,
-           'report.html'),
+          ('/campaign/<campaign_id:int>', get_report, 'report.html'),
           ('/docs/<path*>', get_doc, render_basic)]
     api = [('/campaign', get_all_reports),
            ('/series/<series_id?int>', get_series),
            ('/series', get_series),
+           ('/entry/<entry_name:str>', get_entry_info),
+           ('/campaign', get_all_reports),
            ('/utils/category', get_file_info_by_category),
            ('/utils/file', get_files_info_by_name)]
     return api, ui
@@ -204,6 +205,12 @@ def get_series(rdb_session, series_id=None):
     else:
         series = dao.get_all_series()
     return {'data': [s.to_details_dict() for s in series]}
+
+@public
+def get_entry_info(rdb_session, entry_name):
+    dao = PublicDAO(rdb_session)
+    ret = dao.get_public_entry_info(entry_name)
+    return {'data': ret}
 
 
 @public

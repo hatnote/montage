@@ -274,6 +274,12 @@ def full_run(base_url, remote):
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
 
+    data = {'import_method': 'category',
+            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
+    resp = fetch('coordinator: import entries from a category',
+                 '/admin/round/%s/import' % round_id,
+                 data, as_user='LilyOfTheWest')
+
 
     resp = fetch('coordinator: activate a round',
                  '/admin/round/%s/activate' % round_id,
@@ -697,10 +703,13 @@ def full_run(base_url, remote):
                  '/admin/campaign/%s/publish' % campaign_id,
                  {'post': True}, as_user='LilyOfTheWest')
 
-
     pprint(resp['data'])
 
-    print cookies
+    resp = fetch('coordinator: see the audit log with full campaign history',
+                 '/admin/campaign/%s/audit' % campaign_id,
+                 as_user='LilyOfTheWest')
+
+    pprint(resp['data'])
     import pdb;pdb.set_trace()
 
 
