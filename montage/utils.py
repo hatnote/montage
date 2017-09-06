@@ -9,7 +9,6 @@ import os.path
 import datetime
 from urllib import urlencode
 from urllib2 import urlopen
-from collections import Counter
 
 import yaml
 from clastic.errors import Forbidden, NotFound, BadRequest
@@ -39,6 +38,15 @@ class DoesNotExist(NotFound):
 
 class InvalidAction(BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
+
+
+class NotImplementedResponse(BadRequest, NotImplementedError):
+    "Raised when a feature hasn't yet been implemented"
+
+
+DEFAULT_SERIES = {'name': 'Unofficial',
+                  'description': 'For unofficial campaigns, whether for testing or just for fun!',
+                  'url': 'TODO add docs url'}  # TODO: status is always active
 
 
 def to_unicode(obj):
@@ -113,6 +121,10 @@ def load_env_config(env_name=None):
     return config
 
 
+def load_default_series():
+    return DEFAULT_SERIES
+
+
 def check_schema(db_url, base_type, echo=False, autoexit=False):
     engine = create_engine(db_url, echo=echo)
     session_type = sessionmaker()
@@ -145,7 +157,7 @@ def json_serial(obj):
         return serial
     elif isinstance(obj, set):
         return list(obj)
-    raise TypeError ("Type %s not serializable" % type(obj))
+    raise TypeError("type %s not serializable" % type(obj))
 
 
 def parse_date(date):

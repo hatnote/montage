@@ -71,6 +71,14 @@ A bit of space for dev bookkeeping.
 * Load dates (?)
 * create round from previous round
 
+... [stephen on the train]
+
+* Endpoint to view reviews
+* Handle NONE user in UserDAO
+* check entry existance before getting from db or remote source
+* what should happen when someone closes a round with open votes?
+* 
+
 ## Frontend
 
 * Make URLs configurable for different backend paths (e.g., Labs versus localhost)
@@ -80,3 +88,13 @@ A bit of space for dev bookkeeping.
 Ratings closing round interface:
 
 * Specify threshold (1, 2, 3, 4, 5 stars, etc.)
+
+
+## Cron job
+
+* Look up open rounds
+* Look up round sources with open rounds
+* Ignore "round" and "selection" methods
+* For gists, redownload the gist and add_round_entries as need be
+* For categories, recheck the db and add_round_entries as need be
+* For removed entries, do nothing (current behavior) or disqualify

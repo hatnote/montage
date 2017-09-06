@@ -34,10 +34,9 @@ created or been added to. Can Coordinators create other Coordinators?
 """
 import sys
 import os.path
+import logging
 
 import yaml
-
-import logging
 
 from clastic import Application, StaticFileRoute, MetaApplication
 
@@ -56,27 +55,29 @@ from mw import (UserMiddleware,
                 MessageMiddleware,
                 ReplayLogMiddleware,
                 DBSessionMiddleware)
-from rdb import Base, bootstrap_maintainers
+from rdb import Base, bootstrap_maintainers, ensure_series
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
 
-from meta_endpoints import META_ROUTES
-from juror_endpoints import JUROR_ROUTES
-from admin_endpoints import ADMIN_ROUTES
-from public_endpoints import PUBLIC_ROUTES
+from meta_endpoints import META_API_ROUTES, META_UI_ROUTES
+from juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
+from admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
+from public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
-TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
 
 def create_app(env_name='prod'):
     # rendering is handled by MessageMiddleware
-    routes = PUBLIC_ROUTES + JUROR_ROUTES + ADMIN_ROUTES + META_ROUTES
-
+    ui_routes = (PUBLIC_UI_ROUTES + JUROR_UI_ROUTES
+                 + ADMIN_UI_ROUTES + META_UI_ROUTES)
+    api_routes = (PUBLIC_API_ROUTES + JUROR_API_ROUTES
+                 + ADMIN_API_ROUTES + META_API_ROUTES)
     print '==  creating WSGI app using env name: %s' % (env_name,)
 
     config_file_name = 'config.%s.yaml' % env_name
@@ -107,6 +108,11 @@ def create_app(env_name='prod'):
     musers = bootstrap_maintainers(tmp_rdb_session)
     if musers:
         print '++ created new users for maintainers: %r' % (musers,)
+
+    new_series = ensure_series(tmp_rdb_session)
+    if new_series:
+        print '++ created new series: %r' % new_series
+
     tmp_rdb_session.commit()
 
     engine.echo = config.get('db_echo', False)
@@ -160,16 +166,19 @@ def create_app(env_name='prod'):
 
     resources = {'config': config,
                  'consumer_token': consumer_token,
-                 'root_path': root_path}
+                 'root_path': root_path,
+                 'ashes_renderer': renderer}
 
-    app = Application(routes, resources, middlewares=middlewares,
-                      render_factory=renderer)
+    api_app = Application(api_routes, resources, middlewares=middlewares)
+    ui_app = Application(ui_routes, resources, middlewares=middlewares,
+                         render_factory=renderer)
 
     static_app = StaticApplication(STATIC_PATH)
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
                             ('/', static_app),
-                            ('/', app),
+                            ('/', ui_app),
+                            ('/v1/', api_app),
                             ('/meta', MetaApplication())])
 
     return root_app

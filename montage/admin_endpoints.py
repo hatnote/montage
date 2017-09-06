@@ -15,13 +15,25 @@ from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
+GISTCSV_METHOD = 'gistcsv'
+CATEGORY_METHOD = 'category'
+ROUND_METHOD = 'round'
+SELECTED_METHOD = 'selected'
+
+
+# These are populated at the bottom of the module
+ADMIN_API_ROUTES, ADMIN_UI_ROUTES = None, None
+
 
 def get_admin_routes():
     """
     /role/(object/id/object/id/...)verb is the guiding principle
     """
-    ret = [GET('/admin', get_index),
+    api = [GET('/admin', get_index),
+           POST('/admin/add_series', add_series),
+           POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
+           POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
@@ -30,9 +42,12 @@ def get_admin_routes():
                 create_round),
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),
+           POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
+                remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
-           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
-               'report.html'),
+           POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
+           POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
+           GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -42,27 +57,107 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
+           GET('/admin/round/<round_id:int>/flags', get_flagged_entries),
+           GET('/admin/round/<round_id:int>/all_flags', get_all_flags),
            GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
                 autodisqualify),
+           POST('/admin/round/<round_id:int>/<entry_id:int>/disqualify',
+                disqualify_entry),
+           POST('/admin/round/<round_id:int>/<entry_id:int>/requalify',
+                requalify_entry),
            GET('/admin/round/<round_id:int>/preview_disqualification',
-                preview_disqualification),
+               preview_disqualification),
            GET('/admin/round/<round_id:int>/results', get_results),
-           GET('/admin/round/<round_id:int>/download', download_results_csv),
-           GET('/maintainer', get_maint_index),
-           GET('/maintainer/active_users', get_active_users),
-           GET('/maintainer/campaign/<campaign_id:int>', get_maint_campaign),
-           GET('/maintainer/round/<round_id:int>', get_maint_round),
-           GET('/maintainer/round/<round_id:int>/preview_results',
-               get_round_results_preview),
-           GET('/maintainer/round/<round_id:int>/disqualified',
-               get_disqualified),
-           GET('/maintainer/round/<round_id:int>/results', get_results),
-           GET('/maintainer/round/<round_id:int>/download', download_results_csv),
-           # TODO: split out into round/campaign log endpoints
-           GET('/maintainer/audit_logs', get_audit_logs)]
-    return ret
+           GET('/admin/round/<round_id:int>/results/download', download_results_csv),
+           GET('/admin/round/<round_id:int>/entries', get_round_entries),
+           GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv)]
+    ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
+              'report.html')]
+    # TODO: arguably download URLs should go into "ui" as well,
+    # anything that generates a response directly (or doesn't return json)
+    return api, ui
+
+
+def get_round_entries(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+    return {'file_infos': entry_infos}
+
+
+def download_round_entries_csv(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+    output_name = 'montage_entries-%s.csv' % (rnd.name,)
+    output = io.BytesIO()
+    csv_fieldnames = sorted(entry_infos[0].keys())
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
+    csv_writer.writeheader()
+    csv_writer.writerows(entry_infos)
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers["Content-Disposition"] = "attachment; filename=%s" % (output_name,)
+    return resp
+
+
+def disqualify_entry(user_dao, round_id, entry_id, request_dict):
+    if not request_dict:
+        request_dict = {}
+    reason = request_dict.get('reason')
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.disqualify(round_id, entry_id, reason)
+
+
+def requalify_entry(user_dao, round_id, entry_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.requalify(round_id, entry_id)
+
+
+def add_series(user_dao, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+
+    name = request_dict['name']
+    description = request_dict['description']
+    url = request_dict['url']
+    status = request_dict.get('status')
+
+    new_series = org_dao.create_series(name, description, url, status)
+    return {'data': new_series}
+
+
+def edit_series(user_dao, series_id, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+    series_dict = {}
+    name = request_dict.get('name')
+    if name:
+        series_dict['name'] = name
+    description = request_dict.get('description')
+    if description:
+        series_dict['description'] = description
+    url = request_dict.get('url')
+    if url:
+        series_dict['url'] = url
+    status = request_dict.get('status')
+    if status:
+        series_dict['status'] = status
+
+    new_series = org_dao.edit_series(series_id, series_dict)
+    return {'data': new_series}
+
+
+def publish_report(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.publish_report()
+
+
+def unpublish_report(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.unpublish_report()
 
 
 def js_isoparse(date_str):
@@ -102,25 +197,12 @@ def make_admin_round_details(rnd, rnd_stats):
     return ret
 
 
-def get_active_users(user, rdb_session):
-    if not (user.is_maintainer or user.is_organizer):
-        raise Forbidden('must be a designated organizer to create campaigns')
-    maint_dao = MaintainerDAO(rdb_session, user)
-    users = maint_dao.get_active_users()
-    data = []
-    for user in users:
-        ud = user.to_details_dict()
-        ud['last_active_date'] = ud['last_active_date'].isoformat()
-        data.append(ud)
-    return {'data': data}
-
-
 # TODO: (clastic) some way to mark arguments as injected from the
 # request_dict such that the signature can be expanded here. the goal
 # being that create_campaign can be a standalone function without any
 # special middleware dependencies, to achieve a level of testing
 # between the dao and server tests.
-def create_campaign(user, rdb_session, request_dict):
+def create_campaign(user_dao, request_dict):
     """
     Summary: Post a new campaign
 
@@ -130,10 +212,7 @@ def create_campaign(user, rdb_session, request_dict):
 
     Response model: AdminCampaignDetails
     """
-    if not (user.is_maintainer or user.is_organizer):
-        raise Forbidden('must be a designated organizer to create campaigns')
-
-    org_dao = OrganizerDAO(rdb_session, user)
+    org_dao = OrganizerDAO(user_dao)
 
     name = request_dict.get('name')
 
@@ -151,9 +230,13 @@ def create_campaign(user, rdb_session, request_dict):
     if close_date:
         close_date = js_isoparse(close_date)
 
+    url = request_dict['url']
+
+    series_id = request_dict.get('series_id', 0)
+
     coord_names = request_dict.get('coordinators')
 
-    coords = [user]  # Organizer is included as a coordinator by default
+    coords = [user_dao.user]  # Organizer is included as a coordinator by default
     for coord_name in coord_names:
         coord = org_dao.get_or_create_user(coord_name, 'coordinator')
         coords.append(coord)
@@ -161,68 +244,74 @@ def create_campaign(user, rdb_session, request_dict):
     campaign = org_dao.create_campaign(name=name,
                                        open_date=open_date,
                                        close_date=close_date,
+                                       series_id=series_id,
+                                       url=url,
                                        coords=set(coords))
     # TODO: need completion info for each round
-    rdb_session.commit()
     data = campaign.to_details_dict()
 
     return {'data': data}
 
 
-def get_campaign_report(rdb_session, user, campaign_id):
-    user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = user_dao.get_campaign(campaign_id)
-    if not campaign:
-        raise Forbidden('not a coordinator for this campaign,'
-                        ' or campaign does not exist')
-    summary = user_dao.get_campaign_report(campaign)
+def get_campaign_report(user_dao, campaign_id):
+    # TODO: docs
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    summary = coord_dao.get_campaign_report()
     ctx = summary.summary
     ctx['use_ashes'] = True
     return ctx
 
 
-def import_entries(rdb_session, user, round_id, request_dict):
+def get_campaign_log(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    audit_logs = coord_dao.get_audit_log()  # TODO: should this paginate?
+    ret = [a.to_info_dict() for a in audit_logs]
+    return {'data': ret}
+
+
+def import_entries(user_dao, round_id, request_dict):
     """
     Summary: Load entries into a new round identified by a round ID.
 
     Request model:
-        round_id:
-            type: int64
-        import_method:
-            type: string
-        import_url:
-            type: string
+        round_id
+        import_method
+        import_url
 
     Response model name: EntryImportDetails
-    Response model:
-        round_id:
-            type: int64
-        total_entries:
-            type: int64
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-    coords = rnd.campaign.coords
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    import_method = request_dict['import_method']
 
-    if not user.is_maintainer and user not in coords:
-        raise Forbidden('not allowed to import entries')
-
-    import_method = request_dict.get('import_method')
-
-    if import_method == 'gistcsv':
-        gist_url = request_dict.get('gist_url')
-        entries = coord_dao.add_entries_from_csv_gist(rnd, gist_url)
-        source = 'gistcsv(%s)' % gist_url
-    elif import_method == 'category':
-        cat_name = request_dict.get('category')
-        if not cat_name:
-            raise InvalidAction('needs category name for import')
-        entries = coord_dao.add_entries_from_cat(rnd, cat_name)
-        source = 'category(%s)' % cat_name
+    if import_method == GISTCSV_METHOD:
+        gist_url = request_dict['gist_url']
+        entries = coord_dao.add_entries_from_csv_gist(round_id, gist_url)
+        params = {'gist_url': gist_url}
+    elif import_method == CATEGORY_METHOD:
+        cat_name = request_dict['category']
+        entries = coord_dao.add_entries_from_cat(round_id, cat_name)
+        params = {'category': cat_name}
+    elif import_method == ROUND_METHOD:
+        threshold = request_dict['threshold']
+        prev_round_id = request_dict['previous_round_id']
+        entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
+        params = {'threshold': threshold,
+                  'round_id': prev_round_id}
+    elif import_method == SELECTED_METHOD:
+        file_names = request_dict['file_names']
+        entries = coord_dao.add_entries_by_name(round_id, file_names)
+        params = {'file_names': file_names}
     else:
         raise NotImplementedError()
 
-    new_entries = coord_dao.add_round_entries(rnd, entries, source=source)
+    new_entries = coord_dao.add_round_entries(round_id, entries,
+                                              method=import_method,
+                                              params=params)
+    rnd = coord_dao.get_round(round_id) # TODO: The stats below should
+                                        # returned by
+                                        # add_round_entries
+
+
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
@@ -231,52 +320,36 @@ def import_entries(rdb_session, user, round_id, request_dict):
     return {'data': data}
 
 
-def activate_round(rdb_session, user, round_id, request_dict):
+def activate_round(user_dao, round_id, request_dict):
     """
     Summary: Set the status of a round to active.
 
     Request model:
         round_id:
             type: int64
-
-    Response model name: RoundActivationDetails
-    Response model:
-        round_id:
-            type: int64
-        status:
-            type: string
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.activate_round(round_id)
     rnd = coord_dao.get_round(round_id)
-
-    coord_dao.activate_round(rnd)
-
     ret_data = rnd.get_count_map()
     ret_data['round_id'] = round_id
     return {'data': ret_data}
 
 
-def pause_round(rdb_session, user, round_id, request_dict):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-
-    if not rnd:
-        raise DoesNotExist()
-
-    coord_dao.pause_round(rnd)
-
+def pause_round(user_dao, round_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.pause_round(round_id)
     return {'data': 'paused'}
 
 
-def edit_campaign(rdb_session, user, campaign_id, request_dict):
+def edit_campaign(user_dao, campaign_id, request_dict):
     """
-    Summary: Change the settings for a round identified by a round ID.
+    Summary: Change the settings for a campaign
 
     Request model:
-        campaign_id:
-            type: int64
+        campaign_id
+        request_dict
 
-    Response model: AdminCampaignDetails
     """
     edit_dict = {}
     name = request_dict.get('name')
@@ -289,20 +362,14 @@ def edit_campaign(rdb_session, user, campaign_id, request_dict):
     if close_date:
         edit_dict['close_date'] = js_isoparse(close_date)
 
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    coord_dao.edit_campaign(campaign_id, edit_dict)
-
-    rdb_session.commit()
-
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.edit_campaign(edit_dict)
     return {'data': edit_dict}
 
 
-def cancel_campaign(rdb_session, user, campaign_id, request_dict):
-    coord_dao = CoordinatorDAO(rdb_session, user=user)
-    campaign = coord_dao.get_campaign(campaign_id)
-    if not campaign:
-        raise Forbidden('not coordinator or campaign does not exist')
-    results = coord_dao.cancel_campaign(campaign)
+def cancel_campaign(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    results = coord_dao.cancel_campaign()
     return {'data': results}
 
 
@@ -332,30 +399,22 @@ def _prepare_round_params(coord_dao, request_dict):
 
     for juror_name in juror_names:
         juror = coord_dao.get_or_create_user(juror_name, 'juror')
-
         rnd_dict['jurors'].append(juror)
 
     return rnd_dict
 
 
-def create_round(rdb_session, user, campaign_id, request_dict):
+def create_round(user_dao, campaign_id, request_dict):
     """
-    Summary: Post a new round
+    Summary: Create a new round
 
     Request model:
-        campaign_id:
-            type: int64
-
-    Response model: AdminCampaignDetails
+        campaign_id
     """
-    coord_dao = CoordinatorDAO(rdb_session, user)
-    campaign = coord_dao.get_campaign(campaign_id)
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
 
     rnd_params = _prepare_round_params(coord_dao, request_dict)
-    rnd_params['campaign'] = campaign
     rnd = coord_dao.create_round(**rnd_params)
-
-    rdb_session.commit()
 
     data = rnd.to_details_dict()
     data['progress'] = rnd.get_count_map()
@@ -363,85 +422,29 @@ def create_round(rdb_session, user, campaign_id, request_dict):
     return {'data': data}
 
 
-def edit_round(rdb_session, user, round_id, request_dict):
+def edit_round(user_dao, round_id, request_dict):
     """
     Summary: Post a new campaign
 
     Request model:
-        campaign_name:
-            type: string
+        campaign_name
 
     Response model: AdminCampaignDetails
     """
-    column_names = ['name', 'description', 'directions',
-                    'config', 'new_jurors', 'deadline_date',
-                    'quorum']
-
-    # Use specific methods to edit other columns:
-    #  - status: activate_round, pause_round
-    #  - quorum: [requires reallocation]
-    #  - active_jurors: [requires reallocation]
-
-    pause_column_names = ['quorum', 'new_jurors']
-
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-
-    if not rnd:
-        raise DoesNotExist()
-
-    new_val_map = {}
-
-    for column_name in column_names:
-        # val = request_dict.pop(column_name, None)  # see note below
-        val = request_dict.get(column_name)
-        if val is not None and column_name not in pause_column_names:
-            if column_name == 'deadline_date':
-                val = js_isoparse(val)
-            setattr(rnd, column_name, val)
-            new_val_map[column_name] = val
-
-    # can't do this yet because stuff like su_to is hanging out in there.
-    # if request_dict:
-    #     raise InvalidAction('unable to modify round attributes: %r'
-    #                         % request_dict.keys())
-
-    new_juror_names = request_dict.get('new_jurors')
-    cur_jurors = coord_dao.get_active_jurors(rnd)
-    cur_juror_names = [u.username for u in cur_jurors]
-
-    if new_juror_names and set(new_juror_names) != set(cur_juror_names):
-        if rnd.status != 'paused':
-            raise InvalidAction('round must be paused to edit jurors')
-        else:
-            new_juror_stats = coord_dao.modify_jurors(rnd, new_juror_names)
-
-    new_quorum = request_dict.get('quorum')
-
-    if new_quorum and new_quorum != rnd.quorum:
-        if rnd.status != 'paused':
-            raise InvalidAction('round must be paused to edit quorum')
-        else:
-            new_juror_stats = coord_dao.modify_quorum(rnd, new_quorum)
-
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    new_val_map = coord_dao.edit_round(round_id, request_dict)
     return {'data': new_val_map}
 
 
-def cancel_round(rdb_session, user, round_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-
-    if not rnd:
-        raise Forbidden('cannot access round')
-
-    coord_dao.cancel_round(rnd)
-
+def cancel_round(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.cancel_round(round_id)
     stats = rnd.get_count_map()
     return {'data': stats}
 
 
-def get_round_results_preview(rdb_session, user, round_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+def get_round_results_preview(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
 
     round_counts = rnd.get_count_map()
@@ -452,13 +455,19 @@ def get_round_results_preview(rdb_session, user, round_id):
             'is_closeable': is_closeable}
 
     if rnd.vote_method in ('yesno', 'rating'):
-        data['ratings'] = coord_dao.get_round_average_rating_map(rnd)
-        data['thresholds'] = get_threshold_map(data['ratings'])
+        data['ratings'] = coord_dao.get_round_average_rating_map(round_id)
+        try:
+            data['thresholds'] = get_threshold_map(data['ratings'])
+        except:
+            import pdb;pdb.post_mortem()
+            raise
     elif rnd.vote_method == 'ranking':
         if not is_closeable:
             # TODO: should this sort of check apply to ratings as well?
+            import pdb;pdb.set_trace()
             raise InvalidAction('round must be closeable to preview results')
-        rankings = coord_dao.get_round_ranking_list(rnd)
+
+        rankings = coord_dao.get_round_ranking_list(round_id)
 
         data['rankings'] = [r.to_dict() for r in rankings]
 
@@ -468,7 +477,7 @@ def get_round_results_preview(rdb_session, user, round_id):
     return {'data': data}
 
 
-def advance_round(rdb_session, user, round_id, request_dict):
+def advance_round(user_dao, round_id, request_dict):
     """Technical there are four possibilities.
 
     1. Advancing from yesno/rating to another yesno/rating
@@ -484,18 +493,14 @@ def advance_round(rdb_session, user, round_id, request_dict):
     "yesno -> rating -> yesno -> ranking"
 
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-
-    if not rnd:
-        raise Forbidden('No permission to advance round %s, or round does not exist' % round_id)
 
     if rnd.vote_method not in ('rating', 'yesno'):
         raise NotImplementedError()  # see docstring above
     threshold = float(request_dict['threshold'])
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
-    nrp['campaign'] = rnd.campaign
 
     if nrp['vote_method'] == 'ranking' \
        and len(nrp['jurors']) != nrp.get('quorum'):
@@ -504,12 +509,14 @@ def advance_round(rdb_session, user, round_id, request_dict):
         nrp['quorum'] = len(nrp['jurors'])
 
     # TODO: inherit round config from previous round?
-    coord_dao.finalize_rating_round(rnd, threshold=threshold)
-    adv_group = coord_dao.get_rating_advancing_group(rnd, threshold)
+    adv_group = coord_dao.finalize_rating_round(round_id, threshold=threshold)
 
     next_rnd = coord_dao.create_round(**nrp)
-    source = 'round(#%s)' % rnd.id
-    coord_dao.add_round_entries(next_rnd, adv_group, source=source)
+    source = 'round(#%s)' % round_id
+    params = {'round': round_id,
+              'threshold': threshold}
+    coord_dao.add_round_entries(next_rnd.id, adv_group,
+                                method=ROUND_METHOD, params=params)
 
     # NOTE: disqualifications are not repeated, as they should have
     # been performed the first round.
@@ -518,21 +525,17 @@ def advance_round(rdb_session, user, round_id, request_dict):
     next_rnd_dict['progress'] = next_rnd.get_count_map()
 
     msg = ('%s advanced campaign %r (#%s) from %s round "%s" to %s round "%s"'
-           % (user.username, rnd.campaign.name, rnd.campaign.id,
-              rnd.vote_method, rnd.name, next_rnd.vote_method, next_rnd.name))
+           % (user_dao.user.username, rnd.campaign.name, rnd.campaign.id,
+              rnd.vote_method, round_id, next_rnd.vote_method, next_rnd.name))
     coord_dao.log_action('advance_round', campaign=rnd.campaign, message=msg)
 
     return {'data': next_rnd_dict}
 
 
-def finalize_campaign(rdb_session, user, campaign_id):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.get_campaign(campaign_id)
-
-    if not campaign:
-        raise Forbidden('No permission to finalize campaign %s, or campaign does not exist' % campaign_id)
-
-    last_rnd = campaign.active_round
+def finalize_campaign(user_dao, campaign_id):
+    # TODO: add some docs
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    last_rnd = coord_dao.campaign.active_round
 
     if not last_rnd:
         raise InvalidAction('no active rounds')
@@ -540,16 +543,12 @@ def finalize_campaign(rdb_session, user, campaign_id):
     if last_rnd.vote_method != 'ranking':
         raise InvalidAction('only ranking rounds can be finalized')
 
-    campaign_summary = coord_dao.finalize_ranking_round(last_rnd)
-
-    msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
-           % (user.username, campaign.name, campaign.id,
-              last_rnd.vote_method, last_rnd.name))
-    coord_dao.log_action('finalize_campaign', campaign=campaign, message=msg)
+    campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
+    coord_dao.finalize_campaign()
     return campaign_summary
 
 
-def get_index(rdb_session, user):
+def get_index(user_dao):
     """
     Summary: Get admin-level details for all campaigns.
 
@@ -563,12 +562,7 @@ def get_index(rdb_session, user):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
     campaigns = user_dao.get_all_campaigns()
-
-    if len(campaigns) == 0:
-        raise Forbidden('not a coordinator on any campaigns')
-
     data = []
 
     for campaign in campaigns:
@@ -577,7 +571,7 @@ def get_index(rdb_session, user):
     return {'data': data}
 
 
-def get_campaign(rdb_session, user, campaign_id):
+def get_campaign(user_dao, campaign_id):
     """
     Summary: Get admin-level details for a campaign, identified by campaign ID.
 
@@ -606,135 +600,50 @@ def get_campaign(rdb_session, user, campaign_id):
        403: User does not have permission to access requested campaign
        404: Campaign not found
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    campaign = coord_dao.get_campaign(campaign_id)
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    campaign = coord_dao.campaign
     if campaign is None:
         raise Forbidden('not a coordinator on this campaign')
     data = campaign.to_details_dict()
     return {'data': data}
 
 
-def get_round(rdb_session, user, round_id):
+def get_round(user_dao, round_id):
     """
     Summary: Get admin-level details for a round, identified by round ID.
 
     Request model:
-        round_id:
-            type: int64
+        round_id
 
     Response model name: AdminRoundDetails
-    Response model:
-        id:
-            type: int64
-        name:
-            type: string
-        directions:
-            type: string
-        canonical_url_name:
-            type: string
-        vote_method:
-            type: string
-        open_date:
-            type: date-time
-        close_date:
-            type: date-time
-        status:
-            type: string
-        quorum:
-            type: int64
-        total_entries:
-            type: int64
-        total_tasks:
-            type: int64
-        total_open_tasks:
-            type: int64
-        percent_open_tasks:
-            type: float
-        campaign:
-            type: CampaignInfo
-        jurors:
-            type: array
-            items:
-                type: UserDetails
 
     Errors:
        403: User does not have permission to access requested round
        404: Round not found
     """
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
-
     rnd_stats = rnd.get_count_map()
     # entries_info = user_dao.get_entry_info(round_id) # TODO
-
     # TODO: joinedload if this generates too many queries
     data = make_admin_round_details(rnd, rnd_stats)
     return {'data': data}
 
 
-def make_vote_table(user_dao, rnd):
-    if rnd.vote_method == 'ranking':
-        all_ratings = user_dao.get_all_rankings(rnd)
-    else:
-        all_ratings = user_dao.get_all_ratings(rnd)
-    all_tasks = user_dao.get_all_tasks(rnd)
-
-    results_by_name = defaultdict(dict)
-    ratings_dict = {r.task_id: r.value for r in all_ratings}
-
-    for (task, entry) in all_tasks:
-        rating = ratings_dict.get(task.id, {})
-        filename = entry.name
-        username = task.user.username
-
-        if task.complete_date:
-            results_by_name[filename][username] = rating
-        else:
-            # tbv = to be voted
-            # there should be no empty tasks in a fully finalized round
-            results_by_name[filename][username] = 'tbv'
-
-    return results_by_name
-
-
-def get_results(rdb_session, user, round_id, request_dict):
-    # TODO: Quick hacky maintainer access
-    # this should should be standardized throughout
-    if user.is_maintainer:
-        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
-    else:
-        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
-
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
-
-    if not user.is_maintainer and rnd.status != 'finalized':
-        raise DoesNotExist('round results not yet finalized')
-
-    results_by_name = make_vote_table(user_dao, rnd)
-
+def get_results(user_dao, round_id, request_dict):
+    # TODO: Docs
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
     return {'data': results_by_name}
 
 
-def download_results_csv(rdb_session, user, round_id, request_dict):
-    if user.is_maintainer:
-        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
-    else:
-        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
+def download_results_csv(user_dao, round_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
 
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
+    # TODO: Confirm round is finalized
+    # raise DoesNotExist('round results not yet finalized')
 
-    if not user.is_maintainer and rnd.status != 'finalized':
-        raise DoesNotExist('round results not yet finalized')
-
-    results_by_name = make_vote_table(user_dao, rnd)
+    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
@@ -762,12 +671,9 @@ def download_results_csv(rdb_session, user, round_id, request_dict):
     return resp
 
 
-def autodisqualify(rdb_session, user, round_id, request_dict):
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
+def autodisqualify(user_dao, round_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
 
     if rnd.status != 'paused':
         raise InvalidAction('round must be paused to disqualify entries')
@@ -780,19 +686,19 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
     round_entries = []
 
     if rnd.config.get('dq_by_upload_date') or dq_by_upload_date:
-        dq_upload_date = coord_dao.autodisqualify_by_date(rnd)
+        dq_upload_date = coord_dao.autodisqualify_by_date(round_id)
         round_entries += dq_upload_date
 
     if rnd.config.get('dq_by_resolution') or dq_by_resolution:
-        dq_resolution = coord_dao.autodisqualify_by_resolution(rnd)
+        dq_resolution = coord_dao.autodisqualify_by_resolution(round_id)
         round_entries += dq_resolution
 
     if rnd.config.get('dq_by_uploader') or dq_by_uploader:
-        dq_uploader = coord_dao.autodisqualify_by_uploader(rnd)
+        dq_uploader = coord_dao.autodisqualify_by_uploader(round_id)
         round_entries += dq_uploader
 
     if rnd.config.get('dq_by_filetype') or dq_by_filetype:
-        dq_filetype = coord_dao.autodisqualify_by_filetype(rnd)
+        dq_filetype = coord_dao.autodisqualify_by_filetype(round_id)
         round_entries += dq_filetype
 
     data = [re.to_dq_details() for re in round_entries]
@@ -800,118 +706,67 @@ def autodisqualify(rdb_session, user, round_id, request_dict):
     return {'data': data}
 
 
-def preview_disqualification(rdb_session, user, round_id):
+def preview_disqualification(user_dao, round_id):
     # Let's you see what will get disqualified, without actually
     # disqualifying any entries
-    coord_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-    rnd = coord_dao.get_round(round_id)
-
-    if rnd is None:
-        raise Forbidden('not a coordinator for this round')
-
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     # TODO: explain each disqualification
-
+    rnd = coord_dao.get_round(round_id)
     ret = {'config': rnd.config}
 
-    by_upload_date = coord_dao.autodisqualify_by_date(rnd, preview=True)
+    by_upload_date = coord_dao.autodisqualify_by_date(round_id, preview=True)
     ret['by_upload_date'] = [re.entry.to_details_dict(with_uploader=True)
                              for re in by_upload_date]
 
-    by_resolution = coord_dao.autodisqualify_by_resolution(rnd, preview=True)
+    by_resolution = coord_dao.autodisqualify_by_resolution(round_id, preview=True)
     ret['by_resolution'] = [re.entry.to_details_dict(with_uploader=True)
                             for re in by_resolution]
 
-    by_uploader = coord_dao.autodisqualify_by_uploader(rnd, preview=True)
+    by_uploader = coord_dao.autodisqualify_by_uploader(round_id, preview=True)
     ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True)
                           for re in by_uploader]
 
-    by_filetype = coord_dao.autodisqualify_by_filetype(rnd, preview=True)
+    by_filetype = coord_dao.autodisqualify_by_filetype(round_id, preview=True)
     ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True)
                           for re in by_filetype]
 
     return {'data': ret}
 
 
-def get_disqualified(rdb_session, user, round_id):
-    # TODO: I wish there was a middleware to check these kinds of permissions
-    if user.is_maintainer:
-        user_dao = MaintainerDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
-    else:
-        user_dao = CoordinatorDAO(rdb_session=rdb_session, user=user)
-        rnd = user_dao.get_round(round_id)
+def get_flagged_entries(user_dao, round_id):
+    # TODO: include a limit?
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    flagged_entries = coord_dao.get_grouped_flags(round_id)
+    ret = []
+    for fe in flagged_entries:
+        entry = fe.entry.to_details_dict()
+        entry['flaggings'] = [f.to_details_dict()
+                              for f
+                              in fe.flaggings]
+        ret.append(entry)
+    return {'data': ret}
 
-    if rnd is None:
-        raise Forbidden('round does not exist')
 
-    round_entries = user_dao.get_disqualified(rnd)
+def get_all_flags(user_dao, round_id, request_dict):
+    if not request_dict:
+        request_dict = {}
+    limit = request_dict.get('limit', 10)
+    offset = request_dict.get('offset', 0)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    flags = coord_dao.get_flags(round_id, limit, offset)
+    data = [f.to_details_dict() for f in flags]
+    return {'data': data}
 
+
+def get_disqualified(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    round_entries = coord_dao.get_disqualified(round_id)
     data = [re.to_dq_details() for re in round_entries]
     return {'data': data}
 
 # Endpoints restricted to maintainers
 
-def get_maint_index(rdb_session, user, request_dict):
-    if not user.is_maintainer:
-        raise Forbidden('You are not logged in as a maintainer')
-
-    maint_dao = MaintainerDAO(rdb_session, user)
-    campaigns = maint_dao.get_all_campaigns()
-
-    data = []
-
-    for campaign in campaigns:
-        data.append(campaign.to_details_dict())
-
-    return {'data': data}
-
-
-def get_maint_campaign(rdb_session, user, campaign_id, request_dict):
-    if not user.is_maintainer:
-        raise Forbidden('You are not logged in as a maintainer')
-
-    maint_dao = MaintainerDAO(rdb_session, user)
-    campaign = maint_dao.get_campaign(campaign_id)
-    if campaign is None:
-        raise DoesNotExist('no campaigns available')
-
-    data = campaign.to_details_dict()
-    return {'data': data}
-
-
-def get_maint_round(rdb_session, user, round_id, request_dict):
-    if not user.is_maintainer:
-        raise Forbidden('You are not logged in as a maintainer')
-
-    maint_dao = MaintainerDAO(rdb_session, user)
-    rnd = maint_dao.get_round(round_id)
-
-    if rnd is None:
-        raise DoesNotExist('no rounds available')
-    # entries_info = user_dao.get_entry_info(round_id) # TODO
-
-    rnd_stats = rnd.get_count_map()
-
-    data = make_admin_round_details(rnd, rnd_stats)
-    return {'data': data}
-
-
-def get_audit_logs(rdb_session, user, request):
-    if not user.is_maintainer and not user.is_organizer:
-        raise Forbidden('not allowed to view the audit log')
-
-    limit = request.values.get('limit', 10)
-    offset = request.values.get('offset', 0)
-
-    main_dao = MaintainerDAO(rdb_session, user)
-    audit_logs = main_dao.get_audit_log(limit=limit, offset=offset)
-
-    data = [l.to_info_dict() for l in audit_logs]
-
-    return {'data': data}
-
-
-def add_organizer(rdb_session, user, request_dict):
+def add_organizer(user_dao, request_dict):
     """
     Summary: Add a new organizer identified by Wikimedia username
 
@@ -928,10 +783,7 @@ def add_organizer(rdb_session, user, request_dict):
     Errors:
        403: User does not have permission to add organizers
     """
-    if not user.is_maintainer:
-        raise Forbidden('not allowed to add organizers')
-
-    maint_dao = MaintainerDAO(rdb_session, user)
+    maint_dao = MaintainerDAO(user_dao)
     new_user_name = request_dict.get('username')
     new_organizer = maint_dao.add_organizer(new_user_name)
     data = {'username': new_organizer.username,
@@ -939,42 +791,55 @@ def add_organizer(rdb_session, user, request_dict):
     return {'data': data}
 
 
-def add_coordinator(rdb_session, user, campaign_id, request_dict):
+def remove_organizer(user_dao, request_dict):
+    maint_dao = MaintainerDAO(user_dao)
+    username = request_dict.get('username')
+    old_organizer = maint_dao.remove_organizer(username)
+    data = {'username': username,
+            'last_active_date': format_date(old_organizer.last_active_date)}
+    return {'data': data}
+
+
+# Endpoints restricted to organizers
+
+def add_coordinator(user_dao, campaign_id, request_dict):
     """
     Summary: -
         Add a new coordinator identified by Wikimedia username to a campaign
         identified by campaign ID
 
     Request mode:
-        username:
-            type: string
+        username
 
     Response model:
-        username:
-            type: string
-        last_active_date:
-            type: date-time
-        campaign_id:
-            type: int64
+        username
+        last_active_date
+        campaign_id
 
     Errors:
        403: User does not have permission to add coordinators
 
     """
-    if not user.is_maintainer:  # TODO: Check if organizer too
-        raise Forbidden('not allowed to add coordinators')
-    # TODO: verify campaign id?
-    org_dao = OrganizerDAO(rdb_session, user)
+    org_dao = OrganizerDAO(user_dao)
     new_user_name = request_dict.get('username')
-    campaign = org_dao.get_campaign(campaign_id)
-    new_coord = org_dao.add_coordinator(campaign, new_user_name)
+    new_coord = org_dao.add_coordinator(campaign_id, new_user_name)
     data = {'username': new_coord.username,
             'campaign_id': campaign_id,
             'last_active_date': format_date(new_coord.last_active_date)}
     return {'data': data}
 
 
-ADMIN_ROUTES = get_admin_routes()
+def remove_coordinator(user_dao, campaign_id, request_dict):
+    org_dao = OrganizerDAO(user_dao)
+    username = request_dict.get('username')
+    old_coord = org_dao.remove_coordinator(campaign_id, username)
+    data = {'username': username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(old_coord.last_active_date)}
+    return {'data': data}
+
+
+ADMIN_API_ROUTES, ADMIN_UI_ROUTES = get_admin_routes()
 
 
 # - cancel round

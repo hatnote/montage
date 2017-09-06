@@ -164,6 +164,10 @@ class TimingMiddleware(Middleware):
         start_time = time.time()
         ret = next()
         timings_dict['endpoint'] = round(time.time() - start_time, 3)
+        if (isinstance(ret, BaseResponse)
+            and ret.mimetype.startswith('text/html')
+            and isinstance(ret.data, basestring)):
+            ret.data += ('<!-- Timings: ' + json.dumps(timings_dict) + ' -->')
         return ret
 
 

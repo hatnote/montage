@@ -1,12 +1,22 @@
 import os
 
 try:
-    import oursql
+    import pymysql
 except ImportError:
-    oursql = None
+    pymysql = None
 
 
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
+
+
+IMAGE_COLS = ['img_width',
+              'img_height',
+              'img_name',
+              'img_major_mime',
+              'img_minor_mime',
+              'img_user',
+              'img_user_text',
+              'img_timestamp']
 
 
 class MissingMySQLClient(RuntimeError):
@@ -14,32 +24,32 @@ class MissingMySQLClient(RuntimeError):
 
 
 def fetchall_from_commonswiki(query, params):
-    if oursql is None:
+    if pymysql is None:
         raise MissingMySQLClient('could not import oursql, check your'
                                  ' environment and restart the service')
     db_title = 'commonswiki_p'
     db_host = 'commonswiki.labsdb'
-    connection = oursql.connect(db=db_title,
-                                host=db_host,
-                                read_default_file=DB_CONFIG,
-                                charset=None)
-    cursor = connection.cursor(oursql.DictCursor)
+    connection = pymysql.connect(db=db_title,
+                                 host=db_host,
+                                 read_default_file=DB_CONFIG,
+                                 charset='utf8')
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
     cursor.execute(query, params)
     return cursor.fetchall()
 
 
 def get_files(category_name):
     query = '''
-    SELECT *
-    FROM image
+    SELECT {cols}
+    FROM commonswiki_p.image
     JOIN page
     ON page_namespace = 6
     AND page_title = img_name
     JOIN categorylinks
     ON cl_from = page_id
     AND cl_type = 'file'
-    AND cl_to = ?;
-    '''
+    AND cl_to = %s;
+    '''.format(cols=', '.join(IMAGE_COLS))
     params = (category_name.replace(' ', '_'),)
 
     results = fetchall_from_commonswiki(query, params)
@@ -49,13 +59,14 @@ def get_files(category_name):
 
 def get_file_info(filename):
     query = '''
-    SELECT *
-    FROM image
-    WHERE img_name = ?;
-    '''
+    SELECT {cols}
+    FROM commonswiki_p.image
+    WHERE img_name = %s;
+    '''.format(cols=', '.join(IMAGE_COLS))
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
-
+    if results:
+        results = results[0]
     return results
 
 
