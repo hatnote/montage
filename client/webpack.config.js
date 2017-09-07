@@ -6,7 +6,7 @@ var ngAnnotatePlugin = require('ng-annotate-webpack-plugin');
 var package = require('./package.json');
 
 var config = {
-  context: path.join(__dirname, 'app'),
+  context: path.join(__dirname, 'src'),
   entry: './index.js',
   output: {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
@@ -14,7 +14,7 @@ var config = {
     filename: 'bundle.js?v=' + package.version,
   },
   plugins: [new HtmlWebpackPlugin({
-    template: 'index_local.ejs',
+    template: 'index.html.ejs',
     filename: path.join('..', 'index.html')
   })],
   devtool: 'source-map',
@@ -66,7 +66,7 @@ if (ENV === 'prod' || ENV === 'dev' || ENV === 'beta') {
   };
   config.plugins = [
     new HtmlWebpackPlugin({
-      template: ENV === 'dev' ? 'index_dev.ejs' : ENV === 'beta' ? 'index_beta.ejs' : 'index_prod.ejs',
+      template: 'index_' + ENV + '.html.ejs',
       filename: path.join('..', 'index.html')
     }),
     new ngAnnotatePlugin({

@@ -3,8 +3,8 @@ function stateConfig($stateProvider, $urlRouterProvider) {
     .state('main', {
       template: '<mont-main user="$resolve.user"></mont-main>',
       resolve: {
-        user: ($q) => $q.when({})
-      }
+        user: $q => $q.when({})
+      },
     })
 
     .state('main.juror', {
@@ -14,7 +14,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         userType: ($q) => $q.when('juror')
       },
       onEnter: ($state, data) => {
-        //invalid cookie userid, try logging in again
+        // invalid cookie userid, try logging in again
         if (data.status === 'failure' && data.errors.length) {
           $state.go('main.login');
         }
