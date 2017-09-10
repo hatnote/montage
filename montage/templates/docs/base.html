@@ -2,9 +2,30 @@
 <html>
   <head>
     <title>{title} - Montage Docs</title>
+    <link rel="stylesheet" href="/mdl/material.min.css">
+    <link rel="stylesheet" href="/mdl/styles.css">
+    <script src="/mdl/material.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,200,100">
   </head>
-  <body>
-    <h1>{title}</h1>
-    <p>{?body}{body|s}{:else}Nothing to see here!{/body}</p>
+  <body class="mdl-montage mdl-color--grey-100 mdl-color-text--grey-700 mdl-base">
+    <header class="mdl-layout__header mdl-layout__header--scroll">
+      <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+	<div class="mdl-layout--large-screen-only mdl-layout__header-row">
+	  <button class="mdl-button mdl-js-button mdl-button--icon" disabled="disabled">
+            <img alt="Montage Logo"  src="/dist/images/logo_white_fat.svg">
+	  </button>
+	  <h1><a href="/docs/">Montage</a>: {title}</h1>
+	</div>
+      </div>
+    </header>
+    <main class="mdl-layout__content">
+      <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+        <div class="mdl-card mdl-cell mdl-cell--12-col">
+	   <div class="mdl-card__supporting-text mdl-grid">
+	     <p>{?body}{body|s}{:else}Nothing to see here!{/body}</p>
+	   </div>
+	</div>
+      </section>
+    </main>
   </body>
 </html>
