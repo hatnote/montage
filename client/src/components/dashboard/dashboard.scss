@@ -1,14 +1,19 @@
 @import '../../styles/variables';
 
 mont-dashboard {
-    min-height: calc(100vh - 64px - 40px);
-    
-    & > div {
-        width: 100%;
-    }
+  min-height: calc(100vh - 64px - 40px);
 
-    .campaign__add {
-        margin-bottom: 15px;
-    }
+  .dashboard__section {
+    
+  }
+  
+  
+  & > div {
+    width: 100%;
+  }
+
+  .campaign__add {
+    margin-bottom: 15px;
+  }
 }
 

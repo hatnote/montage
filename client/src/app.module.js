@@ -18,6 +18,7 @@ import campaignOld from './components/campaign-old/campaign';
 
 import dashboard from './components/dashboard/dashboard';
 import campaignAdminBox from './components/dashboard/campaign-admin-box/campaign-admin-box.component';
+import campaignJurorBox from './components/dashboard/campaign-juror-box/campaign-juror-box.component';
 
 import round from './components/round/round';
 import login from './components/login/login';
@@ -57,6 +58,7 @@ angular.module('montage',
   .component('montCampaign', campaign)
   .component('montCampaignOld', campaignOld)
   .component('montCampaignAdminBox', campaignAdminBox)
+  .component('montCampaignJurorBox', campaignJurorBox)
   .component('montDashboard', dashboard)
   .component('montRound', round)
   .component('montLogin', login)

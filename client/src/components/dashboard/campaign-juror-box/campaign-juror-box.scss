@@ -1,0 +1,35 @@
+@import '../../../styles/variables';
+
+mont-campaign-juror-box {
+  .campaign__title {
+    font-size: 22px;
+    font-weight: 600;
+
+    .md-icon-button.md-button {
+      margin: -4px 0 0;
+    }
+  }
+
+  .round {
+    .round__name {
+      font-size: 18px;
+    }
+
+    .round__description {
+      .round__directions {
+        margin-right: 30px;
+      }
+    }
+
+    .round__progress {
+      h3 {
+        text-align: center;
+        font-size: 40px;
+        margin: 0;
+      }
+      span {
+        line-height: 1.5;
+      }
+    }
+  }
+}

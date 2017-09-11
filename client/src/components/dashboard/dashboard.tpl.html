@@ -1,13 +1,21 @@
-<h2>Dashboard</h2>
-<mont-campaign-admin-box
-    ng-repeat="campaign in $ctrl.campaignsAdmin"
-    campaign="campaign">
-</mont-campaign-admin-box>
+<div class="dashboard__section"
+    ng-if="$ctrl.campaignsAdmin.length && false">
+  <h2 class="section__title">Your Campaigns as Admin</h2>
+  <div class="section__content">
+    <mont-campaign-admin-box
+      ng-repeat="campaign in $ctrl.campaignsAdmin"
+      campaign="campaign">
+    </mont-campaign-admin-box>
+  </div>
+</div>
 
-<h1>JUROR</h1>
-<div>
-  <mont-campaign-old ng-repeat="campaign in $ctrl.campaignsJuror"
-            campaign="campaign" type="'juror'" user="$ctrl.user">
+<div class="dashboard__section">
+  <div class="section__content">
+    <mont-campaign-juror-box
+      ng-repeat="campaign in $ctrl.campaignsJuror"
+      rounds="campaign">
+    </mont-campaign-juror-box>
+  </div>
 </div>
 
 <div flex></div>

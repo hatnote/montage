@@ -19,8 +19,7 @@ function controller($state, $window, userService) {
   vm.logo = logo;
   vm.user = null;
 
-  vm.goTo = goTo;
-  vm.goToDashboard = goToDashboard;
+  vm.login = login;
   vm.logout = logout;
 
   // functions
@@ -33,23 +32,19 @@ function controller($state, $window, userService) {
       .then((data) => { vm.user = data; });
   };
 
-  function goTo(target) {
+  function login() {
     vm.loading = true;
-    $state.go(target, {}, { reload: true });
-  }
-
-  function goToDashboard() {
-    const target = $state.current.name.includes('admin') ?
-      'main.admin.dashboard' :
-      'main.juror.dashboard';
-    goTo(target);
+    userService.login().then(() => {
+      // vm.$onInit();
+      $state.go('main.dashboard', {}, { reload: true });
+    });
   }
 
   function logout() {
     vm.loading = true;
     userService.logout().then(() => {
       vm.user = {};
-      $state.go('main.login');
+      $state.go('main.dashboard', {}, { reload: true });
     });
   }
 }

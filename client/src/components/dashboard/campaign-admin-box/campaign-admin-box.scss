@@ -4,24 +4,24 @@ mont-campaign-admin-box {
   display: inline-block;
 
   md-card {
-    width: 320px;
-    margin-right: 6px;
+    width: 310px;
+    margin-right: 16px;
     margin-left: 0;
-    padding: 24px 16px;
+    margin-top: 0;
+    padding: 16px;
     cursor: pointer;
+    box-shadow: none;
   }
 
   .campaign__name {
     margin-top: 0;
     margin-bottom: 5px;
     font-weight: 600;
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .campaign__dates {
     color: $lightGrey;
     font-size: 14px;
   }
-
-
 }

@@ -29,6 +29,8 @@ const Service = ($http, $q, $window) => {
     getAdmin,
     getJuror,
     getUser: () => $q.when(user),
+    login: () => $http.get(window.__env.baseUrl + 'login'),
+    logout: () => $http.get(window.__env.baseUrl + 'logout'),
   };
 
   return service;
