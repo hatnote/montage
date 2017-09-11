@@ -19,8 +19,4 @@ const AlertService = function ($mdToast) {
     return service;
 };
 
-export default () => {
-    angular
-        .module('montage')
-        .factory('alertService', AlertService);
-};
+export default AlertService;

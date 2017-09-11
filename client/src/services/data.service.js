@@ -51,8 +51,4 @@ const DataService = function ($http, $q) {
   return service;
 };
 
-export default () => {
-  angular
-    .module('montage')
-    .factory('dataService', DataService);
-};
+export default DataService;

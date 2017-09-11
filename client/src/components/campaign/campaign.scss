@@ -1,120 +1,125 @@
 @import '../../styles/variables';
 
 mont-campaign {
-    width: 100%;
-
-    .campaign__title {
-        margin-bottom: 5px;
-
-        & > * {
-            padding: 0 10px;
-        }
-
-        form {
-            display: inline;
-        }
-
-        md-input-container {
-            margin: 0;
-
-            .md-input {
-                padding-bottom: 6px;
-                padding-left: 0;
-                margin-left: -2px;
-            }
-
-            .md-errors-spacer {
-                display: none;
-            }
-        }
-    }
-
-    .campaign__rounds-description {
-        padding: 6px 16px;
-        color: $lightGrey;
-
-        & > * {
-            padding-right: 25px;
-        }
-    }
-
-    .campaign__rounds {
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    .campaign__round {
-        position: relative;
-        min-height: 52px;
-        padding: 10px 6px 10px 16px;
-        outline: none;
-        border-bottom: 1px solid rgba(0,0,0,0.12);
-
-        & > div > *:not(:last-child) {
-            padding-right: 25px;
-        }
-
-        .md-body-2 {
-            font-size: 16px;
-        }
-    }
-
-    .campaign__round-details {
-        position: relative;
-        padding: 16px;
-        background: #eee;
-        margin-bottom: -10px;
-        margin-left: -16px;
-        margin-right: -6px;
-        margin-top: 5px;
-        min-height: 75px;
-    }
-
-    .campaign__juror-progress {
-        margin-top: 10px;
-    }
-
-    .campaign__juror--inactive {
-        .campaign__juror-name {
-            color: $lightGrey;
-            text-decoration: line-through;
-        }
-    }
-
-    .campaign--juror .campaign__round--active {
-        cursor: pointer;
-    }
-
-    .campaign__round--inactive {
-        background: #fafafa;
-    }
-
-    .campaign__dash {
-        margin: 0 20px;
-    }
-
-    .campaign__progress {
-        width: 100%;
-        margin-top: 5px;
-    }
+  .campaign__rounds {
     
-    .campaign__rounds-add {
-        color: $lightGrey;
+  }
+
+  .round {
+    position: relative;
+
+    .round__status {
+      width: 40px;
+      height: 40px;
+      margin-top: 0;
+      border-radius: 20px;
+
+      md-icon {
+        color: white;
+      }
+
+      &.round__status--active {
+        background: #3498db;
+      }
+
+      &.round__status--finalized {
+        background: #2ecc71;
+      }
     }
 
-    .campaign__directions {
-        margin-top: 10px;
+    .round__line {
+      position: absolute;
+      display: block;
+      height: calc(100% - 56px);
+      top: 48px;
+      left: 19px;
+      border-left: 1px solid #d6d6d6;
     }
 
-    .campaign__directions-text {
-        white-space: pre-wrap;
+    .round__name {
+      margin-top: 8px;
+      margin-left: 24px;
+      font-size: 20px;
+
+      .muted {
+        font-size: 16px;
+        font-weight: 400;
+      }
     }
 
-    .tag--completed, .tag--finalized {
-        background-color: #5cb85c;
+    .round__description {
+      margin: 0;
+      margin-left: 24px;
+      box-shadow: none;
+      border-radius: 0;
+
+      .round__juror {
+        display: inline-block;
+        position: relative;
+        border-radius: 16px;
+        padding: 0 6px;
+        padding-left: 38px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        line-height: 32px;
+        background: #e0e0e0;
+
+        .juror__avatar {
+          display: inline-block;
+          width: 32px;
+          height: 32px;
+          text-align: center;
+          border-radius: 16px;
+          position: absolute;
+          left: 0;
+          top: 0;
+          color: white;
+        }
+
+        md-icon.material-icons {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          min-height: 20px;
+          min-width: 20px;
+          margin-left: 5px;
+        }
+      }
+
+      .round__directions {
+        margin-right: 16px;
+
+        p {
+          white-space: pre-line;
+        }
+      }
     }
 
-    .tag--active {
-        background-color: #f0ad4e;
+    md-card-content {
+      padding: 24px 16px;
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 16px;
+      }
     }
+
+    .round__actions {
+      margin-top: 10px;
+      margin-bottom: 20px;
+
+      .md-button {
+        font-weight: 600;
+        text-transform: none;
+      }
+    }
+
+    &.round--last {
+      .round__line {
+        display: none;
+      }
+    }
+  }
 }

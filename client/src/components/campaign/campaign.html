@@ -1,0 +1,81 @@
+<h2 class="md-display-2">{{ $ctrl.campaign.name }}</h2>
+<div class="campaign__rounds"
+      layout="column" layout-align="start stretch">
+  <div class="round"
+        layout="row" layout-align="center start"
+        ng-class="{ 'round--last': $last }"
+        ng-repeat="round in $ctrl.campaign.rounds">
+    <div class="round__status {{'round__status--' + round.status}}"
+          layout="row" layout-align="center center">
+      <span ng-if="round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon></span>
+      <span ng-if="round.vote_method === 'rating'"><md-icon>star_border</md-icon></span>
+      <span ng-if="round.vote_method === 'ranking'"><md-icon>sort</md-icon></span>
+    </div>
+    <span class="round__line"></span>
+    <div flex>
+      <h2 class="round__name">
+        <span>{{ round.name }}</span><br />
+        <span class="muted">{{ round.vote_method }} · {{ round.status }}</span>
+      </h2>
+      <md-card class="round__description" flex>
+        <md-card-content>
+          <div layout="row" layout-align="center stretch">
+            <div class="round__directions" flex="40">
+              <h4>Direction</h4>
+              <p>{{ round.directions }}</p>
+            </div>
+            <div class="round__settings" flex="60">
+              <h4>Round Settings</h4>
+              <p>{{ round.config | json }}</p>
+            </div>
+          </div>
+          
+          <div class="round__jurors">
+            <h4>Jurors</h4>
+            <span class="round__juror"
+                  ng-repeat="juror in round.jurors">
+                <span class="juror__avatar"
+                    mont-avatar="{{ juror.username }}">
+                  {{ juror.username[0].toUpperCase() }}
+                </span>
+                {{ juror.username }}
+                <md-icon>cancel</md-icon>
+            </span>
+          </div>
+        </md-card-content>
+      </md-card>
+      <div class="round__actions"
+            layout="row" layout-align="end center">
+        <md-button
+            ng-disabled="round.status === 'active' || round.status === 'finalized'"
+            ng-click="$ctrl.activateRound(round)">
+          <md-icon>play_arrow</md-icon>
+          Activate Round
+        </md-button>
+        <md-button
+            ng-disabled="round.status === 'paused' || round.status === 'finalized'"
+            ng-click="$ctrl.pauseRound(round)">
+          <md-icon>pause</md-icon>
+          Pause Round
+        </md-button>
+        <md-button
+            ng-disabled="round.status === 'finalized'"
+            ng-click="$ctrl.cancelRound(round)">
+          <md-icon>not_interested</md-icon>
+          Cancel Round
+        </md-button>
+        <md-button
+            ng-disabled="round.status !== 'paused' && round.status !== 'finalized'"
+            ng-click="$ctrl.populateRound(round)">
+          <md-icon>refresh</md-icon>
+          Populate
+        </md-button>
+      </div>
+    </div>
+  </div>
+  <div ng-if="!$ctrl.campaign.rounds.length">
+    <md-button>
+      Add First Round
+    </md-button>
+  </div>
+</div>

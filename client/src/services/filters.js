@@ -18,8 +18,4 @@ function ordinal() {
     };
 }
 
-export default () => {
-    angular
-        .module('montage')
-        .filter('ordinal', ordinal);
-};
+export { ordinal };

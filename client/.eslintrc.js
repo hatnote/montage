@@ -6,5 +6,6 @@ module.exports = {
   "extends": ["airbnb", "angular"],
   "rules": {
     "no-param-reassign": [2, { "props": false }]
-  }
+  },
+  "plugins": ["html"],
 }

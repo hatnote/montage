@@ -27,8 +27,4 @@ const DialogService = function ($mdDialog) {
     return service;
 };
 
-export default () => {
-    angular
-        .module('montage')
-        .factory('dialogService', DialogService);
-};
+export default DialogService;

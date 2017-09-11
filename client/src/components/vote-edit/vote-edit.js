@@ -188,8 +188,4 @@ const VoteEditComponent = {
     template: `<ng-include src="'round-template'"/>`
 };
 
-export default () => {
-    angular
-        .module('montage')
-        .component('montVoteEdit', VoteEditComponent);
-};
+export default VoteEditComponent

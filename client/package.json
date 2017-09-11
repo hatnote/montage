@@ -2,7 +2,7 @@
   "name": "montage",
   "version": "17.06.01",
   "description": "Photo evaluation tool for and by Wiki Loves competitions",
-  "main": "app/index.js",
+  "main": "src/app.module.js",
   "repository": "https://github.com/hatnote/montage",
   "scripts": {
     "start-live": "webpack-dev-server --content-base app --progress --colors",
@@ -25,6 +25,7 @@
     "eslint-config-airbnb": "^15.1.0",
     "eslint-config-angular": "^0.5.0",
     "eslint-plugin-angular": "^3.1.1",
+    "eslint-plugin-html": "^3.2.1",
     "eslint-plugin-import": "^2.7.0",
     "eslint-plugin-jsx-a11y": "^5.1.1",
     "eslint-plugin-react": "^7.1.0",

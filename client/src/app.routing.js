@@ -1,12 +1,36 @@
-function stateConfig($stateProvider, $urlRouterProvider) {
+function stateConfig(
+  $locationProvider,
+  $stateProvider,
+  $urlRouterProvider) {
   $stateProvider
     .state('main', {
-      template: '<mont-main user="$resolve.user"></mont-main>',
-      resolve: {
-        user: $q => $q.when({})
-      },
+      template: '<mont-main></mont-main>',
     })
+    .state('main.dashboard', {
+      url: '/',
+      template: '<mont-dashboard></mont-dashboard>',
+    })
+    .state('main.campaign', {
+      url: '/campaign/:id',
+      template: '<mont-campaign></mont-campaign>',
+    })
+    .state('main.campaign.edit-round', {
+      url: '/campaign/:id/',
+      template: '<mont-campaign></mont-campaign>',
+    })
+    .state('main.vote', {
+      url: '/vote/:id',
+      template: '<mont-round data="$resolve.round" tasks="$resolve.tasks"></mont-round>',
+      resolve: {
+        round: ($stateParams, jurorService) => jurorService.getRound($stateParams.id),
+        tasks: ($stateParams, jurorService) => jurorService.getRoundTasks($stateParams.id),
+      },
+    });
 
+  $urlRouterProvider.otherwise('/');
+  // $locationProvider.html5Mode(true);
+
+/*
     .state('main.juror', {
       template: '<ui-view></ui-view>',
       resolve: {
@@ -14,6 +38,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         userType: ($q) => $q.when('juror')
       },
       onEnter: ($state, data) => {
+        console.log('ENTER MAIN JUROR');
         // invalid cookie userid, try logging in again
         if (data.status === 'failure' && data.errors.length) {
           $state.go('main.login');
@@ -26,7 +51,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
                       layout="column" layout-align="start start"
                       data="$resolve.data"
                       user="$resolve.user"
-                      type="$resolve.userType"></mont-dashboard>`
+                      type="$resolve.userType"></mont-dashboard>`,
     })
     .state('main.juror.round', {
       url: '/round/:id',
@@ -60,7 +85,9 @@ function stateConfig($stateProvider, $urlRouterProvider) {
         }
       }
     })
+*/
 
+/*
     .state('main.admin', {
       template: '<ui-view></ui-view>',
       resolve: {
@@ -92,6 +119,7 @@ function stateConfig($stateProvider, $urlRouterProvider) {
       },
     });
   $urlRouterProvider.otherwise('/');
+*/
 }
 
 export default stateConfig;

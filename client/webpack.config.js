@@ -7,16 +7,24 @@ var package = require('./package.json');
 
 var config = {
   context: path.join(__dirname, 'src'),
-  entry: './index.js',
+  entry: './app.module.js',
   output: {
     path: path.join(__dirname, '..', 'montage', 'static', 'assets'),
     publicPath: 'assets/',
     filename: 'bundle.js?v=' + package.version,
   },
-  plugins: [new HtmlWebpackPlugin({
-    template: 'index.html.ejs',
-    filename: path.join('..', 'index.html')
-  })],
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: 'index.html.ejs',
+      filename: path.join('..', 'index.html')
+    }),
+    function () {
+      this.plugin('watch-run', function (watching, callback) {
+        console.log('\n\n-- ' + new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, '') + ' --\n');
+        callback();
+      })
+    }
+  ],
   devtool: 'source-map',
   module: {
     loaders: [

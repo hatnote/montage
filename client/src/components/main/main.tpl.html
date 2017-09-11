@@ -1,60 +1,18 @@
 <div class="spinner__container" layout="row" layout-align="center center"
-     ng-show="$ctrl.loading">
-    <md-progress-circular md-diameter="40"></md-progress-circular>
+   ng-show="$ctrl.loading">
+  <md-progress-circular md-diameter="40"></md-progress-circular>
 </div>
-<md-toolbar class="toolbar">
-    <div class="md-toolbar-tools">
-        <md-button class="md-icon-button" aria-label="Settings" ng-disabled="true">
-            <img ng-src="{{$ctrl.logo}}" alt="Montage Logo">
-        </md-button>
-        <h2 class="link" ng-click="$ctrl.goToDashboard()">
-            montage
-            <sup>{{$ctrl.config.env.name.toUpperCase()}}</sup>
-        </h2>
-        <span flex></span>
-        <md-menu md-position-mode="target-right target">
-            <md-button ng-click="$ctrl.showUserMenu($mdOpenMenu, $event)"
-                       ng-hide="$ctrl.isCurrentState('main.login')">
-                <md-icon>face</md-icon>
-                {{$ctrl.user.username}}
-            </md-button>
-            <md-menu-content width="4">
-                <md-menu-item ng-show="$ctrl.user.username">
-                    <div class="md-title toolbar__userinfo" layout="row" layout-align="start center">
-                        <md-icon>face</md-icon>
-                        <span flex>{{$ctrl.user.username}}</span>
-                    </div>
-                </md-menu-item>
-                <md-menu-item>
-                    <md-button ng-click="$ctrl.goTo('main.juror.dashboard')">
-                        Juror Panel
-                    </md-button>
-                </md-menu-item>
-                <md-menu-item>
-                    <md-button ng-click="$ctrl.goTo('main.admin.dashboard')">
-                        Admin Panel
-                    </md-button>
-                </md-menu-item>
-                <md-menu-divider></md-menu-divider>
-                <md-menu-item>
-                    <md-button ng-click="$ctrl.logout()">
-                        Logout
-                    </md-button>
-                </md-menu-item>
-            </md-menu-content>
-        </md-menu>
-    </div>
-</md-toolbar>
-<div class="container" layout="column" layout-align="space-between stretch" flex>
-    <ui-view></ui-view>
-    <footer layout="row" layout-align="space-between center">
-        <span>&copy; 2017
-            <a href="https://github.com/hatnote">Hatnote</a> &bull;
-            <a href="https://github.com/hatnote/montage/blob/master/README.md">About</a>
-        </span>
-        <span flex></span>
-        <span>
-            version <strong>{{$ctrl.config.package.version}}</strong> &bull;
-            env <strong><a href="meta/">{{$ctrl.config.env.name}}</a></strong></span>
-    </footer>
+<mont-toolbar></mont-toolbar>
+<div class="container" layout="column" layout-align="start center" flex>
+  <ui-view></ui-view>
+  <footer layout="row" layout-align="space-between center">
+    <span>&copy; 2017
+      <a href="https://github.com/hatnote">Hatnote</a> &bull;
+      <a href="https://github.com/hatnote/montage/blob/master/README.md">About</a>
+    </span>
+    <span flex></span>
+    <span>
+      version <strong>{{$ctrl.config.package.version}}</strong> &bull;
+      env <strong><a href="meta/">{{$ctrl.config.env.name}}</a></strong></span>
+  </footer>
 </div>

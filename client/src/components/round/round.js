@@ -10,270 +10,235 @@ import templateRateboxYesNo from './templates/ratebox-yesno.tpl.html';
 import imageTemplate from './image.tpl.html';
 
 const RoundComponent = {
-    bindings: {
-        data: '<',
-        user: '=',
-        tasks: '<',
-        type: '<'
-    },
-    controller: function ($mdDialog, $q, $state, $templateCache, $window, alertService, userService, versionService) {
-        let vm = this;
+  bindings: {
+    data: '<',
+    tasks: '<',
+  },
+  controller,
+  template: templateSingle, // `<ng-include src="'round-template'"/>`
+};
 
-        let counter = 0;
-        let skips = 0;
+function controller(
+  $mdDialog,
+  $q,
+  $state,
+  $templateCache,
+  $window,
+  alertService,
+  jurorService) {
+  const vm = this;
 
-        vm.encodeName = encodeName;
-        vm.error = vm.data.error;
-        vm.getImageName = getImageName;
-        vm.images = vm.tasks.data ? vm.tasks.data.tasks : false;
-        vm.isVoting = (type) => vm.round && vm.round.vote_method === type;
-        vm.keyDown = keyDown;
-        vm.round = vm.data.data;
-        vm.openImage = openImage;
-        vm.openURL = openURL;
-        vm.saveRanking = saveRanking;
-        vm.setGallerySize = (size) => { vm.size = size; };
-        vm.showSidebar = true;
-        vm.size = 1;
-        vm.stats = vm.tasks.data ? vm.tasks.data.stats : false;
-        vm.user = angular.extend(vm.user, vm.data.user);
+  let counter = 0;
+  let skips = 0;
 
-        // rating exclusives
-        vm.rating = {
-            //all: vm.images.length,
-            current: vm.images[0],
-            currentIndex: 0,
-            getNext: getNextImage,
-            next: vm.images[1],
-            rates: [1, 2, 3, 4, 5],
-            setRate: setRate
+  vm.encodeName = encodeName;
+  vm.error = vm.data.error;
+  vm.getImageName = getImageName;
+  vm.images = vm.tasks ? vm.tasks.data.tasks : false;
+  vm.isVoting = type => vm.round && vm.round.vote_method === type;
+
+  vm.keyDown = keyDown;
+  vm.round = vm.data.data;
+
+  vm.openImage = openImage;
+  vm.openURL = openURL;
+  vm.saveRanking = saveRanking;
+  vm.setGallerySize = (size) => { vm.size = size; };
+  vm.showSidebar = true;
+  vm.size = 1;
+  vm.stats = vm.tasks ? vm.tasks.data.stats : false;
+
+  // rating exclusives
+  vm.rating = {
+    // all: vm.images.length,
+    current: vm.images[0],
+    currentIndex: 0,
+    getNext: getNextImage,
+    next: vm.images[1],
+    rates: [1, 2, 3, 4, 5],
+    setRate,
+  };
+
+  console.log(getTemplate());
+
+  $templateCache.put('round-template', getTemplate());
+  $templateCache.put('ratebox-template', templateRateboxRating); // getTemplateRatebox());
+
+  // functions
+
+  function encodeName(image) {
+    return encodeURI(image.entry.name);
+  }
+
+  function getImageName(image) {
+    if (!image) return null;
+
+    const entry = image.entry;
+    const name = encodeURIComponent(entry.name);
+    const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
+
+    if (entry.width <= 800) {
+      return url + (entry.width - 1);
+    }
+    if (entry.width <= 1280) {
+      return url + 800;
+    }
+    return url + 1280;
+  }
+
+  function getNextImage() {
+    vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.images.length;
+    vm.rating.current = vm.images[vm.rating.currentIndex];
+    vm.rating.next = vm.images[(vm.rating.currentIndex + 1) % vm.images.length];
+  }
+
+  function getTasks() {
+    return jurorService.getRoundTasks(vm.round.id, skips).then((response) => {
+      vm.images = response.data.tasks;
+      vm.rating.current = vm.images[0];
+      vm.rating.currentIndex = 0;
+      vm.rating.next = vm.images[1];
+    });
+  }
+
+  function getTemplate() {
+    if (vm.isVoting('rating')) return templateSingle;
+    if (vm.isVoting('yesno')) return templateSingle;
+    if (vm.isVoting('ranking')) return templateMultiple;
+    return '';
+  }
+
+  function getTemplateRatebox() {
+    if (vm.isVoting('rating')) return templateRateboxRating;
+    if (vm.isVoting('yesno')) return templateRateboxYesNo;
+    return '';
+  }
+
+  function keyDown(event) {
+    const actions = {
+      ArrowUp: () => vm.rating.setRate(5),
+      ArrowDown: () => vm.rating.setRate(1),
+    };
+
+    if (vm.isVoting('yesno') && _.includes(['ArrowUp', 'ArrowDown'], event.key)) {
+      actions[event.key]();
+    } else if (vm.isVoting('rating') && _.includes(vm.rating.rates, parseInt(event.key))) {
+      alertService.success('Rated ' + event.key + '/5', 250);
+      vm.rating.setRate(parseInt(event.key));
+    }
+  }
+
+  function openImage(image, event) {
+    $mdDialog.show({
+      parent: angular.element(document.body),
+      targetEvent: event,
+      clickOutsideToClose: true,
+      template: imageTemplate,
+      controller: ($scope, $timeout) => {
+        $scope.cancel = () => $mdDialog.hide();
+        $scope.image = image;
+        $scope.isFirst = vm.images.indexOf(image) === 0;
+        $scope.isLast = vm.images.indexOf(image) === vm.images.length - 1;
+        $scope.isRanking = vm.isVoting('ranking');
+        $scope.nextImage = () => {
+          if ($scope.isLast) { return; }
+          const currentIndex = vm.images.indexOf(image);
+          const nextImage = vm.images[currentIndex + 1];
+          $mdDialog.hide();
+          openImage(nextImage);
         };
+        $scope.openURL = openURL;
+        $scope.prevImage = () => {
+          if ($scope.isFirst) { return; }
+          const currentIndex = vm.images.indexOf(image);
+          const prevImage = vm.images[currentIndex - 1];
+          $mdDialog.hide();
+          openImage(prevImage);
+        };
+        $scope.keyDown = function (event) {
+          if (event.code === 'ArrowRight') {
+            $scope.nextImage();
+          }
+          else if (event.code === 'ArrowLeft') {
+            $scope.prevImage();
+          }
+        };
+        $timeout(() => {
+          $scope.filePath = 'https://commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
+        }, 100);
+      }
+    }).then(function (answer) {
+      // answer
+    }, function () {
+      // cancelled
+    });
+  }
 
-        versionService.setVersion(vm.type === 'admin' ? 'admin' : 'juror');
-        $templateCache.put('round-template', getTemplate());
-        $templateCache.put('ratebox-template', getTemplateRatebox());
+  function openURL(url) {
+    $window.open(url, '_blank');
+  }
 
-        // functions
+  function saveRanking() {
+    vm.loading = true;
 
-        function encodeName(image) {
-            return encodeURI(image.entry.name);
-        }
+    let data = vm.images.map((image) => ({
+      task_id: image.id,
+      value: vm.images.indexOf(image),
+      review: image.review ? image.review : null
+    }));
 
-        function getImageName(image) {
-            if (!image) return;
+    jurorService.setRating(vm.round.id, {
+      ratings: data
+    }).then((response) => {
+      vm.loading = false;
+      response.error ?
+        alertService.error(response.error) :
+        $state.reload();
+    });
+  }
 
-            const entry = image.entry;
-            const name = encodeURIComponent(entry.name);
-            const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
+  function sendRate(rate) {
+    return jurorService.setRating(vm.round.id, {
+      ratings: [rate]
+    }).then(() => {
+      if (vm.stats.total_open_tasks <= 10) {
+        skips = 0;
+      }
+    });
+  }
 
-            if (entry.width <= 800) {
-                return url + (entry.width - 1);
-            }
-            if (entry.width <= 1280) {
-                return url + 800;
-            }
-            return url + 1280;
-        }
-
-        function getNextImage() {
-            vm.rating.currentIndex = (vm.rating.currentIndex + 1) % vm.images.length;
-            vm.rating.current = vm.images[vm.rating.currentIndex];
-            vm.rating.next = vm.images[(vm.rating.currentIndex + 1) % vm.images.length];
-        }
-
-        function getTasks() {
-            return userService.juror.getRoundTasks(vm.round.id, skips).then((response) => {
-                vm.images = response.data.tasks;
-                vm.rating.current = vm.images[0];
-                vm.rating.currentIndex = 0;
-                vm.rating.next = vm.images[1];
-            });
-        }
-
-        function getTemplate() {
-            if (vm.isVoting('rating')) return templateSingle;
-            if (vm.isVoting('yesno')) return templateSingle;
-            if (vm.isVoting('ranking')) return templateMultiple;
-            return '';
-        }
-
-        function getTemplateRatebox() {
-            if (vm.isVoting('rating')) return templateRateboxRating;
-            if (vm.isVoting('yesno')) return templateRateboxYesNo;
-            return '';
-        }
-
-        function keyDown(event) {
-            const actions = {
-                ArrowUp: () => vm.rating.setRate(5),
-                ArrowDown: () => vm.rating.setRate(1),
-            };
-
-            if (vm.isVoting('yesno') && _.includes(['ArrowUp', 'ArrowDown'], event.key)) {
-                actions[event.key]();
-            } else if (vm.isVoting('rating') && _.includes(vm.rating.rates, parseInt(event.key))) {
-                alertService.success('Rated ' + event.key + '/5', 250);
-                vm.rating.setRate(parseInt(event.key));
-            }
-        }
-
-        function openImage(image, event) {
-            $mdDialog.show({
-                parent: angular.element(document.body),
-                targetEvent: event,
-                clickOutsideToClose: true,
-                template: imageTemplate,
-                controller: ($scope, $mdDialog, $timeout) => {
-                    $scope.cancel = () => $mdDialog.hide();
-                    $scope.image = image;
-                    $scope.isFirst = vm.images.indexOf(image) === 0;
-                    $scope.isLast = vm.images.indexOf(image) === vm.images.length - 1;
-                    $scope.isRanking = vm.isVoting('ranking');
-                    $scope.nextImage = () => {
-                        if ($scope.isLast) { return; }
-                        const currentIndex = vm.images.indexOf(image);
-                        const nextImage = vm.images[currentIndex + 1];
-                        $mdDialog.hide();
-                        openImage(nextImage);
-                    };
-                    $scope.openURL = openURL;
-                    $scope.prevImage = () => {
-                        if ($scope.isFirst) { return; }
-                        const currentIndex = vm.images.indexOf(image);
-                        const prevImage = vm.images[currentIndex - 1];
-                        $mdDialog.hide();
-                        openImage(prevImage);
-                    };
-                    $scope.keyDown = function (event) {
-                        if (event.code === 'ArrowRight') {
-                            $scope.nextImage();
-                        }
-                        else if (event.code === 'ArrowLeft') {
-                            $scope.prevImage();
-                        }
-                    };
-                    $timeout(() => {
-                        $scope.filePath = 'https://commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
-                    }, 100);
-                }
-            }).then(function (answer) {
-                // answer
-            }, function () {
-                // cancelled
-            });
-        }
-
-        function openURL(url) {
-            $window.open(url, '_blank');
-        }
-
-        function saveRanking() {
-            vm.loading = true;
-
-            let data = vm.images.map((image) => ({
-                task_id: image.id,
-                value: vm.images.indexOf(image),
-                review: image.review ? image.review : null
-            }));
-
-            userService.juror.setRating(vm.round.id, {
-                ratings: data
-            }).then((response) => {
-                vm.loading = false;
-                response.error ?
-                    alertService.error(response.error) :
-                    $state.reload();
-            });
-        }
-
-        function sendRate(rate) {
-            return userService.juror.setRating(vm.round.id, {
-                ratings: [rate]
-            }).then(() => {
-                if (vm.stats.total_open_tasks <= 10) {
-                    skips = 0;
-                }
-            });
-        }
-
-        function setRate(rate) {
-            function rating() {
-                if (rate) {
-                    const rating = (rate - 1) / 4;
-                    vm.loading = true;
-                    return sendRate({
-                        'task_id': vm.rating.current.id,
-                        'value': rating
-                    }).then(() => {
-                        vm.loading = false;
-                        vm.stats.total_open_tasks--;
-                        return true;
-                    });
-                } else {
-                    skips++;
-                    return $q.when(false);
-                }
-            }
-
-            rating().then(() => {
-                if (counter === 4 || !vm.stats.total_open_tasks) {
-                    counter = 0;
-                    vm.loading = true;
-                    getTasks().then(() => {
-                        vm.loading = false;
-                    });
-                } else {
-                    counter++;
-                    vm.rating.getNext();
-                }
-            });
-        }
-    },
-    template: `<ng-include src="'round-template'"/>`
-};
-
-export default () => {
-    angular
-        .module('montage')
-        .component('montRound', RoundComponent)
-        .directive('montKeyActions', () => {
-            return {
-                scope: {
-                    actions: '=actions'
-                },
-                link: (scope, element, attrs) => {
-                    const b = document.getElementsByTagName('body');
-                    const body = angular.element(b);
-
-                    body.on('keydown', (data) => { scope.actions(data); });
-                    element.on('$destroy', () => { body.off('keydown'); });
-                }
-            };
-        })
-        .directive('montSrc', () => {
-            // http://stackoverflow.com/a/17449703/1418878
-            return {
-                link: (scope, element, attrs) => {
-                    let img = null;
-                    let loadImage;
-
-                    loadImage = function () {
-                        element[0].src = '//upload.wikimedia.org/wikipedia/commons/f/f8/Ajax-loader%282%29.gif';
-
-                        img = new Image();
-                        img.src = attrs.montSrc;
-                        img.onload = function () {
-                            element[0].src = attrs.montSrc;
-                        };
-                    };
-
-                    scope.$watch(() => attrs.montSrc, (newVal, oldVal) => {
-                        if (oldVal !== newVal) {
-                            loadImage();
-                        }
-                    });
-                    loadImage();
-                }
-            };
+  function setRate(rate) {
+    function rating() {
+      if (rate) {
+        const rating = (rate - 1) / 4;
+        vm.loading = true;
+        return sendRate({
+          'task_id': vm.rating.current.id,
+          'value': rating
+        }).then(() => {
+          vm.loading = false;
+          vm.stats.total_open_tasks--;
+          return true;
         });
-};
+      } else {
+        skips++;
+        return $q.when(false);
+      }
+    }
+
+    rating().then(() => {
+      if (counter === 4 || !vm.stats.total_open_tasks) {
+        counter = 0;
+        vm.loading = true;
+        getTasks().then(() => {
+          vm.loading = false;
+        });
+      } else {
+        counter++;
+        vm.rating.getNext();
+      }
+    });
+  }
+}
+
+export default RoundComponent;

@@ -55,7 +55,23 @@
                  ng-show="$ctrl.loading">
                 <md-progress-circular md-diameter="40"></md-progress-circular>
             </div>
-            <div layout="row" layout-align="space-around center" ng-include="'ratebox-template'" flex></div>
+            <div layout="row" layout-align="space-around center" ng-include="'ratebox-template'" flex>
+
+
+                <md-button class="md-icon-button"
+                            ng-repeat="rate in $ctrl.rating.rates"
+                            ng-click="$ctrl.rating.setRate(rate)"
+                            ng-class="{'md-primary': $ctrl.rating.hover >= rate }"
+                            ng-mouseenter="$ctrl.rating.hover = rate"
+                            ng-mouseleave="$ctrl.rating.hover = 0">
+                    <md-icon>
+                        star_rate
+                        <md-tooltip>Rate {{rate}}/5</md-tooltip>
+                    </md-icon>
+                </md-button>
+
+
+            </div>
             <span class="image__divider">|</span>
             <md-button class="image__skip-btn" ng-click="$ctrl.rating.setRate()">
                 <md-tooltip>Skip voting on this file</md-tooltip>

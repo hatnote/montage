@@ -1,0 +1,19 @@
+.toolbar {
+  .md-toolbar-tools {
+    max-width: 980px;
+  }
+
+  .md-icon-button img {
+    width: 100%;
+    height: 100%;
+  }
+
+  h2 sup {
+    font-size: 10px;
+    opacity: .8;
+  }
+
+  .toolbar__username {
+    font-weight: 600;
+  }
+}

@@ -30,8 +30,4 @@ const LoginComponent = {
     template: template
 };
 
-export default () => {
-    angular
-        .module('montage')
-        .component('montLogin', LoginComponent);
-};
+export default LoginComponent;

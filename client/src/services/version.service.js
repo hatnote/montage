@@ -19,8 +19,4 @@ const VersionService = function($timeout, $mdTheming, themeProvider) {
   }
 };
 
-export default () => {
-  angular
-    .module('montage')
-    .factory('versionService', VersionService);
-};
+export default VersionService;
