@@ -1,10 +1,10 @@
-<div class="dashboard__section"
-    ng-if="$ctrl.campaignsAdmin.length && false">
-  <h2 class="section__title">Your Campaigns as Admin</h2>
+<div class="dashboard__section dashboard__section--admin"
+    ng-if="$ctrl.campaignsAdmin.length">
+  <h2 class="section__title">Your Campaigns</h2>
   <div class="section__content">
     <mont-campaign-admin-box
-      ng-repeat="campaign in $ctrl.campaignsAdmin"
-      campaign="campaign">
+      ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'open_date' : true"
+      campaign="campaign" index="$index">
     </mont-campaign-admin-box>
   </div>
 </div>
@@ -19,7 +19,8 @@
 </div>
 
 <div flex></div>
-<div layout="row" layout-align="end end">
+<div layout="row" layout-align="end end"
+    ng-if="$ctrl.user.is_maintainer">
   <span flex></span>
   <md-button class="md-fab md-primary md-mini" aria-label="Add campaign organizer"
       ng-click="$ctrl.addOrganizer($event)">

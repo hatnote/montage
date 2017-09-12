@@ -56,7 +56,7 @@
       <div class="round__actions"
             layout="row" layout-align="end center"
             ng-if="round.status !== 'finalized'">
-        <md-button
+        <md-button class="md-primary"
             ng-disabled="!$ctrl.isRoundActive(round)"
             ng-click="$ctrl.pauseRound(round)">
           <md-icon ng-if="round.vote_method === 'yesno'">thumbs_up_down</md-icon>

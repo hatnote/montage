@@ -1,8 +1,31 @@
-<md-card ui-sref="main.campaign({id: $ctrl.link})">
-  <h3 class="campaign__name md-title">{{ $ctrl.campaign.name }}</h4>
+<md-card 
+    ng-class="{'md-card--first' : $ctrl.index % 3 === 0, 'md-card--last' : $ctrl.index % 3 === 2}"
+    ui-sref="main.campaign({id: $ctrl.link})">
+  <h3 class="campaign__name md-title">{{ $ctrl.campaign.name }} ({{$ctrl.index}})</h4>
   <span class="campaign__dates">{{ $ctrl.campaign.open_date | date }} - {{ $ctrl.campaign.close_date | date }}</span>
 
-  <div style="margin-top: 20px">Rounds: {{ $ctrl.campaign.rounds.length }}</div>
-  <div>Active: {{ $ctrl.campaign.active_round.name || "No" }}</div>
-  <div>Coordinators: {{ $ctrl.campaign.coordinators.length }}</div>
+  <div class="camapign__round"
+      layout="column" layout-align="start stretch">
+    <h4>Latest Round</h4>
+    <span ng-if="$ctrl.lastRound">
+      {{ $ctrl.lastRound.number | ordinal}} Round ·
+      {{ $ctrl.lastRound.round.vote_method }} · 
+      <span class="muted">{{ $ctrl.lastRound.round.status }}</span>
+    </span>
+    <span class="muted" ng-if="!$ctrl.lastRound">No Rounds</span>
+  </div>
+  <div class="campaign__coordinators">
+    <h4>Coordinators ({{ $ctrl.campaign.coordinators.length }})</h4>
+    <div class="campaign__coordinators-list"
+        layout="row" layout-align="start start">
+      <span class="round__juror round__juror--small"
+            ng-repeat="juror in $ctrl.campaign.coordinators">
+          <span class="juror__avatar"
+              mont-avatar="{{ juror.username }}">
+            {{ juror.username[0].toUpperCase() }}
+          </span>
+      </span>
+    </div>
+  </div>
+
 </md-card>

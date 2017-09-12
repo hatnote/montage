@@ -4,6 +4,7 @@ import template from './campaign-admin-box.html';
 const Component = {
   bindings: {
     campaign: '=',
+    index: '<',
   },
   controller,
   template,
@@ -12,10 +13,20 @@ const Component = {
 function controller() {
   const vm = this;
 
+  vm.lastRound = null;
   vm.link = [
     vm.campaign.id,
     vm.campaign.url_name,
   ].join('-');
+
+  vm.$onInit = () => {
+    if (vm.campaign.rounds.length) {
+      vm.lastRound = {
+        number: vm.campaign.rounds.length,
+        round: vm.campaign.rounds[vm.campaign.rounds.length - 1],
+      };
+    }
+  };
 }
 
 export default Component;
