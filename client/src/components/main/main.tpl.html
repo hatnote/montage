@@ -5,14 +5,5 @@
 <mont-toolbar></mont-toolbar>
 <div class="container" layout="column" layout-align="start center" flex>
   <ui-view></ui-view>
-  <footer layout="row" layout-align="space-between center">
-    <span>&copy; 2017
-      <a href="https://github.com/hatnote">Hatnote</a> &bull;
-      <a href="https://github.com/hatnote/montage/blob/master/README.md">About</a>
-    </span>
-    <span flex></span>
-    <span>
-      version <strong>{{$ctrl.config.package.version}}</strong> &bull;
-      env <strong><a href="meta/">{{$ctrl.config.env.name}}</a></strong></span>
-  </footer>
 </div>
+<mont-footer></mont-footer>

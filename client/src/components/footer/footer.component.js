@@ -1,4 +1,6 @@
+import './footer.scss';
 import template from './footer.html';
+import pack from '../../../package.json';
 
 const Component = {
   bindings: {
@@ -8,10 +10,13 @@ const Component = {
   template,
 };
 
-function controller() {
-  let vm = this;
+function controller($window) {
+  const vm = this;
 
-  // 
+  vm.config = {
+    env: $window.__env,
+    package: pack,
+  };
 }
 
 export default Component;

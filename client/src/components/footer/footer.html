@@ -1,1 +1,15 @@
-<h1>Footer</h1>
+<footer layout="row" layout-align="center center">
+  <div class="footer__container"
+      layout="row" layout-align="space-between center">
+    <span>
+      &copy; 2017 //
+      by <a href="https://github.com/hatnote">Hatnote</a> ·
+      <a href="https://github.com/hatnote/montage/blob/master/README.md">About</a>
+    </span>
+    <span flex></span>
+    <span>
+      version <strong>{{ $ctrl.config.package.version }}</strong> ·
+      env <a href="meta/">{{ $ctrl.config.env.name }}</a>
+    </span>
+  </div>
+</footer>
