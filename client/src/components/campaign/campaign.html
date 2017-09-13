@@ -1,4 +1,17 @@
-<h2 class="md-display-2">{{ $ctrl.campaign.name }}</h2>
+<h2 class="campaign__title md-display-2"
+    layout="row" layout-align="space-between center">
+  <span>{{ $ctrl.campaign.name }}</span>
+  <md-button
+      ng-click="$ctrl.editCampaign(round)">
+    <md-icon>settings</md-icon>
+    Edit Campaign
+  </md-button>
+</h2>
+<span class="campaign__dates muted">
+  {{ $ctrl.campaign.open_date | date: 'd MMM yyyy' }} -
+  {{ $ctrl.campaign.close_date | date: 'd MMM yyyy' }}
+</span>
+
 <div class="campaign__rounds"
       layout="column" layout-align="start stretch">
   <div class="round"
@@ -13,58 +26,96 @@
     </div>
     <span class="round__line"></span>
     <div flex>
-      <h2 class="round__name">
-        <span>{{ round.name }}</span><br />
-        <span class="muted">{{ round.vote_method }} · {{ round.status }}</span>
+      <h2 class="round__name"
+          layout="row" layout-align="space-between center">
+        <div layout="column" layout-align="center start">
+          <span>{{ round.name }}</span>
+          <span class="muted">{{ round.vote_method }} · {{ round.status }}</span>
+        </div>
+        <md-button ng-click="$ctrl.editRound(round)">
+          <md-icon>settings</md-icon>
+          Edit Round
+        </md-button>
       </h2>
       <md-card class="round__description" flex>
         <md-card-content>
           <div layout="row" layout-align="center stretch">
-            <div class="round__directions" flex="40">
-              <h4>Direction</h4>
-              <p>{{ round.directions }}</p>
+            <div class="round__directions" flex="60">
+              <h4>Deadline Date</h4>
+              <p>{{ round.deadline_date | date: 'd MMM yyyy' }} · <span class="muted">{{ round.deadline_date | fromNow }}</span></p>
+              <h4>Directions</h4>
+              <p>{{ round.directions }}<span class="muted" ng-if="!round.directions">No directions provided.</span></p>
             </div>
-            <div class="round__settings" flex="60">
+            <div flex>
+
+            </div>
+            <div class="round__settings" flex="30">
               <h4>Round Settings</h4>
-              <p>{{ round.config | json }}</p>
+              <p layout="column" layout-align="start stretch">
+                <span layout="row" layout-align="space-between start"
+                    ng-repeat="(name, value) in round.config">
+                  <span>{{ $ctrl.dict.settings[name] }}</span>
+                  <span>{{ value | json}}</span>
+                </span>
+              </p>
             </div>
           </div>
           
           <div class="round__jurors">
             <h4>Jurors</h4>
-            <span class="round__juror"
-                  ng-repeat="juror in round.jurors">
-                <span class="juror__avatar"
-                    mont-avatar="{{ juror.username }}">
-                  {{ juror.username[0].toUpperCase() }}
-                </span>
-                {{ juror.username }}
-                <md-icon>cancel</md-icon>
-            </span>
+            <div class="round__juror-container"
+                layout="column" layout-align="center stretch"
+                ng-repeat="juror in round.jurors">
+              <span class="round__juror">
+                  <span class="juror__avatar"
+                      mont-avatar="{{ juror.username }}">
+                    {{ juror.username[0].toUpperCase() }}
+                  </span>
+                  {{ juror.username }}
+                  <md-icon ng-if="false">cancel</md-icon>
+              </span>
+              <div class="juror__stats">
+                <span class="juror__percentage">
+                  {{ 100 - juror.stats.percent_tasks_open | number : 1 }}%
+                </span><br />
+                <span>
+                  {{ juror.stats.total_tasks - juror.stats.total_open_tasks }} out of
+                  {{ juror.stats.total_tasks }}
+                </span><br />
+                <span class="muted">{{ juror.stats.total_open_tasks}} remaining</span>
+              </div>
+            </div>
           </div>
         </md-card-content>
       </md-card>
       <div class="round__actions"
-            layout="row" layout-align="end center">
+            layout="row" layout-align="end center"
+            ng-if="round.status !== 'finalized'">
         <md-button
             ng-disabled="round.status === 'active' || round.status === 'finalized'"
             ng-click="$ctrl.activateRound(round)">
           <md-icon>play_arrow</md-icon>
-          Activate Round
+          Activate
         </md-button>
         <md-button
             ng-disabled="round.status === 'paused' || round.status === 'finalized'"
             ng-click="$ctrl.pauseRound(round)">
           <md-icon>pause</md-icon>
-          Pause Round
+          Pause
         </md-button>
         <md-button
+            ng-disabled="!round.details.is_closeable"
+            ng-click="$ctrl.finalizeRound(round)">
+          <md-icon>done</md-icon>
+          Finalize
+        </md-button>
+        <md-button ng-if="false"
             ng-disabled="round.status === 'finalized'"
             ng-click="$ctrl.cancelRound(round)">
           <md-icon>not_interested</md-icon>
           Cancel Round
         </md-button>
-        <md-button
+        <md-button  ng-if="false"
             ng-disabled="round.status !== 'paused' && round.status !== 'finalized'"
             ng-click="$ctrl.populateRound(round)">
           <md-icon>refresh</md-icon>
