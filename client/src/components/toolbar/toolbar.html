@@ -1,13 +1,10 @@
 <md-toolbar class="toolbar"
     layout="row" layout-align="center center">
   <div class="md-toolbar-tools">
-    <md-button class="md-icon-button" aria-label="Settings" ng-disabled="true">
-      <img ng-src="{{$ctrl.logo}}" alt="Montage Logo">
+    <md-button class="toolbar__title" ui-sref="main.dashboard">
+      Montage
+      <span class="text-primary">{{ $ctrl.config.env.name }}</span>
     </md-button>
-    <h2 class="link" ui-sref="main.dashboard">
-      montage
-      <sup>{{$ctrl.config.env.name.toUpperCase()}}</sup>
-    </h2>
     <span flex></span>
 
     <md-button class="toolbar__username text-normal"

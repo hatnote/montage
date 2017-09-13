@@ -1,7 +1,7 @@
 const Service = ($http, $q, $window) => {
   const admin = {};
   const juror = {};
-  const user = {};
+  let user = {};
 
   const base = `${$window.__env.baseUrl}v1/`;
 
@@ -25,12 +25,23 @@ const Service = ($http, $q, $window) => {
       });
   }
 
+  function login() {
+    const current = $window.location.href;
+    $window.location.href = `${window.__env.baseUrl}login?next=${encodeURIComponent(current)}`;
+  }
+
+  function logout() {
+    user = {};
+    return $http
+      .get(`${window.__env.baseUrl}logout`)
+  }
+
   const service = {
     getAdmin,
     getJuror,
     getUser: () => $q.when(user),
-    login: () => $http.get(window.__env.baseUrl + 'login'),
-    logout: () => $http.get(window.__env.baseUrl + 'logout'),
+    login,
+    logout,
   };
 
   return service;
