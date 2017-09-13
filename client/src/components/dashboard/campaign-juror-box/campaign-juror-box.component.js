@@ -9,13 +9,14 @@ const Component = {
   template,
 };
 
-function controller() {
+function controller($state) {
   const vm = this;
 
   vm.campaign = null;
   vm.collapsed = false;
 
   vm.collapse = () => { vm.collapsed = !vm.collapsed; };
+  vm.goRound = goRound;
   vm.isRoundActive = round => round.status === 'active' && round.total_tasks;
 
   vm.$onInit = () => {
@@ -47,6 +48,15 @@ function controller() {
       },
     };
   };
+
+  function goRound(round) {
+    if (!vm.isRoundActive(round)) { return; }
+    const roundId = [
+      round.id,
+      round.canonical_url_name,
+    ].join('-');
+    $state.go('main.vote', { id: roundId });
+  }
 }
 
 export default Component;
