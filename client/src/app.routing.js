@@ -22,8 +22,8 @@ function stateConfig(
       url: '/vote/:id',
       template: '<mont-round data="$resolve.round" tasks="$resolve.tasks"></mont-round>',
       resolve: {
-        round: ($stateParams, jurorService) => jurorService.getRound($stateParams.id),
-        tasks: ($stateParams, jurorService) => jurorService.getRoundTasks($stateParams.id),
+        round: ($stateParams, jurorService) => jurorService.getRound($stateParams.id.split('-')[0]),
+        tasks: ($stateParams, jurorService) => jurorService.getRoundTasks($stateParams.id.split('-')[0]),
       },
     });
 

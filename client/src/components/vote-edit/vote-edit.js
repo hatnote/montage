@@ -1,8 +1,8 @@
 import _ from 'lodash';
 
-import './vote-edit.scss';
+// import './vote-edit.scss';
 import template from './vote-edit.tpl.html';
-import imageTemplate from '../round/image.tpl.html';
+import imageTemplate from '../vote/image.tpl.html';
 
 const VoteEditComponent = {
     bindings: {

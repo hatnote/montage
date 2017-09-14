@@ -1,0 +1,163 @@
+@import '../../styles/variables';
+
+mont-round {
+  & > ng-include {
+    height: 100%;
+    width: 100%;
+  }
+
+  .round {
+    width: 100%;
+
+    .round__title {
+      margin-bottom: 25px;
+
+      .md-headline {
+        margin-bottom: 0;
+      }
+
+      & > span {
+        line-height: 40px;
+        font-size: 24px;
+        color: $lightGrey;
+      }
+    }
+  }
+
+  .gallery {
+    .gallery__image {
+      display: inline-block;
+      position: relative;
+      background: #ccc;
+      width: calc((100% - 100px) / 5) !important; // id needs to be important, because of sortable plugin adds inline css
+      height: 15vw !important;
+      margin: 10px;
+      vertical-align: top;
+
+      &.sv-helper {
+        transform: rotate(3deg);
+        box-shadow: 0 3px 5px -1px rgba(0,0,0,.2),0 5px 8px 0 rgba(0,0,0,.14),0 1px 14px 0 rgba(0,0,0,.12);
+      }
+
+      &.gallery__image--size-2 {
+        width: calc((100% - 100px) / 3) !important;
+        height: 28vw !important;
+      }
+
+      &.gallery__image--size-3 {
+        width: calc((100% - 100px) / 2) !important;
+        height: 43vw !important;
+      }
+
+      .gallery__image-containter {
+        width: 100%;
+        height: 100%
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      .gallery__drag-icon {
+        cursor: move;
+        position: absolute;
+        background: rgba(0,0,0,.18);
+        top: 6px;
+
+        md-icon.material-icons {
+          color: white;
+        }
+      }
+
+      .gallery__footer {
+        -webkit-transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        -webkit-transition-duration: 200ms;
+        transition-duration: 200ms;
+
+        display: block;
+        position: absolute;
+        width: 100%;
+        height: 26px;
+        bottom: 0;
+        padding-top: 5px;
+        overflow: hidden;
+        background: rgba(0,0,0,.18);
+        color: white;
+        font-size: 14px;
+        line-height: 20px;
+        
+        figcaption {
+          max-width: 100%; 
+        }
+
+        md-icon.material-icons {
+          color: white;
+        }
+
+        .gallery__footer-name {
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          margin: 0 15px;
+
+          font-size: 14px;
+          font-weight: 400;
+          line-height: 24px;
+        }
+
+        &:hover {
+          height: 50%;
+          background: $lightGrey;
+
+          .gallery__footer-name {
+            white-space: normal;
+            font-size: 16px;
+          }
+        }
+      } 
+    }
+  }
+}
+
+.dialog__image {
+  min-width: 80%;
+  border-radius: 0 !important;
+   
+  md-dialog-content {
+    overflow: hidden;
+  }
+
+  .dialog__image-container {
+    background: black;
+    min-height: 80vh;
+    text-align: center;
+
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+    }
+
+    .md-button md-icon.material-icons {
+      width: 40px;
+      height: 40px;
+      color: white;
+      font-size: 40px;
+    }
+
+    .md-button[disabled] md-icon.material-icons {
+      opacity: .5;
+    }
+  }
+
+  .dialog__image-description {
+    background: white;
+    width: 250px;
+    padding: 20px;
+    overflow: scroll;
+  }
+}

@@ -1,0 +1,39 @@
+mont-vote-single {
+
+  .image {
+    padding-top: 25px;
+    height: calc(100vh - 135px);
+  }
+
+  .image__container {
+    position: relative;
+    width: calc(100vw - 450px);
+    background: #e6e6e6;
+
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .image__sidebar-hide-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px; 
+    }
+  }
+
+  .image__description {
+    margin-left: 20px;
+    width: 350px;
+
+    h1 {
+      margin: 0;
+    }
+
+    .md-button {
+      font-weight: 600;
+      text-transform: none;
+    }
+  }
+}

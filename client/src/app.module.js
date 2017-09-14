@@ -20,7 +20,12 @@ import dashboard from './components/dashboard/dashboard';
 import campaignAdminBox from './components/dashboard/campaign-admin-box/campaign-admin-box.component';
 import campaignJurorBox from './components/dashboard/campaign-juror-box/campaign-juror-box.component';
 import footer from './components/footer/footer.component';
-import round from './components/round/round';
+
+import round from './components/vote/vote.component';
+import votebox from './components/vote/votebox/votebox.component';
+import voteRanking from './components/vote/vote-ranking/vote-ranking.component';
+import voteSingle from './components/vote/vote-single/vote-single.component';
+
 import login from './components/login/login';
 import voteEdit from './components/vote-edit/vote-edit';
 import userList from './components/user-list';
@@ -61,7 +66,12 @@ angular.module('montage',
   .component('montCampaignJurorBox', campaignJurorBox)
   .component('montDashboard', dashboard)
   .component('montFooter', footer)
+
   .component('montRound', round)
+  .component('montVotebox', votebox)
+  .component('montVoteRanking', voteRanking)
+  .component('montVoteSingle', voteSingle)
+
   .component('montLogin', login)
   .component('montVoteEdit', voteEdit)
   .component('montUserList', userList)

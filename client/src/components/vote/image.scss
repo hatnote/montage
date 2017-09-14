@@ -8,7 +8,7 @@ mont-round {
 
     .image__gallery {
         position: relative;
-        height: calc(100vh - 135px);
+        height: calc(100vh - 160px);
         background: #ccc;
 
         img {
@@ -25,7 +25,7 @@ mont-round {
 
     .image__description {
         width: 300px;
-        height: calc(100vh - 135px);
+        height: calc(100vh - 175px);
         margin: 0 20px;
 
         & > *:first-child {

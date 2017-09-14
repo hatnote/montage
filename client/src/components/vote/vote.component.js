@@ -1,21 +1,18 @@
 import _ from 'lodash';
 
-import './round.scss';
-import './image.scss';
+// import './vote.scss';
+// import './image.scss';
 
-import templateMultiple from './round-multiple.tpl.html';
-import templateSingle from './round-single.tpl.html';
-import templateRateboxRating from './templates/ratebox-rating.tpl.html';
-import templateRateboxYesNo from './templates/ratebox-yesno.tpl.html';
+import template from './vote.html';
 import imageTemplate from './image.tpl.html';
 
-const RoundComponent = {
+const Component = {
   bindings: {
     data: '<',
     tasks: '<',
   },
   controller,
-  template: templateSingle, // `<ng-include src="'round-template'"/>`
+  template,
 };
 
 function controller(
@@ -59,11 +56,6 @@ function controller(
     setRate,
   };
 
-  console.log(getTemplate());
-
-  $templateCache.put('round-template', getTemplate());
-  $templateCache.put('ratebox-template', templateRateboxRating); // getTemplateRatebox());
-
   // functions
 
   function encodeName(image) {
@@ -75,7 +67,7 @@ function controller(
 
     const entry = image.entry;
     const name = encodeURIComponent(entry.name);
-    const url = 'https://commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
+    const url = '//commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
 
     if (entry.width <= 800) {
       return url + (entry.width - 1);
@@ -99,19 +91,6 @@ function controller(
       vm.rating.currentIndex = 0;
       vm.rating.next = vm.images[1];
     });
-  }
-
-  function getTemplate() {
-    if (vm.isVoting('rating')) return templateSingle;
-    if (vm.isVoting('yesno')) return templateSingle;
-    if (vm.isVoting('ranking')) return templateMultiple;
-    return '';
-  }
-
-  function getTemplateRatebox() {
-    if (vm.isVoting('rating')) return templateRateboxRating;
-    if (vm.isVoting('yesno')) return templateRateboxYesNo;
-    return '';
   }
 
   function keyDown(event) {
@@ -241,4 +220,4 @@ function controller(
   }
 }
 
-export default RoundComponent;
+export default Component;
