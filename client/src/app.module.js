@@ -2,6 +2,7 @@ import angular from 'angular';
 import moment from 'moment';
 
 import 'angular-material';
+import 'angular-translate';
 import 'angular-ui-router';
 import 'ng-infinite-scroll';
 
@@ -10,6 +11,7 @@ import 'material-design-icons/iconfont/material-icons.css';
 import './style.scss';
 
 import { httpConfig, localeConfig, themeConfig } from './app.config';
+import { translateConfig } from './app.l10n';
 import stateConfig from './app.routing';
 
 import main from './components/main/main';
@@ -58,11 +60,13 @@ angular.module('montage',
     'ui.router',
     'angular-sortable-view',
     'infinite-scroll',
+    'pascalprecht.translate',
   ])
   .config(httpConfig)
   .config(stateConfig)
   .config(themeConfig)
   .config(localeConfig)
+  .config(translateConfig)
 
   .component('montMain', main)
   .component('montCampaign', campaign)

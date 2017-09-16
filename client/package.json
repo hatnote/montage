@@ -53,6 +53,7 @@
     "angular-leaflet-directive": "^0.10.0",
     "angular-material": "^1.0.0",
     "angular-messages": "1.5.9",
+    "angular-translate": "^2.15.2",
     "angular-ui-router": "0.4.2",
     "lodash": "^4.15.0",
     "material-design-icons": "^3.0.1",
