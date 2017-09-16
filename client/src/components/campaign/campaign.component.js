@@ -10,9 +10,6 @@ function controller($stateParams, adminService) {
   const vm = this;
 
   vm.campaign = null;
-  vm.dict = {};
-
-  // vm.cancelRound = cancelRound;
 
   // functions
 
@@ -29,22 +26,6 @@ function controller($stateParams, adminService) {
         });
       })
       .catch((err) => { vm.error = err.data; });
-
-    vm.dict.settings = {
-      allowed_filetypes: 'Allowed filetypes',
-      dq_by_filetype: 'Disqualify by filetype',
-      dq_by_resolution: 'Disqualify by resolution',
-      dq_by_upload_date: 'Disqualify by upload date',
-      dq_by_uploader: 'Disqualify by uploader',
-      dq_coords: 'Disqualify by coordinates',
-      dq_maintainers: 'Disqualify maintainers',
-      dq_organizers: 'Disqualify maintainers',
-      final_threshold: 'Final threshold',
-      min_resolution: 'Min. resolution',
-      show_filename: 'Show filename',
-      show_link: 'Show link',
-      show_resolution: 'Show resolution',
-    };
   };
 
   /**

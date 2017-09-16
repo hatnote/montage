@@ -14,82 +14,19 @@
 
 <div class="campaign__rounds"
       layout="column" layout-align="start stretch">
-  <mont-round
-    ng-repeat="round in $ctrl.campaign.rounds"
-    round="round" last="$last">
-  </mont-round>
-
-  <div class="round round--last"
-        layout="row" layout-align="center start"
-        ng-if="!$ctrl.campaign.rounds.length">
-    <div class="round__status"
-          layout="row" layout-align="center center">
-      <span><md-icon>add</md-icon></span>
-    </div>
-    <span class="round__line"></span>
-    <div flex>
-      <h2 class="round__name"
-          layout="row" layout-align="space-between center">
-        <div layout="column" layout-align="center start">
-          <span>{{ $ctrl.roundname }}</span>
-          <span class="muted">b</span>
-        </div>
-        <md-button>
-          <md-icon>settings</md-icon>
-          Add First Round
-        </md-button>
-        <span flex></span>
-      </h2>
-      <md-card class="round__description" flex>
-        <md-card-content>
-          <div layout="row" layout-align="center stretch">
-            <div class="round__directions" flex="60">
-              <md-input-container>
-                <label>Round Name</label>
-                <input type="text"
-                    ng-model="$ctrl.roundname"
-                    ng-required="true">
-              </md-input-container>
-              <h4>Deadline Date</h4>
-              <div layout="row" layout-align="start center">
-                <md-datepicker ng-model="$ctrl.deadline_date"
-                    ng-required="true"
-                    md-open-on-focus
-                    md-current-view="year">
-                </md-datepicker>
-                <span ng-if="$ctrl.deadline_date">·</span>
-                <span class="muted" ng-if="$ctrl.deadline_date">
-                  {{ $ctrl.deadline_date | fromNow }}
-                </span>
-              </div>
-              <h4>Directions</h4>
-              <md-input-container class="md-block">
-                <textarea ng-model="$ctrl.directions" rows="2" md-select-on-focus></textarea>
-              </md-input-container>
-            </div>
-            <div flex>
-
-            </div>
-            <div class="round__settings" flex="30">
-              <h4>Round Settings</h4>
-              <p layout="column" layout-align="start stretch">
-                <span layout="row" layout-align="space-between start"
-                    ng-repeat="(name, value) in round.config">
-                  <span>{{ $ctrl.dict.settings[name] }}</span>
-                  <span>{{ value | json}}</span>
-                </span>
-              </p>
-            </div>
-          </div>
-        </md-card-content>
-      </md-card>
-      <div class="round__actions"
-            layout="row" layout-align="end center">
-        <md-button>
-          <md-icon>check</md-icon>
-          Add Round
-        </md-button>
-      </div>
-    </div>
+  <div ng-repeat="round in $ctrl.campaign.rounds">
+    <mont-round
+      ng-if="!round.edit"
+      round="round" last="$last">
+    </mont-round>
+    <mont-round-edit
+      ng-if="round.edit"
+      round="round" last="$last">
+    </mont-round-edit>
+  </div>
+  <div ng-if="!$ctrl.campaign.rounds.length">
+    <mont-round-new
+      round="round" last="'true'">
+    </mont-round-new>
   </div>
 </div>

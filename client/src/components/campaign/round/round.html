@@ -12,8 +12,8 @@
     <h2 class="round__name"
         layout="row" layout-align="space-between center">
       <div layout="column" layout-align="center start">
-        <span>{{ $ctrl.round.name }}</span>
-        <span class="muted">{{ $ctrl.round.vote_method }} · {{ $ctrl.round.status }}</span>
+        <span>{{ ::$ctrl.round.name }}</span>
+        <span class="muted">{{ ::$ctrl.round.vote_method }} · {{ $ctrl.round.status }}</span>
       </div>
       <md-button ng-click="$ctrl.editRound()">
         <md-icon>settings</md-icon>
@@ -25,20 +25,18 @@
         <div layout="row" layout-align="center stretch">
           <div class="round__directions" flex="60">
             <h4>Deadline Date</h4>
-            <p>{{ $ctrl.round.deadline_date | date: 'd MMM yyyy' }} · <span class="muted">{{ $ctrl.round.deadline_date | fromNow }}</span></p>
+            <p>{{ ::$ctrl.round.deadline_date | date: 'd MMM yyyy' }} · <span class="muted">{{ ::$ctrl.round.deadline_date | fromNow }}</span></p>
             <h4>Directions</h4>
-            <p>{{ $ctrl.round.directions }}<span class="muted" ng-if="!$ctrl.round.directions">No directions provided.</span></p>
+            <p>{{ ::$ctrl.round.directions }}<span class="muted" ng-if="!$ctrl.round.directions">No directions provided.</span></p>
           </div>
-          <div flex>
-
-          </div>
+          <div flex></div>
           <div class="round__settings" flex="30">
             <h4>Round Settings</h4>
             <p layout="column" layout-align="start stretch">
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.config">
-                <span>{{ $ctrl.dict.settings[name] }}</span>
-                <span>{{ value | json}}</span>
+                <span>{{ ::name | translate }}</span>
+                <span>{{ ::value | json}}</span>
               </span>
             </p>
           </div>
@@ -50,22 +48,20 @@
               layout="column" layout-align="center stretch"
               ng-repeat="juror in $ctrl.round.jurors">
             <span class="round__juror">
-                <span class="juror__avatar"
-                    mont-avatar="{{ juror.username }}">
-                  {{ juror.username[0].toUpperCase() }}
+                <span class="juror__avatar" mont-avatar="{{ ::juror.username }}">
+                  {{ ::juror.username[0].toUpperCase() }}
                 </span>
-                {{ juror.username }}
-                <md-icon ng-if="false">cancel</md-icon>
+                {{ ::juror.username }}
             </span>
             <div class="juror__stats">
               <span class="juror__percentage">
-                {{ 100 - juror.stats.percent_tasks_open | number : 1 }}%
+                {{ ::(100 - juror.stats.percent_tasks_open) | number : 1 }}%
               </span><br />
               <span>
-                {{ juror.stats.total_tasks - juror.stats.total_open_tasks }} out of
-                {{ juror.stats.total_tasks }}
+                {{ ::(juror.stats.total_tasks - juror.stats.total_open_tasks) }} out of
+                {{ ::juror.stats.total_tasks }}
               </span><br />
-              <span class="muted">{{ juror.stats.total_open_tasks}} remaining</span>
+              <span class="muted">{{ ::juror.stats.total_open_tasks}} remaining</span>
             </div>
           </div>
         </div>

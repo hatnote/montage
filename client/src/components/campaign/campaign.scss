@@ -14,28 +14,33 @@ mont-campaign {
     margin-top: 25px;
   }
 
-  .round__settings {
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .round__juror-container {
-    display: inline-block;
-    margin-right: 20px;
-
-    .round__juror {
-      display: block;
-    }
-
-    .juror__stats {
-      margin-top: 10px;
-      text-align: right;
+  .round {
+    .round__settings {
       font-size: 14px;
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
-    .juror__percentage {
-      font-size: 26px;
+    .round__juror-container {
+      display: inline-block;
+      margin-right: 20px;
+
+      .round__juror {
+        display: block;
+      }
+
+      .juror__stats {
+        margin-top: 10px;
+        text-align: right;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .juror__percentage {
+        font-size: 26px;
+      }
+    }
+
+    &.round--edit {
     }
   }
 }
