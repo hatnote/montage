@@ -24,6 +24,16 @@ body {
   font: 16px Lato, sans-serif;
 }
 
+button, select, html, textarea, input {
+  font-family: Lato, sans-serif;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .container {
   min-height: calc(100vh - 110px);
 

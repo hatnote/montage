@@ -2,7 +2,6 @@ import _ from 'lodash';
 
 import './dashboard.scss';
 import template from './dashboard.tpl.html';
-import templateNewCampaign from './new-campaign.tpl.html';
 import templateNewOrganizer from './new-organizer.tpl.html';
 
 const Component = {
@@ -24,7 +23,6 @@ function controller(
   vm.isJuror = false;
   vm.campaigns = [];
 
-  vm.addCampaign = addCampaign;
   vm.addOrganizer = addOrganizer;
 
 /*   if (!vm.data.error) {
@@ -60,43 +58,6 @@ function controller(
           'campaign.id');
         vm.campaignsJuror = _.values(grupped);
       });
-  }
-
-  function addCampaign() {
-    dialogService.show({
-      template: templateNewCampaign,
-      scope: {
-        campaign: {
-          name: '',
-          coordinators: [],
-          open_date: new Date(Date.UTC(2017, 8, 1)),
-          close_date: new Date(Date.UTC(2017, 8, 30)),
-        },
-        today: new Date(),
-        create: (campaign_, loading) => {
-          let campaign = angular.copy(campaign_);
-          campaign = angular.extend(campaign, {
-            coordinators: campaign.coordinators.map(element => element.name),
-            open_date: $filter('date')(campaign.open_date, 'yyyy-MM-ddTHH:mm:ss'),
-            close_date: $filter('date')(campaign.close_date, 'yyyy-MM-ddTHH:mm:ss'),
-            url: 'https://commons.wikimedia.org/',
-          });
-
-          loading.window = true;
-          adminService.addCampaign(campaign).then((response) => {
-            if (response.error) {
-              loading.window = false;
-              alertService.error(response.error);
-              return;
-            }
-
-            loading.window = false;
-            $mdDialog.hide(true);
-            $state.reload();
-          });
-        },
-      },
-    });
   }
 
   function addOrganizer() {

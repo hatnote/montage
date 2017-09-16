@@ -14,13 +14,17 @@ function controller() {
   const vm = this;
 
   vm.lastRound = null;
-  vm.link = [
-    vm.campaign.id,
-    vm.campaign.url_name,
-  ].join('-');
+  vm.link = null;
 
   vm.$onInit = () => {
-    if (vm.campaign.rounds.length) {
+    if (!vm.campaign) { return; }
+
+    vm.link = [
+      vm.campaign.id,
+      vm.campaign.url_name,
+    ].join('-');
+
+    if (vm.campaign.rounds && vm.campaign.rounds.length) {
       vm.lastRound = {
         number: vm.campaign.rounds.length,
         round: vm.campaign.rounds[vm.campaign.rounds.length - 1],

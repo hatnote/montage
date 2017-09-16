@@ -2,6 +2,7 @@
 
 mont-campaign-admin-box {
   display: inline-block;
+  vertical-align: top;
 
   md-card {
     width: 310px;
@@ -9,9 +10,10 @@ mont-campaign-admin-box {
     margin-right: 0;
     margin-left: 0;
     margin-top: 0;
+    margin-bottom: 25px;
     padding: 16px;
-    cursor: pointer;
     box-shadow: none;
+    cursor: pointer;
 
     &.md-card--first {
       margin-right: 25px;
@@ -19,9 +21,19 @@ mont-campaign-admin-box {
     &.md-card--last {
       margin-left: 25px;
     }
+    &.md-card--new {
+      text-align: center;
+      cursor: default;
+      background: transparent;
+    }
 
     h4 {
       margin: 15px 0 10px;
+    }
+
+    .md-button {
+      font-weight: 600;
+      text-transform: none;
     }
   }
 

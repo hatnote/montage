@@ -6,6 +6,9 @@
       ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'open_date' : true"
       campaign="campaign" index="$index">
     </mont-campaign-admin-box>
+    <mont-campaign-admin-box
+      campaign="'new'" index="$ctrl.campaignsAdmin.length">
+    </mont-campaign-admin-box>
   </div>
 </div>
 

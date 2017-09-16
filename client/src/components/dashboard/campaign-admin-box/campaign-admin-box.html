@@ -1,4 +1,5 @@
-<md-card 
+<md-card
+    ng-if="$ctrl.campaign.id"
     ng-class="{'md-card--first' : $ctrl.index % 3 === 0, 'md-card--last' : $ctrl.index % 3 === 2}"
     ui-sref="main.campaign({id: $ctrl.link})">
   <h3 class="campaign__name md-title">{{ $ctrl.campaign.name }}</h4>
@@ -28,5 +29,13 @@
       </span>
     </div>
   </div>
+</md-card>
 
+<md-card class="md-card--new"
+    layout="column" layout-align="center center"
+    ng-if="$ctrl.campaign === 'new'">
+  <md-button aria-label="Create New Campaign" ui-sref="main.campaign-new">
+    <md-icon>note_add</md-icon>
+    Create New Campaign
+  </md-button>
 </md-card>
