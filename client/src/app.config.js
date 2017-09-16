@@ -17,18 +17,16 @@ function localeConfig($mdDateLocaleProvider) {
 }
 
 function themeConfig($mdThemingProvider, $provide) {
-  // $mdThemingProvider.generateThemesOnDemand(true);
-  $mdThemingProvider.alwaysWatchTheme(true);
+  const tp = $mdThemingProvider;
+  tp.definePalette('belize', tp.extendPalette('blue', {
+    500: '#36c',
+    600: '#36c',
+  }));
+  tp.theme('default')
+    .primaryPalette('belize')
+    .accentPalette('grey');
 
-  $mdThemingProvider.theme('juror')
-    .primaryPalette('blue')
-    .accentPalette('red');
-  $mdThemingProvider.theme('admin')
-    .primaryPalette('blue-grey')
-    .accentPalette('red');
-  $mdThemingProvider.setDefaultTheme('juror');
-
-  $provide.value('themeProvider', $mdThemingProvider);
+  $provide.value('themeProvider', tp);
 }
 
 export { httpConfig, localeConfig, themeConfig };
