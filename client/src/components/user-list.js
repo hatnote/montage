@@ -8,15 +8,15 @@ const Component = {
   },
   controller,
   template: `<div class="user-list">
-    <span class="user-list__row"
-        layout="row" layout-align="space-between center"
-        ng-repeat="user in $ctrl.ngModel">
-      <span>{{user.name}}</span>
-      <span flex></span>
-      <md-icon class="link"
+    <span class="round__juror" ng-repeat="user in $ctrl.ngModel">
+      <span class="juror__avatar" mont-avatar="{{ user.name }}">
+        {{ user.name[0].toUpperCase() }}
+      </span>
+      {{ user.name }}
+      <md-icon
           ng-click="$ctrl.removeUser(user)"
           ng-if="!$ctrl.disabled">
-        close
+        cancel
       </md-icon>
     </span>
     <md-autocomplete flex
@@ -31,7 +31,9 @@ const Component = {
       md-search-text="$ctrl.searchText"
       md-items="item in $ctrl.searchUser($ctrl.searchText)"
       md-item-text="item.name"
-      md-floating-label="Enter username">
+      md-no-cache="true"
+      md-floating-label="Enter username"
+      md-delay="100">
       <md-item-template>
       <span md-highlight-text="$ctrl.searchText">{{item.name}}</span>
       </md-item-template>
