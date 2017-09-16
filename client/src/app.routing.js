@@ -10,6 +10,10 @@ function stateConfig(
       url: '/',
       template: '<mont-dashboard></mont-dashboard>',
     })
+    .state('main.campaign-new', {
+      url: '/campaign/new',
+      template: '<mont-campaign-new></mont-campaign-new>',
+    })
     .state('main.campaign', {
       url: '/campaign/:id',
       template: '<mont-campaign></mont-campaign>',

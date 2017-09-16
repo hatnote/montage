@@ -1,0 +1,78 @@
+<h2 class="campaign__title md-display-2"
+    layout="row" layout-align="space-between center">
+  <span>New Campaign</span>
+</h2>
+<form role="form" name="$ctrl.newCampaignForm">
+  <fieldset class="new-campaign__form"
+      layout="column" layout-align="start stretch"
+      ng-disabled="$ctrl.loading">
+    <md-input-container>
+      <label>Name</label>
+      <input type="text"
+          ng-model="$ctrl.campaign.name"
+          ng-required="true">
+    </md-input-container>
+
+    <md-input-container>
+      <label>Campaign URL</label>
+      <input type="text"
+          ng-model="$ctrl.campaign.url"
+          ng-required="true">
+    </md-input-container>
+
+    <h2 class="md-title no-margin">Date Range</h2>
+    <p class="muted">
+      Once the images are imported to first round, changing date and time won't make a difference in the images your
+      jury will be able to view. However, changing these values before the import to round 1 will make sure that
+      only photos that are uploaded (for the first time) before the end date and time are viewed by your jury.
+    </p>
+    <div layout="row" layout-align="start center">
+      <md-datepicker ng-model="$ctrl.campaign.open_date"
+          ng-required="true"
+          md-open-on-focus
+          md-current-view="year"
+          md-placeholder="Open Date">
+      </md-datepicker>
+      <md-input-container flex="15">
+        <input name="hour" type="time"
+            ng-required="true"
+            ng-model="$ctrl.campaign.open_date"
+            placeholder="Open Time (UTC)">
+      </md-input-container>
+      <span flex="5"></span>
+      <md-datepicker ng-model="$ctrl.campaign.close_date"
+          ng-required="true"
+          md-open-on-focus
+          md-current-view="year"
+          md-placeholder="Close Date">
+      </md-datepicker>
+      <md-input-container flex="15">
+        <input name="hour" type="time"
+            ng-required="true"
+            ng-model="$ctrl.campaign.close_date"
+            placeholder="Close Time (UTC)">
+      </md-input-container>
+    </div>
+
+    <h2 class="md-title no-margin">Campaign Coordinators</h2>
+    <p class="muted">
+      Coordinators are  dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et
+      dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex
+      ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat
+      nulla pariatur.
+    </p>
+
+    <mont-user-list ng-model="$ctrl.campaign.coordinators"></mont-user-list>
+  </fieldset>
+
+  <div class="new-campaign__actions"
+      layout="row" layout-align="end center">
+    <md-button type="submit"
+        class="md-primary"
+        ng-disabled="$ctrl.newCampaignForm.$invalid || !$ctrl.campaign.coordinators.length"
+        ng-click="$ctrl.createCamapign()">
+      <md-icon>add</md-icon>
+      Create Campaign
+    </md-button>
+  </div>
+</form>

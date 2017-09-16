@@ -1,0 +1,28 @@
+mont-campaign-new {
+  .md-button {
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  .new-campaign__form {
+    background: white;
+    padding: 24px 16px 0;
+
+    md-input-container {
+      margin: 5px 0;
+    }
+
+    md-datepicker {
+      margin-bottom: 19px;
+      margin-right: -6px !important;
+
+      .md-datepicker-input {
+        font-size: 16px;
+      }
+    }
+  }
+
+  .new-campaign__actions {
+    margin-bottom: 40px;
+  }
+}
