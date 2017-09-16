@@ -14,13 +14,9 @@ function stateConfig(
       url: '/campaign/:id',
       template: '<mont-campaign></mont-campaign>',
     })
-    .state('main.campaign.edit-round', {
-      url: '/campaign/:id/',
-      template: '<mont-campaign></mont-campaign>',
-    })
     .state('main.vote', {
       url: '/vote/:id',
-      template: '<mont-round data="$resolve.round" tasks="$resolve.tasks"></mont-round>',
+      template: '<mont-vote data="$resolve.round" tasks="$resolve.tasks"></mont-vote>',
       resolve: {
         round: ($stateParams, jurorService) => jurorService.getRound($stateParams.id.split('-')[0]),
         tasks: ($stateParams, jurorService) => jurorService.getRoundTasks($stateParams.id.split('-')[0]),

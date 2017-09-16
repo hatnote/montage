@@ -12,9 +12,6 @@ function controller($stateParams, adminService) {
   vm.campaign = null;
   vm.dict = {};
 
-  vm.activateRound = activateRound;
-  vm.pauseRound = pauseRound;
-  vm.populateRound = populateRound;
   // vm.cancelRound = cancelRound;
 
   // functions
@@ -50,22 +47,6 @@ function controller($stateParams, adminService) {
     };
   };
 
-  function activateRound(round) {
-    adminService
-      .activateRound(round.id)
-      .then(() => {
-        getRoundDetails(round);
-      });
-  }
-
-  function pauseRound(round) {
-    adminService
-      .pauseRound(round.id)
-      .then(() => {
-        getRoundDetails(round);
-      });
-  }
-
   /**
    * Getting details of round including jurors ratings
    * @param {Object} round
@@ -90,18 +71,6 @@ function controller($stateParams, adminService) {
         angular.extend(round, {
           details: data.data,
         });
-      })
-      .catch((err) => { vm.error = err.data; });
-  }
-
-  function populateRound(round) {
-    adminService
-      .populateRound(round.id, {
-        import_method: 'gistcsv',
-        gist_url: 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv',
-      })
-      .then((data) => {
-
       })
       .catch((err) => { vm.error = err.data; });
   }

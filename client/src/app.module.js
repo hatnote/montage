@@ -14,6 +14,11 @@ import stateConfig from './app.routing';
 
 import main from './components/main/main';
 import campaign from './components/campaign/campaign.component';
+import round from './components/campaign/round/round.component';
+import roundEdit from './components/campaign/round-edit/round-edit.component';
+import roundNew from './components/campaign/round-new/round-new.component';
+
+import campaignNew from './components/campaign-new/campaign-new.component';
 import campaignOld from './components/campaign-old/campaign';
 
 import dashboard from './components/dashboard/dashboard';
@@ -21,7 +26,7 @@ import campaignAdminBox from './components/dashboard/campaign-admin-box/campaign
 import campaignJurorBox from './components/dashboard/campaign-juror-box/campaign-juror-box.component';
 import footer from './components/footer/footer.component';
 
-import round from './components/vote/vote.component';
+import vote from './components/vote/vote.component';
 import votebox from './components/vote/votebox/votebox.component';
 import voteRanking from './components/vote/vote-ranking/vote-ranking.component';
 import voteSingle from './components/vote/vote-single/vote-single.component';
@@ -61,13 +66,18 @@ angular.module('montage',
 
   .component('montMain', main)
   .component('montCampaign', campaign)
+  .component('montRound', round)
+  .component('montRoundEdit', roundEdit)
+  .component('montRoundNew', roundNew)
+
+  .component('montCampaignNew', campaignNew)
   .component('montCampaignOld', campaignOld)
   .component('montCampaignAdminBox', campaignAdminBox)
   .component('montCampaignJurorBox', campaignJurorBox)
   .component('montDashboard', dashboard)
   .component('montFooter', footer)
 
-  .component('montRound', round)
+  .component('montVote', vote)
   .component('montVotebox', votebox)
   .component('montVoteRanking', voteRanking)
   .component('montVoteSingle', voteSingle)
