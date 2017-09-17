@@ -2332,6 +2332,7 @@ class JurorDAO(object):
                       .filter(Vote.user == self.user,
                               Vote.status == COMPLETED_STATUS,
                               Vote.round_entry.has(round_id=round_id))\
+                      .order_by(Vote.modified_date)\
                       .limit(num)\
                       .offset(offset)\
                       .all()
