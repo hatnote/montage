@@ -42,7 +42,7 @@ from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
-from clastic.render import AshesRenderFactory
+from clastic.render import AshesRenderFactory, render_basic
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -52,9 +52,9 @@ from mwoauth import ConsumerToken
 from mw import (UserMiddleware,
                 TimingMiddleware,
                 LoggingMiddleware,
-                MessageMiddleware,
                 ReplayLogMiddleware,
-                DBSessionMiddleware)
+                DBSessionMiddleware,
+                MessageMiddleware)
 from rdb import Base, bootstrap_maintainers, ensure_series
 from utils import get_env_name
 from check_rdb import get_schema_errors, ping_connection
@@ -144,8 +144,7 @@ def create_app(env_name='prod'):
 
     blank_session_type = sessionmaker()
 
-    middlewares = [MessageMiddleware(),
-                   TimingMiddleware(),
+    middlewares = [TimingMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(blank_session_type, get_engine),
                    UserMiddleware()]
@@ -169,8 +168,11 @@ def create_app(env_name='prod'):
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
-    api_app = Application(api_routes, resources, middlewares=middlewares)
-    ui_app = Application(ui_routes, resources, middlewares=middlewares,
+    api_app = Application(api_routes, resources,
+                          middlewares=[MessageMiddleware()] + middlewares,
+                          render_factory=render_basic)
+    ui_app = Application(ui_routes, resources,
+                         middlewares=[MessageMiddleware(use_ashes=True)] + middlewares,
                          render_factory=renderer)
 
     static_app = StaticApplication(STATIC_PATH)

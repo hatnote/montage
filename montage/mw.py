@@ -20,7 +20,6 @@ def public(endpoint_func):
 
     return endpoint_func
 
-
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
     endpoints.
@@ -32,8 +31,9 @@ class MessageMiddleware(Middleware):
     """
     provides = ('response_dict', 'request_dict')
 
-    def __init__(self, raise_errors=True):
+    def __init__(self, raise_errors=True, use_ashes=False):
         self.raise_errors = raise_errors
+        self.use_ashes = use_ashes
 
     def request(self, next, request):
         response_dict = {'errors': [], 'status': 'success'}
@@ -73,7 +73,7 @@ class MessageMiddleware(Middleware):
             # code == 2xx
             # TODO: autoserialize body if no body is set
             return ret
-        elif isinstance(ret, dict) and ret.get('use_ashes'):
+        elif isinstance(ret, dict) and (ret.get('use_ashes') or self.use_ashes):
             return ret
         elif isinstance(ret, dict):
             response_dict.update(ret)
