@@ -6,12 +6,24 @@ html, body {
     -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3, h4, h5 {
+    width: 100%;
+}
+
 .toc {
     width: 100%;
 }
 
 a:hover {
     text-decoration: none;
+}
+
+a.toclink {
+    color: #888;
+    text-decoration: none;
+}
+a.toclink:hover {
+    color: #ff4081;
 }
 
 .mdl-montage .mdl-layout__header {
@@ -62,12 +74,25 @@ a:hover {
           flex-direction: column;
 }
 .mdl-montage .mdl-card > * {
-  height: auto;
+    height: auto;
+    width: 100%;
+    display: block;
 }
 
 .mdl-montage .mdl-card h3 {
-    font-size: 1em;
+    border-bottom: 1px solid #888;
+    padding: 0.5em;
+    font-size: 1.5em;
     line-height: 20px;
+}
+
+.mdl-montage .mdl-card h4 {
+    font-size: 1em;
+    margin: 0.5em 0 0.2em 0;
+}
+
+.mdl-montage .mdl-card ul {
+    margin: 0;
 }
 
 .mdl-montage .mdl-card .mdl-card__supporting-text {
