@@ -1154,6 +1154,7 @@ Complete information about a vote:
   - `round_id`: round id
   - `review`: a description of the reason for the vote, provided by the user
   - `entry`: `entry details` dictionary
+  - `date`: date the vote was modified (in ISO 8601 format)
 
 ## round results summary
 Information about the end of a campaign:

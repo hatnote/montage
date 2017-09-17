@@ -9,7 +9,11 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
+from utils import (format_date,
+                   get_threshold_map,
+                   InvalidAction,
+                   DoesNotExist,
+                   js_isoparse)
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
@@ -159,17 +163,6 @@ def publish_report(user_dao, campaign_id):
 def unpublish_report(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     coord_dao.unpublish_report()
-
-
-def js_isoparse(date_str):
-    try:
-        ret = isoparse(date_str)
-    except ValueError:
-        # It may be a javascript Date object printed with toISOString()
-        if date_str[-1] == 'Z':
-            date_str = date_str[:-1]
-        ret = isoparse(date_str)
-    return ret
 
 
 def make_admin_round_details(rnd, rnd_stats):

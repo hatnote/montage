@@ -151,6 +151,17 @@ def format_date(date):
     return date
 
 
+def js_isoparse(date_str):
+    try:
+        ret = isoparse(date_str)
+    except ValueError:
+        # It may be a javascript Date object printed with toISOString()
+        if date_str[-1] == 'Z':
+            date_str = date_str[:-1]
+        ret = isoparse(date_str)
+    return ret
+
+
 def json_serial(obj):
     if isinstance(obj, (datetime.datetime, datetime.date)):
         serial = obj.isoformat()
