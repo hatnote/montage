@@ -40,7 +40,9 @@ from utils import (format_date,
                    PermissionDenied, InvalidAction, NotImplementedResponse,
                    DoesNotExist,
                    get_env_name,
-                   load_default_series)
+                   load_default_series,
+                   js_isoparse)
+
 from imgutils import make_mw_img_url
 import loaders
 from simple_serdes import DictableBase, JSONEncodedDict
@@ -655,6 +657,7 @@ class Vote(Base):
                 'name': self.entry.name,
                 'user': self.user.username,
                 'value': self.value,
+                'date': format_date(self.modified_date),
                 'round_id': self.round_entry.round_id}
         info['review'] = self.flags.get('review')  # TODO
         return info
@@ -2329,6 +2332,7 @@ class JurorDAO(object):
                       .filter(Vote.user == self.user,
                               Vote.status == COMPLETED_STATUS,
                               Vote.round_entry.has(round_id=round_id))\
+                      .order_by(Vote.modified_date)\
                       .limit(num)\
                       .offset(offset)\
                       .all()

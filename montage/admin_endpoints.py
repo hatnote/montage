@@ -9,7 +9,11 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import format_date, get_threshold_map, InvalidAction, DoesNotExist
+from utils import (format_date,
+                   get_threshold_map,
+                   InvalidAction,
+                   DoesNotExist,
+                   js_isoparse)
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
@@ -72,7 +76,8 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/results', get_results),
            GET('/admin/round/<round_id:int>/results/download', download_results_csv),
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
-           GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv)]
+           GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv),
+           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report_raw)]
     ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
               'report.html')]
     # TODO: arguably download URLs should go into "ui" as well,
@@ -158,17 +163,6 @@ def publish_report(user_dao, campaign_id):
 def unpublish_report(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     coord_dao.unpublish_report()
-
-
-def js_isoparse(date_str):
-    try:
-        ret = isoparse(date_str)
-    except ValueError:
-        # It may be a javascript Date object printed with toISOString()
-        if date_str[-1] == 'Z':
-            date_str = date_str[:-1]
-        ret = isoparse(date_str)
-    return ret
 
 
 def make_admin_round_details(rnd, rnd_stats):
@@ -260,6 +254,12 @@ def get_campaign_report(user_dao, campaign_id):
     ctx = summary.summary
     ctx['use_ashes'] = True
     return ctx
+
+def get_campaign_report_raw(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    summary = coord_dao.get_campaign_report()
+    data = summary.summary
+    return {'data': data}
 
 
 def get_campaign_log(user_dao, campaign_id):

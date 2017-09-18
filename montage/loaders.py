@@ -8,7 +8,7 @@ from unicodecsv import DictReader
 import rdb
 from labs import get_files, get_file_info
 
-REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage-dev/utils/'
+REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage-dev/v1/utils/'
 
 CSV_FULL_COLS = ['img_name',
                  'img_major_mime',

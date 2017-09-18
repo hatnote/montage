@@ -69,16 +69,6 @@ def make_juror_round_details(rnd, rnd_stats):
 def get_index(user_dao):
     """
     Summary: Get juror-level index of all campaigns and rounds.
-
-    Response model name: JurorCampaignIndex
-    Response model:
-        campaigns:
-            type: array
-            items:
-                type: JurorRoundDetails
-
-    Errors:
-       403: User does not have permission to access any rounds
     """
     juror_dao = JurorDAO(user_dao)
     stats = [make_juror_round_details(rnd, rnd_stats)
@@ -90,31 +80,6 @@ def get_index(user_dao):
 def get_campaign(user_dao, campaign_id):
     """
     Summary: Get juror-level list of rounds, identified by campaign ID.
-
-    Request model:
-        campaign_id:
-            type: int64
-
-    Response model name: JurorCampaignDetails
-    Response model:
-        id:
-            type: int64
-        name:
-            type: string
-        canonical_url_name:
-            type: string
-        rounds:
-            type: array
-            items:
-                type: JurorRoundDetails
-        coordinators:
-            type: array
-            items:
-                type: CoordDetails
-
-    Errors:
-       403: User does not have permission to access the requested campaign
-       404: Campaign not found
     """
     juror_dao = JurorDAO(user_dao)
     campaign = juror_dao.get_campaign(campaign_id)
@@ -130,35 +95,6 @@ def get_campaign(user_dao, campaign_id):
 def get_round(user_dao, round_id):
     """
     Summary: Get juror-level details for a round, identified by round ID.
-
-    Request model:
-        round_id:
-            type: int64
-
-    Response model name: JurorRoundDetails
-    Response model:
-        id:
-            type: int64
-        name:
-            type: string
-        canonical_url_name:
-            type: string
-        directions:
-            type: string
-        vote_method:
-            type: string
-        status:
-            type: string
-        open_date:
-            type: date-time
-        close_date:
-            type: date-time
-        campaign:
-            type: CampaignInfo
-
-    Errors:
-       403: User does not have permission to access requested round
-       404: Round not found
     """
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
@@ -170,23 +106,6 @@ def get_round(user_dao, round_id):
 def get_campaign_info(user_dao, campaign_id):
     """
     Summary: Get juror-level info for a round, identified by campaign ID.
-
-    Request model:
-        campaign_id:
-            type: int64
-
-    Response model name: JurorCampaignInfo
-    Response model:
-        id:
-            type: int64
-        name:
-            type: string
-        canonical_url_name:
-            type: string
-
-    Errors:
-       403: User does not have permission to access requested campaign
-       404: Campaign not found
     """
     juror_dao = JurorDAO(use_dao)
     campaign = juror_dao.get_campaign(campaign_id)
@@ -195,29 +114,6 @@ def get_campaign_info(user_dao, campaign_id):
 
 
 def get_tasks(user_dao, request):
-    """
-    Summary: Get the next tasks for a juror.
-
-    Request model:
-        count:
-            default: 3
-            type: int64
-        offeset:
-            default: 0
-            type: int64
-
-    Response model name: JurorTaskDetails
-    Response model:
-        id:
-            type: int64
-        entry:
-            type: EntryInfo
-
-    Errors:
-       403: User does not have permission to access any tasks
-       404: Tasks not found
-
-    """
     # TODO: this needs a round. a given user can be participating in
     # multiple campaigns at once.
     count = request.values.get('count', 15)
