@@ -423,6 +423,7 @@ class RoundJuror(Base):
             raise RuntimeError('cannot get counts for detached Round')
         task_count = rdb_session.query(Vote)\
                                 .filter(Vote.round_entry.has(round_id=self.round_id),
+                                        Vote.user_id == self.user_id,
                                         Vote.status != CANCELLED_STATUS)\
                                 .count()
         open_task_count = rdb_session.query(Vote)\
