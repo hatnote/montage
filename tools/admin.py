@@ -520,6 +520,15 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
     return
 
 
+def dq_by_date(maint_dao, rnd_id):
+    rnd = maint_dao.get_round(rnd_id)
+    res = maint_dao.autodisqualify_by_date(rnd)
+    print res
+
+    if debug:
+        import pdb;pdb.set_trace()
+    return
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
@@ -665,6 +674,9 @@ if __name__ == '__main__':
         csv_path = args.ratings_csv_path
         apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
 
+    if args.dq_by_date:
+        rnd_id = args.dq_by_date
+        dq_by_date(maint_dao, rnd_id, debug=args.debug)
 
     # TODO: move out rdb_session commit/rollback in a try finally
     # rdb_session.commit()
