@@ -589,6 +589,9 @@ if __name__ == '__main__':
     parser.add_argument('--apply-ratings',
                         help='apply ratings based on input (eg --csv-file)',
                         type=int)
+    parser.add_argument('--dq-by-date',
+                        help='disqualify entries by campaign dates',
+                        type=int)
     parser.add_argument('--ratings-csv-path',
                         help='ratings file (use with --apply-ratings)',
                         type=str)
