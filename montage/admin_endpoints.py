@@ -293,7 +293,7 @@ def import_entries(user_dao, round_id, request_dict):
         - total_entries
         - status: success or failure
         - errors: description of the failure (if any)
-        - warnigns: possible problems to alert the user
+        - warnings: possible problems to alert the user
           - empty import (no entries)
           - duplicate import (no new entries)
           - all disqualified
