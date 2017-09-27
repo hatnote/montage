@@ -165,6 +165,7 @@ def full_run(base_url, remote):
             'coordinators': [u'LilyOfTheWest',
                              u'Slaporte',
                              u'Yarl'],
+            'close_date': '2015-10-01 17:00:00',
             'url': 'http://hatnote.com',
             'series_id': series_id}
     resp = fetch('organizer: create campaign',

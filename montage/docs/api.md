@@ -348,6 +348,11 @@ Load entries into a round via one of four import methods
     - `new_entry_count`
     - `new_round_entry_count`
     - `total_entries`
+    - `disqualified`: list of [`round entry details`](#round-entry-details) for disqualified files
+    - `warnigns`: possible problems to alert the user
+      - `empty import` (no entries)
+      - `duplicate import` (no new entries)
+      - `all disqualified`
   - `status`: success or failure
   - `errors`: description of the failure (if any)
   
