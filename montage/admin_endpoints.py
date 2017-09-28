@@ -271,17 +271,36 @@ def get_campaign_log(user_dao, campaign_id):
 
 def import_entries(user_dao, round_id, request_dict):
     """
-    Summary: Load entries into a new round identified by a round ID.
+    Summary: Load entries into a round via one of four import methods
 
     Request model:
-        round_id
-        import_method
-        import_url
+      - round_id (in path)
+      - import_method:
+        - gistcsv
+        - category
+        - round
+        - selected
+      - gist_url (if import_method=gistcsv)
+      - category (if import_method=category)
+      - threshold (if import_method=round)
+      - file_names (if import_method=selected)
 
-    Response model name: EntryImportDetails
+    Response model name:
+      - data:
+        - round_id
+        - new_entry_count
+        - new_round_entry_count
+        - total_entries
+        - status: success or failure
+        - errors: description of the failure (if any)
+        - warnings: possible problems to alert the user
+          - empty import (no entries)
+          - duplicate import (no new entries)
+          - all disqualified
     """
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     import_method = request_dict['import_method']
+    warnings = []
 
     if import_method == GISTCSV_METHOD:
         gist_url = request_dict['gist_url']
@@ -310,12 +329,23 @@ def import_entries(user_dao, round_id, request_dict):
     rnd = coord_dao.get_round(round_id) # TODO: The stats below should
                                         # returned by
                                         # add_round_entries
-
-
+    # loader warnings
+    if not entries:
+        warnings.append({'empty import': 'no entries imported'})
+    elif not new_entries:
+        warnings.append({'duplicate import': 'no new entries imported'})
+    # automatically disqualify entries based on round config
+    auto_dq = autodisqualify(user_dao, round_id, request_dict={})
+    dqed = auto_dq['data']
+    if len(dqed) >= len(entries):
+        warnings.append({'all disqualified': 
+                         'all entries disqualified by round settings'})
     data = {'round_id': rnd.id,
             'new_entry_count': len(entries),
             'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries)}
+            'total_entries': len(rnd.entries),
+            'disqualified': dqed,
+            'warnings': warnings}
 
     return {'data': data}
 
