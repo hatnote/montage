@@ -10,12 +10,14 @@ function controller($stateParams, adminService) {
   const vm = this;
 
   vm.campaign = null;
+  vm.loading = false;
 
   // functions
 
   vm.$onInit = () => {
     const id = $stateParams.id.split('-')[0];
 
+    vm.loading = true;
     adminService
       .getCampaign(id)
       .then((data) => {
@@ -25,7 +27,8 @@ function controller($stateParams, adminService) {
           getRoundResults(round);
         });
       })
-      .catch((err) => { vm.error = err.data; });
+      .catch((err) => { vm.error = err.data; })
+      .finally(() => { vm.loading = false; });
   };
 
   /**

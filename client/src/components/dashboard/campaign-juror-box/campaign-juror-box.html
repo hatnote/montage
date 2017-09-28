@@ -1,5 +1,5 @@
 <h3 class="campaign__title md-display-1">
-  <md-button class="md-icon-button"
+  <md-button class="md-icon-button" aria-label="Show/hide campaign"
       ng-click="$ctrl.collapse()">
     <md-icon ng-if="$ctrl.collapsed">keyboard_arrow_right</md-icon>
     <md-icon ng-if="!$ctrl.collapsed">keyboard_arrow_down</md-icon>
@@ -58,7 +58,7 @@
             ng-if="round.status !== 'finalized'">
         <md-button class="md-primary"
             ng-disabled="!$ctrl.isRoundActive(round)"
-            ng-click="$ctrl.goRound(round)">
+            ng-click="$ctrl.goRound(round, 'vote')">
           <md-icon ng-if="round.vote_method === 'yesno'">thumbs_up_down</md-icon>
           <md-icon ng-if="round.vote_method === 'rating'">star_border</md-icon>
           <md-icon ng-if="round.vote_method === 'ranking'">sort</md-icon>
@@ -66,7 +66,7 @@
         </md-button>
         <md-button
             ng-disabled="!$ctrl.isRoundActive(round)"
-            ng-click="$ctrl.cancelRound(round)">
+            ng-click="$ctrl.goRound(round, 'vote-edit')">
           <md-icon>mode_edit</md-icon>
           Edit Previous Votes
         </md-button>

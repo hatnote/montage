@@ -33,25 +33,29 @@
                   ng-required="true">
             </md-input-container>
 
-            <h4>Deadline Date</h4>
-            <div layout="row" layout-align="start center">
-              <md-datepicker ng-model="$ctrl.round.deadline_date"
-                  ng-required="true"
-                  md-open-on-focus
-                  md-current-view="year">
-              </md-datepicker>
-              <span ng-if="$ctrl.round.deadline_date">&nbsp;·&nbsp;</span>
-              <span class="muted" ng-if="$ctrl.round.deadline_date">
-                {{ $ctrl.round.deadline_date | fromNow }}
-              </span>
+            <div class="round__deadline-date">
+              <h4>Deadline Date</h4>
+              <div layout="row" layout-align="start center">
+                <md-datepicker ng-model="$ctrl.round.deadline_date"
+                    ng-required="true"
+                    md-open-on-focus
+                    md-current-view="year">
+                </md-datepicker>
+                <span ng-if="$ctrl.round.deadline_date">&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+                <span class="muted" ng-if="$ctrl.round.deadline_date">
+                  {{ $ctrl.round.deadline_date | fromNow }}
+                </span>
+              </div>
             </div>
 
-            <h4>Directions</h4>
-            <md-input-container class="no-margin">
-              <textarea aria-label="Round directions"
-                ng-model="$ctrl.round.directions"
-                rows="2" ></textarea>
-            </md-input-container>
+            <div class="round__directions">
+              <h4>Directions</h4>
+              <md-input-container class="no-margin">
+                <textarea aria-label="Round directions"
+                  ng-model="$ctrl.round.directions"
+                  rows="2" ></textarea>
+              </md-input-container>
+            </div>
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">
@@ -77,6 +81,11 @@
     </md-card>
     <div class="round__actions"
           layout="row" layout-align="end center">
+      <md-button ng-disabled="true">
+        <md-icon>delete</md-icon>
+        Delete Round
+      </md-button>
+      <span flex></span>
       <md-button ng-click="$ctrl.cancelEditRound()">
         <md-icon>clear</md-icon>
         Cancel

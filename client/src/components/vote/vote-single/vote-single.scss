@@ -26,9 +26,20 @@ mont-vote-single {
   .image__description {
     margin-left: 20px;
     width: 350px;
+    overflow: hidden;
 
     h1 {
       margin: 0;
+    }
+
+    .description__actions {
+      margin-top: 20px;
+    }
+
+    .description__details {
+      md-list-item > md-icon {
+        cursor: default;
+      }
     }
 
     .md-button {

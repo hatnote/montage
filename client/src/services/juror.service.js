@@ -23,17 +23,11 @@ const UserService = ($http, $q, $window, dataService) => {
         const files = tasks.map(task => task.entry.name);
 
         return dataService.getImageInfo(files).then((responses) => {
-          const hists = _.values(responses[0].query.pages);
+          if (!responses.length) { return data; }
 
-/*
-          responses[0].forEach((response) => {
-            const array = Object.keys(response.data.query.pages)
-              .map(key => response.data.query.pages[key]);
-            Array.prototype.push.apply(hists, array);
-          });
-*/
+          const hists = _.values(responses[0].query.pages);
           hists.forEach((element) => {
-            let image = _.find(tasks, {
+            const image = _.find(tasks, {
               entry: { url: element.imageinfo[0].url },
             });
             if (image) {

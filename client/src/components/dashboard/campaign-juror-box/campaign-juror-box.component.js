@@ -49,13 +49,13 @@ function controller($state) {
     };
   };
 
-  function goRound(round) {
+  function goRound(round, type) {
     if (!vm.isRoundActive(round)) { return; }
     const roundId = [
       round.id,
       round.canonical_url_name,
     ].join('-');
-    $state.go('main.vote', { id: roundId });
+    $state.go(`main.${type || 'vote'}`, { id: roundId });
   }
 }
 

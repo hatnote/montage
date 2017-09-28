@@ -11,6 +11,13 @@
   {{ $ctrl.campaign.open_date | date: 'd MMM yyyy' }} -
   {{ $ctrl.campaign.close_date | date: 'd MMM yyyy' }}
 </span>
+<div class="campaign__coordinators">
+  <span class="round__juror" ng-repeat="user in $ctrl.campaign.coordinators | orderBy:'username'">
+    <span class="juror__avatar" mont-avatar="{{ user.username }}">
+      {{ user.username[0].toUpperCase() }}
+    </span> {{ user.username }}
+  </span>
+</div>
 
 <div class="campaign__rounds"
       layout="column" layout-align="start stretch">
@@ -24,9 +31,9 @@
       round="round" last="$last">
     </mont-round-edit>
   </div>
-  <div ng-if="!$ctrl.campaign.rounds.length">
+  <div ng-if="!$ctrl.loading && !$ctrl.campaign.rounds.length">
     <mont-round-new
-      round="round" last="'true'">
+      campaign="$ctrl.campaign" index="0">
     </mont-round-new>
   </div>
 </div>

@@ -11,6 +11,7 @@ const Component = {
 
 function controller(
   $filter,
+  $state,
   adminService) {
   const vm = this;
 
@@ -46,7 +47,10 @@ function controller(
     vm.loading = true;
     adminService
       .editRound(vm.round.id, round)
-      .then(() => { vm.round.edit = false; })
+      .then(() => {
+        // vm.round.edit = false;
+        $state.reload();
+      })
       .catch((err) => { vm.error = err.data; })
       .finally(() => { vm.loading = false; });
   }

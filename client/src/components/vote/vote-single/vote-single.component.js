@@ -13,34 +13,40 @@ const Component = {
 
 function controller(
   $q,
+  $window,
+  alertService,
   jurorService) {
   const vm = this;
 
   let counter = 0;
   let skips = 0;
 
-  vm.encodeName = encodeName;
-  vm.getImageName = getImageName;
-  vm.images = vm.tasks ? vm.tasks.data.tasks : false;
-  vm.isVoting = type => vm.round && vm.round.vote_method === type;
-
-  vm.setGallerySize = (size) => { vm.size = size; };
+  vm.images = null;
+  vm.rating = {};
   vm.showSidebar = true;
-  vm.size = 1;
-  vm.stats = vm.tasks ? vm.tasks.data.stats : false;
+  vm.stats = null;
 
-  // rating exclusives
-  vm.rating = {
-    // all: vm.images.length,
-    current: vm.images[0],
-    currentIndex: 0,
-    getNext: getNextImage,
-    next: vm.images[1],
-    rates: [1, 2, 3, 4, 5],
-    setRate,
-  };
+  vm.encodeName = encodeName;
+  vm.keyDown = keyDown;
+  vm.getImageName = getImageName;
 
   // functions
+
+  vm.$onInit = () => {
+    if (!vm.tasks || !vm.tasks.data) { return; }
+
+    vm.images = vm.tasks.data.tasks;
+    vm.stats = vm.tasks.data.stats;
+    vm.rating = {
+      // all: vm.images.length,
+      current: vm.images[0],
+      currentIndex: 0,
+      getNext: getNextImage,
+      next: vm.images[1],
+      rates: [1, 2, 3, 4, 5],
+      setRate,
+    };
+  };
 
   function encodeName(image) {
     return encodeURI(image.entry.name);
@@ -77,6 +83,21 @@ function controller(
         vm.rating.currentIndex = 0;
         vm.rating.next = vm.images[1];
       });
+  }
+
+  function keyDown(event) {
+    if (vm.round.vote_method === 'yesno') {
+      if (event.key === 'ArrowUp') {
+        vm.rating.setRate(5);
+      } else if (event.key === 'ArrowDown') {
+        vm.rating.setRate(1);
+      }
+    } else if (vm.round.vote_method === 'rating') {
+      const value = parseInt(event.key, 10);
+      if (vm.rating.rates.includes(value)) {
+        vm.rating.setRate(value);
+      }
+    }
   }
 
   function sendRate(rate) {

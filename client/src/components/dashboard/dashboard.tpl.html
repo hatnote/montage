@@ -3,7 +3,7 @@
   <h2 class="section__title">Your Campaigns</h2>
   <div class="section__content">
     <mont-campaign-admin-box
-      ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'open_date' : true"
+      ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'id' : true"
       campaign="campaign" index="$index">
     </mont-campaign-admin-box>
     <mont-campaign-admin-box

@@ -10,6 +10,10 @@ mont-campaign {
     margin-bottom: 0;
   }
 
+  .campaign__coordinators {
+    margin-top: 10px;
+  }
+
   .campaign__rounds {
     margin-top: 25px;
   }
@@ -41,6 +45,9 @@ mont-campaign {
     }
 
     &.round--edit {
+      .round__directions {
+        margin-top: 15px;
+      }
     }
   }
 }

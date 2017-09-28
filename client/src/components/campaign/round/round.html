@@ -15,7 +15,9 @@
         <span>{{ ::$ctrl.round.name }}</span>
         <span class="muted">{{ ::$ctrl.round.vote_method }} · {{ $ctrl.round.status }}</span>
       </div>
-      <md-button ng-click="$ctrl.editRound()">
+      <md-button
+          ng-click="$ctrl.editRound()"
+          ng-disabled="$ctrl.round.status !== 'paused'">
         <md-icon>settings</md-icon>
         Edit Round
       </md-button>
@@ -46,7 +48,7 @@
           <h4>Jurors</h4>
           <div class="round__juror-container"
               layout="column" layout-align="center stretch"
-              ng-repeat="juror in $ctrl.round.jurors">
+              ng-repeat="juror in $ctrl.round.jurors | orderBy:'username'">
             <span class="round__juror">
                 <span class="juror__avatar" mont-avatar="{{ ::juror.username }}">
                   {{ ::juror.username[0].toUpperCase() }}
@@ -54,9 +56,15 @@
                 {{ ::juror.username }}
             </span>
             <div class="juror__stats">
-              <span class="juror__percentage">
+              <span class="juror__percentage"
+                  ng-if="juror.stats.total_tasks">
                 {{ ::(100 - juror.stats.percent_tasks_open) | number : 1 }}%
-              </span><br />
+              </span>
+              <span class="juror__percentage"
+                  ng-if="!juror.stats.total_tasks">
+                N/A
+              </span>
+              <br />
               <span>
                 {{ ::(juror.stats.total_tasks - juror.stats.total_open_tasks) }} out of
                 {{ ::juror.stats.total_tasks }}
@@ -89,12 +97,6 @@
         Finalize
       </md-button>
       <md-button ng-if="false"
-          ng-disabled="$ctrl.round.status === 'finalized'"
-          ng-click="$ctrl.cancelRound()">
-        <md-icon>not_interested</md-icon>
-        Cancel Round
-      </md-button>
-      <md-button  ng-if="false"
           ng-disabled="$ctrl.round.status !== 'paused' && $ctrl.round.status !== 'finalized'"
           ng-click="$ctrl.populateRound()">
         <md-icon>refresh</md-icon>

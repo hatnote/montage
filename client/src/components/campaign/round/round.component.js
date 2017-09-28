@@ -55,7 +55,7 @@ function controller(adminService) {
     adminService
       .populateRound(vm.round.id, {
         import_method: 'gistcsv',
-        gist_url: 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv',
+        gist_url: 'https://gist.githubusercontent.com/yarl/bc4b89847f9ced089f7169bbfec79841/raw/c8bd23d3b354ce9d20de578245e4dc7c9f095fb0/wlm2015_fr_5.csv',
       })
       .then((data) => {
 
