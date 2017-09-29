@@ -2325,18 +2325,26 @@ class JurorDAO(object):
         ret = [(f.create_date, f.entry) for f in faves]
         return ret
 
-    def get_ratings_from_round(self, round_id, num, offset=0):
+    def get_ratings_from_round(self, round_id, num,
+                               sort, order_by, offset=0):
         # all the filter fields but cancel_date are actually on Vote
         # already
-        ratings = self.query(Vote)\
-                      .options(joinedload('round_entry'))\
+        ratings_query = (self.query(Vote)\
+                      .options(joinedload('round_entry'))
                       .filter(Vote.user == self.user,
                               Vote.status == COMPLETED_STATUS,
-                              Vote.round_entry.has(round_id=round_id))\
-                      .order_by(Vote.modified_date)\
-                      .limit(num)\
-                      .offset(offset)\
-                      .all()
+                              Vote.round_entry.has(round_id=round_id)))
+        if order_by == 'value' and sort == 'desc':
+            ratings_query = ratings_query.order_by(Vote.value.desc())
+        elif order_by == 'value' and sort == 'asc':
+            ratings_query = ratings_query.order_by(Vote.value)
+        elif order_by == 'date' and sort == 'desc':
+            ratings_query = ratings_query.order_by(Vote.modified_date.desc())
+        else:
+            ratings_query = ratings_query.order_by(Vote.modified_date)
+
+        ratings = ratings_query.limit(num).offset(offset).all()
+        
         if not ratings:
             raise Forbidden('no complete ratings')
         return ratings

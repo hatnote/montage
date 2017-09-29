@@ -813,7 +813,9 @@ Return submitted ratings or yesno votes from a juror
 
 ### Parameters
   - `round_id` (in path)
-  - `count` (optional)
+  - `order_by` (optional): may be either `date` (default) or `value`
+  - `sort` (optional): may be either `asc` (ascending, the default) or `desc` (descending)
+  - `count` (optional): default is 15
   - `offset` (optional)
 
 ### Response
