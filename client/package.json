@@ -50,6 +50,7 @@
     "angular": "1.5.9",
     "angular-animate": "1.5.9",
     "angular-aria": "1.5.9",
+    "angular-chart.js": "^1.1.1",
     "angular-leaflet-directive": "^0.10.0",
     "angular-material": "^1.0.0",
     "angular-messages": "1.5.9",

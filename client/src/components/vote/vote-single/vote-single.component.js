@@ -89,13 +89,16 @@ function controller(
     if (vm.round.vote_method === 'yesno') {
       if (event.key === 'ArrowUp') {
         vm.rating.setRate(5);
+        alertService.success('Voted: Accept', 250);
       } else if (event.key === 'ArrowDown') {
         vm.rating.setRate(1);
+        alertService.success('Voted: Decline', 250);
       }
     } else if (vm.round.vote_method === 'rating') {
       const value = parseInt(event.key, 10);
       if (vm.rating.rates.includes(value)) {
         vm.rating.setRate(value);
+        alertService.success(`Voted ${value}/5`, 250);
       }
     }
   }

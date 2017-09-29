@@ -1,7 +1,8 @@
 <div class="round round--edit round--last"
       layout="row" layout-align="center start">
   <div class="round__status"
-        layout="row" layout-align="center center">
+        layout="row" layout-align="center center"
+        ng-if="$ctrl.showForm">
     <span ng-if="$ctrl.round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon></span>
     <span ng-if="$ctrl.round.vote_method === 'rating'"><md-icon>star_border</md-icon></span>
     <span ng-if="$ctrl.round.vote_method === 'ranking'"><md-icon>sort</md-icon></span>
@@ -14,17 +15,13 @@
   </md-button>
   <span ng-if="!$ctrl.showForm" flex></span>
   <form role="form" name="$ctrl.roundEditForm" flex ng-if="$ctrl.showForm">
+    <fieldset ng-disabled="$ctrl.loading">
     <h2 class="round__name"
         layout="row" layout-align="space-between center">
       <div layout="column" layout-align="center start">
         <span>{{ $ctrl.round.name }}</span>
-        <span class="muted">{{ $ctrl.round.vote_method }}</span>
+        <span class="muted">{{ "round." + $ctrl.round.vote_method | translate }}</span>
       </div>
-      <md-button
-          ng-click="$ctrl.cancelEditRound()">
-        <md-icon>clear</md-icon>
-        Cancel
-      </md-button>
     </h2>
     <md-card class="round__description" flex>
       <md-card-content><fieldset>
@@ -62,12 +59,32 @@
                     <md-option
                         ng-repeat="method in ['yesno', 'rating', 'ranking']"
                         value="{{ method }}">
-                      {{ method }}
+                      {{ "round." + method | translate }}
                   </md-option>
                   </md-select>
                 </md-input-container>
               </div>
             </div>
+
+            <h4 ng-if="$ctrl.index === 1">Source Category</h4>
+            <p class="muted" ng-if="$ctrl.index === 1">Category on Wikimedia Commons that gathers all contest images. Example of such category may be eg. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
+            <md-autocomplete flex
+              ng-if="$ctrl.index === 1" required
+              md-input-name="autocompleteField"
+              md-input-minlength="2"
+              md-input-maxlength="500"
+              md-autoselect="true"
+              md-selected-item="$ctrl.category"
+              md-search-text="$ctrl.categorySearchText"
+              md-items="item in $ctrl.searchCategory($ctrl.categorySearchText)"
+              md-item-text="item"
+              md-no-cache="true"
+              md-floating-label="Enter category"
+              md-delay="100">
+              <md-item-template>
+                <span md-highlight-text="$ctrl.searchText">{{ item }}</span>
+              </md-item-template>
+            </md-autocomplete>
 
             <h4>Directions</h4>
             <md-input-container class="no-margin">
@@ -82,33 +99,67 @@
             <p layout="column" layout-align="start stretch">
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.config">
-                <span>{{ ::name | translate }}</span>
-                <span>{{ ::value | json}}</span>
+                <span ng-if="name !== 'min_resolution'">{{ ::name | translate }}</span>
+                <span ng-if="value === false || value === true">
+                  <md-checkbox
+                    ng-model="value"
+                    aria-label="{{ ::name }}">
+                </span>
+                <md-input-container ng-if="name === 'min_resolution'">
+                  <label>Minimal resolution</label>
+                  <input type="number" ng-model="$ctrl.round.config.min_resolution">
+                </md-input-container>
               </span>
             </p>
           </div>
         </div>
         
-        <div class="round__jurors">
-          <h4>Jurors</h4>
-          <mont-user-list
-            ng-model="$ctrl.round.jurors">
-          </mont-user-list>
+        <div class="round__jurors"
+            layout="row" layout-align="center stretch">
+          <div flex>
+            <h4>Quroum</h4>
+            <p class="muted">The number of jurors that must vote on each image</p>
+            <md-input-container class="no-margin-bottom">
+              <label>Quorum</label>
+              <input type="number"
+                  ng-model="$ctrl.round.quorum"
+                  ng-required="true">
+            </md-input-container>
+            <h4>Jurors</h4>
+            <mont-user-list
+              ng-model="$ctrl.round.jurors">
+            </mont-user-list>
+          </div>
+          <div flex="30"
+              ng-if="$ctrl.index > 1">
+            <h4>Threshold</h4>
+            <p class="muted">Minimal average rating for photo</p>
+            <md-select ng-model="$ctrl.round.threshold">
+              <md-option ng-required="true"
+                  ng-repeat="(key, value) in $ctrl.prevRound.details.thresholds"
+                  ng-value="key">
+                 {{ (key * 10).toFixed(2) }} / 10 ({{ value }} images total)
+              </md-option>
+            </md-select>
+          </div>
         </div>
       </fieldset></md-card-content>
     </md-card>
     <div class="round__actions"
           layout="row" layout-align="end center">
-      <md-button ng-click="$ctrl.cancelEditRound()">
+      <md-button
+          ng-disabled="$ctrl.loading"
+          ng-click="$ctrl.cancelAddRound()">
         <md-icon>clear</md-icon>
         Cancel
       </md-button>
       <md-button class="md-primary"
-          ng-click="$ctrl.addRound()"
-          ng-disabled="$ctrl.roundEditForm.$invalid || !$ctrl.round.jurors.length">
+          ng-click="$ctrl.prevRound ? $ctrl.advanceRound() : $ctrl.addRound()"
+          ng-disabled="$ctrl.roundEditForm.$invalid || $ctrl.loading || !$ctrl.round.jurors.length">
         <md-icon>check</md-icon>
         Add Round
       </md-button>
     </div>
+    </fieldset>
   </form>
 </div>

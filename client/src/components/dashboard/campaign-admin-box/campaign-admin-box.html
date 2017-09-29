@@ -9,8 +9,8 @@
       layout="column" layout-align="start stretch">
     <h4>Latest Round</h4>
     <span ng-if="$ctrl.lastRound">
-      {{ ::$ctrl.lastRound.number | ordinal}} Round ·
-      {{ ::$ctrl.lastRound.round.vote_method }} · 
+      {{ ::$ctrl.lastRound.number | ordinal }} Round ·
+      {{ ::("round." + $ctrl.lastRound.round.vote_method) | translate }} · 
       <span class="muted">{{ ::$ctrl.lastRound.round.status }}</span>
     </span>
     <span class="muted" ng-if="!$ctrl.lastRound">No Rounds</span>

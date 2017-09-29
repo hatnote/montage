@@ -3,11 +3,11 @@ const Service = ($http, $q, $window) => {
   const juror = {};
   let user = {};
 
-  const base = `${$window.__env.baseUrl}v1/`;
+  const base = [$window.__env.baseUrl, 'v1'].join('/');
 
   function getAdmin() {
     return $http
-      .get(base + 'admin')
+      .get(base + '/admin')
       .then((data) => {
         angular.extend(admin, data);
         angular.extend(user, data.user);
@@ -17,7 +17,7 @@ const Service = ($http, $q, $window) => {
 
   function getJuror() {
     return $http
-      .get(base + 'juror')
+      .get(base + '/juror')
       .then((data) => {
         angular.extend(juror, data);
         angular.extend(user, data.user);
@@ -27,13 +27,13 @@ const Service = ($http, $q, $window) => {
 
   function login() {
     const current = $window.location.href;
-    $window.location.href = `${window.__env.baseUrl}login?next=${encodeURIComponent(current)}`;
+    $window.location.href = `${window.__env.baseUrl}/login?next=${encodeURIComponent(current)}`;
   }
 
   function logout() {
     user = {};
     return $http
-      .get(`${window.__env.baseUrl}logout`)
+      .get(`${window.__env.baseUrl}/logout`);
   }
 
   const service = {

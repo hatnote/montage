@@ -1,22 +1,25 @@
-const AlertService = function ($mdToast) {
+const AlertService = ($mdToast) => {
+  const toast = $mdToast.simple()
+    .highlightClass('md-accent')
+    .toastClass('toast__top')
+    .position('bottom left');
 
-    let toast = $mdToast.simple()
-        .highlightClass('md-accent')
-        .toastClass('toast__top')
-        .position('bottom left');
+  const service = {
+    success: (text, time) => {
+      toast
+        .textContent(text)
+        .hideDelay(time || 1000);
+      $mdToast.show(toast);
+    },
+    error: (error, time) => {
+      toast
+        .textContent(`${error.data.message}: ${error.data.detail}`)
+        .hideDelay(time || 5000);
+      $mdToast.show(toast);
+    },
+  };
 
-    const service = {
-        success: (text, time) => {
-            toast.textContent(text).hideDelay(time || 1000);
-            $mdToast.show(toast);
-        },
-        error: (error, time) => {
-            toast.textContent(error.message + ': ' + error.detail).hideDelay(time || 1000);
-            $mdToast.show(toast);
-        }
-    };
-
-    return service;
+  return service;
 };
 
 export default AlertService;

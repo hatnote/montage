@@ -1,23 +1,22 @@
 import _ from 'lodash';
 
 const UserService = ($http, $q, $window, dataService) => {
-
-  const base = $window.__env.baseUrl + 'v1/';
+  const base = [$window.__env.baseUrl, 'v1/'].join('/');
 
   const juror = {
-    get: () => $http.get(base + 'juror'),
-    getCampaign: (id) => $http.get(base + 'juror/campaign/' + id),
-    getPastVotes: (id, offset) => $http.get(base + 'juror/round/' + id + '/ratings?offset=' + (offset || 0)),
-    getPastRanking: (id, offset) => $http.get(base + 'juror/round/' + id + '/rankings'),
+    get: () => $http.get(base + '/juror'),
+    getCampaign: id => $http.get(base + '/juror/campaign/' + id),
+    getPastVotes: (id, offset) => $http.get(base + '/juror/round/' + id + '/ratings?offset=' + (offset || 0)),
+    getPastRanking: (id, offset) => $http.get(base + '/juror/round/' + id + '/rankings'),
 
-    getRound: (id) => $http.get(base + 'juror/round/' + id),
-    getRoundTasks: getRoundTasks,
+    getRound: id => $http.get(base + '/juror/round/' + id),
+    getRoundTasks,
 
-    setRating: (id, data) => $http.post(base + 'juror/round/' + id + '/tasks/submit', data),
+    setRating: (id, data) => $http.post(base + '/juror/round/' + id + '/tasks/submit', data),
   };
 
   function getRoundTasks(id, offset) {
-    return $http.get(base + 'juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0))
+    return $http.get(base + '/juror/round/' + id + '/tasks?count=5&offset=' + (offset || 0))
       .then((data) => {
         const tasks = data.data.tasks;
         const files = tasks.map(task => task.entry.name);

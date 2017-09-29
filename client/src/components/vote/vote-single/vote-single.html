@@ -4,6 +4,7 @@
 
   <div class="image__container" flex="none"
       layout="row" layout-align="center center" 
+      ng-class="$ctrl.showSidebar ? 'image__container--with-sidebar' : 'image__container--no-sidebar'"
       mont-key-actions actions="$ctrl.keyDown">
     <img mont-src="{{ $ctrl.getImageName($ctrl.rating.current) }}">
     <md-button class="md-icon-button image__sidebar-hide-btn"
@@ -19,30 +20,7 @@
     </md-button>
   </div>
 
-  <div class="image__description--small"
-      layout="column" layout-align="start start"
-      ng-show="!$ctrl.showSidebar && false">
-    <div class="spinner__container"
-        layout="row" layout-align="center center"
-        ng-show="$ctrl.loading">
-      <md-progress-circular md-diameter="40"></md-progress-circular>
-    </div>
-    <mont-votebox
-        layout="column" layout-align="start start"
-        type="$ctrl.round.vote_method"
-        vote-action="$ctrl.rating.setRate">
-    </mont-votebox>
-    <md-button class="md-icon-button image__skip-btn"
-        ng-click="$ctrl.rating.setRate()">
-      <md-icon>
-        skip_next
-        <md-tooltip>Skip voting on this file</md-tooltip>
-      </md-icon>
-    </md-button>
-  </div>
-
   <div class="image__description" flex="none"
-      layout="column" layout-align="start stretch"
       ng-show="$ctrl.showSidebar">
 
     <div class="description__name"
@@ -80,6 +58,10 @@
           type="$ctrl.round.vote_method"
           vote-action="$ctrl.rating.setRate">
       </mont-votebox>
+      <span class="muted">
+        You can also use keyboard to vote. Use keys 1 to 5 for Ranking round and
+        arrow up/down keys for Yes/No round.
+      </span>
       <div layout="row" layout-align="center center">
         <md-button flex
             ng-click="$ctrl.rating.setRate()">

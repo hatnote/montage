@@ -7,8 +7,11 @@ mont-vote-single {
 
   .image__container {
     position: relative;
-    width: calc(100vw - 450px);
     background: #e6e6e6;
+
+    &.image__container--with-sidebar {
+      width: calc(100vw - 450px);
+    }
 
     img {
       max-width: 100%;

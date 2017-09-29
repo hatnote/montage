@@ -6,6 +6,15 @@ mont-vote-edit {
     width: 100%;
   }
 
+  .md-button {
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  .md-button.md-edited.md-primary:not([disabled]) md-icon {
+    color: mediumseagreen;
+  }
+
   .round {
     width: 100%;
 
@@ -168,8 +177,4 @@ mont-vote-edit {
     padding: 20px;
     overflow: scroll;
   }
-}
-
-.md-button.md-edited.md-primary:not([disabled]) md-icon {
-  color: mediumseagreen;
 }

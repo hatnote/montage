@@ -6,6 +6,8 @@ import 'angular-translate';
 import 'angular-ui-router';
 import 'ng-infinite-scroll';
 
+import 'angular-chart.js';
+
 import 'angular-material/angular-material.css';
 import 'material-design-icons/iconfont/material-icons.css';
 import './style.scss';
@@ -59,6 +61,7 @@ angular.module('montage',
     'ngMaterial',
     'ui.router',
     'angular-sortable-view',
+    'chart.js',
     'infinite-scroll',
     'pascalprecht.translate',
   ])

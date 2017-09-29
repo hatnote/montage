@@ -44,33 +44,54 @@
           </div>
         </div>
         
-        <div class="round__jurors">
-          <h4>Jurors</h4>
-          <div class="round__juror-container"
-              layout="column" layout-align="center stretch"
-              ng-repeat="juror in $ctrl.round.jurors | orderBy:'username'">
-            <span class="round__juror">
+        <div class="round__jurors"
+            layout="row" layout-align="center stretch">
+          <div class="round__directions" flex>
+            <h4>Quorum</h4>
+            <p>{{ ::$ctrl.round.quorum }} jurors per photo</p>
+            <h4>Jurors</h4>
+            <div class="round__juror-container"
+                layout="column" layout-align="center stretch"
+                ng-repeat="juror in $ctrl.round.jurors | orderBy:'username'">
+              <span class="round__juror"
+                  ng-class="juror.is_active ? 'round__juror--active' : 'round__juror--inactive'">
                 <span class="juror__avatar" mont-avatar="{{ ::juror.username }}">
                   {{ ::juror.username[0].toUpperCase() }}
                 </span>
                 {{ ::juror.username }}
-            </span>
-            <div class="juror__stats">
-              <span class="juror__percentage"
-                  ng-if="juror.stats.total_tasks">
-                {{ ::(100 - juror.stats.percent_tasks_open) | number : 1 }}%
               </span>
-              <span class="juror__percentage"
-                  ng-if="!juror.stats.total_tasks">
-                N/A
-              </span>
-              <br />
-              <span>
-                {{ ::(juror.stats.total_tasks - juror.stats.total_open_tasks) }} out of
-                {{ ::juror.stats.total_tasks }}
-              </span><br />
-              <span class="muted">{{ ::juror.stats.total_open_tasks}} remaining</span>
+              <div class="juror__stats">
+                <span class="juror__percentage"
+                    ng-if="juror.stats.total_tasks">
+                  {{ ::(100 - juror.stats.percent_tasks_open) | number : 1 }}%
+                </span>
+                <span class="juror__percentage"
+                    ng-if="!juror.stats.total_tasks">
+                  N/A
+                </span>
+                <br />
+                <span>
+                  {{ ::(juror.stats.total_tasks - juror.stats.total_open_tasks) }} out of
+                  {{ ::juror.stats.total_tasks }}
+                </span><br />
+                <span class="muted">{{ ::juror.stats.total_open_tasks}} remaining</span>
+              </div>
             </div>
+          </div>
+          <div class="round__settings" flex="30"
+              ng-if="$ctrl.round.details.ratings">
+            <h4>Voting Details</h4>
+            <canvas id="doughnut" class="chart chart-doughnut"
+              chart-data="$ctrl.round.details.ratings.values"
+              chart-labels="$ctrl.round.details.ratings.labels">
+            </canvas>
+            <p layout="column" layout-align="start stretch">
+              <span layout="row" layout-align="space-between center"
+                  ng-repeat="label in $ctrl.round.details.ratings.labels">
+                <span>{{ label }}</span>
+                <span>{{ $ctrl.round.details.ratings.values[$index] }}</span>
+              </span>
+            </p>
           </div>
         </div>
       </md-card-content>

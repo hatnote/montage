@@ -70,6 +70,11 @@ fieldset {
 
 .toast__top {
   position: fixed;
+  left: calc(-50vw + 50%) !important;
+  right: calc(-50vw + 50%) !important;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 600px;
 }
 
 .text-normal {

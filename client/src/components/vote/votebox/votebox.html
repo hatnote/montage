@@ -11,19 +11,19 @@
   </md-icon>
 </md-button>
 
-<md-button class="md-icon-button"
+<md-button
     ng-if="$ctrl.type === 'yesno'"
     ng-click="$ctrl.setVote(5)">
   <md-icon>
     thumb_up
-    <md-tooltip>Accept</md-tooltip>
   </md-icon>
+  Accept
 </md-button>
-<md-button class="md-icon-button"
+<md-button
     ng-if="$ctrl.type === 'yesno'"
     ng-click="$ctrl.setVote(1)">
   <md-icon>
     thumb_down
-    <md-tooltip>Decline</md-tooltip>
   </md-icon>
+  Decline
 </md-button>

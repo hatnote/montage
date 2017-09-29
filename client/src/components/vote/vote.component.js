@@ -1,10 +1,10 @@
-import _ from 'lodash';
+// import _ from 'lodash';
 
 // import './vote.scss';
 // import './image.scss';
 
 import template from './vote.html';
-import imageTemplate from './image.tpl.html';
+// import imageTemplate from './image.tpl.html';
 
 const Component = {
   bindings: {
@@ -24,6 +24,9 @@ function controller(
   alertService,
   jurorService) {
   const vm = this;
+  vm.round = vm.data.data;
+
+  /*
 
   let counter = 0;
   let skips = 0;
@@ -101,9 +104,14 @@ function controller(
 
     if (vm.isVoting('yesno') && _.includes(['ArrowUp', 'ArrowDown'], event.key)) {
       actions[event.key]();
-    } else if (vm.isVoting('rating') && _.includes(vm.rating.rates, parseInt(event.key))) {
-      alertService.success('Rated ' + event.key + '/5', 250);
-      vm.rating.setRate(parseInt(event.key));
+      const text = {
+        ArrowUp: 'Accept',
+        ArrowDown: 'Decline',
+      };
+      alertService.success(`Voted ${text[event.key]}`, 250);
+    } else if (vm.isVoting('rating') && _.includes(vm.rating.rates, parseInt(event.key, 10))) {
+      vm.rating.setRate(parseInt(event.key, 10));
+      alertService.success(`Voted ${event.key}/5`, 250);
     }
   }
 
@@ -218,6 +226,8 @@ function controller(
       }
     });
   }
+
+  */
 }
 
 export default Component;

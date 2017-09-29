@@ -8,6 +8,26 @@ mont-campaign {
 
   .campaign__title {
     margin-bottom: 0;
+
+    md-input-container {
+      margin: 0;
+      input {
+        height: 60px;
+      }
+    }
+  }
+
+  .campaign__dates {
+    padding: 0;
+
+    md-datepicker {
+      margin-bottom: 19px;
+      margin-right: -6px !important;
+
+      .md-datepicker-input {
+        font-size: 16px;
+      }
+    }
   }
 
   .campaign__coordinators {
@@ -19,7 +39,7 @@ mont-campaign {
   }
 
   .round {
-    .round__settings {
+    .round__settings p {
       font-size: 14px;
       line-height: 1.5;
     }
@@ -27,9 +47,14 @@ mont-campaign {
     .round__juror-container {
       display: inline-block;
       margin-right: 20px;
+      margin-bottom: 20px;
 
       .round__juror {
         display: block;
+
+        &.round__juror--inactive {
+          text-decoration: line-through;
+        }
       }
 
       .juror__stats {
