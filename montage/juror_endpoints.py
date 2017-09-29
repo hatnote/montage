@@ -152,10 +152,14 @@ def get_tasks_from_round(user_dao, round_id, request):
 def get_ratings_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
+    order_by = request.values.get('order_by', 'date')
+    sort = request.values.get('sort', 'asc')
     juror_dao = JurorDAO(user_dao)
     ratings = juror_dao.get_ratings_from_round(round_id,
                                                num=count,
-                                               offset=offset)
+                                               offset=offset,
+                                               sort=sort,
+                                               order_by=order_by)
     data = [r.to_details_dict() for r in ratings]
     return {'data': data}
 
