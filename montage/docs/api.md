@@ -314,6 +314,8 @@ Get the audit log for a campaign
 
 ### Parameters
   - `campaign_id` (in path)
+  - `limit` (optional, default 100)
+  - `offset` (optional, default 0)
 
 ### Response
   - `data`: list of [`audit log entry`](#audit-log-entry) dictionaries
@@ -711,6 +713,21 @@ Downloads a csv file, with columns similar to the [MediaWiki image table](https:
   - 403: not a coordinator for this campaign
   - 404: round does not exist
 
+## /v1/admin/campaign/`<campaign_id:int>`/report
+Download a structured report from a finalized campaign.
+
+  - Function: [get_campaign_report_raw](https://github.com/hatnote/montage/blob/master/montage/admin_endpoints.py#L258) (admin_endpoints.py)
+  - Method: GET
+
+### Parameters
+  - `campaign_id` (in path)
+
+### Response 
+  [TODO]
+
+### Errors
+  - 403: not a coordinator for this campaign
+  - 404: campaign report does not exist
 
 ## /v1/juror 
 Return details from any jurored rounds

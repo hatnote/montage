@@ -166,9 +166,8 @@ def unpublish_report(user_dao, campaign_id):
 
 
 def make_admin_round_details(rnd, rnd_stats):
-    """
-    Same as juror, but with: quorum, total_entries, jurors
-    """
+    # TODO: This should be depricated in favor of rnd.to_details_dict(), which
+    # is similar except for the stats dict structure.
     ret = {'id': rnd.id,
            'name': rnd.name,
            'directions': rnd.directions,
@@ -186,8 +185,8 @@ def make_admin_round_details(rnd, rnd_stats):
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
            'total_disqualified_entries': rnd_stats['total_disqualified_entries'],
            'campaign': rnd.campaign.to_info_dict(),
+           'stats': rnd_stats,
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
-    # TODO: add total num of entries, total num of uploaders, round source info
     return ret
 
 
@@ -226,7 +225,7 @@ def create_campaign(user_dao, request_dict):
 
     url = request_dict['url']
 
-    series_id = request_dict.get('series_id', 0)
+    series_id = request_dict.get('series_id', 1)
 
     coord_names = request_dict.get('coordinators')
 
@@ -248,7 +247,6 @@ def create_campaign(user_dao, request_dict):
 
 
 def get_campaign_report(user_dao, campaign_id):
-    # TODO: docs
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     summary = coord_dao.get_campaign_report()
     ctx = summary.summary
@@ -262,9 +260,12 @@ def get_campaign_report_raw(user_dao, campaign_id):
     return {'data': data}
 
 
-def get_campaign_log(user_dao, campaign_id):
+def get_campaign_log(user_dao, campaign_id, request_dict):
+    limit = request_dict.get('limit', 100)
+    offset = request_dict.get('offset', 0)
+
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    audit_logs = coord_dao.get_audit_log()  # TODO: should this paginate?
+    audit_logs = coord_dao.get_audit_log()
     ret = [a.to_info_dict() for a in audit_logs]
     return {'data': ret}
 
@@ -300,7 +301,6 @@ def import_entries(user_dao, round_id, request_dict):
     """
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     import_method = request_dict['import_method']
-    warnings = []
 
     if import_method == GISTCSV_METHOD:
         gist_url = request_dict['gist_url']
@@ -323,31 +323,27 @@ def import_entries(user_dao, round_id, request_dict):
     else:
         raise NotImplementedError()
 
-    new_entries = coord_dao.add_round_entries(round_id, entries,
-                                              method=import_method,
-                                              params=params)
-    rnd = coord_dao.get_round(round_id) # TODO: The stats below should
-                                        # returned by
-                                        # add_round_entries
+    new_entry_stats = coord_dao.add_round_entries(round_id, entries,
+                                                  method=import_method,
+                                                  params=params)
+    
     # loader warnings
+    new_entry_stats['warnings'] = list()
     if not entries:
-        warnings.append({'empty import': 'no entries imported'})
-    elif not new_entries:
-        warnings.append({'duplicate import': 'no new entries imported'})
+        new_entry_stats['warnings'].append({'empty import':
+                                            'no entries imported'})
+    elif not new_entry_stats.get('new_entry_count'):
+        new_entry_stats['warnings'].append({'duplicate import':
+                                            'no new entries imported'})
+
     # automatically disqualify entries based on round config
     auto_dq = autodisqualify(user_dao, round_id, request_dict={})
-    dqed = auto_dq['data']
-    if len(dqed) >= len(entries):
-        warnings.append({'all disqualified': 
-                         'all entries disqualified by round settings'})
-    data = {'round_id': rnd.id,
-            'new_entry_count': len(entries),
-            'new_round_entry_count': len(new_entries),
-            'total_entries': len(rnd.entries),
-            'disqualified': dqed,
-            'warnings': warnings}
+    new_entry_stats['disqualified'] = auto_dq['data']
+    if len(new_entry_stats['disqualified']) >= len(entries):
+        new_entry_stats['warnings'].append({'all disqualified': 
+                  'all entries disqualified by round settings'})
 
-    return {'data': data}
+    return {'data': new_entry_stats}
 
 
 def activate_round(user_dao, round_id, request_dict):
@@ -489,12 +485,14 @@ def get_round_results_preview(user_dao, round_id):
         try:
             data['thresholds'] = get_threshold_map(data['ratings'])
         except:
-            import pdb;pdb.post_mortem()
+            # import pdb;pdb.post_mortem()
             raise
     elif rnd.vote_method == 'ranking':
         if not is_closeable:
-            # TODO: should this sort of check apply to ratings as well?
-            import pdb;pdb.set_trace()
+            # TODO: What should this return for ranking rounds? The ranking
+            # round is sorta an all-or-nothing deal, unlike the rating rounds
+            # where you can take a peek at in-progress results
+            # import pdb;pdb.set_trace()
             raise InvalidAction('round must be closeable to preview results')
 
         rankings = coord_dao.get_round_ranking_list(round_id)

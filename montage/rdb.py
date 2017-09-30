@@ -21,7 +21,7 @@ from sqlalchemy import (Text,
                         TIMESTAMP,
                         ForeignKey,
                         inspect)
-from sqlalchemy.sql import func, asc
+from sqlalchemy.sql import func, asc, distinct
 from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
@@ -320,18 +320,26 @@ class Round(Base):
                                     .filter_by(round_id=self.id)\
                                     .filter(RoundEntry.dq_reason != None)\
                                     .count()
+        all_mimes = rdb_session.query(Entry.mime_minor)\
+                                    .join(RoundEntry)\
+                                    .distinct(Entry.mime_minor)\
+                                    .filter_by(round_id=self.id)\
+                                    .filter(RoundEntry.dq_reason == None)\
+                                    .all()
+
         if task_count:
             percent_open = round((100.0 * open_task_count) / task_count, 3)
         else:
             percent_open = 0.0
 
-        return {'total_round_entries': re_count,
+        return {'total_round_entries': re_count,  # TODO: sync with total_entries
                 'total_tasks': task_count,
                 'total_open_tasks': open_task_count,
                 'percent_tasks_open': percent_open,
                 'total_cancelled_tasks': cancelled_task_count,
                 'total_disqualified_entries': dq_entry_count,
-                'total_uploaders': len(self.get_uploaders())}
+                'total_uploaders': len(self.get_uploaders()),
+                'all_mimes': all_mimes}
 
     def get_uploaders(self):
         # TODO: order by and maybe include count per?
@@ -378,11 +386,13 @@ class Round(Base):
                'deadline_date': format_date(self.deadline_date),
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
-               'config': self.config}
+               'config': self.config,
+               'round_sources': []}
         return ret
 
     def to_details_dict(self):
         ret = self.to_info_dict()
+        ret['campaign'] = self.campaign.to_info_dict()
         ret['quorum'] = self.quorum
         ret['total_round_entries'] = len(self.round_entries)
         ret['stats'] = self.get_count_map()
@@ -1520,7 +1530,7 @@ class CoordinatorDAO(UserDAO):
                        in unique_iter(entries, key=lambda e: e.name)
                        if e.name not in existing_names]
         if not new_entries:
-            return new_entries
+            return dict()
         round_source = self.get_or_create_round_source(round_id, method, params)
         self.rdb_session.flush()
         for new_entry in new_entries:
@@ -1533,7 +1543,11 @@ class CoordinatorDAO(UserDAO):
         if method:
             msg += ' (from %s)' % (method,)
         self.log_action('add_round_entries', message=msg, round=rnd)
-        return new_entries
+        new_entry_stats = {'round_id': rnd.id,
+                           'new_entry_count': len(entries),
+                           'new_round_entry_count': len(new_entries),
+                           'total_entries': len(rnd.entries)}
+        return new_entry_stats
 
     def cancel_round(self, round_id):
         rnd = self.get_round(round_id)
@@ -1637,10 +1651,12 @@ class CoordinatorDAO(UserDAO):
                       .one_or_none()
         return summary
 
-    def get_audit_log(self):
+    def get_audit_log(self, limit=100, offset=0):
         audit_logs = (self.query(AuditLogEntry)
                       .filter_by(campaign_id=self.campaign.id)
                       .order_by(AuditLogEntry.create_date.asc())
+                      .limit(limit)
+                      .offset(offset)
                       .all())
         return audit_logs
     
