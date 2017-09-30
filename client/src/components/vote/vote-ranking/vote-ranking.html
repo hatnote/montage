@@ -1,0 +1,85 @@
+<div class="round" ng-if="!$ctrl.error && $ctrl.round.status === 'active'">
+    <div class="spinner__container" layout="row" layout-align="center center"
+         ng-show="$ctrl.loading">
+        <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+    <div class="round__title" layout="row" layout-align="start center"
+         ng-hide="$ctrl.error || $ctrl.round.status !== 'active' || ($ctrl.images && !$ctrl.images.length)">
+        <h2 class="md-headline">
+            {{$ctrl.round.name}}<br />
+            <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
+        </h2>
+        <span flex></span>
+        <!--
+        <md-button class="md-icon-button" aria-label="Sort">
+            <md-icon>filter_list</md-icon>
+        </md-button>
+        <span>|</span>
+        -->
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 3}"
+                   ng-click="$ctrl.setGallerySize(3)">
+            <md-tooltip>Big thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_actual</md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 2}"
+                   ng-click="$ctrl.setGallerySize(2)">
+            <md-tooltip>Medium thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_large</md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="Grid size"
+                   ng-class="{'md-primary': $ctrl.size === 1}"
+                   ng-click="$ctrl.setGallerySize(1)">
+            <md-tooltip>Small thumbnails size</md-tooltip>
+            <md-icon>photo_size_select_small</md-icon>
+        </md-button>
+        <span>&nbsp;&nbsp;</span>
+        <md-button class="md-primary" ng-click="$ctrl.saveRanking()">
+            <md-icon>save</md-icon>
+            Save Round
+        </md-button>
+    </div>
+
+    <grid-list class="gallery" sv-root sv-part="$ctrl.images">
+        <grid-tile class="gallery__image link"
+                   ng-class="'gallery__image--size-'+$ctrl.size"
+                   ng-repeat="image in $ctrl.images"
+                   ng-click="$ctrl.openImage(image, $event)" sv-element>
+            <md-button class="md-icon-button gallery__drag-icon"
+                       ng-show="$ctrl.isVoting('ranking')" sv-handle>
+                <md-icon>drag_handle</md-icon>
+            </md-button>
+            <div class="gallery__image-containter" layout="column" layout-align="center center">
+                <img ng-src="{{image.entry.url_med}}">
+            </div>
+            <grid-tile-footer class="gallery__footer">
+                <h3 class="gallery__footer-name">
+                    <div layout="row" layout-align="space-between center">
+                        <strong ng-show="$ctrl.isVoting('ranking')" flex>{{$index+1 | ordinal}} place</strong>
+                        <md-icon ng-show="image.review">
+                            rate_review
+                            <md-tooltip md-direction="top">Review added</md-tooltip>
+                        </md-icon>
+                    </div>
+                    <span>Image #{{image.entry.id}}</span>
+                </h3>
+            </grid-tile-footer>
+        </grid-tile>
+    </grid-list>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.error">
+    <h2 class="md-display-1">{{$ctrl.error.message}}</h2>
+    <h2 class="md-headline">{{$ctrl.error.detail}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
+    <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
+</div>
+<div class="central-error" layout="column" layout-align="center center"
+     ng-show="$ctrl.images && !$ctrl.images.length">
+    <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you voted on all images in the round</h2>
+    <h2 class="md-headline" ng-show="$ctrl.isVoting('ranking')">you voted on ranking round</h2>
+    <span>good job! :)</span>
+</div>

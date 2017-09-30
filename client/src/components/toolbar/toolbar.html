@@ -1,0 +1,27 @@
+<md-toolbar class="toolbar"
+    layout="row" layout-align="center center">
+  <div class="md-toolbar-tools">
+    <md-button class="toolbar__title" ui-sref="main.dashboard">
+      Montage
+      <span class="text-primary">{{ $ctrl.config.env.name }}</span>
+    </md-button>
+    <span flex></span>
+
+    <md-button class="toolbar__username text-normal"
+        ng-disabled="true"
+        ng-if="$ctrl.user.username">
+      <md-icon>face</md-icon>
+      {{ $ctrl.user.username }}
+    </md-button>
+    <md-button class="toolbar__username text-normal"
+        ng-if="$ctrl.user.username"
+        ng-click="$ctrl.logout()">
+      Logout
+    </md-button>
+    <md-button class="toolbar__username text-normal"
+        ng-if="!$ctrl.user.username"
+        ng-click="$ctrl.login()">
+      Login
+    </md-button>
+  </div>
+</md-toolbar>

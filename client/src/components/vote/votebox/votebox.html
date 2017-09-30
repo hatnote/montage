@@ -1,0 +1,29 @@
+<md-button class="md-icon-button"
+    ng-if="$ctrl.type === 'rating'"
+    ng-repeat="rate in [1, 2, 3, 4, 5]"
+    ng-click="$ctrl.setVote(rate)"
+    ng-class="{'md-primary': $ctrl.hover >= rate }"
+    ng-mouseenter="$ctrl.hover = rate"
+    ng-mouseleave="$ctrl.hover = 0">
+  <md-icon>
+    star_rate
+    <md-tooltip>Rate {{rate}}/5</md-tooltip>
+  </md-icon>
+</md-button>
+
+<md-button
+    ng-if="$ctrl.type === 'yesno'"
+    ng-click="$ctrl.setVote(5)">
+  <md-icon>
+    thumb_up
+  </md-icon>
+  Accept
+</md-button>
+<md-button
+    ng-if="$ctrl.type === 'yesno'"
+    ng-click="$ctrl.setVote(1)">
+  <md-icon>
+    thumb_down
+  </md-icon>
+  Decline
+</md-button>

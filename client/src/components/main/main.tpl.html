@@ -1,0 +1,12 @@
+<div class="spinner__container"
+      layout="row" layout-align="center center"
+      ng-show="$ctrl.loading">
+  <md-progress-circular md-diameter="40"></md-progress-circular>
+</div>
+<mont-toolbar></mont-toolbar>
+<div class="container" flex
+      ng-class="{ 'container--wide': $ctrl.isLinkActive(['main.vote', 'main.vote-edit']) }"
+      layout="column" layout-align="start center">
+  <ui-view></ui-view>
+</div>
+<mont-footer></mont-footer>
