@@ -78,7 +78,7 @@ function controller(
 
           loading.window = true;
           const userName = data[0].name;
-          userService.admin.addOrganizer({ username: userName }).then((response) => {
+          adminService.addOrganizer({ username: userName }).then((response) => {
             if (response.error) {
               loading.window = false;
               alertService.error(response.error);
