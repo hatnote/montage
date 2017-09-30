@@ -43,7 +43,8 @@ function controller(
       .then((data) => {
         vm.isAdmin = data.data.length;
         vm.campaignsAdmin = data.data;
-      });
+      })
+      .catch((err) => { vm.err = err; });
   }
 
   function getJurorData() {
@@ -57,7 +58,8 @@ function controller(
           data.data.filter(round => round.status !== 'cancelled'),
           'campaign.id');
         vm.campaignsJuror = _.values(grupped);
-      });
+      })
+      .catch((err) => { vm.err = err; });
   }
 
   function addOrganizer() {

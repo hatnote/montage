@@ -12,8 +12,13 @@ const AlertService = ($mdToast) => {
       $mdToast.show(toast);
     },
     error: (error, time) => {
+      const text = error.data
+        ? `${error.data.message}: ${error.data.detail}`
+        : null;
+
+      if (!text) { return; }
       toast
-        .textContent(`${error.data.message}: ${error.data.detail}`)
+        .textContent(text)
         .hideDelay(time || 5000);
       $mdToast.show(toast);
     },

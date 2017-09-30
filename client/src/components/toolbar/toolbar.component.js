@@ -35,7 +35,6 @@ function controller($state, $window, userService) {
   function login() {
     vm.loading = true;
     userService.login().then(() => {
-      // vm.$onInit();
       $state.go('main.dashboard', {}, { reload: true });
     });
   }

@@ -41,7 +41,6 @@ function controller(
       config: {
         dq_by_resolution: true,
         min_resolution: 2000000,
-
         dq_by_upload_date: true,
         dq_by_uploader: true,
         dq_coords: true,

@@ -1,100 +1,110 @@
-<h2 class="campaign__title md-display-2"
-    layout="row" layout-align="space-between center">
-  <span flex
+<div ng-if="!$ctrl.err">
+  <h2 class="campaign__title md-display-2"
+      layout="row" layout-align="space-between center">
+    <span flex
+        ng-if="!$ctrl.edit">
+      {{ $ctrl.campaign.name }}
+    </span>
+    <md-input-container class="md-block" flex
+        ng-if="$ctrl.edit">
+      <input ng-model="$ctrl.campaign.name" autofocus>
+    </md-input-container>
+
+    <md-button
+        aria-label="Cancel"
+        ng-if="$ctrl.edit"
+        ng-click="$ctrl.editCampaign(false)">
+      <md-icon>clear</md-icon>
+      Cancel
+    </md-button>
+    <md-button class="md-primary"
+        aria-label="Save"
+        ng-if="$ctrl.edit"
+        ng-click="$ctrl.saveEditCampaign()">
+      <md-icon>check</md-icon>
+      Save
+    </md-button>
+    <md-button
+        aria-label="Edit Campaign"
+        ng-if="!$ctrl.edit"
+        ng-click="$ctrl.editCampaign(true)">
+      <md-icon>settings</md-icon>
+      Edit Campaign
+    </md-button>
+  </h2>
+  <span class="campaign__dates muted"
       ng-if="!$ctrl.edit">
-    {{ $ctrl.campaign.name }}
+    {{ $ctrl.campaign.open_date | date: 'd MMM yyyy' }} -
+    {{ $ctrl.campaign.close_date | date: 'd MMM yyyy' }}
   </span>
-  <md-input-container class="md-block" flex
+  <div class="campaign__dates" 
+      layout="row" layout-align="start center"
+      ng-disabled="$ctrl.loading"
       ng-if="$ctrl.edit">
-    <input ng-model="$ctrl.campaign.name" autofocus>
-  </md-input-container>
-
-  <md-button
-      aria-label="Cancel"
-      ng-if="$ctrl.edit"
-      ng-click="$ctrl.editCampaign(false)">
-    <md-icon>clear</md-icon>
-    Cancel
-  </md-button>
-  <md-button class="md-primary"
-      aria-label="Save"
-      ng-if="$ctrl.edit"
-      ng-click="$ctrl.saveEditCampaign()">
-    <md-icon>check</md-icon>
-    Save
-  </md-button>
-  <md-button
-      aria-label="Edit Campaign"
-      ng-if="!$ctrl.edit"
-      ng-click="$ctrl.editCampaign(true)">
-    <md-icon>settings</md-icon>
-    Edit Campaign
-  </md-button>
-</h2>
-<span class="campaign__dates muted"
-    ng-if="!$ctrl.edit">
-  {{ $ctrl.campaign.open_date | date: 'd MMM yyyy' }} -
-  {{ $ctrl.campaign.close_date | date: 'd MMM yyyy' }}
-</span>
-<div class="campaign__dates" 
-    layout="row" layout-align="start center"
-    ng-disabled="$ctrl.loading"
-    ng-if="$ctrl.edit">
-  <md-datepicker ng-model="$ctrl.campaign.open_date"
-      ng-required="true"
-      md-open-on-focus
-      md-placeholder="Open Date">
-  </md-datepicker>
-  <md-input-container flex="15">
-    <input name="hour" type="time"
+    <md-datepicker ng-model="$ctrl.campaign.open_date"
         ng-required="true"
-        ng-model="$ctrl.campaign.open_date"
-        placeholder="Open Time (UTC)">
-  </md-input-container>
-  <span flex="5"></span>
-  <md-datepicker ng-model="$ctrl.campaign.close_date"
-      ng-required="true"
-      md-open-on-focus
-      md-placeholder="Close Date">
-  </md-datepicker>
-  <md-input-container flex="15">
-    <input name="hour" type="time"
+        md-open-on-focus
+        md-placeholder="Open Date">
+    </md-datepicker>
+    <md-input-container flex="15">
+      <input name="hour" type="time"
+          ng-required="true"
+          ng-model="$ctrl.campaign.open_date"
+          placeholder="Open Time (UTC)">
+    </md-input-container>
+    <span flex="5"></span>
+    <md-datepicker ng-model="$ctrl.campaign.close_date"
         ng-required="true"
-        ng-model="$ctrl.campaign.close_date"
-        placeholder="Close Time (UTC)">
-  </md-input-container>
-</div>
-
-<div class="campaign__coordinators" ng-if="!$ctrl.edit">
-  <span class="round__juror" ng-repeat="user in $ctrl.campaign.coordinators | orderBy:'username'">
-    <span class="juror__avatar" mont-avatar="{{ user.username }}">
-      {{ user.username[0].toUpperCase() }}
-    </span> {{ user.username }}
-  </span>
-</div>
-
-<div ng-if="$ctrl.edit">
-  <mont-user-list ng-model="$ctrl.campaign.coordinators"></mont-user-list>
-</div>
-
-<div class="campaign__rounds"
-      layout="column" layout-align="start stretch">
-  <div ng-repeat="round in $ctrl.campaign.rounds">
-    <mont-round
-      ng-if="!round.edit && round.id"
-      campaign="$ctrl.campaign"
-      round="round" last="$last">
-    </mont-round>
-    <mont-round-edit
-      ng-if="round.edit && round.id"
-      campaign="$ctrl.campaign"
-      round="round" last="$last">
-    </mont-round-edit>
-    <mont-round-new
-      ng-if="!round.id"
-      show-form="round.showForm"
-      campaign="$ctrl.campaign"
-      index="$ctrl.campaign.rounds.length">
-    </mont-round-new>
+        md-open-on-focus
+        md-placeholder="Close Date">
+    </md-datepicker>
+    <md-input-container flex="15">
+      <input name="hour" type="time"
+          ng-required="true"
+          ng-model="$ctrl.campaign.close_date"
+          placeholder="Close Time (UTC)">
+    </md-input-container>
   </div>
+
+  <div class="campaign__coordinators" ng-if="!$ctrl.edit">
+    <span class="round__juror" ng-repeat="user in $ctrl.campaign.coordinators | orderBy:'username'">
+      <span class="juror__avatar" mont-avatar="{{ user.username }}">
+        {{ user.username[0].toUpperCase() }}
+      </span> {{ user.username }}
+    </span>
+  </div>
+
+  <div ng-if="$ctrl.edit">
+    <mont-user-list ng-model="$ctrl.campaign.coordinators"></mont-user-list>
+  </div>
+
+  <div class="campaign__rounds"
+        layout="column" layout-align="start stretch">
+    <div ng-repeat="round in $ctrl.campaign.rounds">
+      <mont-round
+        ng-if="!round.edit && round.id"
+        campaign="$ctrl.campaign"
+        round="round" last="$last">
+      </mont-round>
+      <mont-round-edit
+        ng-if="round.edit && round.id"
+        campaign="$ctrl.campaign"
+        round="round" last="$last">
+      </mont-round-edit>
+      <mont-round-new
+        ng-if="!round.id"
+        show-form="round.showForm"
+        campaign="$ctrl.campaign"
+        index="$ctrl.campaign.rounds.length">
+      </mont-round-new>
+    </div>
+  </div>
+</div>
+
+<div layout="column" layout-align="center center"
+    ng-if="$ctrl.err">
+  <h3 ng-if="$ctrl.err.lenght && $ctrl.err[0]">Please log in</h3>
+  <h3 ng-if="$ctrl.err.data">
+    {{ $ctrl.err.data.message }}: {{ $ctrl.err.data.detail }}
+  </h3>
 </div>

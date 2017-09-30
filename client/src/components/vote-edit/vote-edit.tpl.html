@@ -11,12 +11,26 @@
             <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
         </h2>
         <span flex></span>
-        <!--
-        <md-button class="md-icon-button" aria-label="Sort">
-            <md-icon>filter_list</md-icon>
+        <md-button aria-label="Sort"
+            ng-disabled="true">
+            Order by
         </md-button>
-        <span>|</span>
-        -->
+        <md-select
+            ng-model="$ctrl.sort.order_by"
+            ng-change="$ctrl.reorderList()">
+            <md-option ng-value="'date'">vote date</md-option>
+            <md-option ng-value="'value'">score</md-option>
+        </md-select>
+        <md-select
+            ng-model="$ctrl.sort.sort"
+            ng-change="$ctrl.reorderList()">
+            <md-option ng-value="'asc'">ascending</md-option>
+            <md-option ng-value="'desc'">descending</md-option>
+        </md-select>
+        <span>&nbsp;&nbsp;|</span>
+        <md-button ng-disabled="true">
+            Gallery size
+        </md-button>
         <md-button class="md-icon-button" aria-label="Grid size"
                    ng-class="{'md-primary': $ctrl.size === 3}"
                    ng-click="$ctrl.setGallerySize(3)">
@@ -52,14 +66,14 @@
     </div>
 
     <grid-list class="gallery" sv-root sv-part="$ctrl.images">
-        <grid-tile class="gallery__image link"
+        <grid-tile class="gallery__image"
                    ng-class="'gallery__image--size-'+$ctrl.size"
                    ng-repeat="image in $ctrl.images" sv-element>
             <md-button class="md-icon-button gallery__drag-icon"
                        ng-show="$ctrl.isVoting('ranking')" sv-handle>
                 <md-icon>drag_handle</md-icon>
             </md-button>
-            <div class="gallery__image-containter" layout="column" layout-align="center center"
+            <div class="gallery__image-containter link" layout="column" layout-align="center center"
                  ng-click="$ctrl.openImage(image, $event)">
                 <img ng-src="{{$ctrl.getImageName(image)}}">
             </div>
@@ -76,6 +90,10 @@
                     <span>Image #{{image.entry.id}}</span>
                 </h3>
             </grid-tile-footer>
+            <div class="muted">
+                voted {{ image.date | fromNow }}<br />
+                {{ image.date | date: "d MMM yyyy 'at' H:mm UTC"}}
+            </div>
             <div class="gallery__rating"
                  layout="row" layout-align="center center"
                  ng-if="$ctrl.isVoting('rating')">
@@ -121,6 +139,6 @@
     <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
 </div>
 <div class="central-error" layout="column" layout-align="center center"
-     ng-show="$ctrl.images && !$ctrl.images.length">
+     ng-show="$ctrl.images && !$ctrl.images.length && !$ctrl.loading">
     <h2 class="md-headline" ng-hide="$ctrl.isVoting('ranking')">you haven't voted on any image this round</h2>
 </div>

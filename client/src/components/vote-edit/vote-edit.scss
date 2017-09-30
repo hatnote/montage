@@ -16,7 +16,8 @@ mont-vote-edit {
   }
 
   .round {
-    width: 100%;
+    width: calc(100vw - 40px);
+    margin: 0 20px;
 
     .round__title {
       margin-bottom: 25px;
@@ -40,7 +41,7 @@ mont-vote-edit {
       background: #ccc;
       width: calc((100% - 100px) / 5) !important; // id needs to be important, because of sortable plugin adds inline css
       height: 15vw !important;
-      margin: 10px 10px 40px;
+      margin: 10px 10px 80px;
       vertical-align: top;
 
       &.sv-helper {
@@ -78,6 +79,11 @@ mont-vote-edit {
         md-icon.material-icons {
           color: white;
         }
+      }
+
+      .muted {
+        font-size: 14px;
+        margin-top: 5px;
       }
 
       .gallery__footer {

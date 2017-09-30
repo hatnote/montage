@@ -37,12 +37,13 @@ function controller(
           getRoundDetails(round);
           getRoundResults(round);
         });
+        vm.error = data.errors;
 
         if (!vm.campaign.rounds.length) {
           vm.campaign.rounds.push({});
         }
       })
-      .catch(alertService.error)
+      .catch((err) => { vm.err = err; })
       .finally(() => { vm.loading = false; });
   };
 

@@ -95,14 +95,14 @@
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">
-            <h4>Round Settings</h4>
+            <h4>Round File Settings</h4>
             <p layout="column" layout-align="start stretch">
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.config">
                 <span ng-if="name !== 'min_resolution'">{{ ::name | translate }}</span>
                 <span ng-if="value === false || value === true">
                   <md-checkbox
-                    ng-model="value"
+                    ng-model="$ctrl.round.config[name]"
                     aria-label="{{ ::name }}">
                 </span>
                 <md-input-container ng-if="name === 'min_resolution'">

@@ -25,12 +25,18 @@ function controller(
   const vm = this;
 
   vm.edits = [];
+  vm.sort = {
+    order_by: 'date',
+    sort: 'desc',
+  };
+
   vm.encodeName = encodeName;
   vm.error = vm.data.error;
   vm.getImageName = getImageName;
   vm.images = vm.tasks.data;
   vm.isVoting = type => vm.round && vm.round.vote_method === type;
   vm.loadMore = loadMore;
+  vm.reorderList = reorderList;
   vm.round = vm.data.data;
   vm.openImage = openImage;
   vm.openURL = openURL;
@@ -63,19 +69,20 @@ function controller(
   }
 
   function loadMore() {
-    if (vm.loadingMore) return;
+    if (vm.loadingMore) return null;
 
     vm.loadingMore = true;
-    jurorService
-      .getPastVotes(vm.round.id, vm.images.length)
+    return jurorService
+      .getPastVotes(vm.round.id, vm.images.length, vm.sort.order_by, vm.sort.sort)
       .then((response) => {
         response.data.forEach((element) => {
           element.value = (element.value * 4) + 1;
         });
-        vm.images.push.apply(vm.images, response.data);
+        vm.images.push(...response.data);
         if (response.data.length) {
           vm.loadingMore = false;
         }
+        return true;
       });
   }
 
@@ -106,22 +113,17 @@ function controller(
           $mdDialog.hide();
           openImage(prevImage);
         };
-        $scope.keyDown = function (event) {
-          if (event.code === 'ArrowRight') {
+        $scope.keyDown = (ev) => {
+          if (ev.code === 'ArrowRight') {
             $scope.nextImage();
-          }
-          else if (event.code === 'ArrowLeft') {
+          } else if (ev.code === 'ArrowLeft') {
             $scope.prevImage();
           }
         };
         $timeout(() => {
-          $scope.filePath = 'https://commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
+          $scope.filePath = '//commons.wikimedia.org/w/thumb.php?f=' + image.entry.name + '&w=800';
         }, 100);
-      }
-    }).then(function (answer) {
-      // answer
-    }, function () {
-      // cancelled
+      },
     });
   }
 
@@ -129,24 +131,30 @@ function controller(
     $window.open(url, '_blank');
   }
 
+  function reorderList() {
+    vm.loading = true;
+    vm.loadingMore = false;
+    vm.images = [];
+    loadMore()
+      .then(() => { vm.loading = false; });
+  }
+
   function save() {
     vm.loading = true;
     saveRating()
-      .then((response) => {
+      .then(() => {
         vm.edits = [];
         vm.images.forEach((image) => { delete image.edited; });
-        vm.loading = false;
-        response.error ?
-          alertService.error(response.error) :
-          alertService.success('New votes saved');
-      });
+      })
+      .catch(alertService.error)
+      .finally(() => { vm.loading = false; });
   }
 
   function saveRating() {
     return jurorService
       .setRating(vm.round.id, {
         ratings: vm.edits.map(element => ({
-          task_id: element.task_id,
+          vote_id: element.id,
           value: (element.value - 1) / 4,
         })),
       });
@@ -164,6 +172,7 @@ function controller(
     jurorService
       .setRating(vm.round.id, { ratings })
       .then(() => { $state.reload(); })
+      .catch(alertService.error)
       .finally(() => { vm.loading = false; });
   }
 
@@ -176,4 +185,4 @@ function controller(
   }
 }
 
-export default Component
+export default Component;

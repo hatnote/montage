@@ -25,7 +25,8 @@
         <span>{{ round.name }}</span><br />
         <span class="muted text-capitalize">{{ $ctrl.voteMethods[round.vote_method].label }} · {{ round.status }}</span>
       </h2>
-      <md-card class="round__description" flex>
+      <md-card class="round__description" flex
+          ng-click="$ctrl.isRoundActive(round) ? $ctrl.goRound(round, 'vote') : null">
         <md-card-content>
           <div layout="row" layout-align="center stretch">
             <div class="round__directions" flex>

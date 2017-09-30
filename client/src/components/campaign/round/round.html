@@ -33,11 +33,18 @@
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">
-            <h4>Round Settings</h4>
+            <h4>Round File Settings</h4>
             <p layout="column" layout-align="start stretch">
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.config">
                 <span>{{ ::name | translate }}</span>
+                <span>{{ ::value | json}}</span>
+              </span>
+            </p>
+            <p layout="column" layout-align="start stretch">
+              <span layout="row" layout-align="space-between start"
+                  ng-repeat="(name, value) in $ctrl.round.details.counts">
+                <span>{{ ::("round." + name) | translate }}</span>
                 <span>{{ ::value | json}}</span>
               </span>
             </p>
