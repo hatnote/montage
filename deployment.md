@@ -77,4 +77,4 @@ In `montage/client`...
    * Make sure your username is set as `superuser` in the remote version config
    * Log into the remote version of montage, open your cookies, and copy the value from your `clastic_cookie`
    * In the config for a local version of montage, add your `clastic_cookie` value to `dev_remote_cookie_value`
-   * Run `python run_server_test.py --remote --url <url>`
+   * Run `python run_server_test.py --remote <url>`
