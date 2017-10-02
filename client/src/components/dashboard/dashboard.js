@@ -22,6 +22,7 @@ function controller(
   vm.isAdmin = false;
   vm.isJuror = false;
   vm.campaigns = [];
+  vm.campaignsAdmin = null;
 
   vm.addOrganizer = addOrganizer;
 
