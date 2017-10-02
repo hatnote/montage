@@ -56,16 +56,13 @@ function controller(
     if (!image) return null;
 
     const entry = image.entry;
-    const name = encodeURIComponent(entry.name);
-    const url = '//commons.wikimedia.org/w/thumb.php?f=' + name + '&w=';
+    const url = [
+      '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
+      encodeURIComponent(entry.name),
+      '&width=1280',
+    ].join('');
 
-    if (entry.width <= 800) {
-      return url + (entry.width - 1);
-    }
-    if (entry.width <= 1280) {
-      return url + 800;
-    }
-    return url + 1280;
+    return url;
   }
 
   function getNextImage() {
