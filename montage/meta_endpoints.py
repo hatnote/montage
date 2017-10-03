@@ -38,11 +38,21 @@ def get_active_users(user_dao):
 
 
 def get_audit_logs(user_dao, request):
-    # TODO: Docs
-    maint_dao = MaintainerDAO(user_dao)
     limit = request.values.get('limit', 10)
     offset = request.values.get('offset', 0)
-    audit_logs = maint_dao.get_audit_log(limit=limit, offset=offset)
+    log_campaign_id = request.values.get('campaign_id')
+    round_id = request.values.get('round_id')
+    log_id = request.values.get('id')
+    action = request.values.get('action')
+
+    maint_dao = MaintainerDAO(user_dao)
+
+    audit_logs = maint_dao.get_audit_log(limit=limit,
+                                         offset=offset,
+                                         campaign_id=log_campaign_id,
+                                         round_id=round_id,
+                                         log_id=log_id,
+                                         action=action)
     data = [l.to_info_dict() for l in audit_logs]
     return {'data': data}
 

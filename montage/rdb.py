@@ -887,7 +887,32 @@ class UserDAO(PublicDAO):
         # allow overriding with _role attribute
         return getattr(self, '_role', cn_role)
 
+    def _get_any_campaign(self, campaign_id):
+        campaign = (self.query(Campaign)
+                        .filter_by(id=campaign_id)
+                        .one_or_none())
+        if not campaign:
+            raise DoesNotExist('campaign %s does not exist' % campaign_id)
+        return campaign
+
+    def _get_every_campaign(self):
+        campaigns = (self.query(Campaign)
+                         .all())
+        if not campaigns:
+            raise DoesNotExist('no campaigns exist')
+        return campaigns
+
+    def _get_any_round(self, round_id):
+        rnd = (self.query(Round)
+                   .filter_by(id=round_id)
+                   .one_or_none())
+        if not rnd:
+            raise DoesNotExist('round %s does not exist' % round_id)
+        return rnd
+
     def get_campaign(self, campaign_id):
+        if self.user.is_maintainer or self.user.is_organizer:
+            return self._get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(
                            Campaign.coords.any(username=self.user.username))\
@@ -898,6 +923,8 @@ class UserDAO(PublicDAO):
         return campaign
 
     def get_all_campaigns(self):
+        if self.user.is_maintainer or self.user.is_organizer:
+            return self._get_every_campaign()
         campaigns = self.query(Campaign)\
                         .filter(
                             Campaign.coords.any(username=self.user.username))\
@@ -908,6 +935,8 @@ class UserDAO(PublicDAO):
         return campaigns
 
     def get_round(self, round_id):
+        if self.user.is_maintainer or self.user.is_organizer:
+            return self._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
                       Round.campaign.has(
@@ -1643,21 +1672,30 @@ class CoordinatorDAO(UserDAO):
     def get_campaign_report(self):
         if self.campaign.status != FINALIZED_STATUS:
             raise Forbidden('cannot open report for campaign %s' % self.campaign.id)
-        summary = self.query(RoundResultsSummary)\
-                      .filter(
-                          RoundResultsSummary.campaign.has(
-                              Campaign.coords.any(username=self.user.username)))\
-                      .filter_by(campaign_id=self.campaign.id)\
-                      .one_or_none()
+        if self.user.is_maintainer or self.user.is_organizer:
+            summary = (self.query(RoundResultsSummary)
+                           .filter_by(campaign_id=self.campaign.id)
+                           .one_or_none())
+        else:
+            summary = (self.query(RoundResultsSummary)
+                           .filter(RoundResultsSummary.campaign.has(
+                              Campaign.coords.any(username=self.user.username)))
+                           .filter_by(campaign_id=self.campaign.id)
+                           .one_or_none())
         return summary
 
-    def get_audit_log(self, limit=100, offset=0):
-        audit_logs = (self.query(AuditLogEntry)
-                      .filter_by(campaign_id=self.campaign.id)
-                      .order_by(AuditLogEntry.create_date.asc())
-                      .limit(limit)
-                      .offset(offset)
-                      .all())
+    def get_audit_log(self, limit=100, offset=0,
+                      round_id=None, log_id=None, action=None):
+        audit_log_q = (self.query(AuditLogEntry)
+                           .order_by(AuditLogEntry.create_date.desc())
+                           .filter_by(campaign_id=self.campaign.id))
+        if round_id:
+            audit_log_q = audit_log_q.filter_by(round_id=round_id)
+        if log_id:
+            audit_log_q = audit_log_q.filter_by(id=log_id)
+        if action:
+            audit_log_q = audit_log_q.filter_by(action=action)
+        audit_logs = audit_log_q.limit(limit).offset(offset).all()
         return audit_logs
     
     def get_rating_advancing_group(self, round_id, threshold=None):
@@ -2124,12 +2162,19 @@ class MaintainerDAO(object):
         self.get_or_create_user = user_dao.get_or_create_user
         self.log_action = user_dao.log_action
 
-    def get_audit_log(self, limit=100, offset=0):
-        audit_logs = self.query(AuditLogEntry)\
-                         .order_by(AuditLogEntry.create_date.desc())\
-                         .limit(limit)\
-                         .offset(offset)\
-                         .all()
+    def get_audit_log(self, limit=100, offset=0, campaign_id=None,
+                      round_id=None, log_id=None, action=None):
+        audit_log_q = (self.query(AuditLogEntry)
+                           .order_by(AuditLogEntry.create_date.desc()))
+        if campaign_id:
+            audit_log_q = audit_log_q.filter_by(campaign_id=campaign_id)
+        if round_id:
+            audit_log_q = audit_log_q.filter_by(round_id=round_id)
+        if log_id:
+            audit_log_q = audit_log_q.filter_by(id=log_id)
+        if action:
+            audit_log_q = audit_log_q.filter_by(action=action)
+        audit_logs = audit_log_q.limit(limit).offset(offset).all()
         return audit_logs
 
     def get_active_users(self):
@@ -2205,7 +2250,7 @@ class JurorDAO(object):
     # Read methods
     def get_campaign(self, campaign_id):
         if self.user.is_maintainer or self.user.is_organizer:
-            return self.get_any_campaign(campaign_id)
+            return self.user_dao._get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
                            Round.jurors.any(username=self.user.username)))\
@@ -2215,17 +2260,9 @@ class JurorDAO(object):
             raise Forbidden('not a juror on campaign %s' % campaign_id)
         return campaign
 
-    def get_any_campaign(self, campaign_id):
-        campaign = (self.query(Campaign)
-                    .filter_by(id=campaign_id)
-                    .one_or_none())
-        if not campaign:
-            raise DoesNotExist('campaign %s does not exist' % campaign_id)
-        return campaign
-
     def get_round(self, round_id):
         if self.user.is_maintainer or self.user.is_organizer:
-            return self.get_any_round(round_id)
+            return self.user_dao._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
                       Round.jurors.any(username=self.user.username),
@@ -2233,15 +2270,6 @@ class JurorDAO(object):
                   .one_or_none()
         if not rnd:
             raise Forbidden('not a juror for round %s' % round_id)
-        return rnd
-
-    def get_any_round(self, round_id):
-        rnd = (self.query(Round)
-               .filter_by(id=round_id)
-               .one_or_none())
-
-        if not rnd:
-            raise DoesNotExist('round %s does not exist' % round_id)
         return rnd
 
     def get_round_entry(self, round_id, entry_id):

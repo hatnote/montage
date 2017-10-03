@@ -316,6 +316,9 @@ Get the audit log for a campaign
   - `campaign_id` (in path)
   - `limit` (optional, default 100)
   - `offset` (optional, default 0)
+  - `round_id` (optional)
+  - `id` (optional)
+  - `action` (optional)
 
 ### Response
   - `data`: list of [`audit log entry`](#audit-log-entry) dictionaries
