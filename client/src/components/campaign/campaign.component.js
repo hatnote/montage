@@ -33,10 +33,8 @@ function controller(
       .getCampaign(id)
       .then((data) => {
         vm.campaign = data.data;
-        vm.campaign.rounds.forEach((round) => {
-          getRoundDetails(round);
-          getRoundResults(round);
-        });
+        vm.campaign.rounds = vm.campaign.rounds
+          .filter(round => round.status !== 'cancelled');
         vm.error = data.errors;
 
         if (!vm.campaign.rounds.length) {

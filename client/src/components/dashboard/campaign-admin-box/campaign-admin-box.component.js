@@ -19,6 +19,9 @@ function controller() {
   vm.$onInit = () => {
     if (!vm.campaign) { return; }
 
+    vm.campaign.rounds = vm.campaign.rounds
+      .filter(round => round.status !== 'cancelled');
+
     vm.link = [
       vm.campaign.id,
       vm.campaign.url_name,

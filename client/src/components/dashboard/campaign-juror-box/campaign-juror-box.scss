@@ -16,7 +16,10 @@ mont-campaign-juror-box {
     }
 
     .round__description {
-      cursor: pointer;
+      outline: none;
+
+      &.round__description--active { cursor: pointer; }
+      &.round__description--inactive { cursor: not-allowed; }
 
       .round__directions {
         margin-right: 30px;
