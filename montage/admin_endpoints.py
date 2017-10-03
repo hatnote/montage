@@ -263,9 +263,16 @@ def get_campaign_report_raw(user_dao, campaign_id):
 def get_campaign_log(user_dao, campaign_id, request_dict):
     limit = request_dict.get('limit', 100)
     offset = request_dict.get('offset', 0)
+    round_id = request_dict.get('round_id')
+    log_id = request_dict.get('id')
+    action = request_dict.get('action')
 
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    audit_logs = coord_dao.get_audit_log()
+    audit_logs = coord_dao.get_audit_log(limit=limit,
+                                         offset=offset,
+                                         round_id=round_id,
+                                         log_id=log_id,
+                                         action=action)
     ret = [a.to_info_dict() for a in audit_logs]
     return {'data': ret}
 
