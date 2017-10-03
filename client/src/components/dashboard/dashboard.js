@@ -22,14 +22,9 @@ function controller(
   vm.isAdmin = false;
   vm.isJuror = false;
   vm.campaigns = [];
+  vm.campaignsAdmin = null;
 
   vm.addOrganizer = addOrganizer;
-
-/*   if (!vm.data.error) {
-    vm.campaigns = isAdmin() ?
-      vm.data.data :
-      _.groupBy(vm.data.data.filter((round) => round.status !== 'cancelled'), 'campaign.id');
-  } */
 
   // functions 
 
@@ -77,18 +72,20 @@ function controller(
           }
 
           loading.window = true;
-          const userName = data[0].name;
-          adminService.addOrganizer({ username: userName }).then((response) => {
-            if (response.error) {
-              loading.window = false;
-              alertService.error(response.error);
-              return;
-            }
+          const username = data[0].name;
+          adminService
+            .addOrganizer({ username })
+            .then((response) => {
+              if (response.error) {
+                loading.window = false;
+                alertService.error(response.error);
+                return;
+              }
 
-            alertService.success(userName + ' added as an organizer');
-            $mdDialog.hide(true);
-            $state.reload();
-          });
+              alertService.success(`${username} added as an organizer`);
+              $mdDialog.hide(true);
+              $state.reload();
+            });
         },
       },
     });

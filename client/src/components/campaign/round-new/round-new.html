@@ -66,25 +66,45 @@
               </div>
             </div>
 
-            <h4 ng-if="$ctrl.index === 1">Source Category</h4>
-            <p class="muted" ng-if="$ctrl.index === 1">Category on Wikimedia Commons that gathers all contest images. Example of such category may be eg. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
-            <md-autocomplete flex
-              ng-if="$ctrl.index === 1" required
-              md-input-name="autocompleteField"
-              md-input-minlength="2"
-              md-input-maxlength="500"
-              md-autoselect="true"
-              md-selected-item="$ctrl.category"
-              md-search-text="$ctrl.categorySearchText"
-              md-items="item in $ctrl.searchCategory($ctrl.categorySearchText)"
-              md-item-text="item"
-              md-no-cache="true"
-              md-floating-label="Enter category"
-              md-delay="100">
-              <md-item-template>
-                <span md-highlight-text="$ctrl.searchText">{{ item }}</span>
-              </md-item-template>
-            </md-autocomplete>
+            <h4 ng-if="$ctrl.index === 1">Source</h4>
+            <md-radio-group
+                ng-model="$ctrl.import.import_method"
+                ng-if="$ctrl.index === 1">
+              <md-radio-button value="category">Category on Wikimedia Commons</md-radio-button>
+              <md-radio-button value="gistcsv">File List URL</md-radio-button>
+
+              <div ng-if="$ctrl.import.import_method === 'category'">
+                <p class="muted">Category on Wikimedia Commons that gathers all contest images. Example of such category may be eg. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
+                <md-autocomplete flex required
+                  md-input-name="autocompleteField"
+                  md-input-minlength="2"
+                  md-input-maxlength="500"
+                  md-autoselect="true"
+                  md-selected-item="$ctrl.import.category"
+                  md-search-text="$ctrl.categorySearchText"
+                  md-items="item in $ctrl.searchCategory($ctrl.categorySearchText)"
+                  md-item-text="item"
+                  md-no-cache="true"
+                  md-floating-label="Enter category"
+                  md-delay="100">
+                  <md-item-template>
+                    <span md-highlight-text="$ctrl.searchText">{{ item }}</span>
+                  </md-item-template>
+                </md-autocomplete>
+              </div>
+
+              <div 
+                  layout="column" layout-align="start stretch"
+                  ng-if="$ctrl.import.import_method === 'gistcsv'">
+                <p class="muted">List of files saved as CSV and uploaded somewhere on the internet.</p>
+                <md-input-container class="no-margin-bottom">
+                  <label>Enter URL</label>
+                  <input type="text" autofocus
+                      ng-model="$ctrl.import.gist_url"
+                      ng-required="true">
+                </md-input-container>
+              </div>
+            </md-radio-group>
 
             <h4>Directions</h4>
             <md-input-container class="no-margin">

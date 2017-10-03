@@ -1,6 +1,6 @@
 {
   "name": "montage",
-  "version": "17.09.02",
+  "version": "17.09.04",
   "description": "Photo evaluation tool for and by Wiki Loves competitions",
   "main": "src/app.module.js",
   "repository": "https://github.com/hatnote/montage",
@@ -10,7 +10,8 @@
     "build": "webpack --content-base app --progress",
     "build-zip": "webpack --content-base app --progress && cd ../montage/static && zip -r app.zip .",
     "build-dev": "set NODE_ENV=dev&&webpack --content-base app --progress",
-    "build-beta": "set NODE_ENV=beta&&webpack --content-base app --progress"
+    "build-beta": "set NODE_ENV=beta&&webpack --content-base app --progress",
+    "build-prod": "set NODE_ENV=prod&&webpack --content-base app --progress"
   },
   "license": "BSD-3-Clause",
   "devDependencies": {

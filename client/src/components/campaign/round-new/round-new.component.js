@@ -18,7 +18,6 @@ function controller(
   dataService) {
   const vm = this;
 
-  vm.category = null;
   vm.loading = 0;
   vm.prevRound = null;
   vm.round = {};
@@ -32,6 +31,10 @@ function controller(
 
   vm.$onInit = () => {
     const methods = [null, 'yesno', 'rating', 'ranking'];
+
+    vm.import = {
+      import_method: 'category',
+    };
 
     vm.round = {
       name: `Round ${vm.index}`,
@@ -49,11 +52,6 @@ function controller(
         show_filename: true,
         show_link: true,
         show_resolution: true,
-      },
-      imports: {
-        import_method: 'gistcsv', // category
-        // category: '',
-        gist_url: 'https://gist.githubusercontent.com/yarl/bc4b89847f9ced089f7169bbfec79841/raw/c8bd23d3b354ce9d20de578245e4dc7c9f095fb0/wlm2015_fr_5.csv',
       },
     };
 
@@ -78,7 +76,10 @@ function controller(
     adminService
       .addRound(vm.campaign.id, round)
       .then((data) => {
-        importCategory(data.data.id, vm.category || vm.categorySearchText);
+        if (vm.import.import_method === 'category') {
+          vm.import.category = vm.import.category || vm.categorySearchText;
+        }
+        importCategory(data.data.id);
       })
       .catch(alertService.error)
       .finally(() => { vm.loading -= 1; });
@@ -119,13 +120,10 @@ function controller(
    * @param {int} id 
    * @param {String} name 
    */
-  function importCategory(id, name) {
+  function importCategory(id) {
     vm.loading += 1;
     adminService
-      .populateRound(id, {
-        import_method: 'category',
-        category: name,
-      })
+      .populateRound(id, vm.import)
       .then(() => { $state.reload(); })
       .catch(alertService.error)
       .finally(() => { vm.loading -= 1; });

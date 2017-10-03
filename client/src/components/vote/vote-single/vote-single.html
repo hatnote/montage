@@ -58,9 +58,13 @@
           type="$ctrl.round.vote_method"
           vote-action="$ctrl.rating.setRate">
       </mont-votebox>
-      <span class="muted">
-        You can also use keyboard to vote. Use keys 1 to 5 for Ranking round and
-        arrow up/down keys for Yes/No round.
+      <span class="muted"
+          ng-if="$ctrl.round.vote_method === 'yesno'">
+        You can also use keyboard to vote. Use arrow up/down keys.
+      </span>
+      <span class="muted"
+          ng-if="$ctrl.round.vote_method === 'rating'">
+        You can also use keyboard to vote. Use keys 1 to 5.
       </span>
       <div layout="row" layout-align="center center">
         <md-button flex
@@ -68,7 +72,9 @@
           <md-icon>watch_later</md-icon>
           Skip / vote later
         </md-button>
+        <span flex></span>
         <md-button flex
+            ng-if="false"
             ng-disabled="true">
           <md-icon>report</md-icon>
           Report file
