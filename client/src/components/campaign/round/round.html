@@ -53,7 +53,8 @@
         
         <div class="round__jurors"
             layout="row" layout-align="center stretch">
-          <div class="round__directions" flex>
+          <div class="round__directions" flex
+              ng-if="$ctrl.round.quorum">
             <h4>Quorum</h4>
             <p>{{ ::$ctrl.round.quorum }} jurors per photo</p>
             <h4>Jurors</h4>
