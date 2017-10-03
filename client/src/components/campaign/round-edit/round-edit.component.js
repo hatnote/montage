@@ -11,6 +11,7 @@ const Component = {
 
 function controller(
   $filter,
+  $mdDialog,
   $state,
   adminService,
   alertService) {
@@ -20,6 +21,7 @@ function controller(
   vm.roundBackup = null;
 
   vm.cancelEditRound = cancelEditRound;
+  vm.deleteRound = deleteRound;
   vm.saveRound = saveRound;
 
   // functions
@@ -37,6 +39,31 @@ function controller(
   function cancelEditRound() {
     angular.extend(vm.round, vm.roundBackup);
     vm.round.edit = false;
+  }
+
+  /**
+   * 
+   * @param {Object} event 
+   */
+  function deleteRound(event) {
+    const dialog = $mdDialog.confirm()
+      .title('Delete Round')
+      .textContent('Are you sure you want to delete this round?')
+      .ariaLabel('Delete Round')
+      .targetEvent(event)
+      .ok('Delete Round')
+      .cancel('Cancel');
+
+    $mdDialog.show(dialog).then(() => {
+      vm.loading = true;
+      adminService
+        .cancelRound(vm.round.id)
+        .then(() => {
+          $state.reload();
+        })
+        .catch(alertService.error)
+        .finally(() => { vm.loading = false; });
+    });
   }
 
   /**
