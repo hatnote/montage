@@ -669,17 +669,18 @@ def get_round(user_dao, round_id):
 def get_results(user_dao, round_id, request_dict):
     # TODO: Docs
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
+    results_by_name = coord_dao.make_vote_table(round_id)
     return {'data': results_by_name}
 
 
 def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
 
-    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
+    results_by_name = coord_dao.make_vote_table(round_id)
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]

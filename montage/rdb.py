@@ -1610,14 +1610,14 @@ class CoordinatorDAO(UserDAO):
         all_tasks = self.get_all_tasks(round_id)
 
         results_by_name = defaultdict(dict)
-        ratings_dict = {r.task_id: r.value for r in all_ratings}
+        ratings_dict = {r.id: r.value for r in all_ratings}
 
         for (task, entry) in all_tasks:
             rating = ratings_dict.get(task.id, {})
             filename = entry.name
             username = task.user.username
 
-            if task.complete_date:
+            if task.status == COMPLETED_STATUS:
                 results_by_name[filename][username] = rating
             else:
                 # tbv = to be voted
@@ -1795,35 +1795,35 @@ class CoordinatorDAO(UserDAO):
             ret.append(fer)
         return ret
 
-    def get_all_ratings(self, rnd):
+    def get_all_ratings(self, round_id):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\
                       .all()
         return results
 
     # do we need this?
-    def get_all_rankings(self, rnd):
+    def get_all_rankings(self, round_id):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\
                       .all()
         return results
 
-    def get_all_tasks(self, rnd):
+    def get_all_tasks(self, round_id):
         results = self.query(Vote, Entry)\
                       .options(joinedload('user'))\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
-                              Vote.status == ACTIVE_STATUS)\
+                              Vote.status != CANCELLED_STATUS)\
                       .all()
         return results
 
