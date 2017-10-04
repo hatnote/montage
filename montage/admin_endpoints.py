@@ -261,6 +261,7 @@ def get_campaign_report_raw(user_dao, campaign_id):
 
 
 def get_campaign_log(user_dao, campaign_id, request_dict):
+    request_dict = request_dict or dict()
     limit = request_dict.get('limit', 100)
     offset = request_dict.get('offset', 0)
     round_id = request_dict.get('round_id')

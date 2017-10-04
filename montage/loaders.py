@@ -59,16 +59,25 @@ def load_full_csv(csv_file_obj):
     return ret
 
 
-def load_brief_csv(csv_file_obj):
+def load_brief_csv(csv_file_obj, source='local'):
     "Just the image names, we'll look up the rest in the DB"
 
     ret = []
     dr = DictReader(csv_file_obj)
     
+    if source == 'remote':
+        # TODO: should be chunked
+        files = get_by_filename_remote([r['img_name'] for r in dr])
+        
+        for edict in files:
+            entry = make_entry(edict)
+            ret.append(entry)
+        return ret
+    
     for row in dr:
-        name = row['Filename']
-        end_time = row.get('Endtime')
-        edict = get_file_info(name)
+        file_name = row['img_name']
+        end_time = row.get('Endtime')  # what's this about
+        edict = get_file_info(file_name)
 
         if end_time:
             edict['flags'] = {'end_time': end_time}
@@ -79,9 +88,13 @@ def load_brief_csv(csv_file_obj):
     return ret
 
 
-def get_entries_from_gist_csv(raw_url):
+def get_entries_from_gist_csv(raw_url, source='local'):
     resp = urllib2.urlopen(raw_url)
-    ret = load_full_csv(resp)
+    try:
+        ret = load_full_csv(resp)
+    except ValueError as e:
+        # not a full csv
+        ret = load_brief_csv(resp, source=source)
     return ret
 
 

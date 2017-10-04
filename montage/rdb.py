@@ -1491,7 +1491,11 @@ class CoordinatorDAO(UserDAO):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
-        entries = loaders.get_entries_from_gist_csv(gist_url)
+        if ENV_NAME == 'dev':
+            source = 'remote'
+        else:
+            source = 'local'
+        entries = loaders.get_entries_from_gist_csv(gist_url, source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
