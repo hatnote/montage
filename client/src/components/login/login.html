@@ -1,0 +1,23 @@
+<div class="login"
+    layout="column" layout-align="start stretch">
+  <md-card layout="column" layout-align="start stretch">
+    <h3 class="login__title">Please log in</h3>
+    <p class="muted">
+      You will be redirected to Meta-Wiki in order to confirm your indentity.
+      Montage will not publish anything on Wikimedia projects using your account.
+    </p>
+    <p class="muted">
+      If you don't have Wikimedia account, you can create one by clicking "Join Meta".
+    </p>
+  </md-card>
+  <md-button class="md-primary"
+      ng-click="$ctrl.login()"
+      ng-disabled="$ctrl.loading">
+    <md-icon>done</md-icon>
+    Log in using Wikimedia account
+  </md-button>
+  <div layout="column" layout-align="center center"
+      ng-if="$ctrl.loading">
+    <md-progress-circular md-diameter="40"></md-progress-circular>
+  </div>
+</div>
