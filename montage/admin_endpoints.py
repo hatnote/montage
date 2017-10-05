@@ -766,11 +766,11 @@ def preview_disqualification(user_dao, round_id):
                             for re in by_resolution]
 
     by_uploader = coord_dao.autodisqualify_by_uploader(round_id, preview=True)
-    ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True)
+    ret['by_uploader'] = [re.entry.to_details_dict(with_uploader=True)
                           for re in by_uploader]
 
     by_filetype = coord_dao.autodisqualify_by_filetype(round_id, preview=True)
-    ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True)
+    ret['by_filetype'] = [re.entry.to_details_dict(with_uploader=True)
                           for re in by_filetype]
 
     return {'data': ret}
