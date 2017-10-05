@@ -9,13 +9,14 @@ const Component = {
 function controller(
   $filter,
   $state,
-  adminService) {
+  adminService,
+  alertService) {
   const vm = this;
 
   vm.campaign = {};
   vm.loading = false;
 
-  vm.createCamapign = createCamapign;
+  vm.createCampaign = createCampaign;
 
   // functions
 
@@ -25,7 +26,7 @@ function controller(
     };
   };
 
-  function createCamapign() {
+  function createCampaign() {
     const campaign = angular.extend({}, vm.campaign, {
       coordinators: vm.campaign.coordinators.map(user => user.name),
       open_date: $filter('date')(vm.campaign.open_date, 'yyyy-MM-ddTHH:mm:ss'),
@@ -45,7 +46,7 @@ function controller(
           });
         }
       })
-      .catch((err) => { vm.error = err.data; })
+      .catch(alertService.error)
       .finally(() => { vm.loading = false; });
   }
 }
