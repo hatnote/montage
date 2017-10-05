@@ -35,7 +35,7 @@ import votebox from './components/vote/votebox/votebox.component';
 import voteRanking from './components/vote/vote-ranking/vote-ranking.component';
 import voteSingle from './components/vote/vote-single/vote-single.component';
 
-import login from './components/login/login';
+import login from './components/login/login.component';
 import voteEdit from './components/vote-edit/vote-edit';
 import userList from './components/user-list';
 import toolbar from './components/toolbar/toolbar.component';
