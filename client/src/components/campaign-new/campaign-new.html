@@ -67,9 +67,14 @@
       layout="row" layout-align="end center">
     <md-button type="submit"
         class="md-primary"
-        ng-disabled="$ctrl.newCampaignForm.$invalid || !$ctrl.campaign.coordinators.length"
-        ng-click="$ctrl.createCamapign()">
-      <md-icon>check</md-icon>
+        ng-disabled="$ctrl.newCampaignForm.$invalid || !$ctrl.campaign.coordinators.length || $ctrl.loading"
+        ng-click="$ctrl.createCampaign()">
+      <md-icon ng-if="!$ctrl.loading">check</md-icon>
+      <md-progress-circular
+        md-diameter="20px"
+        md-mode="indeterminate"
+        ng-if="$ctrl.loading">
+      </md-progress-circular>
       Create Campaign
     </md-button>
   </div>
