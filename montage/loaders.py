@@ -3,6 +3,7 @@ import datetime
 import urllib2
 import json
 
+from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
 
 import rdb
@@ -46,6 +47,8 @@ def load_full_csv(csv_file_obj):
     # TODO: streaming this for big CSVs is an unnecessary headache
 
     ret = []
+    warnings = []
+
     dr = DictReader(csv_file_obj)
 
     for key in CSV_FULL_COLS:
@@ -53,59 +56,71 @@ def load_full_csv(csv_file_obj):
             raise ValueError('missing required column "%s" in csv file' % key)
 
     for edict in dr:
-        entry = make_entry(edict)
-        ret.append(entry)
+        try:
+            entry = make_entry(edict)
+        except TypeError as e:
+            warnings.append((edict, e))
+        else:
+            ret.append(entry)
 
-    return ret
+    return ret, warnings
 
 
-def load_brief_csv(csv_file_obj, source='local'):
-    "Just the image names, we'll look up the rest in the DB"
+def load_name_list(file_obj, source='local'):
+    """ Just the file names, and we'll look up the rest"""
 
     ret = []
-    dr = DictReader(csv_file_obj)
-    
+    warnings = []
+
+    rl = file_obj.readlines()
+
+    # clean up the filenames
+    for i, filename in enumerate(rl):
+        filename = filename.strip()
+        if filename.startswith('File:'):
+            filename = filename[5:]
+        rl[i] = filename
+
+    edicts = []
+
     if source == 'remote':
-        # TODO: should be chunked
-        files = get_by_filename_remote([r['img_name'] for r in dr])
-        
-        for edict in files:
+        edicts, warnings = get_by_filename_remote(rl)
+    else:
+        for filename in rl:
+            edict = get_file_info(filename)
+            edicts.append(edict)
+
+    for edict in edicts:
+        try:
             entry = make_entry(edict)
+        except TypeError as e:
+            warnings.append((edict, e))
+        else:
             ret.append(entry)
-        return ret
-    
-    for row in dr:
-        file_name = row['img_name']
-        end_time = row.get('Endtime')  # what's this about
-        edict = get_file_info(file_name)
 
-        if end_time:
-            edict['flags'] = {'end_time': end_time}
-
-        entry = make_entry(edict)
-        ret.append(entry)
-
-    return ret
+    return ret, warnings
 
 
-def get_entries_from_gist_csv(raw_url, source='local'):
+
+def get_entries_from_gist(raw_url, source='local'):
     resp = urllib2.urlopen(raw_url)
     try:
-        ret = load_full_csv(resp)
+        ret, warnings = load_full_csv(resp)
     except ValueError as e:
         # not a full csv
-        ret = load_brief_csv(resp, source=source)
-    return ret
+        ret, warnings = load_name_list(resp, source=source)
+
+    return ret, warnings
 
 
-def load_by_filename(file_names, source='local'):
+def load_by_filename(filenames, source='local'):
     ret = []
     if source == 'remote':
-        files = get_by_filename_remote(file_names)
+        files, warnings = get_by_filename_remote(filenames)
     else:
         files = []
-        for file_name in file_names:
-            file_info = get_file_info(file_name)
+        for filename in filenames:
+            file_info = get_file_info(filename)
             files.append(file_info)
     for edict in files:
         entry = make_entry(edict)
@@ -129,7 +144,7 @@ def load_category(category_name, source='local'):
 def get_from_category_remote(category_name):
     params = {'name': category_name}
     url = REMOTE_UTILS_URL + '/category'
-    file_infos = get_from_remote(url, params)
+    file_infos, _ = get_from_remote(url, params)
     return file_infos
 
 
@@ -140,15 +155,22 @@ def get_from_remote(url, params):
     response = urllib2.urlopen(request)
     resp_json = json.load(response)
     file_infos = resp_json['file_infos']
-    return file_infos
+    no_infos = resp_json.get('no_info')
+    return file_infos, no_infos
 
 
-def get_by_filename_remote(file_names):
-    # TODO: should this be chunked, if there are too many file names?
-    params = {'names': file_names}
-    url = REMOTE_UTILS_URL + '/file'
-    file_infos = get_from_remote(url, params)
-    return file_infos
+def get_by_filename_remote(filenames, chunk_size=250):
+    file_infos = []
+    warnings = []
+    for filenames_chunk in chunked_iter(filenames, chunk_size):
+        params = {'names': filenames_chunk}
+        url = REMOTE_UTILS_URL + '/file'
+        resp, no_infos = get_from_remote(url, params)
+        if no_infos:
+            # print '!! info missing for %s' % no_infos
+            warnings += no_infos
+        file_infos += resp
+    return file_infos, warnings
 
 
 """

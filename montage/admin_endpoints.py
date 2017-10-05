@@ -310,10 +310,17 @@ def import_entries(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     import_method = request_dict['import_method']
 
+    # loader warnings
+    import_warnings = list()
+
     if import_method == GISTCSV_METHOD:
         gist_url = request_dict['gist_url']
-        entries = coord_dao.add_entries_from_csv_gist(round_id, gist_url)
+        entries, warnings = coord_dao.add_entries_from_csv(round_id,
+                                                           gist_url)
         params = {'gist_url': gist_url}
+        if warnings:
+            msg = 'unable to load {} files ({!r})'.format(len(warnings), warnings)
+            import_warnings.append(msg)
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
@@ -334,9 +341,8 @@ def import_entries(user_dao, round_id, request_dict):
     new_entry_stats = coord_dao.add_round_entries(round_id, entries,
                                                   method=import_method,
                                                   params=params)
+    new_entry_stats['warnings'] = import_warnings
     
-    # loader warnings
-    new_entry_stats['warnings'] = list()
     if not entries:
         new_entry_stats['warnings'].append({'empty import':
                                             'no entries imported'})
