@@ -29,11 +29,13 @@ const UserService = ($http, $q, $window, dataService) => {
 
           const hists = _.values(responses[0].query.pages);
           hists.forEach((element) => {
-            const image = _.find(tasks, {
-              entry: { url: element.imageinfo[0].url },
-            });
-            if (image) {
-              image.history = element.imageinfo;
+            if (element && element.imageinfo) {
+              const image = _.find(tasks, {
+                entry: { url: element.imageinfo[0].url },
+              });
+              if (image) {
+                image.history = element.imageinfo;
+              }
             }
           });
           return data;
