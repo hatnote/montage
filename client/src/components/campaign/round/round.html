@@ -53,6 +53,11 @@
         
         <div class="round__jurors"
             layout="row" layout-align="center stretch">
+          <md-progress-circular
+            ng-if="!$ctrl.round.quorum"
+            md-diameter="60">
+          </md-progress-circular>
+          
           <div class="round__directions" flex
               ng-if="$ctrl.round.quorum">
             <h4>Quorum</h4>
@@ -105,28 +110,44 @@
       </md-card-content>
     </md-card>
     <div class="round__actions"
-          layout="row" layout-align="end center"
-          ng-if="$ctrl.round.status !== 'finalized'">
+          layout="row" layout-align="end center">
       <md-button
-          ng-disabled="$ctrl.round.status === 'active' || $ctrl.round.status === 'finalized'"
+          ng-if="$ctrl.round.status === 'paused'"
+          ng-disabled="$ctrl.loading"
           ng-click="$ctrl.activateRound()">
-        <md-icon>play_arrow</md-icon>
+        <md-icon ng-if="$ctrl.loading !== 'activate'">play_arrow</md-icon>
+        <md-progress-circular
+          md-diameter="20px"
+          md-mode="indeterminate"
+          ng-if="$ctrl.loading === 'activate'">
+        </md-progress-circular>
         Activate
       </md-button>
       <md-button
-          ng-disabled="$ctrl.round.status === 'paused' || $ctrl.round.status === 'finalized'"
+          ng-if="$ctrl.round.status === 'active'"
+          ng-disabled="$ctrl.loading"
           ng-click="$ctrl.pauseRound()">
-        <md-icon>pause</md-icon>
+        <md-icon ng-if="$ctrl.loading !== 'pause'">pause</md-icon>
+        <md-progress-circular
+          md-diameter="20px"
+          md-mode="indeterminate"
+          ng-if="$ctrl.loading === 'pause'">
+        </md-progress-circular>
         Pause
       </md-button>
       <md-button
-          ng-disabled="!$ctrl.round.details.is_closeable"
+          ng-disabled="!$ctrl.round.details.is_closeable || $ctrl.loading"
           ng-click="$ctrl.finalizeRound()">
         <md-icon>done</md-icon>
         Finalize
       </md-button>
+      <md-button
+          ng-click="$ctrl.downloadResults()">
+        <md-icon>file_download</md-icon>
+        Download Results
+      </md-button>
       <md-button ng-if="false"
-          ng-disabled="$ctrl.round.status !== 'paused' && $ctrl.round.status !== 'finalized'"
+          ng-disabled="($ctrl.round.status !== 'paused' && $ctrl.round.status !== 'finalized') || $ctrl.loading"
           ng-click="$ctrl.populateRound()">
         <md-icon>refresh</md-icon>
         Populate
