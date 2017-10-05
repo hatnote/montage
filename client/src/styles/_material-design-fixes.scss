@@ -20,6 +20,15 @@
   }
 }
 
+md-list {
+  padding: 0;
+
+  md-list-item.md-2-line {
+    min-height: 55px;
+    height: 55px;
+  }
+}
+
 md-tooltip .md-content {
   height: auto !important;
   font-size: 14px;
