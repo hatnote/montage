@@ -148,7 +148,7 @@ def create_app(env_name='prod'):
                    scm_mw,
                    DBSessionMiddleware(blank_session_type, get_engine),
                    UserMiddleware()]
-    api_log_path = config.get('api_log_path')
+    api_log_path = config.get('api_log_path', 'montage_api.log')
     if api_log_path:
         log_mw = LoggingMiddleware(api_log_path)
         middlewares.insert(0, log_mw)
