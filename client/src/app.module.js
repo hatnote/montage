@@ -108,4 +108,4 @@ angular.module('montage',
   .factory('versionService', versionService)
 
   .filter('ordinal', ordinal)
-  .filter('fromNow', () => input => moment.utc(input).fromNow());
+  .filter('fromNow', () => input => moment.utc(input).add(1, 'day').fromNow());
