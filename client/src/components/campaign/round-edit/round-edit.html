@@ -1,0 +1,109 @@
+<div class="round round--edit"
+      layout="row" layout-align="center start"
+      ng-class="{ 'round--last': $ctrl.last }">
+  <div class="round__status {{'round__status--' + $ctrl.round.status}}"
+        layout="row" layout-align="center center">
+    <span ng-if="$ctrl.round.vote_method === 'yesno'"><md-icon>thumbs_up_down</md-icon></span>
+    <span ng-if="$ctrl.round.vote_method === 'rating'"><md-icon>star_border</md-icon></span>
+    <span ng-if="$ctrl.round.vote_method === 'ranking'"><md-icon>sort</md-icon></span>
+  </div>
+  <span class="round__line"></span>
+  <form role="form" name="$ctrl.roundEditForm" flex>
+    <h2 class="round__name"
+        layout="row" layout-align="space-between center">
+      <div layout="column" layout-align="center start">
+        <span>{{ $ctrl.round.name }}</span>
+        <span class="muted">{{ ::$ctrl.round.vote_method }} · {{ ::$ctrl.round.status }}</span>
+      </div>
+      <md-button ng-click="$ctrl.cancelEditRound()">
+        <md-icon>clear</md-icon>
+        Cancel
+      </md-button>
+    </h2>
+    <md-card class="round__description" flex>
+      <md-card-content><fieldset>
+        <div layout="row" layout-align="center stretch">
+          <div class="round__directions" flex="60"
+              layout="column" layout-align="start stretch">
+
+            <md-input-container class="no-margin-bottom">
+              <label>Round Name</label>
+              <input type="text" autofocus
+                  ng-model="$ctrl.round.name"
+                  ng-required="true">
+            </md-input-container>
+
+            <div class="round__deadline-date">
+              <h4>Deadline Date</h4>
+              <div layout="row" layout-align="start center">
+                <md-datepicker ng-model="$ctrl.round.deadline_date"
+                    ng-required="true"
+                    md-open-on-focus
+                    md-current-view="year">
+                </md-datepicker>
+                <span ng-if="$ctrl.round.deadline_date">&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+                <span class="muted" ng-if="$ctrl.round.deadline_date">
+                  {{ $ctrl.round.deadline_date | fromNow }}
+                </span>
+              </div>
+            </div>
+
+            <div class="round__directions">
+              <h4>Directions</h4>
+              <md-input-container class="no-margin">
+                <textarea aria-label="Round directions"
+                  ng-model="$ctrl.round.directions"
+                  rows="2" ></textarea>
+              </md-input-container>
+            </div>
+          </div>
+          <div flex></div>
+          <div class="round__settings" flex="30">
+            <h4>Round File Settings</h4>
+            <p layout="column" layout-align="start stretch">
+              <span layout="row" layout-align="space-between start"
+                  ng-repeat="(name, value) in $ctrl.round.config">
+                <span>{{ ::name | translate }}</span>
+                <span>{{ ::value | json}}</span>
+              </span>
+            </p>
+          </div>
+        </div>
+        
+        <div class="round__jurors">
+          <h4>Quorum</h4>
+          <p class="muted">The number of jurors that must vote on each image</p>
+          <md-input-container class="no-margin-bottom">
+            <label>Quorum</label>
+            <input type="number"
+                ng-model="$ctrl.round.quorum"
+                ng-required="true">
+          </md-input-container>
+          <h4>Jurors</h4>
+          <mont-user-list
+            ng-model="$ctrl.round.jurors"
+            ng-disabled="$ctrl.round.status !== 'paused'">
+          </mont-user-list>
+        </div>
+      </fieldset></md-card-content>
+    </md-card>
+    <div class="round__actions"
+          layout="row" layout-align="end center">
+      <md-button ng-click="$ctrl.deleteRound($event)">
+        <md-icon>delete</md-icon>
+        Delete Round
+      </md-button>
+      <span flex></span>
+      <md-button ng-click="$ctrl.cancelEditRound()">
+        <md-icon>clear</md-icon>
+        Cancel
+      </md-button>
+      <md-button class="md-primary"
+          ng-click="$ctrl.saveRound()"
+          ng-disabled="$ctrl.roundEditForm.$invalid || !$ctrl.round.jurors.length">
+        <md-icon>check</md-icon>
+        Save
+      </md-button>
+    </div>
+  </form>
+</div>

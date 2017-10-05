@@ -804,11 +804,20 @@ def main():
 
     prs = argparse.ArgumentParser('test the montage server endpoints')
     add_arg = prs.add_argument
-    add_arg('--remote', action="store_true", default=False)
+    add_arg('--remote', type=str,
+            help='run tests on a remote montage installation')
+    add_arg('--remote_prod', action='store_true',
+            help='run tests on https://tools.wmflabs.org/montage')
+    add_arg('--remote_dev', action='store_true',
+            help='run tests on https://tools.wmflabs.org/montage-dev')
 
     args = prs.parse_args()
 
     if args.remote:
+        base_url = args.remote
+    elif args.remote_prod:
+        base_url = 'https://tools.wmflabs.org/montage'
+    elif args.remote_dev:
         base_url = 'https://tools.wmflabs.org/montage-dev'
     else:
         base_url = 'http://localhost:5000'

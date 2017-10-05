@@ -1,0 +1,61 @@
+@import '../../../styles/variables';
+
+mont-campaign-admin-box {
+  display: inline-block;
+  vertical-align: top;
+
+  md-card {
+    width: 310px;
+    height: 240px;
+    margin-right: 0;
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding: 16px;
+    box-shadow: none;
+    cursor: pointer;
+
+    &.md-card--first {
+      margin-right: 25px;
+    }
+    &.md-card--last {
+      margin-left: 25px;
+    }
+    &.md-card--new {
+      text-align: center;
+      cursor: default;
+      background: transparent;
+    }
+
+    h4 {
+      margin: 15px 0 10px;
+    }
+
+    .md-button {
+      font-weight: 600;
+      text-transform: none;
+    }
+  }
+
+  .campaign__name {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 20px;
+  }
+
+  .campaign__dates {
+    color: $lightGrey;
+    font-size: 14px;
+  }
+
+  .campaign__coordinators-list {
+    overflow: hidden;
+
+    &::after {
+      content: "";
+      display: block;
+      box-shadow: inset -20px 0px 15px #fff;
+    }
+  }
+}

@@ -100,10 +100,15 @@ def get_files_info_by_name(request_dict):
     except Exception:
         raise InvalidAction('must provide a list of names')
     files = []
+    no_info = []
     for file_name in file_names:
         file_info = get_file_info(file_name)
-        files.append(file_info)
-    return {'file_infos': files}
+        if not file_info:
+            no_info.append(file_name)
+        else:
+            files.append(file_info)
+    return {'file_infos': files,
+            'no_info': no_info}
 
 
 @public
