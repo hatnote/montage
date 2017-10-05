@@ -261,6 +261,7 @@ def get_campaign_report_raw(user_dao, campaign_id):
 
 
 def get_campaign_log(user_dao, campaign_id, request_dict):
+    request_dict = request_dict or dict()
     limit = request_dict.get('limit', 100)
     offset = request_dict.get('offset', 0)
     round_id = request_dict.get('round_id')
@@ -309,10 +310,17 @@ def import_entries(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     import_method = request_dict['import_method']
 
+    # loader warnings
+    import_warnings = list()
+
     if import_method == GISTCSV_METHOD:
         gist_url = request_dict['gist_url']
-        entries = coord_dao.add_entries_from_csv_gist(round_id, gist_url)
+        entries, warnings = coord_dao.add_entries_from_csv(round_id,
+                                                           gist_url)
         params = {'gist_url': gist_url}
+        if warnings:
+            msg = 'unable to load {} files ({!r})'.format(len(warnings), warnings)
+            import_warnings.append(msg)
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
@@ -333,9 +341,8 @@ def import_entries(user_dao, round_id, request_dict):
     new_entry_stats = coord_dao.add_round_entries(round_id, entries,
                                                   method=import_method,
                                                   params=params)
+    new_entry_stats['warnings'] = import_warnings
     
-    # loader warnings
-    new_entry_stats['warnings'] = list()
     if not entries:
         new_entry_stats['warnings'].append({'empty import':
                                             'no entries imported'})
@@ -668,17 +675,18 @@ def get_round(user_dao, round_id):
 def get_results(user_dao, round_id, request_dict):
     # TODO: Docs
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
+    results_by_name = coord_dao.make_vote_table(round_id)
     return {'data': results_by_name}
 
 
 def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
 
-    results_by_name = coord_dao.make_vote_table(user_dao, round_id)
+    results_by_name = coord_dao.make_vote_table(round_id)
 
     output = io.BytesIO()
     csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
@@ -758,11 +766,11 @@ def preview_disqualification(user_dao, round_id):
                             for re in by_resolution]
 
     by_uploader = coord_dao.autodisqualify_by_uploader(round_id, preview=True)
-    ret['by_uploader'] = [re.entry.to_detials_dict(with_uploader=True)
+    ret['by_uploader'] = [re.entry.to_details_dict(with_uploader=True)
                           for re in by_uploader]
 
     by_filetype = coord_dao.autodisqualify_by_filetype(round_id, preview=True)
-    ret['by_filetype'] = [re.entry.to_detials_dict(with_uploader=True)
+    ret['by_filetype'] = [re.entry.to_details_dict(with_uploader=True)
                           for re in by_filetype]
 
     return {'data': ret}

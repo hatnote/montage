@@ -1487,18 +1487,23 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_from_csv_gist(self, round_id, gist_url):
+    def add_entries_from_csv(self, round_id, gist_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
-        entries = loaders.get_entries_from_gist_csv(gist_url)
+        if ENV_NAME == 'dev':
+            source = 'remote'
+        else:
+            source = 'local'
+        entries, warnings = loaders.get_entries_from_gist(gist_url,
+                                                              source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
                % (self.user.username, len(entries), gist_url, new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
-        return entries
+        return entries, warnings
 
     def get_round_sources(self, round_id, import_method):
         round_sources = (self.query(RoundSource)
@@ -1606,14 +1611,14 @@ class CoordinatorDAO(UserDAO):
         all_tasks = self.get_all_tasks(round_id)
 
         results_by_name = defaultdict(dict)
-        ratings_dict = {r.task_id: r.value for r in all_ratings}
+        ratings_dict = {r.id: r.value for r in all_ratings}
 
         for (task, entry) in all_tasks:
             rating = ratings_dict.get(task.id, {})
             filename = entry.name
             username = task.user.username
 
-            if task.complete_date:
+            if task.status == COMPLETED_STATUS:
                 results_by_name[filename][username] = rating
             else:
                 # tbv = to be voted
@@ -1791,35 +1796,35 @@ class CoordinatorDAO(UserDAO):
             ret.append(fer)
         return ret
 
-    def get_all_ratings(self, rnd):
+    def get_all_ratings(self, round_id):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\
                       .all()
         return results
 
     # do we need this?
-    def get_all_rankings(self, rnd):
+    def get_all_rankings(self, round_id):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\
                       .all()
         return results
 
-    def get_all_tasks(self, rnd):
+    def get_all_tasks(self, round_id):
         results = self.query(Vote, Entry)\
                       .options(joinedload('user'))\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == rnd.id,
+                      .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
-                              Vote.status == ACTIVE_STATUS)\
+                              Vote.status != CANCELLED_STATUS)\
                       .all()
         return results
 

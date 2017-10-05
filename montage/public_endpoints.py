@@ -100,10 +100,15 @@ def get_files_info_by_name(request_dict):
     except Exception:
         raise InvalidAction('must provide a list of names')
     files = []
+    no_info = []
     for file_name in file_names:
         file_info = get_file_info(file_name)
-        files.append(file_info)
-    return {'file_infos': files}
+        if not file_info:
+            no_info.append(file_name)
+        else:
+            files.append(file_info)
+    return {'file_infos': files,
+            'no_info': no_info}
 
 
 @public
@@ -138,7 +143,7 @@ def logout(request, cookie, root_path):
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session, root_path):
+def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log):
     # TODO: Remove or standardize the DEBUG option
     if DEBUG:
         identity = {'sub': 6024474,
@@ -146,16 +151,16 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path):
     else:
         handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
-        try:
-            rt_key = cookie['request_token_key']
-            rt_secret = cookie['request_token_secret']
-        except KeyError:
-            # in some rare cases, stale cookies are left behind
-            # and users have to click login again
-            # TODO: clear cookie and redirect home instead
-            # redirect(root_path)
-            return BadRequest('Invalid cookie. Try clearing your cookies'
-                              ' and logging in again.')
+        with api_log.debug('load_login_cookie') as act:
+            try:
+                rt_key = cookie['request_token_key']
+                rt_secret = cookie['request_token_secret']
+            except KeyError:
+                # in some rare cases, stale cookies are left behind
+                # and users have to click login again
+                act.failure('clearing stale cookie, redirecting to {}', root_path)
+                cookie.set_expires()
+                return redirect(root_path)
 
         req_token = RequestToken(rt_key, rt_secret)
 
