@@ -17,7 +17,7 @@ function controller() {
   vm.link = null;
 
   vm.$onInit = () => {
-    if (!vm.campaign) { return; }
+    if (!vm.campaign.id) { return; }
 
     vm.campaign.rounds = vm.campaign.rounds
       .filter(round => round.status !== 'cancelled');
