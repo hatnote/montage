@@ -2551,9 +2551,21 @@ class JurorDAO(object):
             results.append(
                 (round,
                  self._build_round_stats(
-                     re_count, total_tasks, total_open_tasks)),
+                     re_count, total_tasks, total_open_tasks),
+                 self.get_ballot(round.id)),
             )
         return results
+
+    def get_ballot(self, round_id):
+        results = (self.query(Vote, Vote.value)
+                       .filter(Vote.round_entry.has(round_id=round_id),
+                               Vote.status == COMPLETED_STATUS,
+                               Vote.user == self.user)
+                       .all())
+
+        rating_ctr = Counter([r[1] for r in results])
+
+        return dict(rating_ctr)
 
     def apply_rating(self, vote, value, review=''):
         if not vote.user == self.user:
