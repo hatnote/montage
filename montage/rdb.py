@@ -53,7 +53,10 @@ ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
 
-DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif']
+# By default, srounds will support all the file types allowed on 
+# Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
+DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif', 'svg', 'tiff', 
+                             'xcf', 'webp']
 
 # Some basic config settings
 DEFAULT_ROUND_CONFIG = {'show_link': True,
@@ -62,7 +65,7 @@ DEFAULT_ROUND_CONFIG = {'show_link': True,
                         'dq_by_upload_date': True,
                         'dq_by_resolution': False,
                         'dq_by_uploader': False,
-                        'dq_by_filetype': False,
+                        'dq_by_filetype': True,
                         'allowed_filetypes': DEFAULT_ALLOWED_FILETYPES,
                         'min_resolution': DEFAULT_MIN_RESOLUTION,
                         'dq_coords': True,
