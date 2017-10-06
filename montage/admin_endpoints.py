@@ -39,6 +39,7 @@ def get_admin_routes():
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
+           GET('/admin/users', get_users),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
@@ -188,6 +189,15 @@ def make_admin_round_details(rnd, rnd_stats):
            'stats': rnd_stats,
            'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
     return ret
+
+
+def get_users(user_dao, request_dict):
+    """View the maintainers, organizers, and campaign coordinators"""
+    
+    org_dao = OrganizerDAO(user_dao)
+    user_list = org_dao.get_user_list()
+
+    return {'data': user_list}
 
 
 # TODO: (clastic) some way to mark arguments as injected from the

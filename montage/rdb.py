@@ -163,7 +163,7 @@ class User(Base):
 
     def to_details_dict(self):
         ret = self.to_info_dict()
-        ret['last_active_date'] = self.last_active_date
+        ret['last_active_date'] = format_date(self.last_active_date)
         ret['created_by'] = self.created_by
         return ret
 
@@ -2154,6 +2154,33 @@ class OrganizerDAO(object):
         msg = '%s cancelled campaign "%s" and %s rounds' %\
               (self.user.username, campaign.name, len(rounds))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
+
+    def get_user_list(self):
+        all_camps = self.user_dao._get_every_campaign()
+        orgs = (self.query(User)
+                    .filter_by(is_organizer=True)
+                    .all())
+        ret = {'maintainers': [],
+               'organizers': [o.to_details_dict() for o in orgs],
+               'campaigns': []}
+
+        for username in MAINTAINERS:
+            user = (self.query(User)
+                        .filter_by(username=username)
+                        .one_or_none())
+            if not user:
+                continue
+            ret['maintainers'].append(user.to_details_dict())
+
+        for camp in all_camps:
+            coords = [u.to_details_dict() for u in camp.coords]
+            ret['campaigns'].append({'id': camp.id,
+                                     'name': camp.name,
+                                     'coorinators': coords})
+        return ret
+
+
+
 
 
 class MaintainerDAO(object):

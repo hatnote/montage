@@ -103,6 +103,30 @@ Remove a user as organizer in Montage
   - 403: not a maintainer
   - 404: user does not exist (TODO)
 
+## /v1/admin/users
+View the maintainers, organizers, and campaign coordinators
+
+  - Function: [get_users](https://github.com/hatnote/montage/blob/master/montage/admin_endpoints.py) (admin_endpoints.py)
+  - Method: POST
+
+### Parameters
+None
+
+### Response
+
+  - `data`:
+    - `maintainers`: list of [`user details`](#user-details) dictionaries
+    - `organizers`: list of [`user details`](#user-details) dictionaries
+    - `campaigns`:
+      + `id`
+      + `name`
+      + `coordinators`: list of [`user details`](#user-details) dictionaries
+  - `status`: success or failure
+  - `errors`: description of the failure (if any) 
+
+### Errors
+  - 403: not an organizer
+
 ## /v1/admin/add_campaign
 Create a new campaign
 
@@ -1069,6 +1093,15 @@ Abbreviated information about a user:
   - `is_organizer`: true or false
   - `is_maintainer`: true or false
   `
+## user details
+Complete information about a user:
+
+  - `id`: user id (same as Wikimedia CentralAuth)
+  - `username`: user name (same as Wikimedia CentralAuth)
+  - `is_organizer`: true or false
+  - `is_maintainer`: true or false
+  - `last_active_date`
+  - `created_by`
 
 ## juror info
 Abbreviated information about a juror in a round:
