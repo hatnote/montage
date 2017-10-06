@@ -1084,6 +1084,7 @@ Complete information about a round for a juror (similar to [`round details`](#ro
   - `total_open_tasks`: number of active votes for this juror
   - `percent_tasks_open`: percentage of active votes to non-cancelled votes
   - `campaign`: single [`campaign info`](#campaign-info) dictionary
+  - `ballot`: a dictionary of rating/count pairs
 
 ## user info
 Abbreviated information about a user:
