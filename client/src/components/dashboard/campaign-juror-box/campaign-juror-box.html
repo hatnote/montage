@@ -31,7 +31,7 @@
         <md-card-content>
           <div layout="row" layout-align="center stretch">
             <div class="round__directions" flex>
-              <h4>Deadline Date</h4>
+              <h4>Voting deadline</h4>
               <p>{{ round.deadline_date | date: 'd MMM yyyy' }} · <span class="muted">{{ round.deadline_date | fromNow }}</span></p>
               <h4>Directions</h4>
               <p>{{ round.directions }}<span class="muted" ng-if="!round.directions">No directions provided.</span></p>

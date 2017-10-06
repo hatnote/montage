@@ -1,7 +1,7 @@
 ashes==17.0.0
 boltons==17.1.0
 chert==0.3.0
-clastic==0.4.3
+clastic==0.5.0
 html5lib==0.999999
 hyperlink==17.2.1
 lithoxyl==0.4.1

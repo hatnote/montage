@@ -35,6 +35,11 @@ function controller(
   vm.$onInit = () => {
     if (!vm.tasks || !vm.tasks.data) { return; }
 
+    vm.round.link = [
+      vm.round.id,
+      vm.round.canonical_url_name,
+    ].join('-');
+
     vm.images = vm.tasks.data.tasks;
     vm.stats = vm.tasks.data.stats;
     vm.rating = {

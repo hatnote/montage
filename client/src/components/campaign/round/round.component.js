@@ -11,11 +11,15 @@ const Component = {
 };
 
 function controller(
+  $window,
   adminService,
   alertService) {
   const vm = this;
 
+  vm.loading = null;
+
   vm.activateRound = activateRound;
+  vm.downloadResults = downloadResults;
   vm.finalizeRound = finalizeRound;
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
@@ -32,12 +36,22 @@ function controller(
    * 
    */
   function activateRound() {
+    vm.loading = 'activate';
     adminService
       .activateRound(vm.round.id)
       .then(() => {
         getRoundDetails(vm.round);
       })
-      .catch(alertService.error);
+      .catch(alertService.error)
+      .finally(() => { vm.loading = null; });
+  }
+
+  /**
+   * 
+   */
+  function downloadResults() {
+    const url = adminService.downloadRound(vm.round.id);
+    $window.open(url);
   }
 
   /**
@@ -87,12 +101,14 @@ function controller(
    * 
    */
   function pauseRound() {
+    vm.loading = 'pause';
     adminService
       .pauseRound(vm.round.id)
       .then(() => {
         getRoundDetails(vm.round);
       })
-      .catch(alertService.error);
+      .catch(alertService.error)
+      .finally(() => { vm.loading = null; });
   }
 
   /**

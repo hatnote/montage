@@ -24,7 +24,7 @@
       </div>
     </h2>
     <md-card class="round__description" flex>
-      <md-card-content><fieldset>
+      <md-card-content><fieldset ng-disabled="$ctrl.loading">
         <div layout="row" layout-align="center stretch">
           <div class="round__directions" flex="60"
               layout="column" layout-align="start stretch">
@@ -38,7 +38,7 @@
 
             <div layout="row" layout-align="start start">
               <div flex="60">
-                <h4>Deadline Date</h4>
+                <h4>Voting deadline</h4>
                 <div layout="row" layout-align="start center">
                   <md-datepicker ng-model="$ctrl.round.deadline_date"
                       ng-required="true"
@@ -68,13 +68,14 @@
 
             <h4 ng-if="$ctrl.index === 1">Source</h4>
             <md-radio-group
+                ng-disabled="$ctrl.loading"
                 ng-model="$ctrl.import.import_method"
                 ng-if="$ctrl.index === 1">
               <md-radio-button value="category">Category on Wikimedia Commons</md-radio-button>
               <md-radio-button value="gistcsv">File List URL</md-radio-button>
 
               <div ng-if="$ctrl.import.import_method === 'category'">
-                <p class="muted">Category on Wikimedia Commons that gathers all contest images. Example of such category may be eg. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
+                <p class="muted">Category on Wikimedia Commons that gathers all contest images. Example of such category may be e.g. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
                 <md-autocomplete flex required
                   md-input-name="autocompleteField"
                   md-input-minlength="2"
@@ -122,6 +123,7 @@
                 <span ng-if="name !== 'min_resolution'">{{ ::name | translate }}</span>
                 <span ng-if="value === false || value === true">
                   <md-checkbox
+                    ng-disabled="$ctrl.loading"
                     ng-model="$ctrl.round.config[name]"
                     aria-label="{{ ::name }}">
                 </span>
@@ -167,6 +169,11 @@
     </md-card>
     <div class="round__actions"
           layout="row" layout-align="end center">
+      <span class="muted"
+          ng-if="$ctrl.index === 1 && $ctrl.loading">
+        Importing category may take a while. Plase be patient.
+      </span>
+      <span flex></span>
       <md-button
           ng-disabled="$ctrl.loading"
           ng-click="$ctrl.cancelAddRound()">
@@ -176,7 +183,12 @@
       <md-button class="md-primary"
           ng-click="$ctrl.prevRound ? $ctrl.advanceRound() : $ctrl.addRound()"
           ng-disabled="$ctrl.roundEditForm.$invalid || $ctrl.loading || !$ctrl.round.jurors.length">
-        <md-icon>check</md-icon>
+        <md-icon ng-if="!$ctrl.loading">check</md-icon>
+        <md-progress-circular
+          md-diameter="20px"
+          md-mode="indeterminate"
+          ng-if="$ctrl.loading">
+        </md-progress-circular>
         Add Round
       </md-button>
     </div>

@@ -3,9 +3,29 @@
     font-weight: 500;
   }
 
+  md-progress-circular {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 5px;
+
+    path {
+      stroke: rgba(0,0,0,0.38);
+      stroke-width: 2.5;
+    }
+  }
+
   &.md-mini md-icon.material-icons {
     font-size: 20px;
     margin-top: 2px;
+  }
+}
+
+md-list {
+  padding: 0;
+
+  md-list-item.md-2-line {
+    min-height: 55px;
+    height: 55px;
   }
 }
 

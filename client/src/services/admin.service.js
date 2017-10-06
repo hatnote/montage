@@ -23,7 +23,7 @@ const Service = ($http, $q, $window) => {
     previewRound: id => $http.get(base + '/round/' + id + '/preview_results'),
     advanceRound: (id, data) => $http.post(base + '/round/' + id + '/advance', data),
 
-    downloadRound: id => base + '/round/' + id + '/download',
+    downloadRound: id => base + '/round/' + id + '/results/download',
   };
 
   return admin;
