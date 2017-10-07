@@ -7,7 +7,8 @@
     <div class="round__title" layout="row" layout-align="start center"
          ng-hide="$ctrl.error || $ctrl.round.status !== 'active' || ($ctrl.images && !$ctrl.images.length)">
         <h2 class="md-headline">
-            Edit votes for {{$ctrl.round.name}}<br />
+            Edit votes for
+            <a ui-sref="main.vote({id: $ctrl.round.link})">{{ $ctrl.round.name }}</a><br />
             <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
         </h2>
         <span flex></span>
