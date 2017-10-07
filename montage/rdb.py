@@ -296,25 +296,48 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    def check_closability(self):
+        task_count = self._get_task_count()
+        open_task_count = self._get_open_task_count()
+        if open_task_count == 0 and task_count:
+            return True
+        return False
+
+    def _get_rdb_session(self):
+        rdb_session = inspect(self).session
+        if not rdb_session:
+            # TODO: just make a session
+            raise RuntimeError('cannot get counts for detached Round')
+        return rdb_session
+
+
+    def _get_open_task_count(self):
+        rdb_session = self._get_rdb_session()
+        ret = (rdb_session.query(Vote)
+                          .filter(Vote.round_entry.has(round_id=self.id),
+                                  Vote.status == ACTIVE_STATUS)
+                          .count())
+        return ret
+
+    def _get_task_count(self):
+        rdb_session = self._get_rdb_session()
+        ret = (rdb_session.query(Vote)
+                          .filter(Vote.round_entry.has(round_id=self.id),
+                                  Vote.status != CANCELLED_STATUS)
+                          .count())
+        return ret
+
     def get_count_map(self):
         # TODO TODO TODO
         # when more info is needed, can get session with
         # inspect(self).session (might be None if not attached), only
         # disadvantage is that user is not available to do permissions
         # checking.
-        rdb_session = inspect(self).session
-        if not rdb_session:
-            # TODO: just make a session
-            raise RuntimeError('cannot get counts for detached Round')
+        rdb_session = self._get_rdb_session()
         re_count = len(self.round_entries)
-        task_count = rdb_session.query(Vote)\
-                                .filter(Vote.round_entry.has(round_id=self.id),
-                                        Vote.status != CANCELLED_STATUS)\
-                                .count()
-        open_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.id),
-                                             Vote.status == ACTIVE_STATUS)\
-                                     .count()
+        
+        open_task_count = self._get_open_task_count()
+        task_count = self._get_task_count()
         cancelled_task_count = rdb_session.query(Vote)\
                                      .filter(Vote.round_entry.has(round_id=self.id),
                                              Vote.status == CANCELLED_STATUS)\
@@ -390,7 +413,8 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
-               'round_sources': []}
+               'round_sources': [],
+               'is_closable': self.check_closability()}
         return ret
 
     def to_details_dict(self):
