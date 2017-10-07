@@ -109,21 +109,21 @@
                 </md-button>
             </div>
             <div class="gallery__rating" ng-if="$ctrl.isVoting('yesno')">
-                <md-button class="md-icon-button" flex="25"
+                <md-button flex="25"
                         ng-click="$ctrl.setRate(image, 5)"
                         ng-class="{'md-primary': image.value === 5, 'md-edited': image.value === 5 && image.edited }">
                     <md-icon>
                         thumb_up
-                        <md-tooltip>Accept</md-tooltip>
                     </md-icon>
+                    Accept
                 </md-button>
-                <md-button class="md-icon-button" flex="25"
+                <md-button flex="25"
                         ng-click="$ctrl.setRate(image, 1)"
                         ng-class="{'md-primary': image.value === 1, 'md-warn': image.value === 1 && image.edited }">
                     <md-icon>
                         thumb_down
-                        <md-tooltip>Decline</md-tooltip>
                     </md-icon>
+                    Decline
                 </md-button>
             </div>
         </grid-tile>

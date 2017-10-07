@@ -11,8 +11,9 @@ mont-vote-edit {
     text-transform: none;
   }
 
-  .md-button.md-edited.md-primary:not([disabled]) md-icon {
+  .md-button.md-edited.md-primary:not([disabled]) {
     color: mediumseagreen;
+    md-icon { color: mediumseagreen; }
   }
 
   .round {
