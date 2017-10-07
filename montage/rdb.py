@@ -53,7 +53,10 @@ ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
 
-DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif']
+# By default, srounds will support all the file types allowed on 
+# Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
+DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif', 'svg', 'tiff', 
+                             'xcf', 'webp']
 
 # Some basic config settings
 DEFAULT_ROUND_CONFIG = {'show_link': True,
@@ -62,7 +65,7 @@ DEFAULT_ROUND_CONFIG = {'show_link': True,
                         'dq_by_upload_date': True,
                         'dq_by_resolution': False,
                         'dq_by_uploader': False,
-                        'dq_by_filetype': False,
+                        'dq_by_filetype': True,
                         'allowed_filetypes': DEFAULT_ALLOWED_FILETYPES,
                         'min_resolution': DEFAULT_MIN_RESOLUTION,
                         'dq_coords': True,
@@ -163,7 +166,7 @@ class User(Base):
 
     def to_details_dict(self):
         ret = self.to_info_dict()
-        ret['last_active_date'] = self.last_active_date
+        ret['last_active_date'] = format_date(self.last_active_date)
         ret['created_by'] = self.created_by
         return ret
 
@@ -293,25 +296,48 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    def check_closability(self):
+        task_count = self._get_task_count()
+        open_task_count = self._get_open_task_count()
+        if open_task_count == 0 and task_count:
+            return True
+        return False
+
+    def _get_rdb_session(self):
+        rdb_session = inspect(self).session
+        if not rdb_session:
+            # TODO: just make a session
+            raise RuntimeError('cannot get counts for detached Round')
+        return rdb_session
+
+
+    def _get_open_task_count(self):
+        rdb_session = self._get_rdb_session()
+        ret = (rdb_session.query(Vote)
+                          .filter(Vote.round_entry.has(round_id=self.id),
+                                  Vote.status == ACTIVE_STATUS)
+                          .count())
+        return ret
+
+    def _get_task_count(self):
+        rdb_session = self._get_rdb_session()
+        ret = (rdb_session.query(Vote)
+                          .filter(Vote.round_entry.has(round_id=self.id),
+                                  Vote.status != CANCELLED_STATUS)
+                          .count())
+        return ret
+
     def get_count_map(self):
         # TODO TODO TODO
         # when more info is needed, can get session with
         # inspect(self).session (might be None if not attached), only
         # disadvantage is that user is not available to do permissions
         # checking.
-        rdb_session = inspect(self).session
-        if not rdb_session:
-            # TODO: just make a session
-            raise RuntimeError('cannot get counts for detached Round')
+        rdb_session = self._get_rdb_session()
         re_count = len(self.round_entries)
-        task_count = rdb_session.query(Vote)\
-                                .filter(Vote.round_entry.has(round_id=self.id),
-                                        Vote.status != CANCELLED_STATUS)\
-                                .count()
-        open_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.id),
-                                             Vote.status == ACTIVE_STATUS)\
-                                     .count()
+        
+        open_task_count = self._get_open_task_count()
+        task_count = self._get_task_count()
         cancelled_task_count = rdb_session.query(Vote)\
                                      .filter(Vote.round_entry.has(round_id=self.id),
                                              Vote.status == CANCELLED_STATUS)\
@@ -387,7 +413,8 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
-               'round_sources': []}
+               'round_sources': [],
+               'is_closable': self.check_closability()}
         return ret
 
     def to_details_dict(self):
@@ -2155,6 +2182,33 @@ class OrganizerDAO(object):
               (self.user.username, campaign.name, len(rounds))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
 
+    def get_user_list(self):
+        all_camps = self.user_dao._get_every_campaign()
+        orgs = (self.query(User)
+                    .filter_by(is_organizer=True)
+                    .all())
+        ret = {'maintainers': [],
+               'organizers': [o.to_details_dict() for o in orgs],
+               'campaigns': []}
+
+        for username in MAINTAINERS:
+            user = (self.query(User)
+                        .filter_by(username=username)
+                        .one_or_none())
+            if not user:
+                continue
+            ret['maintainers'].append(user.to_details_dict())
+
+        for camp in all_camps:
+            coords = [u.to_details_dict() for u in camp.coords]
+            ret['campaigns'].append({'id': camp.id,
+                                     'name': camp.name,
+                                     'coorinators': coords})
+        return ret
+
+
+
+
 
 class MaintainerDAO(object):
     def __init__(self, user_dao):
@@ -2521,9 +2575,21 @@ class JurorDAO(object):
             results.append(
                 (round,
                  self._build_round_stats(
-                     re_count, total_tasks, total_open_tasks)),
+                     re_count, total_tasks, total_open_tasks),
+                 self.get_ballot(round.id)),
             )
         return results
+
+    def get_ballot(self, round_id):
+        results = (self.query(Vote, Vote.value)
+                       .filter(Vote.round_entry.has(round_id=round_id),
+                               Vote.status == COMPLETED_STATUS,
+                               Vote.user == self.user)
+                       .all())
+
+        rating_ctr = Counter([r[1] for r in results])
+
+        return dict(rating_ctr)
 
     def apply_rating(self, vote, value, review=''):
         if not vote.user == self.user:

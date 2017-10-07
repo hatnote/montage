@@ -32,7 +32,6 @@ def get_active_users(user_dao):
     data = []
     for user in users:
         ud = user.to_details_dict()
-        ud['last_active_date'] = ud['last_active_date'].isoformat()
         data.append(ud)
     return {'data': data}
 

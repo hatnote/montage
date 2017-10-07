@@ -39,6 +39,7 @@ def get_admin_routes():
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
+           GET('/admin/users', get_users),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
@@ -106,7 +107,7 @@ def download_round_entries_csv(user_dao, round_id):
     ret = output.getvalue()
     resp = Response(ret, mimetype='text/csv')
     resp.mimetype_params['charset'] = 'utf-8'
-    resp.headers["Content-Disposition"] = "attachment; filename=%s" % (output_name,)
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
     return resp
 
 
@@ -186,8 +187,18 @@ def make_admin_round_details(rnd, rnd_stats):
            'total_disqualified_entries': rnd_stats['total_disqualified_entries'],
            'campaign': rnd.campaign.to_info_dict(),
            'stats': rnd_stats,
-           'jurors': [rj.to_details_dict() for rj in rnd.round_jurors]}
+           'jurors': [rj.to_details_dict() for rj in rnd.round_jurors],
+           'is_closable': rnd.check_closability()}
     return ret
+
+
+def get_users(user_dao, request_dict):
+    """View the maintainers, organizers, and campaign coordinators"""
+    
+    org_dao = OrganizerDAO(user_dao)
+    user_list = org_dao.get_user_list()
+
+    return {'data': user_list}
 
 
 # TODO: (clastic) some way to mark arguments as injected from the
@@ -488,7 +499,7 @@ def get_round_results_preview(user_dao, round_id):
     rnd = coord_dao.get_round(round_id)
 
     round_counts = rnd.get_count_map()
-    is_closeable = round_counts['total_open_tasks'] == 0
+    is_closeable = rnd.check_closability()
 
     data = {'round': rnd.to_info_dict(),
             'counts': round_counts,
@@ -507,7 +518,11 @@ def get_round_results_preview(user_dao, round_id):
             # round is sorta an all-or-nothing deal, unlike the rating rounds
             # where you can take a peek at in-progress results
             # import pdb;pdb.set_trace()
-            raise InvalidAction('round must be closeable to preview results')
+            return {'status': 'failure',
+                    'errors': ('cannot preview results of a ranking '
+                               'round until all ballots are '
+                               'submitted'),
+                    'data': None}
 
         rankings = coord_dao.get_round_ranking_list(round_id)
 
@@ -682,6 +697,8 @@ def get_results(user_dao, round_id, request_dict):
 def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
+    now = datetime.datetime.now().isoformat()
+    output_name = 'montage_results-%s-%s.csv' % (rnd.name, now)
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
@@ -710,7 +727,7 @@ def download_results_csv(user_dao, round_id, request_dict):
     ret = output.getvalue()
     resp = Response(ret, mimetype='text/csv')
     resp.mimetype_params['charset'] = 'utf-8'
-    resp.headers["Content-Disposition"] = "attachment; filename=montage_vote_report.csv"
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % output_name
     return resp
 
 

@@ -46,7 +46,7 @@ def get_juror_routes():
     return api, ui
 
 
-def make_juror_round_details(rnd, rnd_stats):
+def make_juror_round_details(rnd, rnd_stats, ballot):
     ret = {'id': rnd.id,
            'directions': rnd.directions,
            'name': rnd.name,
@@ -60,6 +60,7 @@ def make_juror_round_details(rnd, rnd_stats):
            'total_tasks': rnd_stats['total_tasks'],
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
+           'ballot': ballot,
            'campaign': rnd.campaign.to_info_dict()}
     return ret
 
@@ -71,8 +72,8 @@ def get_index(user_dao):
     Summary: Get juror-level index of all campaigns and rounds.
     """
     juror_dao = JurorDAO(user_dao)
-    stats = [make_juror_round_details(rnd, rnd_stats)
-             for rnd, rnd_stats
+    stats = [make_juror_round_details(rnd, rnd_stats, ballot)
+             for rnd, rnd_stats, ballot
              in juror_dao.get_all_rounds_task_counts()]
     return stats
 
@@ -87,7 +88,8 @@ def get_campaign(user_dao, campaign_id):
     rounds = []
     for rnd in campaign.rounds:
         rnd_stats = user_dao.get_round_task_counts(rnd.id)
-        rounds.append(make_juror_round_details(rnd, rnd_stats))
+        ballot = juror_dao.get_ballot(round_id)
+        rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds
     return {'data': data}
 
@@ -98,8 +100,9 @@ def get_round(user_dao, round_id):
     """
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
+    ballot = juror_dao.get_ballot(round_id)
     rnd_stats = juror_dao.get_round_task_counts(round_id)
-    data = make_juror_round_details(rnd, rnd_stats)  # TODO: add to Round model
+    data = make_juror_round_details(rnd, rnd_stats, ballot)  # TODO: add to Round model
     return {'data': data}
 
 

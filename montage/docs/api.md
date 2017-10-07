@@ -103,6 +103,30 @@ Remove a user as organizer in Montage
   - 403: not a maintainer
   - 404: user does not exist (TODO)
 
+## /v1/admin/users
+View the maintainers, organizers, and campaign coordinators
+
+  - Function: [get_users](https://github.com/hatnote/montage/blob/master/montage/admin_endpoints.py) (admin_endpoints.py)
+  - Method: POST
+
+### Parameters
+None
+
+### Response
+
+  - `data`:
+    - `maintainers`: list of [`user details`](#user-details) dictionaries
+    - `organizers`: list of [`user details`](#user-details) dictionaries
+    - `campaigns`:
+      + `id`
+      + `name`
+      + `coordinators`: list of [`user details`](#user-details) dictionaries
+  - `status`: success or failure
+  - `errors`: description of the failure (if any) 
+
+### Errors
+  - 403: not an organizer
+
 ## /v1/admin/add_campaign
 Create a new campaign
 
@@ -991,6 +1015,7 @@ Abbreviated information about a round for a coordinator:
     - `cancelled` (basically, it's deleted)
     - `finalized` (all done)
   - `config`: a dictionary of various settings for the round
+  - `is_closable`: this is true if the round has all the votes necessary to advance to the next round. For ranking rounds, you cannot preview results until all the ballots are submitted.
 
 ## round details
 Complete information about a round for a coordinator (similar to [`juror round details`](#juror-round-details): 
@@ -1024,6 +1049,7 @@ Complete information about a round for a coordinator (similar to [`juror round d
     - `total_disqualified_entries`: number of disqualified entries (for any reason)
     - `total_uploaders`: number of unique uploaders for non-disqualified entries
   - `juror_details`: list of [`juror details`](#juror-details) dictionaries
+  - `is_closable`: this is true if the round has all the votes necessary to advance to the next round. For ranking rounds, you cannot preview results until all the ballots are submitted.
 
 ## round count map
 A short set of round stats:
@@ -1060,6 +1086,7 @@ Complete information about a round for a juror (similar to [`round details`](#ro
   - `total_open_tasks`: number of active votes for this juror
   - `percent_tasks_open`: percentage of active votes to non-cancelled votes
   - `campaign`: single [`campaign info`](#campaign-info) dictionary
+  - `ballot`: a dictionary of rating/count pairs
 
 ## user info
 Abbreviated information about a user:
@@ -1069,6 +1096,15 @@ Abbreviated information about a user:
   - `is_organizer`: true or false
   - `is_maintainer`: true or false
   `
+## user details
+Complete information about a user:
+
+  - `id`: user id (same as Wikimedia CentralAuth)
+  - `username`: user name (same as Wikimedia CentralAuth)
+  - `is_organizer`: true or false
+  - `is_maintainer`: true or false
+  - `last_active_date`
+  - `created_by`
 
 ## juror info
 Abbreviated information about a juror in a round:
