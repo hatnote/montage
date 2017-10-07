@@ -158,10 +158,27 @@
    ng-show="$ctrl.round.status !== 'active' && !$ctrl.error">
   <h2 class="md-headline">this round is {{$ctrl.round.status}}</h2>
 </div>
-<div class="central-error" layout="column" layout-align="center center"
-   ng-show="$ctrl.images && !$ctrl.images.length">
-  <h2 class="md-headline">you voted on all images in the round</h2>
-  <span>good job! :)</span>
-  <br />
-  <span><md-icon>new_releases</md-icon> You can edit your votes on <a href="" ui-sref="main.juror.vote-edit({id: $ctrl.round.id})">this page</a></span>
+<div class="central-error"
+    layout="column" layout-align="center center"
+    ng-show="$ctrl.images && !$ctrl.images.length">
+  <div class="login"
+      layout="column" layout-align="start stretch">
+    <md-card layout="column" layout-align="start stretch">
+      <h3 class="login__title">All done!</h3>
+      <p class="muted">
+        You voted on all images in this round. You can still edit your previous
+        votes using button below.
+      </p>
+    </md-card>
+    <md-button class="md-primary"
+        ng-click="$ctrl.editPreviousVotes()"
+        ng-disabled="$ctrl.loading">
+      <md-icon>mode_edit</md-icon>
+      Edit previous votes
+    </md-button>
+    <div layout="column" layout-align="center center"
+        ng-if="$ctrl.loading">
+      <md-progress-circular md-diameter="40"></md-progress-circular>
+    </div>
+  </div>
 </div>

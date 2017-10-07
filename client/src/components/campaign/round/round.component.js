@@ -42,8 +42,7 @@ function controller(
       .then(() => {
         getRoundDetails(vm.round);
       })
-      .catch(alertService.error)
-      .finally(() => { vm.loading = null; });
+      .catch(alertService.error);
   }
 
   /**
@@ -71,6 +70,7 @@ function controller(
       .getRound(round.id)
       .then((data) => {
         angular.extend(round, data.data);
+        vm.loading = null;
       })
       .catch(alertService.error);
   }
@@ -107,8 +107,7 @@ function controller(
       .then(() => {
         getRoundDetails(vm.round);
       })
-      .catch(alertService.error)
-      .finally(() => { vm.loading = null; });
+      .catch(alertService.error);
   }
 
   /**
