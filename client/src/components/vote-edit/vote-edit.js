@@ -48,14 +48,20 @@ function controller(
   vm.size = 1;
   vm.stats = vm.tasks.data.stats;
 
-  // rating exclusives
-  vm.rating = {
-    rates: [1, 2, 3, 4, 5],
-  };
+  vm.$onInit = () => {
+    vm.rating = {
+      rates: [1, 2, 3, 4, 5],
+    };
 
-  vm.images.forEach((element) => {
-    element.value = (element.value * 4) + 1;
-  });
+    vm.images.forEach((element) => {
+      element.value = (element.value * 4) + 1;
+    });
+
+    vm.round.link = [
+      vm.round.id,
+      vm.round.canonical_url_name,
+    ].join('-');
+  };
 
   // functions
 

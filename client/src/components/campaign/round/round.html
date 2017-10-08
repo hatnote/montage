@@ -13,7 +13,10 @@
         layout="row" layout-align="space-between center">
       <div layout="column" layout-align="center start">
         <span>{{ ::$ctrl.round.name }}</span>
-        <span class="muted">{{ ::$ctrl.round.vote_method }} · {{ $ctrl.round.status }}</span>
+        <span class="muted">
+          {{ ::("round." + $ctrl.round.vote_method) | translate }} ·
+          {{ $ctrl.round.status }}
+        </span>
       </div>
       <md-button
           ng-click="$ctrl.editRound()"
@@ -136,6 +139,7 @@
         Pause
       </md-button>
       <md-button
+          ng-if="$ctrl.round.status !== 'finalized'"
           ng-disabled="!$ctrl.round.details.is_closeable || $ctrl.loading"
           ng-click="$ctrl.finalizeRound()">
         <md-icon>done</md-icon>

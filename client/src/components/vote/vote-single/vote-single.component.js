@@ -13,6 +13,7 @@ const Component = {
 
 function controller(
   $q,
+  $state,
   $window,
   alertService,
   jurorService) {
@@ -22,10 +23,12 @@ function controller(
   let skips = 0;
 
   vm.images = null;
+  vm.loading = false;
   vm.rating = {};
   vm.showSidebar = true;
   vm.stats = null;
 
+  vm.editPreviousVotes = editPreviousVotes;
   vm.encodeName = encodeName;
   vm.keyDown = keyDown;
   vm.getImageName = getImageName;
@@ -52,6 +55,11 @@ function controller(
       setRate,
     };
   };
+
+  function editPreviousVotes() {
+    vm.loading = true;
+    $state.go('main.vote-edit', { id: vm.round.link });
+  }
 
   function encodeName(image) {
     return encodeURI(image.entry.name);
