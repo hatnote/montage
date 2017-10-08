@@ -1,3 +1,12 @@
+<div class="loading"
+    layout="row" layout-align="center center"
+    ng-if="$ctrl.loading">
+  <md-progress-circular
+    md-diameter="20px"
+    md-mode="indeterminate">
+  </md-progress-circular>
+  Saving...
+</div>
 <md-button class="md-icon-button"
     ng-if="$ctrl.type === 'rating'"
     ng-repeat="rate in [1, 2, 3, 4, 5]"

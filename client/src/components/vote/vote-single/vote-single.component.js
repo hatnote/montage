@@ -1,5 +1,4 @@
 import './vote-single.scss';
-
 import template from './vote-single.html';
 
 const Component = {
@@ -141,7 +140,7 @@ function controller(
       return $q.when(false);
     }
 
-    rating().then(() => {
+    return rating().then(() => {
       if (counter === 4 || !vm.stats.total_open_tasks) {
         counter = 0;
         vm.loading = true;

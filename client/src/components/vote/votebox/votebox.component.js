@@ -1,3 +1,4 @@
+import './votebox.scss';
 import template from './votebox.html';
 
 const Component = {
@@ -12,7 +13,15 @@ const Component = {
 function controller() {
   const vm = this;
 
-  vm.setVote = vote => vm.voteAction(vote);
+  vm.loading = false;
+  vm.setVote = (vote) => {
+    vm.loading = true;
+    return vm.voteAction(vote)
+      .then((data) => {
+        vm.loading = false;
+        return data;
+      });
+  };
 }
 
 export default Component;
