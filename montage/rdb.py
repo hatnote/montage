@@ -311,16 +311,18 @@ class Round(Base):
         return rdb_session
 
 
-    def _get_open_task_count(self):
-        rdb_session = self._get_rdb_session()
+    def _get_open_task_count(self, rdb_session=None):
+        if not rdb_session:
+            rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
                           .filter(Vote.round_entry.has(round_id=self.id),
                                   Vote.status == ACTIVE_STATUS)
                           .count())
         return ret
 
-    def _get_task_count(self):
-        rdb_session = self._get_rdb_session()
+    def _get_task_count(self, rdb_session=None):
+        if not rdb_session:
+            rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
                           .filter(Vote.round_entry.has(round_id=self.id),
                                   Vote.status != CANCELLED_STATUS)
@@ -336,8 +338,8 @@ class Round(Base):
         rdb_session = self._get_rdb_session()
         re_count = len(self.round_entries)
         
-        open_task_count = self._get_open_task_count()
-        task_count = self._get_task_count()
+        open_task_count = self._get_open_task_count(rdb_session=rdb_session)
+        task_count = self._get_task_count(rdb_session=rdb_session)
         cancelled_task_count = rdb_session.query(Vote)\
                                      .filter(Vote.round_entry.has(round_id=self.id),
                                              Vote.status == CANCELLED_STATUS)\
@@ -400,7 +402,6 @@ class Round(Base):
             return not active_votes
         return False
 
-
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
@@ -413,12 +414,12 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
-               'round_sources': [],
-               'is_closable': self.check_closability()}
+               'round_sources': []}
         return ret
 
     def to_details_dict(self):
         ret = self.to_info_dict()
+        ret['is_closable'] = self.check_closability()
         ret['campaign'] = self.campaign.to_info_dict()
         ret['quorum'] = self.quorum
         ret['total_round_entries'] = len(self.round_entries)

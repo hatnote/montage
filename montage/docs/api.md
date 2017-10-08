@@ -1015,7 +1015,6 @@ Abbreviated information about a round for a coordinator:
     - `cancelled` (basically, it's deleted)
     - `finalized` (all done)
   - `config`: a dictionary of various settings for the round
-  - `is_closable`: this is true if the round has all the votes necessary to advance to the next round. For ranking rounds, you cannot preview results until all the ballots are submitted.
 
 ## round details
 Complete information about a round for a coordinator (similar to [`juror round details`](#juror-round-details): 
