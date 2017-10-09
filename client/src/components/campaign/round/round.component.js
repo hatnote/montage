@@ -83,6 +83,13 @@ function controller(
     adminService
       .previewRound(round.id)
       .then((data) => {
+        if (data.data.counts && data.data.counts.all_mimes) {
+          data.data.counts.all_mimes = []
+            .concat(...data.data.counts.all_mimes)
+            .join(', ')
+            .toUpperCase();
+        }
+
         angular.extend(round, {
           details: data.data,
         });
