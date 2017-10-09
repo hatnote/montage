@@ -185,7 +185,8 @@ def get_rankings_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
     if rnd.vote_method != 'ranking':
-        raise InvalidAction('round %s is not a ranking round' % round_id)
+        return {'status': 'failure',
+                'errors': 'round %s is not a ranking round' % round_id}
     ret = get_votes_from_round(user_dao, round_id, request, rnd=rnd)
     return ret
 
