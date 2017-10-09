@@ -80,3 +80,14 @@ fieldset {
 .text-normal {
   text-transform: none !important;
 }
+
+.key {
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  text-align: center;
+  margin: 0 2px 2px 2px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+}

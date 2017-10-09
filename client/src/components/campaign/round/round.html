@@ -36,8 +36,15 @@
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">
-            <h4>Round File Settings</h4>
-            <p layout="column" layout-align="start stretch">
+            <h4 layout="row" layout-align="space-between center">
+              Round File Settings
+              <md-button class="md-icon-button md-icon-button--tiny" aria-label="Show/Hide round settings"
+                  ng-click="$ctrl.showRoundSettings = !$ctrl.showRoundSettings">
+                <md-icon>{{ $ctrl.showRoundSettings ? "arrow_drop_up" : "arrow_drop_down" }}</md-icon>
+              </md-button>
+            </h4>
+            <p layout="column" layout-align="start stretch"
+                ng-if="$ctrl.showRoundSettings">
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.config">
                 <span>{{ ::name | translate }}</span>
@@ -48,7 +55,7 @@
               <span layout="row" layout-align="space-between start"
                   ng-repeat="(name, value) in $ctrl.round.details.counts">
                 <span>{{ ::("round." + name) | translate }}</span>
-                <span>{{ ::value | json}}</span>
+                <span>{{ ::value }}</span>
               </span>
             </p>
           </div>
@@ -96,12 +103,19 @@
           </div>
           <div class="round__settings" flex="30"
               ng-if="$ctrl.round.details.ratings">
-            <h4>Voting Details</h4>
+            <h4 layout="row" layout-align="space-between center">
+              Voting Details
+              <md-button class="md-icon-button md-icon-button--tiny" aria-label="Show/Hide voting details"
+                  ng-click="$ctrl.showVotingDetails = !$ctrl.showVotingDetails">
+                <md-icon>{{ $ctrl.showVotingDetails ? "arrow_drop_up" : "arrow_drop_down" }}</md-icon>
+              </md-button>
+            </h4>
             <canvas id="doughnut" class="chart chart-doughnut"
               chart-data="$ctrl.round.details.ratings.values"
               chart-labels="$ctrl.round.details.ratings.labels">
             </canvas>
-            <p layout="column" layout-align="start stretch">
+            <p layout="column" layout-align="start stretch"
+                ng-if="$ctrl.showVotingDetails">
               <span layout="row" layout-align="space-between center"
                   ng-repeat="label in $ctrl.round.details.ratings.labels">
                 <span>{{ label }}</span>
@@ -114,6 +128,18 @@
     </md-card>
     <div class="round__actions"
           layout="row" layout-align="end center">
+      <md-button ng-if="false"
+          ng-if="$ctrl.round.status !== 'finalized'"
+          ng-disabled="$ctrl.loading"
+          ng-click="$ctrl.getReportedFiles()">
+        <md-icon ng-if="$ctrl.loading !== 'reported'">report</md-icon>
+        <md-progress-circular
+          md-diameter="20px"
+          md-mode="indeterminate"
+          ng-if="$ctrl.loading === 'reported'">
+        </md-progress-circular>
+        Show Reported Files
+      </md-button>
       <md-button
           ng-if="$ctrl.round.status === 'paused'"
           ng-disabled="$ctrl.loading"

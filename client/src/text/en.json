@@ -3,6 +3,7 @@
   "round.rating": "Rating",
   "round.yesno": "Yes/No",
 
+  "round.all_mimes": "Round file types",
   "round.percent_tasks_open": "Percentage of opened tasks",
   "round.total_cancelled_tasks": "Cancelled tasks",
   "round.total_disqualified_entries": "Disqualified files",

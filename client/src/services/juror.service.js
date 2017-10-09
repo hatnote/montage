@@ -11,9 +11,14 @@ const UserService = ($http, $q, $window, dataService) => {
       `ratings?offset=${offset || 0}&order_by=${orderBy || 'date'}&sort=${sort || 'desc'}`,
     ].join('/')),
     getPastRanking: (id, offset) => $http.get(base + '/juror/round/' + id + '/rankings'),
+    getFaves: () => $http.get(base + '/juror/faves'),
 
     getRound: id => $http.get(base + '/juror/round/' + id),
     getRoundTasks,
+
+    faveImage: (roundId, entryId) => $http.post(base + '/juror/round/' + roundId + '/' + entryId + '/fave', {}),
+    unfaveImage: (roundId, entryId) => $http.post(base + '/juror/round/' + roundId + '/' + entryId + '/unfave', {}),
+    flagImage: (roundId, entryId, reason) => $http.post(base + '/juror/round/' + roundId + '/' + entryId + '/flag', { reason }),
 
     setRating: (id, data) => $http.post(base + '/juror/round/' + id + '/tasks/submit', data),
   };

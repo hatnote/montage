@@ -1,5 +1,4 @@
 import './vote-single.scss';
-
 import template from './vote-single.html';
 
 const Component = {
@@ -12,6 +11,7 @@ const Component = {
 };
 
 function controller(
+  $mdDialog,
   $q,
   $state,
   $window,
@@ -20,6 +20,7 @@ function controller(
   const vm = this;
 
   let counter = 0;
+  let readKeyDown = true;
   let skips = 0;
 
   vm.images = null;
@@ -30,7 +31,9 @@ function controller(
 
   vm.editPreviousVotes = editPreviousVotes;
   vm.encodeName = encodeName;
+  vm.faveImage = faveImage;
   vm.keyDown = keyDown;
+  vm.reportImage = reportImage;
   vm.getImageName = getImageName;
 
   // functions
@@ -65,6 +68,15 @@ function controller(
     return encodeURI(image.entry.name);
   }
 
+  function faveImage() {
+    vm.loading = 'fav';
+    return jurorService
+      .faveImage(vm.round.id, vm.rating.current.entry.id)
+      .then(() => { alertService.success('Image added to favourites', 250); })
+      .catch(alertService.error)
+      .finally(() => { vm.loading = false; });
+  }
+
   function getImageName(image) {
     if (!image) return null;
 
@@ -96,6 +108,8 @@ function controller(
   }
 
   function keyDown(event) {
+    if (!readKeyDown) { return; }
+
     if (vm.round.vote_method === 'yesno') {
       if (event.key === 'ArrowUp') {
         vm.rating.setRate(5);
@@ -103,14 +117,43 @@ function controller(
       } else if (event.key === 'ArrowDown') {
         vm.rating.setRate(1);
         alertService.success('Voted: Decline', 250);
+      } else if (event.key === 'ArrowRight') {
+        vm.rating.setRate();
       }
     } else if (vm.round.vote_method === 'rating') {
       const value = parseInt(event.key, 10);
       if (vm.rating.rates.includes(value)) {
         vm.rating.setRate(value);
         alertService.success(`Voted ${value}/5`, 250);
+      } else if (event.key === 'ArrowRight') {
+        vm.rating.setRate();
       }
     }
+  }
+
+  function reportImage(event) {
+    const confirm = $mdDialog.prompt()
+      .title('Report image')
+      .textContent('In the form below write why this image should be disqualified')
+      .ariaLabel('Report image')
+      .targetEvent(event)
+      .ok('Report')
+      .cancel('Cancel');
+
+    readKeyDown = false;
+    $mdDialog
+      .show(confirm)
+      .then((text) => {
+        vm.loading = 'report';
+        return jurorService
+          .flagImage(vm.round.id, vm.rating.current.entry.id, text)
+          .then(() => { alertService.success('Image reported', 250); })
+          .catch(alertService.error)
+          .finally(() => {
+            vm.loading = false;
+            readKeyDown = true;
+          });
+      });
   }
 
   function sendRate(rate) {
@@ -141,7 +184,7 @@ function controller(
       return $q.when(false);
     }
 
-    rating().then(() => {
+    return rating().then(() => {
       if (counter === 4 || !vm.stats.total_open_tasks) {
         counter = 0;
         vm.loading = true;

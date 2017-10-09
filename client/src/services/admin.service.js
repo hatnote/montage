@@ -19,6 +19,7 @@ const Service = ($http, $q, $window) => {
     editCampaign: (id, data) => $http.post(base + '/campaign/' + id + '/edit', data),
     editRound: (id, data) => $http.post(base + '/round/' + id + '/edit', data),
     cancelRound: id => $http.post(base + '/round/' + id + '/cancel'),
+    getRoundFlags: id => $http.get(base + '/round/' + id + '/flags'),
 
     previewRound: id => $http.get(base + '/round/' + id + '/preview_results'),
     advanceRound: (id, data) => $http.post(base + '/round/' + id + '/advance', data),

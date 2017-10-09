@@ -24,6 +24,7 @@ function controller(
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
   vm.editRound = () => { vm.round.edit = true; };
+  vm.getReportedFiles = getReportedFiles;
 
   // functions
 
@@ -62,6 +63,20 @@ function controller(
   }
 
   /**
+   * 
+   */
+  function getReportedFiles() {
+    vm.loading = 'reported';
+    adminService
+      .getRoundFlags(vm.round.id)
+      .then((data) => {
+        console.log(data);
+      })
+      .catch(alertService.error)
+      .finally(() => { vm.loading = false; });
+  }
+
+  /**
    * Getting details of round including jurors ratings
    * @param {Object} round
    */
@@ -83,6 +98,13 @@ function controller(
     adminService
       .previewRound(round.id)
       .then((data) => {
+        if (data.data.counts && data.data.counts.all_mimes) {
+          data.data.counts.all_mimes = []
+            .concat(...data.data.counts.all_mimes)
+            .join(', ')
+            .toUpperCase();
+        }
+
         angular.extend(round, {
           details: data.data,
         });
