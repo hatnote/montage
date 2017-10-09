@@ -849,18 +849,18 @@ None
   - 403: not a juror on this round
   - 404: vote(s) do not exist
 
-## /v1/juror/round/`<round_id:int>`/ratings 
-Return submitted ratings or yesno votes from a juror
+## /v1/juror/round/`<round_id:int>`/votes 
+Return submitted ratings, rankings, yesno votes from a juror
 
   - Function: [get_ratings_from_round](https://github.com/hatnote/montage/blob/master/montage/juror_endpoints.py#L)
   - Method: GET
 
 ### Parameters
   - `round_id` (in path)
-  - `order_by` (optional): may be either `date` (default) or `value`
-  - `sort` (optional): may be either `asc` (ascending, the default) or `desc` (descending)
-  - `count` (optional): default is 15
-  - `offset` (optional)
+  - `order_by` (optional): may be either `date` (default) or `value` -- only for rating or yes/no rounds
+  - `sort` (optional): may be either `asc` (ascending, the default) or `desc` (descending) -- only for rating or yes/no rounds
+  - `count` (optional): default is 15 -- only for rating or yes/no rounds
+  - `offset` (optional) -- only for rating or yes/no rounds
 
 ### Response
   - `data`: list of vote [`vote details`](#vote-details) dictionaries
@@ -870,24 +870,6 @@ Return submitted ratings or yesno votes from a juror
 ### Errors
   - 403: not a juror for this round
   - 404: ratings do not exist
-
-## /v1/juror/round/`<round_id:int>`/rankings 
-Return submitted rankings
-
-  - Function: [get_rankings_from_round](https://github.com/hatnote/montage/blob/master/montage/juror_endpoints.py#L)
-  - Method: GET
-
-### Parameters
-  - `round_id` (in path)
-
-### Response
-  - `data`: list of vote [`vote details`](#vote-details) dictionaries
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
-
-### Errors
-  - 403: not a juror for this round
-  - 404: rankings do not exist
 
 ## /v1/juror/round/`<round_id:int>`/`<entry_id:int>`/fave 
 Submit a fave

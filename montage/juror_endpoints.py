@@ -35,6 +35,7 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
+           GET('/juror/round/<round_id:int>/votes', get_votes_from_round),
            GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
            GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round),
            POST('/juror/round/<round_id:int>/<entry_id:int>/fave', submit_fave),
@@ -152,27 +153,41 @@ def get_tasks_from_round(user_dao, round_id, request):
     return {'data': data}
 
 
-def get_ratings_from_round(user_dao, round_id, request):
+def get_votes_from_round(user_dao, round_id, request, rnd=None):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
     order_by = request.values.get('order_by', 'date')
     sort = request.values.get('sort', 'asc')
     juror_dao = JurorDAO(user_dao)
-    ratings = juror_dao.get_ratings_from_round(round_id,
-                                               num=count,
-                                               offset=offset,
-                                               sort=sort,
-                                               order_by=order_by)
-    data = [r.to_details_dict() for r in ratings]
+    if not rnd:
+        rnd = juror_dao.get_round(round_id)
+    if rnd.vote_method in ('yesno', 'rating'):
+        ratings = juror_dao.get_ratings_from_round(round_id,
+                                                   num=count,
+                                                   offset=offset,
+                                                   sort=sort,
+                                                   order_by=order_by)
+        data = [r.to_details_dict() for r in ratings]
+    else:
+        rankings = juror_dao.get_rankings_from_round(round_id)
+        data = [r.to_details_dict() for r in rankings]
+        data.sort(key=lambda x: x['value'])
     return {'data': data}
 
 
-def get_rankings_from_round(user_dao, round_id):
+def get_ratings_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
-    rankings = juror_dao.get_rankings_from_round(round_id)
-    data = [r.to_details_dict() for r in rankings]
-    data.sort(key=lambda x: x['value'])
-    return {'data': data}
+    ret = get_votes_from_round(user_dao, round_id, request)
+    return ret
+
+
+def get_rankings_from_round(user_dao, round_id, request):
+    juror_dao = JurorDAO(user_dao)
+    rnd = juror_dao.get_round(round_id)
+    if rnd.vote_method != 'ranking':
+        raise InvalidAction('round %s is not a ranking round' % round_id)
+    ret = get_votes_from_round(user_dao, round_id, request, rnd=rnd)
+    return ret
 
 
 def get_faves(user_dao, request_dict):

@@ -226,8 +226,6 @@ def full_run(base_url, remote):
                            'dq_by_upload_date': True,
                            'dq_by_resolution': False,
                            'dq_by_uploader': True,
-                           'dq_by_filetype': True,
-                           'allowed_filetypes': ['jpeg', 'png', 'gif'],
                            'min_resolution': 2000000,  # 2 megapixels
                            'dq_coords': True,
                            'dq_organizers': True,
@@ -522,7 +520,7 @@ def full_run(base_url, remote):
                  data, as_user='Jimbo Wales')
 
     resp = fetch('juror: get list of past ratings',
-                 '/juror/round/%s/ratings' % round_id,
+                 '/juror/round/%s/votes' % round_id,
                  as_user='Jimbo Wales')
     recent_rating = resp['data'][-1]
 
@@ -674,6 +672,7 @@ def full_run(base_url, remote):
     #import pdb;pdb.set_trace()
 
     # submit the remaining ratings
+
     submit_ratings(client, rnd_3_id)
 
     resp = fetch('coordinator: preview round 3 results',
@@ -757,6 +756,8 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                     entry_id = t_dict['entry']['id']
+                    '''
+                    # Note: only if you want some extra faves for testing
                     if value == 1.0:
                         review = '%s loves this' % j_username
                         data = {'post': True}
@@ -764,6 +765,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                                      '/juror/round/%s/%s/fave' %
                                      (round_id, entry_id),
                                      data, as_user=j_username)
+                    '''
                     '''
                     # Note: only if you want some extra flags for testing
                     if value <0.25:
