@@ -128,6 +128,18 @@
     </md-card>
     <div class="round__actions"
           layout="row" layout-align="end center">
+      <md-button ng-if="false"
+          ng-if="$ctrl.round.status !== 'finalized'"
+          ng-disabled="$ctrl.loading"
+          ng-click="$ctrl.getReportedFiles()">
+        <md-icon ng-if="$ctrl.loading !== 'reported'">report</md-icon>
+        <md-progress-circular
+          md-diameter="20px"
+          md-mode="indeterminate"
+          ng-if="$ctrl.loading === 'reported'">
+        </md-progress-circular>
+        Show Reported Files
+      </md-button>
       <md-button
           ng-if="$ctrl.round.status === 'paused'"
           ng-disabled="$ctrl.loading"

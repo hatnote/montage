@@ -18,6 +18,14 @@
     font-size: 20px;
     margin-top: 2px;
   }
+
+  &.md-icon-button--tiny {
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 md-list {
@@ -38,4 +46,15 @@ md-input-container {
   &.no-margin { margin: 0; }
   &.no-margin-bottom { margin-bottom: 0; }
   &.no-margin-top { margin-top: 0; }
+}
+
+md-dialog {
+  .md-button {
+    font-weight: 600;
+    text-transform: none;
+  }
+  md-input-container {
+    margin-bottom: 0;
+    margin-top: 0;
+  }
 }

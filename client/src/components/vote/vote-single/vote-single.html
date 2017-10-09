@@ -66,26 +66,41 @@
           ng-if="$ctrl.round.vote_method === 'rating'">
         You can also use keyboard to vote. Use keys 1 to 5.
       </span>
-      <div layout="row" layout-align="center center">
-        <md-button flex
-            ng-click="$ctrl.rating.setRate()">
-          <md-icon>watch_later</md-icon>
-          Skip / vote later
-        </md-button>
-        <span flex></span>
-        <md-button flex
-            ng-if="false"
-            ng-disabled="true">
-          <md-icon>report</md-icon>
-          Report file
-        </md-button>
-      </div>
     </div>
 
     <h3 class="md-title">Actions</h3>
-    <md-button ui-sref="main.vote-edit({id: $ctrl.round.link})">
-      <md-icon>mode_edit</md-icon>
-      Edit Previous Votes
+    <md-button ng-if="false"
+        ng-disabled="$ctrl.loading"
+        ng-click="$ctrl.faveImage()">
+      <md-icon ng-if="$ctrl.loading !== 'fav'">favorite_border</md-icon>
+      <md-progress-circular
+        md-diameter="20px"
+        md-mode="indeterminate"
+        ng-if="$ctrl.loading === 'fav'">
+      </md-progress-circular>
+      Add to favorites
+    </md-button>
+    <md-button ng-if="false"
+        ng-disabled="$ctrl.loading"
+        ng-click="$ctrl.reportImage($event)">
+      <md-icon ng-if="$ctrl.loading !== 'report'">report</md-icon>
+      <md-progress-circular
+        md-diameter="20px"
+        md-mode="indeterminate"
+        ng-if="$ctrl.loading === 'report'">
+      </md-progress-circular>
+      Report
+    </md-button>
+    <md-button
+        ng-disabled="$ctrl.loading"
+        ui-sref="main.vote-edit({id: $ctrl.round.link})">
+      <md-icon ng-if="$ctrl.loading !== 'edit'">mode_edit</md-icon>
+      <md-progress-circular
+        md-diameter="20px"
+        md-mode="indeterminate"
+        ng-if="$ctrl.loading === 'edit'">
+      </md-progress-circular>
+      Edit previous votes
     </md-button>
 
     <div class="description__details">

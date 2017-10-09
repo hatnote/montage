@@ -24,6 +24,7 @@ function controller(
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
   vm.editRound = () => { vm.round.edit = true; };
+  vm.getReportedFiles = getReportedFiles;
 
   // functions
 
@@ -59,6 +60,20 @@ function controller(
   function finalizeRound() {
     vm.round.details.is_closeable = false;
     vm.campaign.rounds.push({ showForm: true });
+  }
+
+  /**
+   * 
+   */
+  function getReportedFiles() {
+    vm.loading = 'reported';
+    adminService
+      .getRoundFlags(vm.round.id)
+      .then((data) => {
+        console.log(data);
+      })
+      .catch(alertService.error)
+      .finally(() => { vm.loading = false; });
   }
 
   /**
