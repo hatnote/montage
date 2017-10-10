@@ -98,7 +98,7 @@ def download_round_entries_csv(user_dao, round_id):
     rnd = coord_dao.get_round(round_id)
     entries = coord_dao.get_round_entries(round_id)
     entry_infos = [e.to_export_dict() for e in entries]
-    output_name = 'montage_entries-%s.csv' % (rnd.name,)
+    output_name = slugify('montage_entries-%s.csv' % (rnd.name,))
     output = io.BytesIO()
     csv_fieldnames = sorted(entry_infos[0].keys())
     csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
@@ -194,7 +194,7 @@ def make_admin_round_details(rnd, rnd_stats):
 
 def get_users(user_dao, request_dict):
     """View the maintainers, organizers, and campaign coordinators"""
-    
+
     org_dao = OrganizerDAO(user_dao)
     user_list = org_dao.get_user_list()
 
@@ -353,7 +353,7 @@ def import_entries(user_dao, round_id, request_dict):
                                                   method=import_method,
                                                   params=params)
     new_entry_stats['warnings'] = import_warnings
-    
+
     if not entries:
         new_entry_stats['warnings'].append({'empty import':
                                             'no entries imported'})
@@ -365,7 +365,7 @@ def import_entries(user_dao, round_id, request_dict):
     auto_dq = autodisqualify(user_dao, round_id, request_dict={})
     new_entry_stats['disqualified'] = auto_dq['data']
     if len(new_entry_stats['disqualified']) >= len(entries):
-        new_entry_stats['warnings'].append({'all disqualified': 
+        new_entry_stats['warnings'].append({'all disqualified':
                   'all entries disqualified by round settings'})
 
     return {'data': new_entry_stats}
@@ -698,7 +698,7 @@ def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
     now = datetime.datetime.now().isoformat()
-    output_name = 'montage_results-%s-%s.csv' % (rnd.name, now)
+    output_name = slugify('montage_results-%s-%s.csv' % (rnd.name, now))
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
