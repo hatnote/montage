@@ -525,6 +525,7 @@ class Entry(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
+    faves = relationship('Favorite')
     entered_rounds = relationship('RoundEntry')
     rounds = association_proxy('entered_rounds', 'round',
                                creator=lambda r: RoundEntry(round=r))
@@ -661,6 +662,13 @@ class Favorite(Base):
 
     flags = Column(JSONEncodedDict)
 
+    def to_details_dict(self):
+        ret = self.entry.to_details_dict()
+        ret['fave_date'] = format_date(self.create_date)
+        if self.modified_date:
+            ret['fave_date'] = format_date(self.modified_date)
+        return ret
+
 
 class Vote(Base):
     __tablename__ = 'votes'
@@ -691,13 +699,25 @@ class Vote(Base):
     def ranking_value(self):
         return int(self.value)
 
+    def check_fave(self):
+        rdb_session = inspect(self).session
+        # TODO: check, is this slow?
+        faves = (rdb_session.query(Favorite)
+                    .filter_by(entry_id=self.entry.id,
+                               user_id=self.user.id,
+                               status=ACTIVE_STATUS)
+                    .all())
+        return len(faves) > 0
+
+
     def to_info_dict(self):
         info = {'id': self.id,
                 'name': self.entry.name,
                 'user': self.user.username,
                 'value': self.value,
                 'date': format_date(self.modified_date),
-                'round_id': self.round_entry.round_id}
+                'round_id': self.round_entry.round_id,
+                'is_fave': self.check_fave()}
         info['review'] = self.flags.get('review')  # TODO
         return info
 
@@ -2418,16 +2438,20 @@ class JurorDAO(object):
                     .all()
         return tasks
 
-    def get_faves(self, limit=10, offset=0):
-        faves = (self.query(Favorite)
-                 .filter_by(user=self.user,
-                            status=ACTIVE_STATUS)
-                 .order_by(Favorite.create_date.desc())
-                 .limit(limit)
-                 .offset(0)
-                 .all())
-        ret = [(f.create_date, f.entry) for f in faves]
-        return ret
+    def get_faves(self, sort='desc', limit=10, offset=0):
+        faves_query = (self.query(Favorite)
+                            .filter_by(user=self.user,
+                                        status=ACTIVE_STATUS))
+        if sort == 'asc':
+            faves_query = faves_query.order_by(
+                            func.coalesce(Favorite.modified_date,
+                            Favorite.create_date))
+        else:
+            faves_query = faves_query.order_by(
+                            func.coalesce(Favorite.modified_date,
+                            Favorite.create_date).desc())
+        faves = faves_query.limit(limit).offset(0).all()
+        return faves
 
     def get_ratings_from_round(self, round_id, num,
                                sort, order_by, offset=0):
@@ -2646,21 +2670,31 @@ class JurorDAO(object):
         return
 
     def fave(self, round_id, entry_id):
+        existing_fave = (self.query(Favorite)
+                             .filter_by(entry_id=entry_id,
+                                        user=self.user)
+                             .first())  # there should be one
+        if existing_fave:
+            existing_fave.modified_date = datetime.datetime.utcnow()
+            existing_fave.status = ACTIVE_STATUS
+            return
+
         round_entry = self.get_round_entry(round_id, entry_id)
-        fav = Favorite(entry_id=round_entry.entry.id,
+        fave = Favorite(entry_id=round_entry.entry.id,
                        round_entry_id = round_entry.id,
                        campaign_id=round_entry.round.campaign.id,
                        user=self.user,
                        status=ACTIVE_STATUS)
-        self.rdb_session.add(fav)
+        self.rdb_session.add(fave)
 
     def unfave(self, round_id, entry_id):
-        fav = (self.query(Favorite)
-               .filter_by(entry_id=entry_id)
+        fave = (self.query(Favorite)
+               .filter_by(entry_id=entry_id,
+                          user=self.user)
                .filter(Favorite.round_entry.has(round_id=round_id))
                .one())
-        fav.status = CANCELLED_STATUS
-        fav.modified_date = datetime.datetime.utcnow()
+        fave.status = CANCELLED_STATUS
+        fave.modified_date = datetime.datetime.utcnow()
 
     def flag(self, round_id, entry_id, reason=None):
         round_entry = self.get_round_entry(round_id, entry_id)

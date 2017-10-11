@@ -175,17 +175,21 @@ def get_rankings_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
     if rnd.vote_method != 'ranking':
-        raise InvalidAction('round %s is not a ranking round' % round_id)
+        return {'status': 'failure',
+                'errors': 'round %s is not a ranking round' % round_id}
     ret = get_votes_from_round(user_dao, round_id, request, rnd=rnd)
     return ret
 
 
 def get_faves(user_dao, request_dict):
+    request_dict = request_dict or dict()
+
     juror_dao = JurorDAO(user_dao)
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
-    faves = juror_dao.get_faves(limit, offset)
-    return {'data': faves}
+    sort = request_dict.get('sort', 'desc')
+    faves = juror_dao.get_faves(sort, limit, offset)
+    return {'data': [f.to_details_dict() for f in faves]}
 
 
 def submit_ratings(user_dao, request_dict):
