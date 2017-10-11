@@ -107,21 +107,6 @@ def get_round(user_dao, round_id):
     return {'data': data}
 
 
-def get_tasks(user_dao, request):
-    # TODO: this needs a round. a given user can be participating in
-    # multiple campaigns at once.
-    count = request.values.get('count', 15)
-    offset = request.values.get('offset', 0)
-    juror_dao = JurorDAO(user_dao)
-    tasks = juror_dao.get_tasks(num=count, offset=offset)
-    stats = juror_dao.get_task_counts()
-    data = {'stats': stats,
-            'tasks': []}
-    for task in tasks:
-        data['tasks'].append(task.to_details_dict())
-    return {'data': data}
-
-
 def get_tasks_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)

@@ -53,9 +53,9 @@ ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
 
-# By default, srounds will support all the file types allowed on 
+# By default, srounds will support all the file types allowed on
 # Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
-DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif', 'svg', 'tiff', 
+DEFAULT_ALLOWED_FILETYPES = ['jpeg', 'png', 'gif', 'svg', 'tiff',
                              'xcf', 'webp']
 
 # Some basic config settings
@@ -337,7 +337,7 @@ class Round(Base):
         # checking.
         rdb_session = self._get_rdb_session()
         re_count = len(self.round_entries)
-        
+
         open_task_count = self._get_open_task_count(rdb_session=rdb_session)
         task_count = self._get_task_count(rdb_session=rdb_session)
         cancelled_task_count = rdb_session.query(Vote)\
@@ -879,7 +879,7 @@ class PublicDAO(object):
         if not entry:
             raise DoesNotExist('no entry named %s' % entry_name)
         return entry
-        
+
     def get_public_entry_info(self, entry_name):
         entry = self._get_entry_by_name(entry_name)
         ret = entry.to_details_dict()
@@ -1750,7 +1750,7 @@ class CoordinatorDAO(UserDAO):
             audit_log_q = audit_log_q.filter_by(action=action)
         audit_logs = audit_log_q.limit(limit).offset(offset).all()
         return audit_logs
-    
+
     def get_rating_advancing_group(self, round_id, threshold=None):
         #assert rnd.vote_method in ('rating', 'yesno')
 
@@ -2399,17 +2399,6 @@ class JurorDAO(object):
                    .one_or_none()
         return task
 
-    def get_tasks(self, num=1, offset=0):
-        tasks = self.query(Vote)\
-                    .filter(Vote.user == self.user,
-                            Vote.status == ACTIVE_STATUS)\
-                    .limit(num)\
-                    .offset(offset)\
-                    .all()
-        if not tasks:
-            raise Forbidden('no assigned tasks')
-        return tasks
-
     def get_total_tasks(self):
         task_count = self.query(Vote)\
                          .filter(Vote.user == self.user,
@@ -2472,7 +2461,7 @@ class JurorDAO(object):
             ratings_query = ratings_query.order_by(Vote.modified_date)
 
         ratings = ratings_query.limit(num).offset(offset).all()
-        
+
         if not ratings:
             raise Forbidden('no complete ratings')
         return ratings
