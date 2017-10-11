@@ -934,7 +934,7 @@ Returns a list of fave'd entries
   - `offset` (optional, default 0)
 
 ### Response
-  - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fav_date` for each
+  - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fave_date` for each
   - `status`: success or failure
   - `errors`: description of the failure (if any)
 

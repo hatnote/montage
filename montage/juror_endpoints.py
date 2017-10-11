@@ -192,11 +192,14 @@ def get_rankings_from_round(user_dao, round_id, request):
 
 
 def get_faves(user_dao, request_dict):
+    request_dict = request_dict or dict()
+
     juror_dao = JurorDAO(user_dao)
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
-    faves = juror_dao.get_faves(limit, offset)
-    return {'data': faves}
+    sort = request_dict.get('sort', 'desc')
+    faves = juror_dao.get_faves(sort, limit, offset)
+    return {'data': [f.to_details_dict() for f in faves]}
 
 
 def submit_rating(user_dao, request_dict):
