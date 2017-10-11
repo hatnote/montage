@@ -932,6 +932,7 @@ Returns a list of fave'd entries
 ### Parameters
   - `limit` (optional, default 10)
   - `offset` (optional, default 0)
+  - `sort` (optional, may be `asc` or `desc`, default `desc`)
 
 ### Response
   - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fave_date` for each
@@ -1199,6 +1200,7 @@ Complete information about a vote:
   - `review`: a description of the reason for the vote, provided by the user
   - `entry`: `entry details` dictionary
   - `date`: date the vote was modified (in ISO 8601 format)
+  - `is_fave`: true if a juror has marked this entry as a favorite
 
 ## round results summary
 Information about the end of a campaign:

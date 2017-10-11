@@ -525,6 +525,7 @@ class Entry(Base):
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
+    faves = relationship('Favorite')
     entered_rounds = relationship('RoundEntry')
     rounds = association_proxy('entered_rounds', 'round',
                                creator=lambda r: RoundEntry(round=r))
@@ -698,13 +699,25 @@ class Vote(Base):
     def ranking_value(self):
         return int(self.value)
 
+    def check_fave(self):
+        rdb_session = inspect(self).session
+        # TODO: check, is this slow?
+        faves = (rdb_session.query(Favorite)
+                    .filter_by(entry_id=self.entry.id,
+                               user_id=self.user.id,
+                               status=ACTIVE_STATUS)
+                    .all())
+        return len(faves) > 0
+
+
     def to_info_dict(self):
         info = {'id': self.id,
                 'name': self.entry.name,
                 'user': self.user.username,
                 'value': self.value,
                 'date': format_date(self.modified_date),
-                'round_id': self.round_entry.round_id}
+                'round_id': self.round_entry.round_id,
+                'is_fave': self.check_fave()}
         info['review'] = self.flags.get('review')  # TODO
         return info
 
@@ -2658,10 +2671,12 @@ class JurorDAO(object):
 
     def fave(self, round_id, entry_id):
         existing_fave = (self.query(Favorite)
-                             .filter_by(entry_id=entry_id)
-                             .one_or_none())
+                             .filter_by(entry_id=entry_id,
+                                        user=self.user)
+                             .first())  # there should be one
         if existing_fave:
             existing_fave.modified_date = datetime.datetime.utcnow()
+            existing_fave.status = ACTIVE_STATUS
             return
 
         round_entry = self.get_round_entry(round_id, entry_id)
@@ -2674,7 +2689,8 @@ class JurorDAO(object):
 
     def unfave(self, round_id, entry_id):
         fave = (self.query(Favorite)
-               .filter_by(entry_id=entry_id)
+               .filter_by(entry_id=entry_id,
+                          user=self.user)
                .filter(Favorite.round_entry.has(round_id=round_id))
                .one())
         fave.status = CANCELLED_STATUS
