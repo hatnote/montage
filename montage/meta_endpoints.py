@@ -74,7 +74,7 @@ def get_api_log_tail(config, user, request_dict):
 def get_api_exc_log_tail(config, user, request_dict):
     if not user.is_maintainer:
         raise Forbidden()
-    request_dict = request_dict or {}
+    request_dict = request_dict or dict()
     count = int(request_dict.get('count', DEFAULT_LINE_COUNT))
 
     log_path = config.get('api_exc_log_path')
@@ -119,6 +119,7 @@ def post_frontend_error_log(user, config, request_dict):
 
 def get_frontend_error_log(config, request_dict):
     # TODO
+    request_dict = request_dict or dict()
     count = int(request_dict.get('count', DEFAULT_LINE_COUNT))
     feel_path = config.get('feel_log_path', None)
     if not feel_path:
