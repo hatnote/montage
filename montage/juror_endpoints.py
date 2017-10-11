@@ -89,7 +89,7 @@ def get_campaign(user_dao, campaign_id):
     rounds = []
     for rnd in campaign.rounds:
         rnd_stats = user_dao.get_round_task_counts(rnd.id)
-        ballot = juror_dao.get_ballot(round_id)
+        ballot = juror_dao.get_ballot(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds
     return {'data': data}
@@ -105,16 +105,6 @@ def get_round(user_dao, round_id):
     rnd_stats = juror_dao.get_round_task_counts(round_id)
     data = make_juror_round_details(rnd, rnd_stats, ballot)  # TODO: add to Round model
     return {'data': data}
-
-
-def get_campaign_info(user_dao, campaign_id):
-    """
-    Summary: Get juror-level info for a round, identified by campaign ID.
-    """
-    juror_dao = JurorDAO(use_dao)
-    campaign = juror_dao.get_campaign(campaign_id)
-    ret = CampaignInfo(campaign)  # TODO: add as a method on the Round model?
-    return {'data': ret}
 
 
 def get_tasks(user_dao, request):
@@ -198,31 +188,6 @@ def get_faves(user_dao, request_dict):
     return {'data': faves}
 
 
-def submit_rating(user_dao, request_dict):
-    # TODO: Check permissions
-    juror_dao = JurorDAO(user_dao)
-    vote_id = request_dict['vote_id']
-    rating = float(request_dict['rating'])
-    task = juror_dao.get_task(vote_id)
-    rnd = task.round_entry.round
-    rnd.confirm_active()
-    if rnd.vote_method == 'rating':
-        if rating not in VALID_RATINGS:
-            raise InvalidAction('rating expected one of %s, not %r'
-                                % (VALID_RATINGS, rating))
-    elif rnd.vote_method == 'yesno':
-        if rating not in VALID_YESNO:
-            raise InvalidAction('rating expected one of %s, not %r'
-                                % (VALID_YESNO, rating))
-    if task.user != user:  # TODO: this should be handled by the dao get
-        raise PermissionDenied()
-    if task.status == 'active':
-        juror_dao.apply_rating(task, rating)
-
-    # What should this return?
-    return {'data': {'vote_id': vote_id, 'rating': rating}}
-
-
 def submit_ratings(user_dao, request_dict):
     """message format:
 
@@ -261,7 +226,6 @@ def submit_ratings(user_dao, request_dict):
     task_map = dict([(t.id, t) for t in tasks])
     round_id_set = set([t.round_entry.round_id for t in tasks])
     if not len(round_id_set) == 1:
-        import pdb;pdb.set_trace()
         raise InvalidAction('can only submit ratings for one round at a time')
 
     round_id = list(round_id_set)[0]
