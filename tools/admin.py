@@ -483,8 +483,12 @@ if __name__ == '__main__':
     parser.add_argument('--ratings-csv-path',
                         help='ratings file (use with --apply-ratings)',
                         type=str)
+    parser.add_argument('--import_gist',
+                        help='import files from a gist file',
+                        type=str)
 
     parser.add_argument('--campaign', help='campaign id', type=int)
+    parser.add_argument('--round', help='round id', type=int)
     parser.add_argument('--force', action='store_true',
                         help='Use with caution when cancelling things')
     parser.add_argument('--debug', action='store_true')
@@ -576,6 +580,16 @@ if __name__ == '__main__':
         coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
         coord_dao.activate_round(rnd_id)
         print '++ activated round %s (%s)' % (rnd.id, rnd.name)
+
+    if args.import_gist:
+        rnd_id = args.round
+        gist_url = args.import_gist
+        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
+        entries, warnings = coord_dao.add_entries_from_csv(rnd_id, gist_url)
+        stats = coord_dao.add_round_entries(rnd_id, entries,
+                                            method='gistcsv',
+                                            params={'gist_url': gist_url})
+        print '++ added entries to round %s: %r' % (rnd_id, stats)
 
     if args.pause_round:
         rnd_id = args.pause_round
