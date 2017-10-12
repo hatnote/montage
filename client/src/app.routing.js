@@ -28,22 +28,11 @@ function stateConfig(
     })
     .state('main.vote-edit', {
       url: '/vote/:id/edit',
-      template: '<mont-vote-edit data="$resolve.round" tasks="$resolve.tasks"></mont-round>',
-      resolve: {
-        round: ($stateParams, jurorService) => jurorService.getRound($stateParams.id.split('-')[0]),
-        tasks: ($q, $stateParams, jurorService) => {
-          const votes = {
-            rating: jurorService.getPastVotes($stateParams.id.split('-')[0]),
-            ranking: jurorService.getPastRanking($stateParams.id.split('-')[0]),
-          };
-          return $q
-            .all(votes)
-            .then((response) => {
-              if (response.rating.data.length) { return response.rating; }
-              return response.ranking;
-            });
-        },
-      },
+      template: '<mont-vote-edit></mont-vote-edit>',
+    })
+    .state('main.vote-faves', {
+      url: '/vote/:id/faves',
+      template: '<mont-vote-faves></mont-vote-faves>',
     });
 
   $urlRouterProvider.otherwise('/');
