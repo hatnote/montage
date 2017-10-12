@@ -34,9 +34,10 @@ import vote from './components/vote/vote.component';
 import votebox from './components/vote/votebox/votebox.component';
 import voteRanking from './components/vote/vote-ranking/vote-ranking.component';
 import voteSingle from './components/vote/vote-single/vote-single.component';
+import voteEdit from './components/vote-edit/vote-edit';
+import voteFaves from './components/vote-faves/vote-faves';
 
 import login from './components/login/login.component';
-import voteEdit from './components/vote-edit/vote-edit';
 import userList from './components/user-list';
 import toolbar from './components/toolbar/toolbar.component';
 import './components/angular-sortable-view';
@@ -88,9 +89,10 @@ angular.module('montage',
   .component('montVotebox', votebox)
   .component('montVoteRanking', voteRanking)
   .component('montVoteSingle', voteSingle)
+  .component('montVoteEdit', voteEdit)
+  .component('montVoteFaves', voteFaves)
 
   .component('montLogin', login)
-  .component('montVoteEdit', voteEdit)
   .component('montUserList', userList)
   .component('montToolbar', toolbar)
 

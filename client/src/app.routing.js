@@ -18,6 +18,10 @@ function stateConfig(
       url: '/campaign/:id',
       template: '<mont-campaign></mont-campaign>',
     })
+    .state('main.vote-faves', {
+      url: '/vote/faves',
+      template: '<mont-vote-faves></mont-vote-faves>',
+    })
     .state('main.vote', {
       url: '/vote/:id',
       template: '<mont-vote data="$resolve.round" tasks="$resolve.tasks"></mont-vote>',
@@ -29,10 +33,6 @@ function stateConfig(
     .state('main.vote-edit', {
       url: '/vote/:id/edit',
       template: '<mont-vote-edit></mont-vote-edit>',
-    })
-    .state('main.vote-faves', {
-      url: '/vote/:id/faves',
-      template: '<mont-vote-faves></mont-vote-faves>',
     });
 
   $urlRouterProvider.otherwise('/');
