@@ -7,6 +7,7 @@
       campaign="campaign" index="$index">
     </mont-campaign-admin-box>
     <mont-campaign-admin-box
+      ng-if="$ctrl.user.is_organizer"
       campaign="'new'" index="$ctrl.campaignsAdmin.length">
     </mont-campaign-admin-box>
   </div>
