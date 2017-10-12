@@ -210,7 +210,7 @@ def full_run(base_url, remote):
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
     # Add a round to a campaign
-    rnd_data = {'name': 'Test yes/no round',
+    rnd_data = {'name': 'Test yes/no round ნ',
                 'vote_method': 'yesno',
                 'quorum': 3,
                 'deadline_date': "2016-10-15T00:00:00",
@@ -566,9 +566,12 @@ def full_run(base_url, remote):
 
     rnd_2_id = resp['data']['id']
 
-    # TODO: test getting a csv of final round results
-    #resp = fetch_raw(base_url + '/admin/round/%s/download' % round_id,
-    #                  as_user='LilyOfTheWest')
+    # TODO: test getting a csv of final round results needs more instrumentation
+    print('>> downloading results')
+    resp = fetch_raw(base_api_url + '/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
+    resp_bytes = resp.read()
+    assert len(resp_bytes) > 100
+    assert resp_bytes.count(',') > 10
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
