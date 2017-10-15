@@ -125,3 +125,33 @@ contest organization and judging.
 
 Maintainers can technically do anything, as they have database access
 to the system, however they are intended to only add organizers.
+
+# Vote allocation
+
+## Static versus dynamic
+
+As of writing, Montage is designed for vote pre-allocation. That is,
+on round initiation, voting tasks are preassigned to jury members.
+
+One design that's been debated is dynamic task assignment. The early
+design of Montage didn't support this for the following reasons:
+
+* Implementation complexity and potential performance issues
+* Potentially unfair results due to one or more jury members having
+  more time/initiative, leading to them voting more than other jurors
+
+Preallocation is simpler, ensures an even distribution of votes, sets
+a clear expectation of work for juror and coordinator, ultimately
+leaving the coordinator in charge.
+
+A future version of Montage might want to support dynamic dispensing
+of votes. The current schema could support it, but the user_id would
+be left blank. Then, for each batch of votes, it's a matter of finding
+RoundEntries that have not been voted on by the current user. It may
+be possible to do this efficiently.
+
+The important feature, which I am about to implement, is allocation
+weighting. That is, coordinators should be able to set a minimum and
+maximum amount of work expected from each juror. (The version I am
+about to implement is still pre-allocated, so the minimum and maximum
+are the same value.)
