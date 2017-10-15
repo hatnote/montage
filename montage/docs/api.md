@@ -849,6 +849,26 @@ None
   - 403: not a juror on this round
   - 404: vote(s) do not exist
 
+## /v1/juror/round/`<round_id:int>`/tasks/skip
+Skip a task, so the next task goes to the front of your queue
+
+ - Function: [skip_rating](https://github.com/hatnote/montage/blob/master/montage/juror_endpoints.py#L)
+ - Method: POST
+
+### Parameters
+ - `round_id` (in path)
+ - `vote_id`: the vote id to skip (from `/v1/juror/round/<round_id:int>/tasks`)
+
+### Response
+Similar to `/v1/juror/round/<round_id:int>/tasks`:
+  - `data`: 
+    - `stats`
+    - `tasks`: list of [`vote details`](#vote-details) dictionaries
+
+### Errors
+  - 403: not a juror on this round
+  - 404: vote(s) do not exist
+
 ## /v1/juror/round/`<round_id:int>`/votes 
 Return submitted ratings, rankings, yesno votes from a juror
 
