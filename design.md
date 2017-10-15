@@ -155,3 +155,7 @@ weighting. That is, coordinators should be able to set a minimum and
 maximum amount of work expected from each juror. (The version I am
 about to implement is still pre-allocated, so the minimum and maximum
 are the same value.)
+
+Dynamic voting would be necessary in the event Montage is used to
+organize a competition where voting is public, open to any
+Commons-registered user.

@@ -2882,8 +2882,6 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
     * Evens out work queues, so that workload can be redistributed.
 
     """
-    # TODO: have this cancel tasks and create new ones.
-
     assert len(new_jurors) >= rnd.quorum
 
     cur_votes = session.query(Vote)\
