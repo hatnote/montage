@@ -436,6 +436,12 @@ def full_run(base_url, remote):
                  {'ratings': [{'vote_id': vote_id, 'value': 1.0}]},
                  as_user='Jimbo Wales')
 
+    skip_vote_id = tasks[1]['id']
+    resp = fetch('juror: skip a rating',
+                 '/juror/round/%s/tasks/skip' % round_id,
+                 {'vote_id': skip_vote_id},
+                 as_user='Jimbo Wales')
+
     entry_id = tasks[-1]['entry']['id']
     resp = fetch('juror: mark an entry as favorite',
                  '/juror/round/%s/%s/fave' % (round_id, entry_id),
@@ -743,6 +749,8 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                             '/juror/round/%s/tasks?count=%s'
                             % (round_id, per_fetch), log_level=DEBUG,
                             as_user=j_username)['data']['tasks']
+            if len(t_dicts) < per_fetch:
+                print '!! last batch: %r' % ([t['id'] for t in t_dicts])
             if not t_dicts:
                 break  # right?
             ratings = []

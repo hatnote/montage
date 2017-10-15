@@ -35,6 +35,7 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
+           POST('/juror/round/<round_id:int>/tasks/skip', skip_rating),
            GET('/juror/round/<round_id:int>/votes', get_votes_from_round),
            GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
            GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round),
@@ -110,6 +111,7 @@ def get_round(user_dao, round_id):
 def get_tasks_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
+    # TODO: remove offset once it's removed from the client
     juror_dao = JurorDAO(user_dao)
     juror_dao.confirm_active(round_id)
     rnd = juror_dao.get_round(round_id)
@@ -278,6 +280,21 @@ def submit_ratings(user_dao, request_dict):
         juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
+
+
+def skip_rating(user_dao, round_id, request, request_dict):
+    juror_dao = JurorDAO(user_dao)
+    
+    try:
+        vote_id = request_dict['vote_id']
+    except Exception as e:
+        import pdb;pdb.set_trace()
+        raise InvalidAction('must provide skip id')
+
+    juror_dao.skip_voting(vote_id)
+    next_tasks = get_tasks_from_round(user_dao, round_id, request)
+
+    return next_tasks
 
 
 def submit_fave(user_dao, round_id, entry_id):
