@@ -97,6 +97,12 @@
     </md-button>
     <md-button
         ng-disabled="$ctrl.loading"
+        ng-click="$ctrl.rating.setRate()">
+      <md-icon>arrow_forward</md-icon>
+      Skip (vote later)
+    </md-button>
+    <md-button
+        ng-disabled="$ctrl.loading"
         ui-sref="main.vote-edit({id: $ctrl.round.link})">
       <md-icon ng-if="$ctrl.loading !== 'edit'">mode_edit</md-icon>
       <md-progress-circular
