@@ -113,7 +113,7 @@ function controller(
           element.value = (element.value * 4) + 1;
         });
         if (response.data.length) {
-          if (response.data[0].id === vm.votes[0].id) {
+          if (vm.votes.length && response.data[0].id === vm.votes[0].id) {
             // this is ranking round
             return false;
           }
@@ -204,7 +204,7 @@ function controller(
     const ratings = vm.votes.map(image => ({
       task_id: image.id,
       value: vm.votes.indexOf(image),
-      review: image.review ? image.review : null
+      review: image.review ? image.review : null,
     }));
 
     jurorService
