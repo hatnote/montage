@@ -1890,6 +1890,34 @@ class CoordinatorDAO(UserDAO):
 
         return results
 
+    def add_coordinator(self, username):
+        user = self.get_or_create_user(username, 'coordinator',
+                                       campaign=self.campaign)
+        if user in self.campaign.coords:
+            raise InvalidAction('user is already a coordinator')
+        self.campaign.coords.append(user)
+        self.rdb_session.add(user)
+
+        msg = ('%s added %s as a coordinator of campaign "%s"'
+               % (self.user.username, user.username, self.campaign.name))
+        self.log_action('add_coordinator', campaign_id=self.campaign.id,
+                        message=msg, role='organizer')
+        return user
+
+    def remove_coordinator(self, username):
+        removed = None
+        for user in self.campaign.coords:
+            if user.username == username:
+                self.campaign.coords.remove(user)
+                removed = user
+        if not removed:
+            raise InvalidAction('user %s is not a coordinator' % username)
+        msg = ('%s removed %s as a coordinator on campaign "%s" (#%s)'
+               % (self.user.username, username, self.campaign.name, self.campaign.id))
+        self.log_action('remove_coordinator', campaign=self.campaign, message=msg,
+                        role='organizer')
+        return removed
+
     def modify_jurors(self, round_id, new_jurors):
         # NOTE: this does not add or remove tasks. Contrast this with
         # changing the quorum, which would remove tasks, but carries the
@@ -2143,36 +2171,6 @@ class OrganizerDAO(object):
                   series_dict.keys()))
         self.log_action('edit_series', message=msg, role='organizer')
         return series
-
-    def add_coordinator(self, campaign_id, username):
-        campaign = self.user_dao.get_campaign(campaign_id)
-        user = self.get_or_create_user(username, 'coordinator',
-                                       campaign=campaign)
-        if user in campaign.coords:
-            raise InvalidAction('user is already a coordinator')
-        campaign.coords.append(user)
-        self.rdb_session.add(user)
-
-        msg = ('%s added %s as a coordinator of campaign "%s"'
-               % (self.user.username, user.username, campaign.name))
-        self.log_action('add_coordinator', campaign_id=campaign.id,
-                        message=msg, role='organizer')
-        return user
-
-    def remove_coordinator(self, campaign_id, username):
-        campaign = self.user_dao.get_campaign(campaign_id)
-        removed = None
-        for user in campaign.coords:
-            if user.username == username:
-                campaign.coords.remove(user)
-                removed = user
-        if not removed:
-            raise InvalidAction('user %s is not a coordinator' % username)
-        msg = ('%s removed %s as a coordinator on campaign "%s" (#%s)'
-               % (self.user.username, username, campaign.name, campaign.id))
-        self.log_action('remove_coordinator', campaign=campaign, message=msg,
-                        role='organizer')
-        return removed
 
     def create_campaign(self, name, url, open_date, close_date, series_id, coords=None):
         other_campaigns = self._get_campaigns_named(name)
@@ -2435,7 +2433,8 @@ class JurorDAO(object):
                           .filter_by(user=self.user,
                                      status=ACTIVE_STATUS)
                           .filter(
-                            Vote.round_entry.has(round_id=round_id)))
+                            Vote.round_entry.has(round_id=round_id))
+                          .order_by(Vote.id))
         
         # Check if this round_juror has skipped any tasks
         round_juror = self._get_round_juror(round_id)

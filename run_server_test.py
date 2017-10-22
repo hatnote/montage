@@ -198,14 +198,15 @@ def full_run(base_url, remote):
                  as_user='LilyOfTheWest')
 
     # note: you can also add coordinators when the round is created
-    resp = fetch('organizer: add coordinator to campaign',
+    resp = fetch('coordinator: add coordinator to campaign',
                  '/admin/campaign/%s/add_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
-    resp = fetch('organizer: remove coordinator',
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: remove coordinator',
                  '/admin/campaign/%s/remove_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
+                 as_user='LilyOfTheWest')
 
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)

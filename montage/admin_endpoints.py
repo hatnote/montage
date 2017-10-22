@@ -824,6 +824,44 @@ def get_disqualified(user_dao, round_id):
     data = [re.to_dq_details() for re in round_entries]
     return {'data': data}
 
+
+def add_coordinator(user_dao, campaign_id, request_dict):
+    """
+    Summary: -
+        Add a new coordinator identified by Wikimedia username to a campaign
+        identified by campaign ID
+
+    Request model:
+        username
+
+    Response model:
+        username
+        last_active_date
+        campaign_id
+
+    Errors:
+       403: User does not have permission to add coordinators
+
+    """
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    new_user_name = request_dict.get('username')
+    new_coord = coord_dao.add_coordinator(new_user_name)
+    data = {'username': new_coord.username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(new_coord.last_active_date)}
+    return {'data': data}
+
+
+def remove_coordinator(user_dao, campaign_id, request_dict):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    username = request_dict.get('username')
+    old_coord = coord_dao.remove_coordinator(username)
+    data = {'username': username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(old_coord.last_active_date)}
+    return {'data': data}
+
+
 # Endpoints restricted to maintainers
 
 def add_organizer(user_dao, request_dict):
@@ -862,41 +900,7 @@ def remove_organizer(user_dao, request_dict):
 
 # Endpoints restricted to organizers
 
-def add_coordinator(user_dao, campaign_id, request_dict):
-    """
-    Summary: -
-        Add a new coordinator identified by Wikimedia username to a campaign
-        identified by campaign ID
 
-    Request mode:
-        username
-
-    Response model:
-        username
-        last_active_date
-        campaign_id
-
-    Errors:
-       403: User does not have permission to add coordinators
-
-    """
-    org_dao = OrganizerDAO(user_dao)
-    new_user_name = request_dict.get('username')
-    new_coord = org_dao.add_coordinator(campaign_id, new_user_name)
-    data = {'username': new_coord.username,
-            'campaign_id': campaign_id,
-            'last_active_date': format_date(new_coord.last_active_date)}
-    return {'data': data}
-
-
-def remove_coordinator(user_dao, campaign_id, request_dict):
-    org_dao = OrganizerDAO(user_dao)
-    username = request_dict.get('username')
-    old_coord = org_dao.remove_coordinator(campaign_id, username)
-    data = {'username': username,
-            'campaign_id': campaign_id,
-            'last_active_date': format_date(old_coord.last_active_date)}
-    return {'data': data}
 
 
 ADMIN_API_ROUTES, ADMIN_UI_ROUTES = get_admin_routes()
