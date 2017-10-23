@@ -78,12 +78,20 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/results/download', download_results_csv),
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
            GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv),
+           GET('/admin/round/<round_id:int>/reviews', get_round_reviews),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report_raw)]
     ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
               'report.html')]
     # TODO: arguably download URLs should go into "ui" as well,
     # anything that generates a response directly (or doesn't return json)
     return api, ui
+
+
+def get_round_reviews(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    entries = coord_dao.get_reviews_table(round_id)
+    entry_infos = [e.to_details_dict() for e in entries]
+    return {'data': entry_infos}
 
 
 def get_round_entries(user_dao, round_id):

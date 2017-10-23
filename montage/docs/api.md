@@ -669,6 +669,18 @@ Get a preview of which files will be disqualified
   - 403: not a coordinator for this campaign
   - 404: round does not exist
 
+## /v1/admin/round/`<round_id:int>`/reviews
+Returns a list of reviews
+
+  - Function: get_round_reviews
+  - Method: GET
+
+### Parameters
+  - `round_id` (in path)
+
+### Response
+  - `data`: list of vote [`vote details`](#vote-details) dictionaries
+
 ## /v1/admin/round/`<round_id:int>`/results
 Returns a dictionary of votes per user
   

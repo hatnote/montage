@@ -1658,6 +1658,11 @@ class CoordinatorDAO(UserDAO):
         self.log_action('cancel_round', round=rnd, message=msg)
         return rnd
 
+    def get_reviews_table(self, round_id):
+        rnd = self.get_round(round_id)
+        votes = self.get_all_reviews(round_id)
+        return votes
+
     def make_vote_table(self, round_id):
         rnd = self.get_round(round_id)
         if rnd.vote_method == 'ranking':
@@ -1871,6 +1876,18 @@ class CoordinatorDAO(UserDAO):
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\
                       .all()
+        return results
+
+    def get_all_reviews(self, round_id):
+        results = (self.query(Vote)
+                       .join(RoundEntry)
+                       .join(Entry)
+                       .filter(RoundEntry.round_id == round_id,
+                               RoundEntry.dq_user_id == None,
+                               Vote.status != CANCELLED_STATUS,
+                               Vote.flags != {})
+                       .all())
+        results = [r for r in results if r.flags.get('review')]
         return results
 
     def get_all_tasks(self, round_id):
