@@ -1194,6 +1194,9 @@ class CoordinatorDAO(UserDAO):
         jurors = [self.get_or_create_user(j, 'juror', campaign=self.campaign)
                   for j in jurors]
 
+        if type(deadline_date) is not DateTime:
+            deadline_date = js_isoparse(deadline_date)
+
         for (k, v) in DEFAULT_ROUND_CONFIG.items():
             config[k] = config.get(k, v)
 
@@ -2174,6 +2177,13 @@ class OrganizerDAO(object):
 
     def create_campaign(self, name, url, open_date, close_date, series_id, coords=None):
         other_campaigns = self._get_campaigns_named(name)
+
+        if type(open_date) is not DateTime:
+            open_date = js_isoparse(open_date)
+
+        if type(close_date) is not DateTime:
+            close_date = js_isoparse(close_date)
+
         if other_campaigns:
             raise InvalidAction('A campaign named %s already exists' % name)
         if not coords:
