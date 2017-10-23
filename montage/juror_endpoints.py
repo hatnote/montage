@@ -200,12 +200,18 @@ def submit_ratings(user_dao, request_dict):
     elif not r_dicts:
         return {}  # submitting no ratings = immediate return
 
+    review_map = {}
+
     for rd in r_dicts:
-        review = rd.get('review') or ''
-        review_stripped = review.strip()
-        if len(review_stripped) > 8192:
-            raise ValueError('review must be less than 8192 chars,'
-                             ' not %r' % len(review_stripped))
+        review = rd.get('review')
+        if review:
+            review_stripped = review.strip()
+            task_id = rd.get('vote_id') or rd['task_id']
+            if len(review_stripped) > 8192:
+                raise ValueError('review must be less than 8192 '
+                                 'chars, not %r' % len(review_stripped))
+            review_map[task_id] = review_stripped
+
     try:
         id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
     except KeyError as e:
@@ -256,7 +262,9 @@ def submit_ratings(user_dao, request_dict):
     if style in ('rating', 'yesno'):
         for t in tasks:
             val = id_map[t.id]
-            juror_dao.edit_rating(t, val)
+            review = review_map.get(t.id)
+            juror_dao.edit_rating(t, val, review=review)
+
     elif style == 'ranking':
         # This part is designed to support ties ok though
         """

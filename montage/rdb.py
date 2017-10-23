@@ -1194,7 +1194,7 @@ class CoordinatorDAO(UserDAO):
         jurors = [self.get_or_create_user(j, 'juror', campaign=self.campaign)
                   for j in jurors]
 
-        if type(deadline_date) is not DateTime:
+        if type(deadline_date) is not datetime.datetime:
             deadline_date = js_isoparse(deadline_date)
 
         for (k, v) in DEFAULT_ROUND_CONFIG.items():
@@ -2178,10 +2178,10 @@ class OrganizerDAO(object):
     def create_campaign(self, name, url, open_date, close_date, series_id, coords=None):
         other_campaigns = self._get_campaigns_named(name)
 
-        if type(open_date) is not DateTime:
+        if type(open_date) is not datetime.datetime:
             open_date = js_isoparse(open_date)
 
-        if type(close_date) is not DateTime:
+        if type(close_date) is not datetime.datetime:
             close_date = js_isoparse(close_date)
 
         if other_campaigns:
@@ -2661,7 +2661,7 @@ class JurorDAO(object):
         self.rdb_session.add(vote)
         return vote
 
-    def edit_rating(self, task, value):
+    def edit_rating(self, task, value, review=''):
         if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
@@ -2669,6 +2669,8 @@ class JurorDAO(object):
                                  .filter_by(id=task.id)\
                                  .first()
         rating.value = value
+        if review:
+            rating.flags['review'] = review
         rating.modified_date = now
         rating.status = COMPLETED_STATUS
         return rating

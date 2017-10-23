@@ -763,11 +763,13 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                 # arb scoring
                 if r_dict['vote_method'] == 'yesno':
                     value = len(j_username + t_dict['entry']['name']) % 2
-                    if value == 1.0:
+                    if value == 1:
                         review = '%s likes this' % j_username
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                     entry_id = t_dict['entry']['id']
+                    if value == 1:
+                        review = '%s thinks this is great' % j_username
                     '''
                     # Note: only if you want some extra faves for testing
                     if value == 1.0:
@@ -795,6 +797,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
                 rating_dict['value'] = value
                 if review:
+                    print review
                     rating_dict['review'] = review
 
                 ratings.append(rating_dict)
