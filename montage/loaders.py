@@ -103,6 +103,9 @@ def load_name_list(file_obj, source='local'):
 
 
 def get_entries_from_gist(raw_url, source='local'):
+    if 'githubusercontent' not in raw_url:
+        raw_url = raw_url.replace('gist.github.com',
+                                  'gist.githubusercontent.com') + '/raw'
     resp = urllib2.urlopen(raw_url)
     try:
         ret, warnings = load_full_csv(resp)
