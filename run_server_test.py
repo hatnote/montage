@@ -185,7 +185,7 @@ def full_run(base_url, remote):
     data = {'name': 'A demo campaign 2016',
             'open_date': "2015-09-01 17:00:00",  # UTC times,
             'close_date': None}
-    resp = fetch('organizer: edit campaign',
+    resp = fetch('coordinator: edit campaign',
                  '/admin/campaign/%s/edit' % campaign_id,
                  data, as_user='Yarl')
 

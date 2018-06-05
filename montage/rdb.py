@@ -964,7 +964,7 @@ class UserDAO(PublicDAO):
         return rnd
 
     def get_campaign(self, campaign_id):
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             return self._get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(
@@ -976,7 +976,7 @@ class UserDAO(PublicDAO):
         return campaign
 
     def get_all_campaigns(self):
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             return self._get_every_campaign()
         campaigns = self.query(Campaign)\
                         .filter(
@@ -988,7 +988,7 @@ class UserDAO(PublicDAO):
         return campaigns
 
     def get_round(self, round_id):
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             return self._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
@@ -1738,7 +1738,7 @@ class CoordinatorDAO(UserDAO):
     def get_campaign_report(self):
         if self.campaign.status != FINALIZED_STATUS:
             raise Forbidden('cannot open report for campaign %s' % self.campaign.id)
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             summary = (self.query(RoundResultsSummary)
                            .filter_by(campaign_id=self.campaign.id)
                            .one_or_none())
@@ -2366,7 +2366,7 @@ class JurorDAO(object):
 
     # Read methods
     def get_campaign(self, campaign_id):
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             return self.user_dao._get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
@@ -2378,7 +2378,7 @@ class JurorDAO(object):
         return campaign
 
     def get_round(self, round_id):
-        if self.user.is_maintainer or self.user.is_organizer:
+        if self.user.is_maintainer:
             return self.user_dao._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
