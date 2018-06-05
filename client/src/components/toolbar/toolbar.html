@@ -3,7 +3,7 @@
   <div class="md-toolbar-tools">
     <md-button class="toolbar__title" ui-sref="main.dashboard">
       Montage
-      <span class="text-primary">{{ $ctrl.config.env.name }}</span>
+      <span class="text-primary">{{ $ctrl.config.env.name  == 'prod' ? '' : $ctrl.config.env.name }}</span>
     </md-button>
     <span flex></span>
 
