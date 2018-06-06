@@ -1938,7 +1938,7 @@ class CoordinatorDAO(UserDAO):
                         role='organizer')
         return removed
 
-    def modify_jurors(self, round_id, new_jurors):
+    def modify_jurors(self, round_id, new_jurors, force_balance=False):
         # NOTE: this does not add or remove tasks. Contrast this with
         # changing the quorum, which would remove tasks, but carries the
         # issue of possibly having to reweight or discard completed ratings.
@@ -1965,10 +1965,16 @@ class CoordinatorDAO(UserDAO):
         new_juror_names = sorted([nj.username for nj in new_jurors])
         old_jurors = self.get_active_jurors(rnd.id)
         old_juror_names = sorted([oj.username for oj in old_jurors])
+        
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
-        res = reassign_tasks(self.rdb_session, rnd, new_jurors)
+        if len(new_jurors) == len(old_jurors) and not force_balance:
+            added_juror = list(set(new_jurors) - set(old_jurors))[0]
+            removed_juror = list(set(old_jurors) - set(new_jurors))[0]
+            res = swap_tasks(self.rdb_session, rnd, added_juror, removed_juror)
+        else:
+            res = reassign_tasks(self.rdb_session, rnd, new_jurors)
 
         for juror in new_jurors:
             if juror not in rnd.jurors:
@@ -2885,6 +2891,27 @@ def reassign_tasks(session, rnd, new_jurors, strategy=None):
                                      strategy=strategy)
     else:
         raise ValueError('invalid round vote method: %r' % rnd.vote_method)
+    return ret
+
+
+def swap_tasks(session, rnd, new_juror, old_juror):
+    # Transfer tasks from one juror to another
+       
+    votes_to_swap = (session.query(Vote)
+                            .filter_by(status=ACTIVE_STATUS, user=old_juror)
+                            .join(RoundEntry)
+                            .filter_by(round=rnd).all())
+
+    # TODO: should it check for files uploaded by the new juror?
+
+    for vote in votes_to_swap:
+        vote.user = new_juror
+
+    session.flush()
+
+    ret = {'reassigned_task_count': len(votes_to_swap),
+           'task_count_mean': -1}
+
     return ret
 
 
