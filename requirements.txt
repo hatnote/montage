@@ -4,7 +4,7 @@ chert==0.3.0
 clastic==0.5.0
 html5lib==0.999999
 hyperlink==17.2.1
-lithoxyl==0.4.1
+lithoxyl==0.4.3
 Markdown==2.6.2
 mwoauth==0.2.8
 oauthlib==1.1.2
