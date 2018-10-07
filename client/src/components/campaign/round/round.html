@@ -165,7 +165,7 @@
         Pause
       </md-button>
       <md-button
-          ng-if="$ctrl.round.status !== 'finalized'"
+          ng-if="$ctrl.last"
           ng-disabled="!$ctrl.round.details.is_closeable || $ctrl.loading"
           ng-click="$ctrl.finalizeRound()">
         <md-icon>done</md-icon>

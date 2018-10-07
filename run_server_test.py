@@ -185,7 +185,7 @@ def full_run(base_url, remote):
     data = {'name': 'A demo campaign 2016',
             'open_date': "2015-09-01 17:00:00",  # UTC times,
             'close_date': None}
-    resp = fetch('organizer: edit campaign',
+    resp = fetch('coordinator: edit campaign',
                  '/admin/campaign/%s/edit' % campaign_id,
                  data, as_user='Yarl')
 
@@ -198,14 +198,15 @@ def full_run(base_url, remote):
                  as_user='LilyOfTheWest')
 
     # note: you can also add coordinators when the round is created
-    resp = fetch('organizer: add coordinator to campaign',
+    resp = fetch('coordinator: add coordinator to campaign',
                  '/admin/campaign/%s/add_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
-    resp = fetch('organizer: remove coordinator',
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: remove coordinator',
                  '/admin/campaign/%s/remove_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
+                 as_user='LilyOfTheWest')
 
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
@@ -762,11 +763,13 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                 # arb scoring
                 if r_dict['vote_method'] == 'yesno':
                     value = len(j_username + t_dict['entry']['name']) % 2
-                    if value == 1.0:
+                    if value == 1:
                         review = '%s likes this' % j_username
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                     entry_id = t_dict['entry']['id']
+                    if value == 1:
+                        review = '%s thinks this is great' % j_username
                     '''
                     # Note: only if you want some extra faves for testing
                     if value == 1.0:
@@ -794,6 +797,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
                 rating_dict['value'] = value
                 if review:
+                    print review
                     rating_dict['review'] = review
 
                 ratings.append(rating_dict)

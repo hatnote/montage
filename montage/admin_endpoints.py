@@ -78,12 +78,20 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/results/download', download_results_csv),
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
            GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv),
+           GET('/admin/round/<round_id:int>/reviews', get_round_reviews),
            GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report_raw)]
     ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
               'report.html')]
     # TODO: arguably download URLs should go into "ui" as well,
     # anything that generates a response directly (or doesn't return json)
     return api, ui
+
+
+def get_round_reviews(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    entries = coord_dao.get_reviews_table(round_id)
+    entry_infos = [e.to_details_dict() for e in entries]
+    return {'data': entry_infos}
 
 
 def get_round_entries(user_dao, round_id):
@@ -824,6 +832,44 @@ def get_disqualified(user_dao, round_id):
     data = [re.to_dq_details() for re in round_entries]
     return {'data': data}
 
+
+def add_coordinator(user_dao, campaign_id, request_dict):
+    """
+    Summary: -
+        Add a new coordinator identified by Wikimedia username to a campaign
+        identified by campaign ID
+
+    Request model:
+        username
+
+    Response model:
+        username
+        last_active_date
+        campaign_id
+
+    Errors:
+       403: User does not have permission to add coordinators
+
+    """
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    new_user_name = request_dict.get('username')
+    new_coord = coord_dao.add_coordinator(new_user_name)
+    data = {'username': new_coord.username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(new_coord.last_active_date)}
+    return {'data': data}
+
+
+def remove_coordinator(user_dao, campaign_id, request_dict):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    username = request_dict.get('username')
+    old_coord = coord_dao.remove_coordinator(username)
+    data = {'username': username,
+            'campaign_id': campaign_id,
+            'last_active_date': format_date(old_coord.last_active_date)}
+    return {'data': data}
+
+
 # Endpoints restricted to maintainers
 
 def add_organizer(user_dao, request_dict):
@@ -862,41 +908,7 @@ def remove_organizer(user_dao, request_dict):
 
 # Endpoints restricted to organizers
 
-def add_coordinator(user_dao, campaign_id, request_dict):
-    """
-    Summary: -
-        Add a new coordinator identified by Wikimedia username to a campaign
-        identified by campaign ID
 
-    Request mode:
-        username
-
-    Response model:
-        username
-        last_active_date
-        campaign_id
-
-    Errors:
-       403: User does not have permission to add coordinators
-
-    """
-    org_dao = OrganizerDAO(user_dao)
-    new_user_name = request_dict.get('username')
-    new_coord = org_dao.add_coordinator(campaign_id, new_user_name)
-    data = {'username': new_coord.username,
-            'campaign_id': campaign_id,
-            'last_active_date': format_date(new_coord.last_active_date)}
-    return {'data': data}
-
-
-def remove_coordinator(user_dao, campaign_id, request_dict):
-    org_dao = OrganizerDAO(user_dao)
-    username = request_dict.get('username')
-    old_coord = org_dao.remove_coordinator(campaign_id, username)
-    data = {'username': username,
-            'campaign_id': campaign_id,
-            'last_active_date': format_date(old_coord.last_active_date)}
-    return {'data': data}
 
 
 ADMIN_API_ROUTES, ADMIN_UI_ROUTES = get_admin_routes()

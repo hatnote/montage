@@ -112,8 +112,12 @@ function controller(
         response.data.forEach((element) => {
           element.value = (element.value * 4) + 1;
         });
-        vm.votes.push(...response.data);
         if (response.data.length) {
+          if (vm.votes.length && response.data[0].id === vm.votes[0].id) {
+            // this is ranking round
+            return false;
+          }
+          vm.votes.push(...response.data);
           vm.loadingMore = false;
         }
         return true;
@@ -198,9 +202,9 @@ function controller(
     vm.loading = true;
 
     const ratings = vm.votes.map(image => ({
-      task_id: image.task_id,
+      task_id: image.id,
       value: vm.votes.indexOf(image),
-      review: image.review ? image.review : null
+      review: image.review ? image.review : null,
     }));
 
     jurorService

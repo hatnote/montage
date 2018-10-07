@@ -17,22 +17,25 @@
     </h2>
     <span flex></span>
     <md-button aria-label="Sort"
+      ng-if="!$ctrl.isVoting('ranking')"
       ng-disabled="true">
       Order by
     </md-button>
     <md-select
+      ng-if="!$ctrl.isVoting('ranking')"
       ng-model="$ctrl.sort.order_by"
       ng-change="$ctrl.reorderList()">
       <md-option ng-value="'date'">vote date</md-option>
       <md-option ng-value="'value'">score</md-option>
     </md-select>
     <md-select
+      ng-if="!$ctrl.isVoting('ranking')"
       ng-model="$ctrl.sort.sort"
       ng-change="$ctrl.reorderList()">
       <md-option ng-value="'asc'">ascending</md-option>
       <md-option ng-value="'desc'">descending</md-option>
     </md-select>
-    <span>&nbsp;&nbsp;|</span>
+    <span ng-if="!$ctrl.isVoting('ranking')">&nbsp;&nbsp;|</span>
     <md-button ng-disabled="true">
       Gallery size
     </md-button>
