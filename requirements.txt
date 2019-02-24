@@ -21,3 +21,4 @@ six==1.10.0
 SQLAlchemy==1.0.14
 unicodecsv==0.14.1
 Werkzeug==0.9.4
+chert==0.3.0
