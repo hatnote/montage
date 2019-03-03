@@ -1965,7 +1965,7 @@ class CoordinatorDAO(UserDAO):
         new_juror_names = sorted([nj.username for nj in new_jurors])
         old_jurors = self.get_active_jurors(rnd.id)
         old_juror_names = sorted([oj.username for oj in old_jurors])
-        
+
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
@@ -2314,7 +2314,7 @@ class MaintainerDAO(object):
     def remove_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
         if not user:
-            raise InvalidAction('user %s is not an organizer' % username)
+            raise InvalidAction('user %s is not present in the system' % username)
         user.is_organizer = False
         msg = ('%s removed %s as an organizer' % (self.user.username, username))
         self.log_action('remove_organizer', message=msg, role='maintianer')
@@ -2468,7 +2468,7 @@ class JurorDAO(object):
                           .filter(
                             Vote.round_entry.has(round_id=round_id))
                           .order_by(Vote.id))
-        
+
         # Check if this round_juror has skipped any tasks
         round_juror = self._get_round_juror(round_id)
         skip = round_juror.skip
@@ -2775,7 +2775,15 @@ class JurorDAO(object):
 
 def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()
+    if user:
+        return user
+    user_id = get_mw_userid(username)
+    user = rdb_session.query(User).filter_by(id=user_id).one_or_none()
+    if not user:
+        return user
+    user.username = username  # update our local cache of the username
     return user
+
 
 def lookup_series(rdb_session, name):
     series = (rdb_session.query(Series)
@@ -2896,7 +2904,7 @@ def reassign_tasks(session, rnd, new_jurors, strategy=None):
 
 def swap_tasks(session, rnd, new_juror, old_juror):
     # Transfer tasks from one juror to another
-       
+
     votes_to_swap = (session.query(Vote)
                             .filter_by(status=ACTIVE_STATUS, user=old_juror)
                             .join(RoundEntry)
