@@ -5,6 +5,8 @@ import argparse
 from datetime import datetime
 from pprint import pprint
 
+from face import Command, face_middleware
+
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 
@@ -665,3 +667,41 @@ if __name__ == '__main__':
     #    username = args.remove_coordinator
     #    camp_id = args.campaign
     #    remove_coordinator(maint_dao, camp_id, username, args.debug)
+
+
+def main():
+    cmd = Command(name='montage-admin')
+
+
+def add_organizer(maint_dao, username):
+    maint_dao.add_organizer(username)
+    print '++ added %s as organizer' % new_org_name
+
+
+@face_middleware(provides=['rdb_session'])
+def _rdb_session_mw(next_, debug):
+    rdb_session = make_rdb_session(echo=args.debug)
+
+    try:
+        ret = next_(rdb_session=rdb_session)
+    except:
+        rdb_session.rollback()
+        raise
+    else:
+        rdb_session.commit()
+    finally:
+        rdb_session.close()
+
+    return ret
+
+
+
+@face_middleware(provides=['user_dao', 'maint_dao', 'org_dao'])
+def _admin_dao_mw(next_, rdb_session):
+    # TODO: autolookup from login.wmflabs username
+    user = lookup_user(rdb_session, 'Slaporte')
+    user_dao = UserDAO(rdb_session, user)
+    maint_dao = MaintainerDAO(user_dao)
+    org_dao = OrganizerDAO(user_dao)
+
+    return next_(user_dao=user_dao, maint_dao=maint_dao, org_dao=org_dao)
