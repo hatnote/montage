@@ -37,22 +37,6 @@ def warn(msg, force=False):
     return
 
 
-def rdb_console(maint_dao):
-    import montage.rdb
-    for m in dir(montage.rdb):
-        locals()[m] = getattr(montage.rdb, m)
-
-    session = maint_dao.rdb_session
-
-    print 'rdb console:'
-    print '  Use session.query() to interact with the db.'
-    print '  Commit modifications with session.commit().\n'
-
-    import pdb;pdb.set_trace()
-
-    return
-
-
 def create_round(user, campaign_id, advance=False, debug=False):
     coord_dao = CoordinatorDAO.from_campaign(user, campaign_id)
     rnd_name = raw_input('?? Round name: ')
@@ -125,7 +109,7 @@ def edit_quorum(maint_dao, rnd_id, debug):
     if rnd.status != 'paused':
         print ('-- round must be paused to edit quorum, aborting')
         return
-    print ('!! new quorum cannot be lower than current qourum: %s' % old_quorum)
+    print ('!! new quorum cannot be lower than current quorum: %s' % old_quorum)
     print ('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors))
     new_quorum = int(raw_input('?? New quorum: '))
     new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
@@ -422,8 +406,76 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
     return
 
 
+def main():
+    cmd = Command(name='montage-admin', func=None)
+    cmd.add('--debug', missing=False)
+
+    # middleware
+    cmd.add(_rdb_session_mw)
+    cmd.add(_admin_dao_mw)
+
+    cmd.add(add_organizer, posargs={'count': 1, 'name': 'username'})
+    cmd.add(rdb_console)
+
+    cmd.run()
+
+
+def add_organizer(maint_dao, username):
+    "Add a top-level organizer to the system, capable of creating campaigns and adding coordinators."
+    maint_dao.add_organizer(username)
+    print '++ added %s as organizer' % new_org_name
+
+
+def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
+    "Load a developer console for interacting with database objects."
+    import montage.rdb
+    for m in dir(montage.rdb):
+        locals()[m] = getattr(montage.rdb, m)
+
+    session = rdb_session
+
+    print 'rdb console:'
+    print '  Use session.query() to interact with the db.'
+    print '  Commit modifications by typing "continue" or "c".'
+    print '  Cancel modifications by typing "quit", "q", or hitting ctrl-c.\n'
+
+    import pdb;pdb.set_trace()
+
+    return
+
+
+@face_middleware(provides=['rdb_session'])
+def _rdb_session_mw(next_, debug):
+    rdb_session = make_rdb_session(echo=args.debug)
+
+    try:
+        ret = next_(rdb_session=rdb_session)
+    except:
+        rdb_session.rollback()
+        raise
+    else:
+        rdb_session.commit()
+    finally:
+        rdb_session.close()
+
+    return ret
+
+
+
+@face_middleware(provides=['user_dao', 'maint_dao', 'org_dao'])
+def _admin_dao_mw(next_, rdb_session):
+    # TODO: autolookup from login.wmflabs username
+    user = lookup_user(rdb_session, 'Slaporte')
+    user_dao = UserDAO(rdb_session, user)
+    maint_dao = MaintainerDAO(user_dao)
+    org_dao = OrganizerDAO(user_dao)
+
+    return next_(user_dao=user_dao, maint_dao=maint_dao, org_dao=org_dao)
+
+
 
 if __name__ == '__main__':
+    main()
     parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
     parser.add_argument('--add-organizer',
                         help='add an organizer by username',
@@ -667,41 +719,3 @@ if __name__ == '__main__':
     #    username = args.remove_coordinator
     #    camp_id = args.campaign
     #    remove_coordinator(maint_dao, camp_id, username, args.debug)
-
-
-def main():
-    cmd = Command(name='montage-admin')
-
-
-def add_organizer(maint_dao, username):
-    maint_dao.add_organizer(username)
-    print '++ added %s as organizer' % new_org_name
-
-
-@face_middleware(provides=['rdb_session'])
-def _rdb_session_mw(next_, debug):
-    rdb_session = make_rdb_session(echo=args.debug)
-
-    try:
-        ret = next_(rdb_session=rdb_session)
-    except:
-        rdb_session.rollback()
-        raise
-    else:
-        rdb_session.commit()
-    finally:
-        rdb_session.close()
-
-    return ret
-
-
-
-@face_middleware(provides=['user_dao', 'maint_dao', 'org_dao'])
-def _admin_dao_mw(next_, rdb_session):
-    # TODO: autolookup from login.wmflabs username
-    user = lookup_user(rdb_session, 'Slaporte')
-    user_dao = UserDAO(rdb_session, user)
-    maint_dao = MaintainerDAO(user_dao)
-    org_dao = OrganizerDAO(user_dao)
-
-    return next_(user_dao=user_dao, maint_dao=maint_dao, org_dao=org_dao)
