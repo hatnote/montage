@@ -415,6 +415,7 @@ def main():
     cmd.add(_admin_dao_mw)
 
     cmd.add(add_organizer, posargs={'count': 1, 'name': 'username'})
+    cmd.add(create_campaign)
     cmd.add(rdb_console)
 
     cmd.run()
@@ -441,6 +442,25 @@ def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
 
     import pdb;pdb.set_trace()
 
+    return
+
+
+def create_campaign(org_dao):
+    camp_name = raw_input('?? Campaign name: ')
+    if not camp_name:
+        print '-- campaign name required, aborting'
+        sys.exit(0)
+    open_date_str = raw_input('?? Open date: ')
+    open_date = datetime.strptime(open_date_str, '%Y-%m-%d')
+    close_date_str = raw_input('?? Close date: ')
+    close_date = datetime.strptime(close_date_str, '%Y-%m-%d')
+    campaign = org_dao.create_campaign(name=camp_name,
+                                       open_date=open_date,
+                                       close_date=close_date,
+                                       coords=[user])
+    pprint(campaign.to_info_dict())
+    print ('++ campaign %s (%r) created with %r as coordinator'
+           % (campaign.id, campaign.name, org_dao.user.username))
     return
 
 
@@ -562,34 +582,9 @@ if __name__ == '__main__':
         campaigns = maint_dao.get_all_campaigns()
         pprint([c.to_details_dict() for c in campaigns])
 
-    if args.rdb_console:
-        rdb_console(maint_dao)
-
     # TODO: active users
 
-    if args.add_organizer:
-        new_org_name = args.add_organizer
-        org_user = maint_dao.add_organizer(new_org_name)
-        print '++ added %s as organizer' % new_org_name
-
     # TODO: Remove organizer
-
-    if args.create_campaign:
-        camp_name = raw_input('?? Campaign name: ')
-        if not camp_name:
-            print '-- campaign name required, aborting'
-            sys.exit(0)
-        open_date_str = raw_input('?? Open date: ')
-        open_date = datetime.strptime(open_date_str, '%Y-%m-%d')
-        close_date_str = raw_input('?? Close date: ')
-        close_date = datetime.strptime(close_date_str, '%Y-%m-%d')
-        campaign = org_dao.create_campaign(name=camp_name,
-                                           open_date=open_date,
-                                           close_date=close_date,
-                                           coords=[user])
-        pprint(campaign.to_info_dict())
-        print ('++ campaign %s (%r) created with %r as coordinator'
-               % (campaign.id, campaign.name, org_dao.user.username))
 
     if args.cancel_campaign:
         camp_id = args.cancel_campaign
