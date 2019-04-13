@@ -411,20 +411,40 @@ def main():
     cmd.add('--debug', missing=False)
 
     # middleware
-    cmd.add(_rdb_session_mw)
     cmd.add(_admin_dao_mw)
+    cmd.add(_rdb_session_mw)
 
     cmd.add(add_organizer, posargs={'count': 1, 'name': 'username'})
     cmd.add(create_campaign)
+    cmd.add(cancel_campaign, posargs={'count': 1, 'name': 'campaign_id'})
+    cmd.add(list_campaigns)
     cmd.add(rdb_console)
 
     cmd.run()
 
 
+def cancel_campaign(campaign_id, user_dao, org_dao):
+    campaign = user_dao.get_campaign(campaign_id)
+    msg = ('this will cancel campaign %s, including all rounds and tasks.'
+           % (camp_id))
+    warn(msg, force)
+    org_dao.cancel_campaign(camp_id)
+    print ('++ cancelled campaign %s (%r) and %s rounds'
+           % (camp_id, campaign.name, len(campaign.rounds)))
+    return
+
+
+def list_campaigns(user_dao):
+    "list details about all campaigns"
+    # TODO: flags for names-only, w/details, machine-readable
+    campaigns = user_dao.get_all_campaigns()
+    pprint([c.to_details_dict() for c in campaigns])
+
+
 def add_organizer(maint_dao, username):
     "Add a top-level organizer to the system, capable of creating campaigns and adding coordinators."
     maint_dao.add_organizer(username)
-    print '++ added %s as organizer' % new_org_name
+    print '++ added %s as organizer' % username
 
 
 def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
@@ -466,7 +486,7 @@ def create_campaign(org_dao):
 
 @face_middleware(provides=['rdb_session'])
 def _rdb_session_mw(next_, debug):
-    rdb_session = make_rdb_session(echo=args.debug)
+    rdb_session = make_rdb_session(echo=debug)
 
     try:
         ret = next_(rdb_session=rdb_session)
@@ -496,6 +516,7 @@ def _admin_dao_mw(next_, rdb_session):
 
 if __name__ == '__main__':
     main()
+    sys.exit()
     parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
     parser.add_argument('--add-organizer',
                         help='add an organizer by username',
@@ -578,23 +599,9 @@ if __name__ == '__main__':
 
     force = args.force
 
-    if args.list:
-        campaigns = maint_dao.get_all_campaigns()
-        pprint([c.to_details_dict() for c in campaigns])
-
     # TODO: active users
 
     # TODO: Remove organizer
-
-    if args.cancel_campaign:
-        camp_id = args.cancel_campaign
-        campaign = user_dao.get_campaign(camp_id)
-        msg = ('this will cancel campaign %s, including all rounds and tasks.'
-               % (camp_id))
-        warn(msg, force)
-        org_dao.cancel_campaign(camp_id)
-        print ('++ cancelled campaign %s (%r) and %s rounds'
-               % (camp_id, campaign.name, len(campaign.rounds)))
 
     if args.add_coordinator:
         username = args.add_coordinator
