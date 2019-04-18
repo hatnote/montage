@@ -152,20 +152,18 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     print ('++ added entries from %s to round %s (%r)'
            % (source, rnd.id, rnd.name))
 
-    if debug:
-        import pdb;pdb.set_trace()
     return rnd
 
 
-def cancel_campaign(maint_dao, campaign_id, force=False):
+def cancel_campaign(user_dao, org_dao, campaign_id, force=False):
     "cancel the specified campaign"
-    campaign = maint_dao.get_campaign(campaign_id)
+    campaign = user_dao.get_campaign(campaign_id)
     msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks.'
            % (campaign_id, campaign.name, len(campaign.rounds)))
 
     warn(msg, force)
 
-    maint_dao.cancel_campaign(campaign)
+    org_dao.cancel_campaign(campaign)
 
     print ('++ cancelled campaign %s (%r) and %s rounds'
            % (campaign_id, campaign.name, len(campaign.rounds)))
@@ -181,8 +179,6 @@ def pause_round(maint_dao, round_id, debug):
 
     print '++ paused round %s (%r)' % (rnd.id, rnd.name)
 
-    if debug:
-        import pdb;pdb.set_trace()
     return rnd
 
 
@@ -195,8 +191,6 @@ def remove_coordinator(maint_dao, campaign_id, username, debug):
                                         campaign=camp)
     print ('-- remvoed %s as coordinator from campaign %s (%s)'
            % (username, campaign_id, camp.name))
-    if debug:
-        import pdb;pdb.set_trace()
     return
     '''
 
@@ -261,30 +255,26 @@ def retask_duplicate_ratings(maint_dao, round_id, debug=False):
 
     print ('reassigned %s tasks and reverted %s ratings for round %s'
            % (reassign_count, revert_count, round_id))
-    if debug:
-        print 'precommit debug prompt:'
-        import pdb;pdb.set_trace()
+
     return
 
 
-def apply_round_ratings(maint_dao, round_id, csv_path, debug):
+def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path, debug):
     "apply ratings to a round based on an input file"
     from unicodecsv import DictReader
 
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
-    session = maint_dao.rdb_session
-
     print 'applying ratings from %s to round #%s' % (csv_path, round_id)
 
-    rnd = session.query(Round).get(round_id)
+    rnd = rdb_session.query(Round).get(round_id)
 
     dr = DictReader(open(csv_path, 'rb'))
 
     usernames = dr.fieldnames[1:]
     username_map = {}
     for username in usernames:
-        user = session.query(User).filter_by(username=username).one()
+        user = rdb_session.query(User).filter_by(username=username).one()
         username_map[username] = user
 
     now = datetime.datetime.utcnow()
@@ -298,12 +288,12 @@ def apply_round_ratings(maint_dao, round_id, csv_path, debug):
         entry_name = entry_dict.pop('entry')
         _, _, entry_name = entry_name.rpartition('File:')
         entry_name = entry_name.strip()
-        entry = session.query(Entry).filter_by(name=entry_name).one()
-        round_entry = (session.query(RoundEntry)
+        entry = rdb_session.query(Entry).filter_by(name=entry_name).one()
+        round_entry = (rdb_session.query(RoundEntry)
                        .filter_by(round=rnd, entry=entry)
                        .one())
 
-        old_tasks = (session.query(Task)
+        old_tasks = (rdb_session.query(Task)
                      .filter_by(round_entry=round_entry)
                      .all())
         # cancel old tasks, delete associated ratings
@@ -311,7 +301,7 @@ def apply_round_ratings(maint_dao, round_id, csv_path, debug):
             t.complete_date = None
             t.cancel_date = now
 
-            del_count = session.query(Rating).filter_by(task_id=t.id).delete()
+            del_count = rdb_session.query(Rating).filter_by(task_id=t.id).delete()
             del_ratings_count += del_count
 
         # create new tasks, apply associated ratings
@@ -326,15 +316,11 @@ def apply_round_ratings(maint_dao, round_id, csv_path, debug):
             new_rating = Rating(value=rating_val, user=user, task=new_task,
                                 round_entry=round_entry)
             new_ratings.append(new_rating)
-            session.add(new_rating)
+            rdb_session.add(new_rating)
 
     print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
                                                             len(new_ratings))
 
-    if debug:
-        print 'precommit pdb:'
-        import pdb;pdb.set_trace()
-    session.commit()
     return
 
 
@@ -401,9 +387,6 @@ def check_round_dupes(user_dao, round_id, debug):
         print ('-- found %s double-assigned ratings'
                % len(dupe_ratings))
 
-    if debug:
-        import pdb;pdb.set_trace()
-
     return
 
 
@@ -415,8 +398,6 @@ def import_gist(user_dao, round_id, url):
                                         method='gistcsv',
                                         params={'gist_url': url})
     print '++ added entries to round %s: %r' % (round_id, stats)
-
-
 
 
 def edit_round_quorum(maint_dao, round_id, debug):
@@ -437,9 +418,6 @@ def edit_round_quorum(maint_dao, round_id, debug):
            % (rnd.id, rnd.name, old_quorum, new_quorum))
     print ('++ reassigned %s tasks, with mean load of %s tasks per juror'
            % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean']))
-
-    if debug:
-        import pdb;pdb.set_trace()
 
     return new_juror_stats
 
@@ -556,10 +534,20 @@ def _rdb_session_mw(next_, debug):
 
     try:
         ret = next_(rdb_session=rdb_session)
-    except:
+    except Exception as e:
+        if debug:
+            print('!! %s: %s' % (e.__class__.__name__, e))
+            print(".. pre-rollback debug console, about to undo changes to db."
+                  " When debuggig is complete, press 'c' to rollback changes"
+                  " and resume exiting.")
+            import pdb;pdb.post_mortem()
         rdb_session.rollback()
         raise
     else:
+        if debug:
+            print("== pre-commit debug console. about to persist changes to db,"
+                  "press 'c' to continue or 'q' to quit.")
+            import pdb;pdb.set_trace()
         rdb_session.commit()
     finally:
         rdb_session.close()
