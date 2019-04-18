@@ -1076,8 +1076,8 @@ class CoordinatorDAO(UserDAO):
     #     campaign_id/seq
 
     def __init__(self, user_dao, campaign):
-        if not type(campaign) is Campaign:
-            InvalidAction('cannot load campaign')
+        if type(campaign) is not Campaign:
+            raise InvalidAction('cannot load campaign')
         self.query = user_dao.query
         self.rdb_session = user_dao.rdb_session
         self.user_dao = user_dao

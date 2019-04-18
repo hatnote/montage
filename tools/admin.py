@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
+"""
+TODO:
+
+* Separate acting user from target user.
+  * e.g., create_campaign creates a campaign with hardcoded slaporte as coordinator
+
+# TODO: active users
+# TODO: Remove organizer
+# TODO: Remove coordinator
+
+"""
+
 import os
 import sys
-import argparse
 import datetime
 from pprint import pprint
 
-from face import Command, face_middleware
+from face import Command, face_middleware, UsageError
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
@@ -37,7 +48,52 @@ def warn(msg, force=False):
     return
 
 
+def main():
+    """
+    The main entrypoint, setting up a face application, with middleware, common flags, and subcommands.
+    """
+    cmd = Command(name='montage-admin', func=None, doc="CLI tools for administrating Montage.")
+
+    # middleware
+    cmd.add(_admin_dao_mw)
+    cmd.add(_rdb_session_mw)
+
+    cmd.add('--username', '-u')
+    cmd.add('--debug', parse_as=True, doc='get extra output, enable debug console before db commit')
+    cmd.add('--force', parse_as=True, doc='skip some confirmations, use with caution')
+    cmd.add('--campaign-id', parse_as=int)
+    cmd.add('--round-id', parse_as=int)
+    cmd.add('--csv-path')
+    cmd.add('--url')
+
+    # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
+
+    cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
+    cmd.add(add_coordinator)
+    cmd.add(create_campaign)
+    cmd.add(cancel_campaign)  # , posargs={'count': 1, 'name': 'campaign_id'})
+    cmd.add(create_round)
+    cmd.add(import_gist)
+    cmd.add(activate_round)
+    cmd.add(pause_round)
+    cmd.add(advance_round)
+    cmd.add(edit_round_quorum)
+    cmd.add(check_round_dupes)
+    cmd.add(apply_round_ratings)
+    cmd.add(retask_duplicate_ratings)
+    cmd.add(shuffle_round_assignments)
+    cmd.add(cancel_round)
+    cmd.add(list_campaigns)
+    cmd.add(rdb_console)
+
+    cmd.prepare()
+    return cmd.run()
+
+
 def create_round(user_dao, campaign_id, advance=False, debug=False):
+    'interactively create a round in the specified campaign'
+    # TODO: this looks messy below, campaign was semi-undefined and
+    # the comment about rdb_session rollback may not be true.
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     rnd_name = raw_input('?? Round name: ')
     if not rnd_name:
@@ -71,6 +127,8 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     print ('++ round %s (%r) created in campaign %s'
            % (rnd.id, rnd.name, campaign_id))
 
+    campaign = user_dao.get_campaign(campaign_id)
+
     if not advance:
         entries = coord_dao.add_entries_from_cat(rnd.id, category_name)
         source = category_name
@@ -87,11 +145,7 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
         if vote_method == 'ranking' and len(entries) > RANKING_MAX:
             print ('-- %s is too many entries for ranking round, aborting'
                    % len(entries))
-            # TODO: does not actually roll back the round, since
-            # create_round commits on its own. Should individual dao methods
-            # have an option to not commit?
-            rdb_session.rollback()
-            sys.exit(0)
+            raise UsageError('too many entries for ranking round')
 
         source = 'round(#%s)' % last_successful_rnd.id
         coord_dao.add_round_entries(rnd.id, advancing_group, source)
@@ -103,53 +157,24 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     return rnd
 
 
-def cancel_campaign(maint_dao, camp_id, debug, force=False):
-    campaign = maint_dao.get_campaign(camp_id)
+def cancel_campaign(maint_dao, campaign_id, force=False):
+    "cancel the specified campaign"
+    campaign = maint_dao.get_campaign(campaign_id)
     msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks.'
-           % (camp_id, campaign.name, len(campaign.rounds)))
+           % (campaign_id, campaign.name, len(campaign.rounds)))
 
     warn(msg, force)
 
     maint_dao.cancel_campaign(campaign)
 
     print ('++ cancelled campaign %s (%r) and %s rounds'
-           % (camp_id, campaign.name, len(campaign.rounds)))
-    pass
+           % (campaign_id, campaign.name, len(campaign.rounds)))
 
 
-def cancel_round(maint_dao, rnd_id, debug, force=False):
-    rnd = maint_dao.get_round(rnd_id)
-    msg = ('this will cancel round %s (%r) and its tasks'
-           % (rnd_id, rnd.name))
 
-    warn(msg, force)
-
-    ret = maint_dao.cancel_round(rnd)
-    stats = rnd.get_count_map()
-
-    print ('++ cancelled round %s (%r), with %s tasks'
-           % (rnd.id, rnd.name, stats['total_cancelled_tasks']))
-
-    if debug:
-        import pdb;pdb.set_trace()
-    return
-
-
-def activate_round(maint_dao, rnd_id, debug):
-    rnd = maint_dao.get_round(rnd_id)
-
-    maint_dao.activate_round(rnd)
-    maint_dao.rdb_session.commit()
-
-    print '++ activated round %s (%s)' % (rnd.id, rnd.name)
-
-    if debug:
-        import pdb;pdb.set_trace()
-    return rnd
-
-
-def pause_round(maint_dao, rnd_id, debug):
-    rnd = maint_dao.get_round(rnd_id)
+def pause_round(maint_dao, round_id, debug):
+    'pause a round to make edits and perform other maintenance'
+    rnd = maint_dao.get_round(round_id)
 
     maint_dao.pause_round(rnd)
     maint_dao.rdb_session.commit()
@@ -161,15 +186,15 @@ def pause_round(maint_dao, rnd_id, debug):
     return rnd
 
 
-def remove_coordinator(maint_dao, camp_id, username, debug):
+def remove_coordinator(maint_dao, campaign_id, username, debug):
     # TODO: the campaign_coords table should have an is_active column
     raise NotImplementedError('cannot remove coordinators for now')
     '''
-    camp = maint_dao.get_campaign(camp_id)
+    camp = maint_dao.get_campaign(campaign_id)
     user = maint_dao.get_or_create_user(username, 'coordinator',
                                         campaign=camp)
     print ('-- remvoed %s as coordinator from campaign %s (%s)'
-           % (username, camp_id, camp.name))
+           % (username, campaign_id, camp.name))
     if debug:
         import pdb;pdb.set_trace()
     return
@@ -243,6 +268,7 @@ def retask_duplicate_ratings(maint_dao, round_id, debug=False):
 
 
 def apply_round_ratings(maint_dao, round_id, csv_path, debug):
+    "apply ratings to a round based on an input file"
     from unicodecsv import DictReader
 
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
@@ -312,48 +338,9 @@ def apply_round_ratings(maint_dao, round_id, csv_path, debug):
     return
 
 
-def main():
-    cmd = Command(name='montage-admin', func=None)
-    cmd.add('--debug', parse_as=bool)
-
-    # middleware
-    cmd.add(_admin_dao_mw)
-    cmd.add(_rdb_session_mw)
-
-    cmd.add('--username', '-u')
-    cmd.add('--campaign-id')
-    cmd.add('--round-id')
-    cmd.add('--csv-path')
-    cmd.add('--url')
-
-    # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
-
-    cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
-    cmd.add(add_coordinator)
-    cmd.add(create_campaign)
-    cmd.add(cancel_campaign)  # , posargs={'count': 1, 'name': 'campaign_id'})
-    cmd.add(create_round)
-    cmd.add(import_gist)
-    cmd.add(activate_round)
-    cmd.add(pause_round)
-    cmd.add(advance_round)
-    cmd.add(edit_round_quorum)
-    cmd.add(check_round_dupes)
-    cmd.add(apply_round_ratings)
-    cmd.add(retask_duplicate_ratings)
-    cmd.add(shuffle_round_assignments)
-    cmd.add(cancel_round)
-    cmd.add(list_campaigns)
-    cmd.add(rdb_console)
-
-    cmd.prepare()
-    cmd.run()
-
-
 def show_round_thresholds(user_dao, round_id):
     'get the threshold map (based on average ratings) for a specified round'
-    # TODO: may not work (had nameerrors before porting
-    round_id = args.threshold_map
+    # TODO: may not work (had nameerrors before porting)
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
     thresh_map = get_threshold_map(avg_ratings_map)
@@ -373,8 +360,8 @@ def shuffle_round_assignments(user_dao, round_id):
     pprint(stats)
 
 
-
 def check_round_dupes(user_dao, round_id, debug):
+    """check for double-assigned tasks or ratings in a specified round"""
     dupe_tasks_query = '''
     SELECT users.username, ratings.value, tasks.id, entries.name
     FROM tasks
@@ -421,6 +408,7 @@ def check_round_dupes(user_dao, round_id, debug):
 
 
 def import_gist(user_dao, round_id, url):
+    "import round entries from a csv list"
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     entries, warnings = coord_dao.add_entries_from_csv(round_id, url)
     stats = coord_dao.add_round_entries(round_id, entries,
@@ -429,14 +417,10 @@ def import_gist(user_dao, round_id, url):
     print '++ added entries to round %s: %r' % (round_id, stats)
 
 
-def pause_round(user_dao, maint_dao, round_id):
-    # TODO: why coord_dao
-    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    maint_dao.pause_round(round_id)
-    print '++ paused round %s' % round_id
 
 
 def edit_round_quorum(maint_dao, round_id, debug):
+    "change the quorum of a given round, assigning and reassigning tasks as need be"
     rnd = maint_dao.get_round(round_id)
     old_quorum = rnd.quorum
     if rnd.status != 'paused':
@@ -461,6 +445,7 @@ def edit_round_quorum(maint_dao, round_id, debug):
 
 
 def advance_round(user_dao, round_id, debug):
+    "finalize the specified round and start the next"
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
     threshold_map = get_threshold_map(avg_ratings_map)
@@ -474,19 +459,24 @@ def advance_round(user_dao, round_id, debug):
     cur_thresh = [t for t, c in sorted(threshold_map.items()) \
                   if c >= threshold][-1]
     coord_dao.finalize_rating_round(round_id, cur_thresh)
-    camp_id = coord_dao.campaign.id
+    campaign_id = coord_dao.campaign.id
     print ('++ ready to import %s entries to the next round in campaign %s...'
-           % (threshold_map[cur_thresh], camp_id))
-    next_round = create_round(user_dao, camp_id, advance=True, debug=debug)
+           % (threshold_map[cur_thresh], campaign_id))
+    next_round = create_round(user_dao, campaign_id, advance=True, debug=debug)
+    return
 
 
 def activate_round(user_dao, round_id):
+    'activate a round to start or resume voting'
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     coord_dao.activate_round(round_id)
-    print '++ activated round %s (%s)' % (rnd.id, rnd.name)
+    print '++ activated round %s' % round_id
 
 
-def cancel_round(user_dao, round_id):
+def cancel_round(user_dao, round_id, force):
+    """set a round as cancelled, cancel related tasks and remove it from
+    the campaign's active rounds."""
+
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     msg = 'this will cancel round %s and its tasks' % (round_id,)
 
@@ -497,17 +487,6 @@ def cancel_round(user_dao, round_id):
 
     print ('++ cancelled round %s (%s), with %s tasks'
            % (round_id, rnd.name, stats['total_cancelled_tasks']))
-    return
-
-
-def cancel_campaign(campaign_id, user_dao, org_dao):
-    campaign = user_dao.get_campaign(campaign_id)
-    msg = ('this will cancel campaign %s, including all rounds and tasks.'
-           % (camp_id))
-    warn(msg, force)
-    org_dao.cancel_campaign(camp_id)
-    print ('++ cancelled campaign %s (%r) and %s rounds'
-           % (camp_id, campaign.name, len(campaign.rounds)))
     return
 
 
@@ -524,7 +503,8 @@ def add_organizer(maint_dao, username):
     print '++ added %s as organizer' % username
 
 
-def add_coordinator(campaign_id, username):
+def add_coordinator(user_dao, org_dao, campaign_id, username):
+    "add specified user as coordinator of a given campaign"
     camp = user_dao.get_campaign(campaign_id)
     org_dao.add_coordinator(campaign_id, username=username)
     print ('++ added %r as coordinator for campaign %s (%r)'
@@ -551,6 +531,7 @@ def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
 
 
 def create_campaign(org_dao):
+    "interactively create a campaign"
     camp_name = raw_input('?? Campaign name: ')
     if not camp_name:
         print '-- campaign name required, aborting'
@@ -600,83 +581,4 @@ def _admin_dao_mw(next_, rdb_session):
 
 
 if __name__ == '__main__':
-    main()
-    sys.exit()
-    parser = argparse.ArgumentParser(description='Admin CLI tools for montage')
-    parser.add_argument('--add-organizer',
-                        help='add an organizer by username',
-                        type=str)
-    parser.add_argument('--rdb-console',
-                        help='drop to a console for interacting with db objects',
-                        action='store_true')
-    parser.add_argument('--list',
-                        help='list all campaigns and rounds',
-                        action='store_true')
-    parser.add_argument('--cancel-round',
-                        help=('set a round as cancelled, cancel related'
-                              ' tasks and remove it from the campaign\'s'
-                              ' active  rounds'), type=int)
-    parser.add_argument('--cancel-campaign',
-                        help=('cancel a campaign by id, including all of its'
-                              ' rounds and associated tasks'), type=int)
-    parser.add_argument('--add-coordinator',
-                        help=('add a coordinator by username to a campaign'),
-                        type=str)
-    #parser.add_argument('--remove-coordinator',
-    #                    help=('remove a coordinator by username from a '
-    #                          'campaign (not implemented'),
-    #                    type=str)
-    parser.add_argument('--create-campaign',
-                        help=('create a new campaign with a specified coordinator'),
-                        action='store_true')
-    parser.add_argument('--create-round',
-                        help=('create a new round in a specified campaign'),
-                        type=int)
-    parser.add_argument('--activate-round',
-                        help=('activate a specified round to start voting'),
-                        type=int)
-    parser.add_argument('--pause-round',
-                        help=('pause a specified round if you wish to make edits'),
-                        type=int)
-    parser.add_argument('--advance-round',
-                        help=('finalize a specified round and start the next'),
-                        type=int)
-    parser.add_argument('--check-dupes',
-                        help=('check for double-assigned tasks or ratings in a'
-                        ' specified round'),
-                        type=int)
-
-    parser.add_argument('--edit-quorum',
-                        help=('edit quorum in a round'),
-                        type=int)
-
-    parser.add_argument('--apply-ratings',
-                        help='apply ratings based on input (eg --csv-file)',
-                        type=int)
-    parser.add_argument('--ratings-csv-path',
-                        help='ratings file (use with --apply-ratings)',
-                        type=str)
-    parser.add_argument('--import_gist',
-                        help='import files from a gist file',
-                        type=str)
-
-    parser.add_argument('--campaign', help='campaign id', type=int)
-    parser.add_argument('--round', help='round id', type=int)
-    parser.add_argument('--force', action='store_true',
-                        help='Use with caution when cancelling things')
-    parser.add_argument('--debug', action='store_true')
-
-    args = parser.parse_args()
-
-    rdb_session = make_rdb_session(echo=args.debug)
-
-    user = lookup_user(rdb_session, 'Slaporte')
-    user_dao = UserDAO(rdb_session, user)
-    maint_dao = MaintainerDAO(user_dao)
-    org_dao = OrganizerDAO(user_dao)
-
-    force = args.force
-
-    # TODO: active users
-    # TODO: Remove organizer
-    # TODO: Remove coordinator
+    sys.exit(main())
