@@ -2,7 +2,7 @@
 import os
 import sys
 import argparse
-from datetime import datetime
+import datetime
 from pprint import pprint
 
 from face import Command, face_middleware
@@ -54,7 +54,7 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     else:
         quorum = len(juror_names)
     deadline_date_str = raw_input('?? Deadline date: ')
-    deadline_date = datetime.strptime(deadline_date_str, '%Y-%m-%d')
+    deadline_date = datetime.datetime.strptime(deadline_date_str, '%Y-%m-%d')
     description = raw_input('?? Description: ')
     directions = raw_input('?? Directions: ')
     if not advance:
@@ -101,30 +101,6 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     if debug:
         import pdb;pdb.set_trace()
     return rnd
-
-
-def edit_quorum(maint_dao, rnd_id, debug):
-    rnd = maint_dao.get_round(rnd_id)
-    old_quorum = rnd.quorum
-    if rnd.status != 'paused':
-        print ('-- round must be paused to edit quorum, aborting')
-        return
-    print ('!! new quorum cannot be lower than current quorum: %s' % old_quorum)
-    print ('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors))
-    new_quorum = int(raw_input('?? New quorum: '))
-    new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
-
-    maint_dao.rdb_session.commit()
-
-    print ('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
-           % (rnd.id, rnd.name, old_quorum, new_quorum))
-    print ('++ reassigned %s tasks, with mean load of %s tasks per juror'
-           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean']))
-
-    if debug:
-        import pdb;pdb.set_trace()
-
-    return new_juror_stats
 
 
 def cancel_campaign(maint_dao, camp_id, debug, force=False):
@@ -199,64 +175,18 @@ def remove_coordinator(maint_dao, camp_id, username, debug):
     return
     '''
 
-
-def check_dupes(user_dao, rnd_id, debug=False):
-    dupe_tasks_query = '''
-    SELECT users.username, ratings.value, tasks.id, entries.name
-    FROM tasks
-    JOIN ratings
-    ON tasks.id = ratings.task_id
-    JOIN round_entries
-    ON tasks.round_entry_id = round_entries.id
-    JOIN entries
-    ON round_entries.entry_id = entries.id
-    JOIN users
-    ON tasks.user_id = users.id
-    WHERE round_entries.round_id = :rnd_id
-    AND round_entries.dq_user_id IS NULL'''
-
-    dupe_ratings_query = '''
-    SELECT users.username, ratings.value, entries.name
-    FROM ratings
-    JOIN round_entries
-    ON ratings.round_entry_id = round_entries.id
-    JOIN entries
-    ON round_entries.entry_id = entries.id
-    JOIN users
-    ON ratings.user_id = users.id
-    WHERE round_entries.round_id = :rnd_id
-    AND round_entries.dq_user_id IS NULL'''
-
-    dupe_tasks = user_dao.rdb_session.execute(dupe_tasks_query,
-                                              {'rnd_id': rnd_id}).fetchall()
-    dupe_ratings = user_dao.rdb_session.execute(dupe_ratings_query,
-                                                {'rnd_id': rnd_id}).fetchall()
-
-    if len(dupe_tasks) - len(dupe_ratings):
-        print ('-- found %s double-assigned tasks'
-               % len(dupe_tasks))
-
-    if dupe_ratings:
-        print ('-- found %s double-assigned ratings'
-               % len(dupe_ratings))
-
-    if debug:
-        import pdb;pdb.set_trace()
-
-    return
-
-
-def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
+def retask_duplicate_ratings(maint_dao, round_id, debug=False):
+    'reassign all ratings that were duplicated'
     # TODO: does not write to the db yet; session.commit() not called
     import random
     from collections import defaultdict
     from sqlalchemy.orm import joinedload
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
-    print 'scanning round %s for duplicate tasks and juror eligibility' % rnd_id
+    print 'scanning round %s for duplicate tasks and juror eligibility' % round_id
 
     session = maint_dao.rdb_session
-    rnd = session.query(Round).get(rnd_id)
+    rnd = session.query(Round).get(round_id)
 
     cur_jurors = session.query(User)\
                         .join(RoundJuror)\
@@ -305,24 +235,23 @@ def retask_duplicate_ratings(maint_dao, rnd_id, debug=False):
                 task.complete_date = None
 
     print ('reassigned %s tasks and reverted %s ratings for round %s'
-           % (reassign_count, revert_count, rnd_id))
+           % (reassign_count, revert_count, round_id))
     if debug:
         print 'precommit debug prompt:'
         import pdb;pdb.set_trace()
     return
 
-def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
-    import datetime
 
+def apply_round_ratings(maint_dao, round_id, csv_path, debug):
     from unicodecsv import DictReader
 
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
     session = maint_dao.rdb_session
 
-    print 'applying ratings from %s to round #%s' % (csv_path, rnd_id)
+    print 'applying ratings from %s to round #%s' % (csv_path, round_id)
 
-    rnd = session.query(Round).get(rnd_id)
+    rnd = session.query(Round).get(round_id)
 
     dr = DictReader(open(csv_path, 'rb'))
 
@@ -394,6 +323,7 @@ def main():
     cmd.add('--username', '-u')
     cmd.add('--campaign-id')
     cmd.add('--round-id')
+    cmd.add('--csv-path')
     cmd.add('--url')
 
     # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
@@ -403,14 +333,91 @@ def main():
     cmd.add(create_campaign)
     cmd.add(cancel_campaign)  # , posargs={'count': 1, 'name': 'campaign_id'})
     cmd.add(create_round)
-    cmd.add(cancel_round)
     cmd.add(import_gist)
     cmd.add(activate_round)
+    cmd.add(pause_round)
+    cmd.add(advance_round)
+    cmd.add(edit_round_quorum)
+    cmd.add(check_round_dupes)
+    cmd.add(apply_round_ratings)
+    cmd.add(retask_duplicate_ratings)
+    cmd.add(shuffle_round_assignments)
+    cmd.add(cancel_round)
     cmd.add(list_campaigns)
     cmd.add(rdb_console)
 
     cmd.prepare()
     cmd.run()
+
+
+def show_round_thresholds(user_dao, round_id):
+    'get the threshold map (based on average ratings) for a specified round'
+    # TODO: may not work (had nameerrors before porting
+    round_id = args.threshold_map
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
+    thresh_map = get_threshold_map(avg_ratings_map)
+    print '-- Round threshold map for round %s (%r) ...' % round_id
+    pprint(thresh_map)
+
+
+def shuffle_round_assignments(user_dao, round_id):
+    'randomly reassign all the rating tasks in a round'
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    new_jurors = rnd.jurors
+    stats = reassign_rating_tasks(user_dao.rdb_session,
+                                  rnd, new_jurors,
+                                  reassign_all=True)
+    print '++ reassignment stats: '
+    pprint(stats)
+
+
+
+def check_round_dupes(user_dao, round_id, debug):
+    dupe_tasks_query = '''
+    SELECT users.username, ratings.value, tasks.id, entries.name
+    FROM tasks
+    JOIN ratings
+    ON tasks.id = ratings.task_id
+    JOIN round_entries
+    ON tasks.round_entry_id = round_entries.id
+    JOIN entries
+    ON round_entries.entry_id = entries.id
+    JOIN users
+    ON tasks.user_id = users.id
+    WHERE round_entries.round_id = :round_id
+    AND round_entries.dq_user_id IS NULL'''
+
+    dupe_ratings_query = '''
+    SELECT users.username, ratings.value, entries.name
+    FROM ratings
+    JOIN round_entries
+    ON ratings.round_entry_id = round_entries.id
+    JOIN entries
+    ON round_entries.entry_id = entries.id
+    JOIN users
+    ON ratings.user_id = users.id
+    WHERE round_entries.round_id = :round_id
+    AND round_entries.dq_user_id IS NULL'''
+
+    dupe_tasks = user_dao.rdb_session.execute(dupe_tasks_query,
+                                              {'round_id': round_id}).fetchall()
+    dupe_ratings = user_dao.rdb_session.execute(dupe_ratings_query,
+                                                {'round_id': round_id}).fetchall()
+
+    if len(dupe_tasks) - len(dupe_ratings):
+        print ('-- found %s double-assigned tasks'
+               % len(dupe_tasks))
+
+    if dupe_ratings:
+        print ('-- found %s double-assigned ratings'
+               % len(dupe_ratings))
+
+    if debug:
+        import pdb;pdb.set_trace()
+
+    return
 
 
 def import_gist(user_dao, round_id, url):
@@ -421,6 +428,56 @@ def import_gist(user_dao, round_id, url):
                                         params={'gist_url': url})
     print '++ added entries to round %s: %r' % (round_id, stats)
 
+
+def pause_round(user_dao, maint_dao, round_id):
+    # TODO: why coord_dao
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    maint_dao.pause_round(round_id)
+    print '++ paused round %s' % round_id
+
+
+def edit_round_quorum(maint_dao, round_id, debug):
+    rnd = maint_dao.get_round(round_id)
+    old_quorum = rnd.quorum
+    if rnd.status != 'paused':
+        print ('-- round must be paused to edit quorum, aborting')
+        return
+    print ('!! new quorum cannot be lower than current quorum: %s' % old_quorum)
+    print ('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors))
+    new_quorum = int(raw_input('?? New quorum: '))
+    new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
+
+    maint_dao.rdb_session.commit()
+
+    print ('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
+           % (rnd.id, rnd.name, old_quorum, new_quorum))
+    print ('++ reassigned %s tasks, with mean load of %s tasks per juror'
+           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean']))
+
+    if debug:
+        import pdb;pdb.set_trace()
+
+    return new_juror_stats
+
+
+def advance_round(user_dao, round_id, debug):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
+    threshold_map = get_threshold_map(avg_ratings_map)
+    print '-- Round threshold map...'
+    pprint(threshold_map)
+    threshold = raw_input('?? Include at least how many images: ')
+    threshold = int(threshold)
+    if not threshold:
+        print '-- no threshold provided, aborting'
+        sys.exit(0)
+    cur_thresh = [t for t, c in sorted(threshold_map.items()) \
+                  if c >= threshold][-1]
+    coord_dao.finalize_rating_round(round_id, cur_thresh)
+    camp_id = coord_dao.campaign.id
+    print ('++ ready to import %s entries to the next round in campaign %s...'
+           % (threshold_map[cur_thresh], camp_id))
+    next_round = create_round(user_dao, camp_id, advance=True, debug=debug)
 
 
 def activate_round(user_dao, round_id):
@@ -499,9 +556,9 @@ def create_campaign(org_dao):
         print '-- campaign name required, aborting'
         sys.exit(0)
     open_date_str = raw_input('?? Open date: ')
-    open_date = datetime.strptime(open_date_str, '%Y-%m-%d')
+    open_date = datetime.datetime.strptime(open_date_str, '%Y-%m-%d')
     close_date_str = raw_input('?? Close date: ')
-    close_date = datetime.strptime(close_date_str, '%Y-%m-%d')
+    close_date = datetime.datetime.strptime(close_date_str, '%Y-%m-%d')
     campaign = org_dao.create_campaign(name=camp_name,
                                        open_date=open_date,
                                        close_date=close_date,
@@ -588,18 +645,11 @@ if __name__ == '__main__':
                         help=('check for double-assigned tasks or ratings in a'
                         ' specified round'),
                         type=int)
-    parser.add_argument('--reassign',
-                        help=('reassign all the rating tasks in a round'),
-                        type=int)
+
     parser.add_argument('--edit-quorum',
                         help=('edit quorum in a round'),
                         type=int)
-    parser.add_argument('--retask-duplicate-ratings',
-                        help=('reassign all ratings that were duplicated'),
-                        type=int)
-    parser.add_argument('--threshold-map',
-                        help=('get the threshold map (based on average ratings) for a specified round'),
-                        type=int)
+
     parser.add_argument('--apply-ratings',
                         help='apply ratings based on input (eg --csv-file)',
                         type=int)
@@ -628,82 +678,5 @@ if __name__ == '__main__':
     force = args.force
 
     # TODO: active users
-
     # TODO: Remove organizer
-
     # TODO: Remove coordinator
-
-    if args.pause_round:
-        rnd_id = args.pause_round
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        maint_dao.pause_round(rnd_id)
-        print '++ paused round %s (%r)' % (rnd.id, rnd.name)
-
-    if args.edit_quorum:
-        rnd_id = args.edit_quorum
-        edit_quorum(maint_dao, rnd_id, args.debug)
-
-    if args.advance_round:
-        rnd_id = args.advance_round
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        avg_ratings_map = coord_dao.get_round_average_rating_map(rnd_id)
-        threshold_map = get_threshold_map(avg_ratings_map)
-        print '-- Round threshold map...'
-        pprint(threshold_map)
-        threshold = raw_input('?? Include at least how many images: ')
-        threshold = int(threshold)
-        if not threshold:
-            print '-- no threshold provided, aborting'
-            sys.exit(0)
-        cur_thresh = [t for t, c in sorted(threshold_map.items()) \
-                      if c >= threshold][-1]
-        coord_dao.finalize_rating_round(rnd_id, cur_thresh)
-        camp_id = coord_dao.campaign.id
-        print ('++ ready to import %s entries to the next round in campaign %s...'
-               % (threshold_map[cur_thresh], camp_id))
-        next_round = create_round(user_dao, camp_id, advance=True, debug=debug)
-
-    if args.check_dupes:
-        rnd_id = args.check_dupes
-        check_dupes(maint_dao, rnd_id, args.debug)
-
-    if args.reassign:
-        rnd_id = args.reassign
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        rnd = coord_dao.get_round(rnd_id)
-        new_jurors = rnd.jurors
-        stats = reassign_rating_tasks(user_dao.rdb_session,
-                                      rnd, new_jurors,
-                                      reassign_all=True)
-        print '++ reassignment stats: '
-        pprint(stats)
-
-    if args.retask_duplicate_ratings:
-        rnd_id = args.retask_duplicate_ratings
-        retask_duplicate_ratings(maint_dao, rnd_id, args.debug)
-        # TODO
-
-    if args.threshold_map:
-        rnd_id = args.threshold_map
-        cood_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        avg_ratings_map = coord_dao.get_round_average_rating_map(rnd_id)
-        thresh_map = get_threshold_map(avg_ratings_map)
-        print ('-- Round threshold map for round %s (%r) ...'
-               % (rnd.id, rnd.name))
-        pprint(thresh_map)
-
-    if args.apply_ratings:
-        rnd_id = args.apply_ratings
-        csv_path = args.ratings_csv_path
-        apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=args.debug)
-
-
-    rdb_session.commit()
-
-    # TODO: move out rdb_session commit/rollback in a try finally
-    # rdb_session.commit()
-
-    #if args.remove_coordinator:
-    #    username = args.remove_coordinator
-    #    camp_id = args.campaign
-    #    remove_coordinator(maint_dao, camp_id, username, args.debug)
