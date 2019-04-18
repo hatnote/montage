@@ -37,8 +37,8 @@ def warn(msg, force=False):
     return
 
 
-def create_round(user, campaign_id, advance=False, debug=False):
-    coord_dao = CoordinatorDAO.from_campaign(user, campaign_id)
+def create_round(user_dao, campaign_id, advance=False, debug=False):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     rnd_name = raw_input('?? Round name: ')
     if not rnd_name:
         print '-- round name required, aborting'
@@ -127,17 +127,6 @@ def edit_quorum(maint_dao, rnd_id, debug):
     return new_juror_stats
 
 
-
-def add_organizer(maint_dao, new_org_name, debug=False):
-    org_user = maint_dao.add_organizer(new_org_name)
-
-    print '++ added %s as organizer' % new_org_name
-
-    if debug:
-        import pdb; pdb.set_trace()
-    return
-
-
 def cancel_campaign(maint_dao, camp_id, debug, force=False):
     campaign = maint_dao.get_campaign(camp_id)
     msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks.'
@@ -194,18 +183,6 @@ def pause_round(maint_dao, rnd_id, debug):
     if debug:
         import pdb;pdb.set_trace()
     return rnd
-
-
-def add_coordinator(maint_dao, camp_id, username, debug):
-    camp = maint_dao.get_campaign(camp_id)
-
-    maint_dao.add_coordinator(camp, username=username)
-
-    print ('++ added %r as coordinator for campaign %s (%r)'
-           % (username, camp_id, camp.name))
-    if debug:
-        import pdb;pdb.set_trace()
-    return
 
 
 def remove_coordinator(maint_dao, camp_id, username, debug):
@@ -408,19 +385,62 @@ def apply_ratings_from_csv(maint_dao, rnd_id, csv_path, debug=False):
 
 def main():
     cmd = Command(name='montage-admin', func=None)
-    cmd.add('--debug', missing=False)
+    cmd.add('--debug', parse_as=bool)
 
     # middleware
     cmd.add(_admin_dao_mw)
     cmd.add(_rdb_session_mw)
 
-    cmd.add(add_organizer, posargs={'count': 1, 'name': 'username'})
+    cmd.add('--username', '-u')
+    cmd.add('--campaign-id')
+    cmd.add('--round-id')
+    cmd.add('--url')
+
+    # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
+
+    cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
+    cmd.add(add_coordinator)
     cmd.add(create_campaign)
-    cmd.add(cancel_campaign, posargs={'count': 1, 'name': 'campaign_id'})
+    cmd.add(cancel_campaign)  # , posargs={'count': 1, 'name': 'campaign_id'})
+    cmd.add(create_round)
+    cmd.add(cancel_round)
+    cmd.add(import_gist)
+    cmd.add(activate_round)
     cmd.add(list_campaigns)
     cmd.add(rdb_console)
 
+    cmd.prepare()
     cmd.run()
+
+
+def import_gist(user_dao, round_id, url):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    entries, warnings = coord_dao.add_entries_from_csv(round_id, url)
+    stats = coord_dao.add_round_entries(round_id, entries,
+                                        method='gistcsv',
+                                        params={'gist_url': url})
+    print '++ added entries to round %s: %r' % (round_id, stats)
+
+
+
+def activate_round(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    coord_dao.activate_round(round_id)
+    print '++ activated round %s (%s)' % (rnd.id, rnd.name)
+
+
+def cancel_round(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    msg = 'this will cancel round %s and its tasks' % (round_id,)
+
+    warn(msg, force)
+
+    rnd = coord_dao.cancel_round(round_id)
+    stats = rnd.get_count_map()
+
+    print ('++ cancelled round %s (%s), with %s tasks'
+           % (round_id, rnd.name, stats['total_cancelled_tasks']))
+    return
 
 
 def cancel_campaign(campaign_id, user_dao, org_dao):
@@ -445,6 +465,14 @@ def add_organizer(maint_dao, username):
     "Add a top-level organizer to the system, capable of creating campaigns and adding coordinators."
     maint_dao.add_organizer(username)
     print '++ added %s as organizer' % username
+
+
+def add_coordinator(campaign_id, username):
+    camp = user_dao.get_campaign(campaign_id)
+    org_dao.add_coordinator(campaign_id, username=username)
+    print ('++ added %r as coordinator for campaign %s (%r)'
+           % (username, campaign_id, camp.name))
+    return
 
 
 def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
@@ -603,49 +631,7 @@ if __name__ == '__main__':
 
     # TODO: Remove organizer
 
-    if args.add_coordinator:
-        username = args.add_coordinator
-        camp_id = args.campaign
-        camp = user_dao.get_campaign(camp_id)
-        org_dao.add_coordinator(camp_id, username=username)
-        print ('++ added %r as coordinator for campaign %s (%r)'
-               % (username, camp_id, camp.name))
-
     # TODO: Remove coordinator
-
-    if args.create_round:
-        campaign_id = args.create_round
-        create_round(user_dao, campaign_id)
-
-    if args.cancel_round:
-        rnd_id = args.cancel_round
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        msg = ('this will cancel round %s and its tasks'
-               % (rnd_id,))
-
-        warn(msg, force)
-
-        rnd = coord_dao.cancel_round(rnd_id)
-        stats = rnd.get_count_map()
-
-        print ('++ cancelled round %s (%s), with %s tasks'
-               % (rnd_id, rnd.name, stats['total_cancelled_tasks']))
-
-    if args.activate_round:
-        rnd_id = args.activate_round
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        coord_dao.activate_round(rnd_id)
-        print '++ activated round %s (%s)' % (rnd.id, rnd.name)
-
-    if args.import_gist:
-        rnd_id = args.round
-        gist_url = args.import_gist
-        coord_dao = CoordinatorDAO.from_round(user_dao, rnd_id)
-        entries, warnings = coord_dao.add_entries_from_csv(rnd_id, gist_url)
-        stats = coord_dao.add_round_entries(rnd_id, entries,
-                                            method='gistcsv',
-                                            params={'gist_url': gist_url})
-        print '++ added entries to round %s: %r' % (rnd_id, stats)
 
     if args.pause_round:
         rnd_id = args.pause_round

@@ -2404,7 +2404,7 @@ class JurorDAO(object):
                        .one_or_none())
 
         if not round_entry:
-            raise DoesNotExist('round entry %s does not exist' % round_entry_id)
+            raise DoesNotExist('round entry %s does not exist' % entry_id)
         return round_entry
 
     def confirm_active(self, round_id):
