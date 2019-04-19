@@ -16,7 +16,7 @@ import sys
 import datetime
 from pprint import pprint
 
-from face import Command, face_middleware, UsageError
+from face import Command, face_middleware, UsageError, ERROR
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
@@ -58,13 +58,13 @@ def main():
     cmd.add(_admin_dao_mw)
     cmd.add(_rdb_session_mw)
 
-    cmd.add('--username', '-u')
+    cmd.add('--username', missing=ERROR)
     cmd.add('--debug', parse_as=True, doc='get extra output, enable debug console before db commit')
     cmd.add('--force', parse_as=True, doc='skip some confirmations, use with caution')
-    cmd.add('--campaign-id', parse_as=int)
-    cmd.add('--round-id', parse_as=int)
-    cmd.add('--csv-path')
-    cmd.add('--url')
+    cmd.add('--campaign-id', parse_as=int, missing=ERROR)
+    cmd.add('--round-id', parse_as=int, missing=ERROR)
+    cmd.add('--csv-path', missing=ERROR)
+    cmd.add('--url', missing=ERROR)
 
     # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
 
