@@ -2227,14 +2227,14 @@ class OrganizerDAO(object):
         return campaign
 
     def cancel_campaign(self, campaign_id):
-        cancel_date = datetime.datetime.utcnow()
         campaign = self.user_dao.get_campaign(campaign_id)
+        coord_dao = CoordinatorDAO(self.user_dao, campaign)
         rounds = (self.query(Round)
-                      .filter(Round.campaign_id == campaign_id)
-                      .all())
+                  .filter(Round.campaign_id == campaign_id)
+                  .all())
         campaign.status = CANCELLED_STATUS
-        for round in rounds:
-            self.cancel_round(round)
+        for rnd in rounds:
+            coord_dao.cancel_round(rnd.id)
         msg = '%s cancelled campaign "%s" and %s rounds' %\
               (self.user.username, campaign.name, len(rounds))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
