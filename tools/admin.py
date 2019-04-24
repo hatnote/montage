@@ -13,9 +13,13 @@ TODO:
 
 import os
 import sys
+import random
 import datetime
 from pprint import pprint
+from collections import defaultdict
 
+from unicodecsv import DictReader
+from sqlalchemy.orm import joinedload
 from face import Command, face_middleware, UsageError, ERROR
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +27,7 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 
 sys.path.append(PROJ_PATH)
 
+import montage.rdb
 from montage.rdb import (make_rdb_session,
                          UserDAO,
                          OrganizerDAO,
@@ -30,10 +35,9 @@ from montage.rdb import (make_rdb_session,
                          CoordinatorDAO,
                          reassign_rating_tasks,
                          lookup_user)
-
 from montage.utils import get_threshold_map
 
-GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+
 RANKING_MAX = 40
 
 
@@ -132,8 +136,9 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     if not advance:
         entries = coord_dao.add_entries_from_cat(rnd.id, category_name)
         source = category_name
-        #entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
-        #source = GIST_URL
+        # GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
+        # entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
+        # source = GIST_URL
         print ('++ prepared %s entries from %r' %
                (len(entries), source))
         coord_dao.add_round_entries(rnd.id, entries)
@@ -170,7 +175,7 @@ def cancel_campaign(user_dao, org_dao, campaign_id, force=False):
 
 
 
-def pause_round(maint_dao, round_id, debug):
+def pause_round(maint_dao, round_id):
     'pause a round to make edits and perform other maintenance'
     rnd = maint_dao.get_round(round_id)
 
@@ -196,10 +201,6 @@ def remove_coordinator(maint_dao, campaign_id, username, debug):
 
 def retask_duplicate_ratings(maint_dao, round_id, debug=False):
     'reassign all ratings that were duplicated'
-    # TODO: does not write to the db yet; session.commit() not called
-    import random
-    from collections import defaultdict
-    from sqlalchemy.orm import joinedload
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
     print 'scanning round %s for duplicate tasks and juror eligibility' % round_id
@@ -261,8 +262,6 @@ def retask_duplicate_ratings(maint_dao, round_id, debug=False):
 
 def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path, debug):
     "apply ratings to a round based on an input file"
-    from unicodecsv import DictReader
-
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
     print 'applying ratings from %s to round #%s' % (csv_path, round_id)
@@ -492,7 +491,6 @@ def add_coordinator(user_dao, org_dao, campaign_id, username):
 
 def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
     "Load a developer console for interacting with database objects."
-    import montage.rdb
     for m in dir(montage.rdb):
         locals()[m] = getattr(montage.rdb, m)
 
@@ -520,8 +518,7 @@ def create_campaign(org_dao):
     close_date = datetime.datetime.strptime(close_date_str, '%Y-%m-%d')
     campaign = org_dao.create_campaign(name=camp_name,
                                        open_date=open_date,
-                                       close_date=close_date,
-                                       coords=[user])
+                                       close_date=close_date)
     pprint(campaign.to_info_dict())
     print ('++ campaign %s (%r) created with %r as coordinator'
            % (campaign.id, campaign.name, org_dao.user.username))
