@@ -187,7 +187,7 @@ def pause_round(maint_dao, round_id):
     return rnd
 
 
-def remove_coordinator(maint_dao, campaign_id, username, debug):
+def remove_coordinator(maint_dao, campaign_id, username):
     # TODO: the campaign_coords table should have an is_active column
     raise NotImplementedError('cannot remove coordinators for now')
     '''
@@ -199,7 +199,7 @@ def remove_coordinator(maint_dao, campaign_id, username, debug):
     return
     '''
 
-def retask_duplicate_ratings(maint_dao, round_id, debug=False):
+def retask_duplicate_ratings(maint_dao, round_id):
     'reassign all ratings that were duplicated'
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
@@ -260,7 +260,7 @@ def retask_duplicate_ratings(maint_dao, round_id, debug=False):
     return
 
 
-def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path, debug):
+def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path):
     "apply ratings to a round based on an input file"
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
@@ -345,7 +345,7 @@ def shuffle_round_assignments(user_dao, round_id):
     pprint(stats)
 
 
-def check_round_dupes(user_dao, round_id, debug):
+def check_round_dupes(user_dao, round_id):
     """check for double-assigned tasks or ratings in a specified round"""
     dupe_tasks_query = '''
     SELECT users.username, ratings.value, tasks.id, entries.name
@@ -399,7 +399,7 @@ def import_gist(user_dao, round_id, url):
     print '++ added entries to round %s: %r' % (round_id, stats)
 
 
-def edit_round_quorum(maint_dao, round_id, debug):
+def edit_round_quorum(maint_dao, round_id):
     "change the quorum of a given round, assigning and reassigning tasks as need be"
     rnd = maint_dao.get_round(round_id)
     old_quorum = rnd.quorum
