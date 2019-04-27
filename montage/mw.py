@@ -191,6 +191,7 @@ class DBSessionMiddleware(Middleware):
             ret = next(rdb_session=rdb_session)
         except:
             rdb_session.rollback()
+            import pdb;pdb.post_mortem()
             raise
         else:
             if ret.status_code >= 400:

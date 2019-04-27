@@ -24,3 +24,4 @@ unicodecsv==0.14.1
 Werkzeug==0.9.4
 chert==0.3.0
 mysqlclient==1.4.2.post1
+pymysql==0.9.3
