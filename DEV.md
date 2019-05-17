@@ -17,6 +17,21 @@ montage`. Then, with the virtualenv activated:
    get a working version from maintainers
 3. Create the schema in your configured database using `python tools/create_schema.py`
 4. The application can be started with `python montage/server.py`
+5. In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
+log in to the local app in your browser, and then copy the value from the
+`clastic_cookie` in the apps' cookies. This is your login cookie. The easiest way
+to do that is probably by loading the chrome web console, going to the
+application tab, then selecting cookies from the storage menu on the left, and
+copying the full value from the clastic_cookie (should be the only cookie on the
+app).
+6. Add your username as the `superuser` in the config. (This will allow you to
+add `su_to=<any user>` to the backend, if you want to test submitting as another
+juror.)
+7. Add your username to the list of maintainers in [rdb.py line 113](https://github.com/hatnote/montage/blob/master/montage/rdb.py#L113).
+This will give your user top-level permissions in the full app, so you can view
+some logs (audit logs, active users), add/remove organizers, and get a
+coordinator view into all campaigns.
+
 
 Feel free to run `run_server_test.py` while the application server is
 running to generate some test data. By default, the application server

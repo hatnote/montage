@@ -185,7 +185,7 @@ def full_run(base_url, remote):
     data = {'name': 'A demo campaign 2016',
             'open_date': "2015-09-01 17:00:00",  # UTC times,
             'close_date': None}
-    resp = fetch('organizer: edit campaign',
+    resp = fetch('coordinator: edit campaign',
                  '/admin/campaign/%s/edit' % campaign_id,
                  data, as_user='Yarl')
 
@@ -198,19 +198,20 @@ def full_run(base_url, remote):
                  as_user='LilyOfTheWest')
 
     # note: you can also add coordinators when the round is created
-    resp = fetch('organizer: add coordinator to campaign',
+    resp = fetch('coordinator: add coordinator to campaign',
                  '/admin/campaign/%s/add_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
-    resp = fetch('organizer: remove coordinator',
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: remove coordinator',
                  '/admin/campaign/%s/remove_coordinator' % campaign_id,
                  {'username': 'Effeietsanders'},
-                 as_user='Yarl')
+                 as_user='LilyOfTheWest')
 
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
     # Add a round to a campaign
-    rnd_data = {'name': 'Test yes/no round',
+    rnd_data = {'name': 'Test yes/no round ნ',
                 'vote_method': 'yesno',
                 'quorum': 3,
                 'deadline_date': "2016-10-15T00:00:00",
@@ -436,6 +437,12 @@ def full_run(base_url, remote):
                  {'ratings': [{'vote_id': vote_id, 'value': 1.0}]},
                  as_user='Jimbo Wales')
 
+    skip_vote_id = tasks[1]['id']
+    resp = fetch('juror: skip a rating',
+                 '/juror/round/%s/tasks/skip' % round_id,
+                 {'vote_id': skip_vote_id},
+                 as_user='Jimbo Wales')
+
     entry_id = tasks[-1]['entry']['id']
     resp = fetch('juror: mark an entry as favorite',
                  '/juror/round/%s/%s/fave' % (round_id, entry_id),
@@ -566,9 +573,12 @@ def full_run(base_url, remote):
 
     rnd_2_id = resp['data']['id']
 
-    # TODO: test getting a csv of final round results
-    #resp = fetch_raw(base_url + '/admin/round/%s/download' % round_id,
-    #                  as_user='LilyOfTheWest')
+    # TODO: test getting a csv of final round results needs more instrumentation
+    print('>> downloading results')
+    resp = fetch_raw(base_api_url + '/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
+    resp_bytes = resp.read()
+    assert len(resp_bytes) > 100
+    assert resp_bytes.count(',') > 10
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
@@ -740,6 +750,8 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                             '/juror/round/%s/tasks?count=%s'
                             % (round_id, per_fetch), log_level=DEBUG,
                             as_user=j_username)['data']['tasks']
+            if len(t_dicts) < per_fetch:
+                print '!! last batch: %r' % ([t['id'] for t in t_dicts])
             if not t_dicts:
                 break  # right?
             ratings = []
@@ -751,11 +763,13 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                 # arb scoring
                 if r_dict['vote_method'] == 'yesno':
                     value = len(j_username + t_dict['entry']['name']) % 2
-                    if value == 1.0:
+                    if value == 1:
                         review = '%s likes this' % j_username
                 elif r_dict['vote_method'] == 'rating':
                     value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
                     entry_id = t_dict['entry']['id']
+                    if value == 1:
+                        review = '%s thinks this is great' % j_username
                     '''
                     # Note: only if you want some extra faves for testing
                     if value == 1.0:
@@ -783,6 +797,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
                 rating_dict['value'] = value
                 if review:
+                    print review
                     rating_dict['review'] = review
 
                 ratings.append(rating_dict)

@@ -669,6 +669,18 @@ Get a preview of which files will be disqualified
   - 403: not a coordinator for this campaign
   - 404: round does not exist
 
+## /v1/admin/round/`<round_id:int>`/reviews
+Returns a list of reviews
+
+  - Function: get_round_reviews
+  - Method: GET
+
+### Parameters
+  - `round_id` (in path)
+
+### Response
+  - `data`: list of vote [`vote details`](#vote-details) dictionaries
+
 ## /v1/admin/round/`<round_id:int>`/results
 Returns a dictionary of votes per user
   
@@ -849,6 +861,26 @@ None
   - 403: not a juror on this round
   - 404: vote(s) do not exist
 
+## /v1/juror/round/`<round_id:int>`/tasks/skip
+Skip a task, so the next task goes to the front of your queue
+
+ - Function: [skip_rating](https://github.com/hatnote/montage/blob/master/montage/juror_endpoints.py#L)
+ - Method: POST
+
+### Parameters
+ - `round_id` (in path)
+ - `vote_id`: the vote id to skip (from `/v1/juror/round/<round_id:int>/tasks`)
+
+### Response
+Similar to `/v1/juror/round/<round_id:int>/tasks`:
+  - `data`: 
+    - `stats`
+    - `tasks`: list of [`vote details`](#vote-details) dictionaries
+
+### Errors
+  - 403: not a juror on this round
+  - 404: vote(s) do not exist
+
 ## /v1/juror/round/`<round_id:int>`/votes 
 Return submitted ratings, rankings, yesno votes from a juror
 
@@ -932,9 +964,10 @@ Returns a list of fave'd entries
 ### Parameters
   - `limit` (optional, default 10)
   - `offset` (optional, default 0)
+  - `sort` (optional, may be `asc` or `desc`, default `desc`)
 
 ### Response
-  - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fav_date` for each
+  - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fave_date` for each
   - `status`: success or failure
   - `errors`: description of the failure (if any)
 
@@ -1199,6 +1232,7 @@ Complete information about a vote:
   - `review`: a description of the reason for the vote, provided by the user
   - `entry`: `entry details` dictionary
   - `date`: date the vote was modified (in ISO 8601 format)
+  - `is_fave`: true if a juror has marked this entry as a favorite
 
 ## round results summary
 Information about the end of a campaign:

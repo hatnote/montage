@@ -8,7 +8,7 @@ const UserService = ($http, $q, $window, dataService) => {
     getCampaign: id => $http.get(base + '/juror/campaign/' + id),
     getPastVotes: (id, offset, orderBy, sort) => $http.get([
       base, 'juror/round', id,
-      `ratings?offset=${offset || 0}&order_by=${orderBy || 'date'}&sort=${sort || 'desc'}`,
+      `votes?offset=${offset || 0}&order_by=${orderBy || 'date'}&sort=${sort || 'desc'}`,
     ].join('/')),
     getPastRanking: (id, offset) => $http.get(base + '/juror/round/' + id + '/rankings'),
     getFaves: () => $http.get(base + '/juror/faves'),

@@ -35,6 +35,7 @@ def get_juror_routes():
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
+           POST('/juror/round/<round_id:int>/tasks/skip', skip_rating),
            GET('/juror/round/<round_id:int>/votes', get_votes_from_round),
            GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
            GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round),
@@ -89,7 +90,7 @@ def get_campaign(user_dao, campaign_id):
     rounds = []
     for rnd in campaign.rounds:
         rnd_stats = user_dao.get_round_task_counts(rnd.id)
-        ballot = juror_dao.get_ballot(round_id)
+        ballot = juror_dao.get_ballot(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds
     return {'data': data}
@@ -107,34 +108,10 @@ def get_round(user_dao, round_id):
     return {'data': data}
 
 
-def get_campaign_info(user_dao, campaign_id):
-    """
-    Summary: Get juror-level info for a round, identified by campaign ID.
-    """
-    juror_dao = JurorDAO(use_dao)
-    campaign = juror_dao.get_campaign(campaign_id)
-    ret = CampaignInfo(campaign)  # TODO: add as a method on the Round model?
-    return {'data': ret}
-
-
-def get_tasks(user_dao, request):
-    # TODO: this needs a round. a given user can be participating in
-    # multiple campaigns at once.
-    count = request.values.get('count', 15)
-    offset = request.values.get('offset', 0)
-    juror_dao = JurorDAO(user_dao)
-    tasks = juror_dao.get_tasks(num=count, offset=offset)
-    stats = juror_dao.get_task_counts()
-    data = {'stats': stats,
-            'tasks': []}
-    for task in tasks:
-        data['tasks'].append(task.to_details_dict())
-    return {'data': data}
-
-
 def get_tasks_from_round(user_dao, round_id, request):
     count = request.values.get('count', 15)
     offset = request.values.get('offset', 0)
+    # TODO: remove offset once it's removed from the client
     juror_dao = JurorDAO(user_dao)
     juror_dao.confirm_active(round_id)
     rnd = juror_dao.get_round(round_id)
@@ -185,42 +162,22 @@ def get_rankings_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
     if rnd.vote_method != 'ranking':
-        raise InvalidAction('round %s is not a ranking round' % round_id)
+        return {'data': None,
+                'status': 'failure',
+                'errors': 'round %s is not a ranking round' % round_id}
     ret = get_votes_from_round(user_dao, round_id, request, rnd=rnd)
     return ret
 
 
 def get_faves(user_dao, request_dict):
+    request_dict = request_dict or dict()
+
     juror_dao = JurorDAO(user_dao)
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
-    faves = juror_dao.get_faves(limit, offset)
-    return {'data': faves}
-
-
-def submit_rating(user_dao, request_dict):
-    # TODO: Check permissions
-    juror_dao = JurorDAO(user_dao)
-    vote_id = request_dict['vote_id']
-    rating = float(request_dict['rating'])
-    task = juror_dao.get_task(vote_id)
-    rnd = task.round_entry.round
-    rnd.confirm_active()
-    if rnd.vote_method == 'rating':
-        if rating not in VALID_RATINGS:
-            raise InvalidAction('rating expected one of %s, not %r'
-                                % (VALID_RATINGS, rating))
-    elif rnd.vote_method == 'yesno':
-        if rating not in VALID_YESNO:
-            raise InvalidAction('rating expected one of %s, not %r'
-                                % (VALID_YESNO, rating))
-    if task.user != user:  # TODO: this should be handled by the dao get
-        raise PermissionDenied()
-    if task.status == 'active':
-        juror_dao.apply_rating(task, rating)
-
-    # What should this return?
-    return {'data': {'vote_id': vote_id, 'rating': rating}}
+    sort = request_dict.get('sort', 'desc')
+    faves = juror_dao.get_faves(sort, limit, offset)
+    return {'data': [f.to_details_dict() for f in faves]}
 
 
 def submit_ratings(user_dao, request_dict):
@@ -243,12 +200,18 @@ def submit_ratings(user_dao, request_dict):
     elif not r_dicts:
         return {}  # submitting no ratings = immediate return
 
+    review_map = {}
+
     for rd in r_dicts:
-        review = rd.get('review') or ''
-        review_stripped = review.strip()
-        if len(review_stripped) > 8192:
-            raise ValueError('review must be less than 8192 chars,'
-                             ' not %r' % len(review_stripped))
+        review = rd.get('review')
+        if review:
+            review_stripped = review.strip()
+            task_id = rd.get('vote_id') or rd['task_id']
+            if len(review_stripped) > 8192:
+                raise ValueError('review must be less than 8192 '
+                                 'chars, not %r' % len(review_stripped))
+            review_map[task_id] = review_stripped
+
     try:
         id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
     except KeyError as e:
@@ -261,7 +224,6 @@ def submit_ratings(user_dao, request_dict):
     task_map = dict([(t.id, t) for t in tasks])
     round_id_set = set([t.round_entry.round_id for t in tasks])
     if not len(round_id_set) == 1:
-        import pdb;pdb.set_trace()
         raise InvalidAction('can only submit ratings for one round at a time')
 
     round_id = list(round_id_set)[0]
@@ -300,7 +262,9 @@ def submit_ratings(user_dao, request_dict):
     if style in ('rating', 'yesno'):
         for t in tasks:
             val = id_map[t.id]
-            juror_dao.edit_rating(t, val)
+            review = review_map.get(t.id)
+            juror_dao.edit_rating(t, val, review=review)
+
     elif style == 'ranking':
         # This part is designed to support ties ok though
         """
@@ -325,6 +289,21 @@ def submit_ratings(user_dao, request_dict):
         juror_dao.apply_ranking(ballot)
 
     return {}  # TODO?
+
+
+def skip_rating(user_dao, round_id, request, request_dict):
+    juror_dao = JurorDAO(user_dao)
+    
+    try:
+        vote_id = request_dict['vote_id']
+    except Exception as e:
+        import pdb;pdb.set_trace()
+        raise InvalidAction('must provide skip id')
+
+    juror_dao.skip_voting(vote_id)
+    next_tasks = get_tasks_from_round(user_dao, round_id, request)
+
+    return next_tasks
 
 
 def submit_fave(user_dao, round_id, entry_id):

@@ -72,7 +72,7 @@ function controller(
     vm.loading = 'fav';
     return jurorService
       .faveImage(vm.round.id, vm.rating.current.entry.id)
-      .then(() => { alertService.success('Image added to favourites', 250); })
+      .then(() => { alertService.success('Image added to favorites', 250); })
       .catch(alertService.error)
       .finally(() => { vm.loading = false; });
   }
