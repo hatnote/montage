@@ -10,10 +10,7 @@ const Component = {
   template,
 };
 
-function controller(
-  $window,
-  adminService,
-  alertService) {
+function controller($window, adminService, alertService) {
   const vm = this;
 
   vm.loading = null;
@@ -23,7 +20,9 @@ function controller(
   vm.finalizeRound = finalizeRound;
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
-  vm.editRound = () => { vm.round.edit = true; };
+  vm.editRound = () => {
+    vm.round.edit = true;
+  };
   vm.getReportedFiles = getReportedFiles;
 
   // functions
@@ -34,7 +33,7 @@ function controller(
   };
 
   /**
-   * 
+   *
    */
   function activateRound() {
     vm.loading = 'activate';
@@ -47,7 +46,7 @@ function controller(
   }
 
   /**
-   * 
+   *
    */
   function downloadResults() {
     const url = adminService.downloadRound(vm.round.id);
@@ -55,7 +54,7 @@ function controller(
   }
 
   /**
-   * 
+   *
    */
   function finalizeRound() {
     vm.round.details.is_closeable = false;
@@ -63,17 +62,19 @@ function controller(
   }
 
   /**
-   * 
+   *
    */
   function getReportedFiles() {
     vm.loading = 'reported';
     adminService
       .getRoundFlags(vm.round.id)
-      .then((data) => {
+      .then(data => {
         console.log(data);
       })
       .catch(alertService.error)
-      .finally(() => { vm.loading = false; });
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 
   /**
@@ -83,7 +84,7 @@ function controller(
   function getRoundDetails(round) {
     adminService
       .getRound(round.id)
-      .then((data) => {
+      .then(data => {
         angular.extend(round, data.data);
         vm.loading = null;
       })
@@ -97,7 +98,7 @@ function controller(
   function getRoundResults(round) {
     adminService
       .previewRound(round.id)
-      .then((data) => {
+      .then(data => {
         if (data.data.counts && data.data.counts.all_mimes) {
           data.data.counts.all_mimes = []
             .concat(...data.data.counts.all_mimes)
@@ -108,19 +109,21 @@ function controller(
         angular.extend(round, {
           details: data.data,
         });
-        if (!round.details.ratings) { return; }
+        if (!round.details.ratings) {
+          return;
+        }
         round.details.ratings = {
-          labels: Object.keys(round.details.ratings)
-            .map(label => `${(parseFloat(label) * 10).toFixed(2)}/10`),
-          values: Object.keys(round.details.ratings)
-            .map(key => round.details.ratings[key]),
+          labels: Object.keys(round.details.ratings).map(
+            label => `${(parseFloat(label) * 10).toFixed(2)}/10`,
+          ),
+          values: Object.keys(round.details.ratings).map(key => round.details.ratings[key]),
         };
       })
       .catch(alertService.error);
   }
 
   /**
-   * 
+   *
    */
   function pauseRound() {
     vm.loading = 'pause';
@@ -133,13 +136,14 @@ function controller(
   }
 
   /**
-   * 
+   *
    */
   function populateRound() {
     adminService
       .populateRound(vm.round.id, {
         import_method: 'gistcsv',
-        gist_url: 'https://gist.githubusercontent.com/yarl/bc4b89847f9ced089f7169bbfec79841/raw/c8bd23d3b354ce9d20de578245e4dc7c9f095fb0/wlm2015_fr_5.csv',
+        gist_url:
+          'https://gist.githubusercontent.com/yarl/bc4b89847f9ced089f7169bbfec79841/raw/c8bd23d3b354ce9d20de578245e4dc7c9f095fb0/wlm2015_fr_5.csv',
       })
       .catch(alertService.error);
   }
