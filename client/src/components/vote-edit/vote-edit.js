@@ -18,7 +18,8 @@ function controller(
   $timeout,
   $window,
   alertService,
-  jurorService) {
+  jurorService,
+) {
   const vm = this;
 
   vm.edits = [];
@@ -37,7 +38,9 @@ function controller(
   vm.save = save;
   vm.saveRanking = saveRanking;
   vm.setRate = setRate;
-  vm.setGallerySize = (size) => { vm.size = size; };
+  vm.setGallerySize = size => {
+    vm.size = size;
+  };
 
   vm.$onInit = () => {
     const id = $stateParams.id.split('-')[0];
@@ -53,7 +56,7 @@ function controller(
   // functions
 
   function encodeName(image) {
-    return encodeURI(image.entry.name);
+    return encodeURIComponent(image.entry.name);
   }
 
   /**
@@ -64,15 +67,14 @@ function controller(
     vm.loading += 1;
     jurorService
       .getRound(id)
-      .then((data) => {
+      .then(data => {
         vm.round = data.data;
-        vm.round.link = [
-          vm.round.id,
-          vm.round.canonical_url_name,
-        ].join('-');
+        vm.round.link = [vm.round.id, vm.round.canonical_url_name].join('-');
       })
       .catch(alertService.error)
-      .finally(() => { vm.loading -= 1; });
+      .finally(() => {
+        vm.loading -= 1;
+      });
   }
 
   /**
@@ -83,24 +85,31 @@ function controller(
     vm.loading += 1;
     jurorService
       .getPastVotes(id)
-      .then((data) => {
+      .then(data => {
         vm.votes = data.data;
-        vm.votes.forEach((element) => {
-          element.value = (element.value * 4) + 1;
+        vm.votes.forEach(element => {
+          element.value = element.value * 4 + 1;
         });
       })
       .catch(alertService.error)
-      .finally(() => { vm.loading -= 1; });
+      .finally(() => {
+        vm.loading -= 1;
+      });
   }
 
-
   function getImageName(image) {
-    if (!image) { return null; }
-    return image.entry.url_med;
+    if (!image) {
+      return null;
+    }
+    return [
+      '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
+      encodeURIComponent(image.entry.name),
+      '&width=1280',
+    ].join('');
   }
 
   /**
-   * 
+   *
    */
   function loadMore() {
     if (vm.loadingMore) return null;
@@ -108,9 +117,9 @@ function controller(
     vm.loadingMore = true;
     return jurorService
       .getPastVotes(vm.round.id, vm.votes.length, vm.sort.order_by, vm.sort.sort)
-      .then((response) => {
-        response.data.forEach((element) => {
-          element.value = (element.value * 4) + 1;
+      .then(response => {
+        response.data.forEach(element => {
+          element.value = element.value * 4 + 1;
         });
         if (response.data.length) {
           if (vm.votes.length && response.data[0].id === vm.votes[0].id) {
@@ -130,14 +139,16 @@ function controller(
       targetEvent: event,
       clickOutsideToClose: true,
       template: imageTemplate,
-      controller: ($scope) => {
+      controller: $scope => {
         $scope.cancel = () => $mdDialog.hide();
         $scope.image = image;
         $scope.isFirst = vm.votes.indexOf(image) === 0;
         $scope.isLast = vm.votes.indexOf(image) === vm.votes.length - 1;
         $scope.isRanking = vm.isVoting('ranking');
         $scope.nextImage = () => {
-          if ($scope.isLast) { return; }
+          if ($scope.isLast) {
+            return;
+          }
           const currentIndex = vm.votes.indexOf(image);
           const nextImage = vm.votes[currentIndex + 1];
           $mdDialog.hide();
@@ -145,13 +156,15 @@ function controller(
         };
         $scope.openURL = openURL;
         $scope.prevImage = () => {
-          if ($scope.isFirst) { return; }
+          if ($scope.isFirst) {
+            return;
+          }
           const currentIndex = vm.votes.indexOf(image);
           const prevImage = vm.votes[currentIndex - 1];
           $mdDialog.hide();
           openImage(prevImage);
         };
-        $scope.keyDown = (ev) => {
+        $scope.keyDown = ev => {
           if (ev.code === 'ArrowRight') {
             $scope.nextImage();
           } else if (ev.code === 'ArrowLeft') {
@@ -173,8 +186,9 @@ function controller(
     vm.loading = true;
     vm.loadingMore = false;
     vm.votes = [];
-    loadMore()
-      .then(() => { vm.loading = false; });
+    loadMore().then(() => {
+      vm.loading = false;
+    });
   }
 
   function save() {
@@ -182,20 +196,23 @@ function controller(
     saveRating()
       .then(() => {
         vm.edits = [];
-        vm.votes.forEach((image) => { delete image.edited; });
+        vm.votes.forEach(image => {
+          delete image.edited;
+        });
       })
       .catch(alertService.error)
-      .finally(() => { vm.loading = false; });
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 
   function saveRating() {
-    return jurorService
-      .setRating(vm.round.id, {
-        ratings: vm.edits.map(element => ({
-          vote_id: element.id,
-          value: (element.value - 1) / 4,
-        })),
-      });
+    return jurorService.setRating(vm.round.id, {
+      ratings: vm.edits.map(element => ({
+        vote_id: element.id,
+        value: (element.value - 1) / 4,
+      })),
+    });
   }
 
   function saveRanking() {
@@ -209,9 +226,13 @@ function controller(
 
     jurorService
       .setRating(vm.round.id, { ratings })
-      .then(() => { $state.reload(); })
+      .then(() => {
+        $state.reload();
+      })
       .catch(alertService.error)
-      .finally(() => { vm.loading = false; });
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 
   function setRate(image, rate) {
