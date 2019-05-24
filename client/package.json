@@ -8,10 +8,10 @@
     "start-live": "webpack-dev-server --content-base app --progress --colors",
     "start": "webpack --watch --content-base app --progress --colors",
     "build": "webpack --content-base app --progress",
-    "build-zip": "webpack --content-base app --progress && cd ../montage/static && zip -r app.zip .",
-    "build-dev": "set NODE_ENV=dev&&webpack --content-base app --progress",
-    "build-beta": "set NODE_ENV=beta&&webpack --content-base app --progress",
-    "build-prod": "set NODE_ENV=prod&&webpack --content-base app --progress"
+    "build-zip": "npm run build && cd ../montage/static && zip -r app.zip .",
+    "build-dev": "NODE_ENV=dev npm run build",
+    "build-beta": "NODE_ENV=beta npm run build",
+    "build-prod": "NODE_ENV=prod npm run build"
   },
   "license": "BSD-3-Clause",
   "devDependencies": {
