@@ -10,12 +10,7 @@ const Component = {
   template,
 };
 
-function controller(
-  $filter,
-  $state,
-  adminService,
-  alertService,
-  dataService) {
+function controller($filter, $mdDialog, $state, adminService, alertService, dataService) {
   const vm = this;
 
   vm.loading = 0;
@@ -64,7 +59,7 @@ function controller(
   };
 
   /**
-   * 
+   *
    */
   function addRound() {
     const round = angular.extend({}, vm.round, {
@@ -79,14 +74,19 @@ function controller(
         if (vm.import.import_method === 'category') {
           vm.import.category = vm.import.category || vm.categorySearchText;
         }
+        if (vm.import.import_method === 'selected') {
+          vm.import.file_names = vm.import.file_names.split('\n').filter(elem => elem);
+        }
         importCategory(data.data.id);
       })
       .catch(alertService.error)
-      .finally(() => { vm.loading -= 1; });
+      .finally(() => {
+        vm.loading -= 1;
+      });
   }
 
   /**
-   * 
+   *
    */
   function advanceRound() {
     const round = {
@@ -103,35 +103,65 @@ function controller(
     vm.loading += 1;
     adminService
       .advanceRound(vm.prevRound.id, round)
-      .then(() => { $state.reload(); })
+      .then(() => {
+        $state.reload();
+      })
       .catch(alertService.error)
-      .finally(() => { vm.loading -= 1; });
+      .finally(() => {
+        vm.loading -= 1;
+      });
   }
 
   /**
-   * 
+   *
    */
   function cancelAddRound() {
     vm.campaign.rounds.pop();
   }
 
   /**
-   * 
-   * @param {int} id 
-   * @param {String} name 
+   *
+   * @param {int} id
+   * @param {String} name
    */
   function importCategory(id) {
     vm.loading += 1;
     adminService
       .populateRound(id, vm.import)
-      .then(() => { $state.reload(); })
+      .then((response) => {
+        if (response.data && response.data.warnings && response.data.warnings.length) {
+          const { warnings = [], disqualified = [] } = response.data;
+
+          const warningsList = warnings.map(warning => Object.values(warning).pop());
+          const filesList = disqualified
+            .map(image => `${image.entry.name} – ${image.dq_reason}`.trim())
+            .filter((value, index, array) => array.indexOf(value) === index)
+            .join('\n');
+
+          const text = `${warningsList.join(', ')}\n\n${filesList}`;
+
+          const dialog = $mdDialog
+            .confirm()
+            .title('Import Warning')
+            .textContent(text)
+            .ok('OK');
+
+          $mdDialog.show(dialog).then(() => {
+            $state.reload();
+          });
+        } else {
+          $state.reload();
+        }
+      })
       .catch(alertService.error)
-      .finally(() => { vm.loading -= 1; });
+      .finally(() => {
+        vm.loading -= 1;
+      });
   }
 
   /**
-   * 
-   * @param {String} name 
+   *
+   * @param {String} name
    */
   function searchCategory(name) {
     return dataService
