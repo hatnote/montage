@@ -14,8 +14,8 @@ IMAGE_COLS = ['img_width',
               'img_name',
               'img_major_mime',
               'img_minor_mime',
-              'img_user',
-              'img_user_text',
+              'actor_user AS img_user',
+              'actor_name AS img_user_text',
               'img_timestamp']
 
 
@@ -42,11 +42,10 @@ def get_files(category_name):
     query = '''
     SELECT {cols}
     FROM commonswiki_p.image
-    JOIN page
-    ON page_namespace = 6
+    LEFT JOIN actor ON img_actor=actor.actor_id
+    JOIN page ON page_namespace = 6
     AND page_title = img_name
-    JOIN categorylinks
-    ON cl_from = page_id
+    JOIN categorylinks ON cl_from = page_id
     AND cl_type = 'file'
     AND cl_to = %s;
     '''.format(cols=', '.join(IMAGE_COLS))
@@ -61,6 +60,7 @@ def get_file_info(filename):
     query = '''
     SELECT {cols}
     FROM commonswiki_p.image
+    LEFT JOIN actor ON img_actor=actor.actor_id
     WHERE img_name = %s;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (filename.replace(' ', '_'),)
