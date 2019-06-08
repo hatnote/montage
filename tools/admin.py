@@ -73,23 +73,31 @@ def main():
     # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
 
     cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
-    cmd.add(add_coordinator)
-    cmd.add(create_campaign)
-    cmd.add(cancel_campaign)  # , posargs={'count': 1, 'name': 'campaign_id'})
-    cmd.add(create_round)
-    cmd.add(import_gist)
-    cmd.add(activate_round)
-    cmd.add(pause_round)
-    cmd.add(advance_round)
-    cmd.add(edit_round_quorum)
-    cmd.add(check_round_dupes)
-    cmd.add(apply_round_ratings)
-    cmd.add(retask_duplicate_ratings)
-    cmd.add(shuffle_round_assignments)
-    cmd.add(cancel_round)
-    cmd.add(list_campaigns)
-    cmd.add(rdb_console)
 
+    cmp_cmd = Command(name='campaign', func=None, doc='tools for administrating Montage campaigns')
+    cmp_cmd.add(list_campaigns, name='list')
+    cmp_cmd.add(create_campaign, name='create')
+    cmp_cmd.add(add_coordinator, name='add-coordinator')
+    cmp_cmd.add(cancel_campaign, name='cancel')
+
+    cmd.add(cmp_cmd)
+
+    rnd_cmd = Command(name='round', func=None, doc='tools for administrating Montage rounds')
+    rnd_cmd.add(create_round, name='create')
+    rnd_cmd.add(import_gist, name='import-gist')
+    rnd_cmd.add(activate_round, name='activate')
+    rnd_cmd.add(pause_round, name='pause')
+    rnd_cmd.add(advance_round, name='advance')
+    rnd_cmd.add(edit_round_quorum, name='edit-quorum')
+    rnd_cmd.add(check_round_dupes, name='check-dupes')
+    rnd_cmd.add(apply_round_ratings, name='apply-ratings')
+    rnd_cmd.add(retask_duplicate_ratings, name='retask-dupes')
+    rnd_cmd.add(shuffle_round_assignments, name='shuffle-tasks')
+    rnd_cmd.add(cancel_round, name='cancel')
+
+    cmd.add(rnd_cmd)
+
+    cmd.add(rdb_console)
     cmd.prepare()
     return cmd.run()
 
@@ -451,7 +459,7 @@ def activate_round(user_dao, round_id):
 
 
 def cancel_round(user_dao, round_id, force):
-    """set a round as cancelled, cancel related tasks and remove it from
+    """set a round as cancelled, cancel related tasks, and remove it from
     the campaign's active rounds."""
 
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
