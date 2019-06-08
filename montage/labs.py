@@ -25,7 +25,7 @@ class MissingMySQLClient(RuntimeError):
 
 def fetchall_from_commonswiki(query, params):
     if pymysql is None:
-        raise MissingMySQLClient('could not import oursql, check your'
+        raise MissingMySQLClient('could not import pymysql, check your'
                                  ' environment and restart the service')
     db_title = 'commonswiki_p'
     db_host = 'commonswiki.labsdb'
