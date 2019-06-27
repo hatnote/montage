@@ -497,20 +497,31 @@ def add_coordinator(user_dao, org_dao, campaign_id, username):
     return
 
 
-def rdb_console(maint_dao, user_dao, org_dao, rdb_session):
+class Rollback(SystemExit):
+    pass
+
+
+def rdb_console(command_, maint_dao, user_dao, org_dao, rdb_session):
     "Load a developer console for interacting with database objects."
+    local_scope = {}
     for m in dir(montage.rdb):
-        locals()[m] = getattr(montage.rdb, m)
+        local_scope[m] = getattr(montage.rdb, m)
 
-    session = rdb_session
+    def rollback():
+        raise Rollback()
 
-    print 'rdb console:'
-    print '  Use session.query() to interact with the db.'
-    print '  Commit modifications by typing "continue" or "c".'
-    print '  Cancel modifications by typing "quit", "q", or hitting ctrl-c.\n'
+    local_scope['pprint'] = pprint
+    local_scope['session'] = rdb_session
+    local_scope['rollback'] = rollback
 
-    import pdb;pdb.set_trace()
-
+    banner = ('rdb console:'
+              '\n  Use "session.query(...)" to interact with the db.'
+              '\n  Use "import pdb;pdb.pm()" to debug exceptions.'
+              '\n  Commit and exit with "exit()" or pressing ctrl-d.'
+              '\n  Rollback and exit with "rollback()".\n')
+    # import pdb;pdb.set_trace()
+    import code
+    code.interact(banner=banner, local=local_scope)
     return
 
 
@@ -547,11 +558,12 @@ def _rdb_session_mw(next_, debug):
                   " and resume exiting.")
             import pdb;pdb.post_mortem()
         rdb_session.rollback()
-        raise
+        if not isinstance(e, Rollback):
+            raise
     else:
         if debug:
             print("== pre-commit debug console. about to persist changes to db,"
-                  "press 'c' to continue or 'q' to quit.")
+                  " press 'c' to continue or 'q' to quit.")
             import pdb;pdb.set_trace()
         rdb_session.commit()
     finally:
