@@ -1,0 +1,15 @@
+ashes
+boltons
+chert
+clastic
+face
+lithoxyl
+mwoauth
+
+# look at:
+python-graph-core==1.8.2
+-e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core
+SQLAlchemy==1.0.14
+unicodecsv==0.14.1
+# mysqlclient==1.4.2.post1
+pymysql==0.9.3
