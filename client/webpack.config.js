@@ -26,7 +26,7 @@ var config = {
               .toISOString()
               .replace('T', ' ')
               .replace(/\.[0-9]+Z/, '') +
-            ' --\n',
+            ' --\n'
         );
         callback();
       });
