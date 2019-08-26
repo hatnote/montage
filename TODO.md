@@ -77,7 +77,7 @@ A bit of space for dev bookkeeping.
 * Handle NONE user in UserDAO
 * check entry existance before getting from db or remote source
 * what should happen when someone closes a round with open votes?
-* 
+*
 
 ## Frontend
 
@@ -98,3 +98,16 @@ Ratings closing round interface:
 * For gists, redownload the gist and add_round_entries as need be
 * For categories, recheck the db and add_round_entries as need be
 * For removed entries, do nothing (current behavior) or disqualify
+
+## Research data collection opt-in
+
+* Set by coordinator on campaign (on creation)
+* Seen by users on campaign tile
+* Anonymized csv voting download
+  * Row per vote in CSV + Round column
+* Endpoint for setting/unsetting value
+  * Only settable from start/before votes?
+  * Unsetting may be useful
+* Inherent in coordinator opt-in language: "By checking this you
+  assert that all jurors have been informed/consented that anonymized
+  voting data will may be used for research."
