@@ -6,13 +6,7 @@ const Component = {
   template,
 };
 
-function controller(
-  $filter,
-  $q,
-  $state,
-  $stateParams,
-  adminService,
-  alertService) {
+function controller($filter, $q, $state, $stateParams, adminService, alertService) {
   const vm = this;
 
   vm.campaign = null;
@@ -20,6 +14,7 @@ function controller(
   vm.loading = false;
   vm.newRound = false;
 
+  vm.closeCampaign = closeCampaign;
   vm.editCampaign = editCampaign;
   vm.saveEditCampaign = saveEditCampaign;
 
@@ -33,21 +28,24 @@ function controller(
       .getCampaign(id)
       .then((data) => {
         vm.campaign = data.data;
-        vm.campaign.rounds = vm.campaign.rounds
-          .filter(round => round.status !== 'cancelled');
+        vm.campaign.rounds = vm.campaign.rounds.filter(round => round.status !== 'cancelled');
         vm.error = data.errors;
 
         if (!vm.campaign.rounds.length) {
           vm.campaign.rounds.push({});
         }
       })
-      .catch((err) => { vm.err = err; })
-      .finally(() => { vm.loading = false; });
+      .catch((err) => {
+        vm.err = err;
+      })
+      .finally(() => {
+        vm.loading = false;
+      });
   };
 
   /**
-   * 
-   * @param {Boolean} value 
+   *
+   * @param {Boolean} value
    */
   function editCampaign(value) {
     if (value) {
@@ -55,13 +53,26 @@ function controller(
       angular.extend(vm.campaign, {
         open_date: new Date(vm.campaign.open_date),
         close_date: new Date(vm.campaign.close_date),
-        coordinators: vm.campaign.coordinators
-          .map(user => ({ id: user.id, name: user.username })),
+        coordinators: vm.campaign.coordinators.map(user => ({ id: user.id, name: user.username })),
       });
     } else {
       angular.extend(vm.campaign, vm.campaignBackup);
     }
     vm.edit = value;
+  }
+
+  /**
+   *
+   */
+  function closeCampaign() {
+    vm.loading = true;
+    adminService
+      .finalizeCampaign(vm.campaign.id)
+      .then(() => $state.reload())
+      .catch(alertService.error)
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 
   /**
@@ -112,11 +123,12 @@ function controller(
 
     adminService
       .editCampaign(campaign.id, campaign)
-      .then(() => $q.all([...added, ...removed]
-        .map(item => item[0](vm.campaign.id, item[1]))))
+      .then(() => $q.all([...added, ...removed].map(item => item[0](vm.campaign.id, item[1]))))
       .then(() => $state.reload())
       .catch(alertService.error)
-      .finally(() => { vm.loading = false; });
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 }
 

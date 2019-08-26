@@ -10,13 +10,7 @@ const Component = {
   template,
 };
 
-function controller(
-  $mdDialog,
-  $q,
-  $state,
-  $window,
-  alertService,
-  jurorService) {
+function controller($mdDialog, $q, $state, alertService, jurorService) {
   const vm = this;
 
   let counter = 0;
@@ -39,12 +33,11 @@ function controller(
   // functions
 
   vm.$onInit = () => {
-    if (!vm.tasks || !vm.tasks.data) { return; }
+    if (!vm.tasks || !vm.tasks.data) {
+      return;
+    }
 
-    vm.round.link = [
-      vm.round.id,
-      vm.round.canonical_url_name,
-    ].join('-');
+    vm.round.link = [vm.round.id, vm.round.canonical_url_name].join('-');
 
     vm.images = vm.tasks.data.tasks;
     vm.stats = vm.tasks.data.stats;
@@ -72,9 +65,13 @@ function controller(
     vm.loading = 'fav';
     return jurorService
       .faveImage(vm.round.id, vm.rating.current.entry.id)
-      .then(() => { alertService.success('Image added to favorites', 250); })
+      .then(() => {
+        alertService.success('Image added to favorites', 250);
+      })
       .catch(alertService.error)
-      .finally(() => { vm.loading = false; });
+      .finally(() => {
+        vm.loading = false;
+      });
   }
 
   function getImageName(image) {
@@ -97,18 +94,28 @@ function controller(
   }
 
   function getTasks() {
-    return jurorService
-      .getRoundTasks(vm.round.id, skips)
-      .then((response) => {
-        vm.images = response.data.tasks;
-        vm.rating.current = vm.images[0];
-        vm.rating.currentIndex = 0;
-        vm.rating.next = vm.images[1];
-      });
+    return jurorService.getRoundTasks(vm.round.id, skips).then((response) => {
+      vm.images = response.data.tasks;
+      vm.rating.current = vm.images[0];
+      vm.rating.currentIndex = 0;
+      vm.rating.next = vm.images[1];
+    });
   }
 
   function keyDown(event) {
-    if (!readKeyDown) { return; }
+    if (!readKeyDown) {
+      return;
+    }
+
+    if (vm.loading) {
+      return;
+    }
+
+    const fileSrc = document.querySelector('.image__container__img').src;
+    // it's still loading, ignore vote
+    if (fileSrc.includes('Ajax-loader%282%29.gif')) {
+      return;
+    }
 
     if (vm.round.vote_method === 'yesno') {
       if (event.key === 'ArrowUp') {
@@ -132,7 +139,8 @@ function controller(
   }
 
   function reportImage(event) {
-    const confirm = $mdDialog.prompt()
+    const confirm = $mdDialog
+      .prompt()
       .title('Report image')
       .textContent('In the form below write why this image should be disqualified')
       .ariaLabel('Report image')
@@ -141,41 +149,49 @@ function controller(
       .cancel('Cancel');
 
     readKeyDown = false;
-    $mdDialog
-      .show(confirm)
-      .then((text) => {
-        vm.loading = 'report';
-        return jurorService
-          .flagImage(vm.round.id, vm.rating.current.entry.id, text)
-          .then(() => { alertService.success('Image reported', 250); })
-          .catch(alertService.error)
-          .finally(() => {
-            vm.loading = false;
-            readKeyDown = true;
-          });
-      });
+    $mdDialog.show(confirm).then((text) => {
+      vm.loading = 'report';
+      return jurorService
+        .flagImage(vm.round.id, vm.rating.current.entry.id, text)
+        .then(() => {
+          alertService.success('Image successfuly reported', 250);
+        })
+        .catch(alertService.error)
+        .finally(() => {
+          vm.loading = false;
+          readKeyDown = true;
+        });
+    });
   }
 
   function sendRate(rate) {
-    return jurorService
-      .setRating(vm.round.id, { ratings: [rate] })
-      .then(() => {
-        if (vm.stats.total_open_tasks <= 10) {
-          skips = 0;
-        }
-      });
+    return jurorService.setRating(vm.round.id, { ratings: [rate] }).then(() => {
+      if (vm.stats.total_open_tasks <= 10) {
+        skips = 0;
+      }
+    });
   }
 
   function setRate(rate) {
+    if (vm.loading) {
+      // console.log('vote ignored, action in progress');
+      return false;
+    }
+
+    const fileSrc = document.querySelector('.image__container__img').src;
+    // it's still loading, ignore vote
+    if (fileSrc.includes('Ajax-loader%282%29.gif')) {
+      // console.log('vote ignored, loading');
+      return false;
+    }
+
     function rating() {
       if (rate) {
         const value = (rate - 1) / 4;
-        vm.loading = true;
         return sendRate({
           task_id: vm.rating.current.id,
           value,
         }).then(() => {
-          vm.loading = false;
           vm.stats.total_open_tasks -= 1;
           return true;
         });
@@ -184,7 +200,9 @@ function controller(
       return $q.when(false);
     }
 
+    vm.loading = true;
     return rating().then(() => {
+      vm.loading = false;
       if (counter === 4 || !vm.stats.total_open_tasks) {
         counter = 0;
         vm.loading = true;
