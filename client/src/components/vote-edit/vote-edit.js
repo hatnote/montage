@@ -7,6 +7,9 @@ import imageTemplate from '../vote/image.tpl.html';
 const Component = {
   controller,
   template,
+  bindings: {
+    data: '<',
+  },
 };
 
 function controller(
