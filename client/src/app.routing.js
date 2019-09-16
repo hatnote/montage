@@ -32,7 +32,10 @@ function stateConfig(
     })
     .state('main.vote-edit', {
       url: '/vote/:id/edit',
-      template: '<mont-vote-edit></mont-vote-edit>',
+      template: '<mont-vote-edit data="$resolve.round"></mont-vote-edit>',
+      resolve: {
+        round: ($stateParams, jurorService) => jurorService.getRoundVotesStats($stateParams.id.split('-')[0]),
+      },
     });
 
   $urlRouterProvider.otherwise('/');

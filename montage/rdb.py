@@ -296,6 +296,19 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    @property
+    def show_stats(self):
+        if self.flags is None:
+            return None
+
+        return self.flags.get('show_stats')
+
+    @show_stats.setter
+    def show_stats(self, value):
+        if self.flags is None:
+            self.flags = {}
+        self.flags['show_stats'] = value
+
     def check_closability(self):
         task_count = self._get_task_count()
         open_task_count = self._get_open_task_count()
@@ -414,6 +427,7 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
+               'show_stats': self.show_stats,
                'round_sources': []}
         return ret
 
@@ -1185,7 +1199,7 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def create_round(self, name, description, directions, quorum,
-                     vote_method, jurors, deadline_date, config=None):
+                     vote_method, jurors, deadline_date, config=None, show_stats=None):
         if self.campaign.active_round:
             raise InvalidAction('can only create one active/paused round at a'
                                 ' time. cancel or complete your existing'
@@ -1214,6 +1228,8 @@ class CoordinatorDAO(UserDAO):
                     vote_method=vote_method,
                     jurors=jurors,
                     config=full_config)
+        if show_stats is not None:
+            rnd.show_stats = show_stats
 
         self.rdb_session.add(rnd)
         self.rdb_session.flush()
@@ -1263,6 +1279,10 @@ class CoordinatorDAO(UserDAO):
             else:
                 new_juror_stats = self.modify_quorum(round_id, new_quorum)
                 new_val_map['quorum'] = new_quorum
+        show_stats = round_dict.get('show_stats')
+        if show_stats is not None:
+            rnd.show_stats = show_stats
+
         msg = ('%s edited these columns in round "%s" (#%s): %r'
                % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
         self.log_action('edit_round', round=rnd, message=msg)
@@ -2526,6 +2546,17 @@ class JurorDAO(object):
 
         if not ratings:
             raise Forbidden('no complete ratings')
+        return ratings
+
+    def get_rating_stats_from_round(self, round_id):
+        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)\
+                      .filter(Vote.user == self.user,
+                              Vote.status == COMPLETED_STATUS,
+                              Vote.round_entry.has(round_id=round_id))
+                      .group_by(Vote.value))
+
+        ratings = ratings_query.all()
+
         return ratings
 
     def get_rankings_from_round(self, round_id):

@@ -31,6 +31,7 @@ function controller(
     vm.round.jurors = vm.round.jurors
       .filter(juror => juror.is_active)
       .map(juror => ({ name: juror.username }));
+    vm.canEditShowStats = vm.round.vote_method === 'yesno' || vm.round.vote_method === 'rating';
   };
 
   /**
@@ -75,6 +76,7 @@ function controller(
       name: vm.round.name,
       quorum: vm.round.quorum,
       directions: vm.round.directions,
+      show_stats: vm.round.show_stats,
       deadline_date: $filter('date')(vm.round.deadline_date, 'yyyy-MM-ddTHH:mm:ss'),
       new_jurors: vm.round.jurors.map(user => user.name),
     };

@@ -399,6 +399,11 @@ def full_run(base_url, remote):
                  {'post': True},
                  as_user='LilyOfTheWest')
 
+
+    resp = fetch('juror: get votes stats',
+                 '/juror/round/%s/votes-stats' % round_id,
+                 as_user='Slaporte')
+
     resp = fetch('maintainer: view audit logs', '/logs/audit')
 
     # Jury endpoints
