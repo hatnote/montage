@@ -10,6 +10,7 @@ from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
 from rdb import User, UserDAO
+from utils import MontageError
 
 
 def public(endpoint_func):
@@ -31,9 +32,10 @@ class MessageMiddleware(Middleware):
     """
     provides = ('response_dict', 'request_dict')
 
-    def __init__(self, raise_errors=True, use_ashes=False):
+    def __init__(self, raise_errors=True, use_ashes=False, debug_errors=False):
         self.raise_errors = raise_errors
         self.use_ashes = use_ashes
+        self.debug_errors = debug_errors
 
     def request(self, next, request):
         response_dict = {'errors': [], 'status': 'success'}
@@ -55,7 +57,9 @@ class MessageMiddleware(Middleware):
         # TODO: autoswitch resp status code
         try:
             ret = next()
-        except Exception:
+        except Exception as e:
+            if self.debug_errors and not isinstance(e, MontageError):
+                import pdb; pdb.post_mortem()
             if self.raise_errors:
                 raise
             ret = None
