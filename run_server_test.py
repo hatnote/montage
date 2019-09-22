@@ -403,6 +403,8 @@ def full_run(base_url, remote):
     resp = fetch('juror: get votes stats',
                  '/juror/round/%s/votes-stats' % round_id,
                  as_user='Slaporte')
+    assert 'yes' in resp['stats']
+    assert 'no' in resp['stats']
 
     resp = fetch('maintainer: view audit logs', '/logs/audit')
 
