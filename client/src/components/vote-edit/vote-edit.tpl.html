@@ -16,23 +16,6 @@
       <small class="muted">part of {{$ctrl.round.campaign.name}}</small>
     </h2>
     <span flex></span>
-    <span ng-if="$ctrl.round.show_stats && $ctrl.data.method == 'yesno'">
-      <small style="font-size: 12pt">
-        Your votes:
-        {{$ctrl.data.stats.yes}}&nbsp;<md-icon>thumb_up</md-icon>
-        {{$ctrl.data.stats.no}}&nbsp;<md-icon>thumb_down</md-icon>
-      </small>
-    </span>
-    <span ng-if="$ctrl.round.show_stats && $ctrl.data.method == 'rating'">
-      <small style="font-size: 12pt">
-        Your votes:
-        5 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[5]}} |
-        4 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[4]}} |
-        3 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[3]}} |
-        2 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[2]}} |
-        1 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[1]}} |
-      </small>
-    </span>
     <md-button aria-label="Sort"
       ng-if="!$ctrl.isVoting('ranking')"
       ng-disabled="true">
@@ -88,6 +71,29 @@
       <md-icon>save</md-icon>
       Save Changes
     </md-button>
+    <div class="round__stats" layout="row" layout-align="start center">
+    <span ng-if="$ctrl.round.show_stats && $ctrl.data.method == 'yesno'">
+      <small style="font-size: 12pt">
+        <h3 class="md-headline">Your votes:</h3>
+          <ul>
+            <li>{{$ctrl.data.stats.yes}}&nbsp;<md-icon>thumb_up</md-icon></li>
+            <li>{{$ctrl.data.stats.no}}&nbsp;<md-icon>thumb_down</md-icon></li>
+          </ul>
+      </small>
+    </span>
+    <span ng-if="$ctrl.round.show_stats && $ctrl.data.method == 'rating'">
+      <small style="font-size: 12pt">
+        <h3 class="md-headline">Your votes:</h3>
+        <ul>
+          <li>5 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[5]}}</li>
+          <li>4 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[4]}}</li>
+          <li>3 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[3]}}</li>
+          <li>2 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[2]}}</li>
+          <li>1 <md-icon>star_rate</md-icon>: {{$ctrl.data.stats[1]}}</li>
+        </ul>
+      </small>
+    </span>
+  </div>
   </div>
 
   <grid-list class="gallery" sv-root sv-part="$ctrl.votes">
