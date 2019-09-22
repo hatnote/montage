@@ -168,11 +168,12 @@ def create_app(env_name='prod'):
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
+    debug_errors = bool(os.getenv('MONTAGE_PDB', False))
     api_app = Application(api_routes, resources,
-                          middlewares=[MessageMiddleware()] + middlewares,
+                          middlewares=[MessageMiddleware(debug_errors=debug_errors)] + middlewares,
                           render_factory=render_basic)
     ui_app = Application(ui_routes, resources,
-                         middlewares=[MessageMiddleware(use_ashes=True)] + middlewares,
+                         middlewares=[MessageMiddleware(debug_errors=debug_errors, use_ashes=True)] + middlewares,
                          render_factory=renderer)
 
     static_app = StaticApplication(STATIC_PATH)

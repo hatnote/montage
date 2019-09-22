@@ -298,16 +298,15 @@ class Round(Base):
 
     @property
     def show_stats(self):
-        if self.flags is None:
+        if self.config is None:
             return None
-
-        return self.flags.get('show_stats')
+        return self.config.get('show_stats')
 
     @show_stats.setter
     def show_stats(self, value):
-        if self.flags is None:
-            self.flags = {}
-        self.flags['show_stats'] = value
+        if self.config is None:
+            self.config = {}
+        self.config['show_stats'] = value
 
     def check_closability(self):
         task_count = self._get_task_count()

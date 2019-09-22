@@ -13,6 +13,7 @@ from utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    DoesNotExist,
+                   NotImplementedResponse,
                    js_isoparse)
 
 from rdb import (CoordinatorDAO,
@@ -355,7 +356,7 @@ def import_entries(user_dao, round_id, request_dict):
         entries = coord_dao.add_entries_by_name(round_id, file_names)
         params = {'file_names': file_names}
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     new_entry_stats = coord_dao.add_round_entries(round_id, entries,
                                                   method=import_method,
@@ -537,7 +538,7 @@ def get_round_results_preview(user_dao, round_id):
         data['rankings'] = [r.to_dict() for r in rankings]
 
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     return {'data': data}
 
@@ -562,7 +563,7 @@ def advance_round(user_dao, round_id, request_dict):
     rnd = coord_dao.get_round(round_id)
 
     if rnd.vote_method not in ('rating', 'yesno'):
-        raise NotImplementedError()  # see docstring above
+        raise NotImplementedResponse()  # see docstring above
     threshold = float(request_dict['threshold'])
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
