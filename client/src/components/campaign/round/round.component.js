@@ -17,6 +17,7 @@ function controller($window, adminService, alertService) {
 
   vm.activateRound = activateRound;
   vm.downloadResults = downloadResults;
+  vm.downloadEntries = downloadEntries;
   vm.finalizeRound = finalizeRound;
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
@@ -50,6 +51,14 @@ function controller($window, adminService, alertService) {
    */
   function downloadResults() {
     const url = adminService.downloadRound(vm.round.id);
+    $window.open(url);
+  }
+
+   /**
+   *
+   */
+  function downloadEntries() {
+    const url = adminService.downloadEntries(vm.round.id);
     $window.open(url);
   }
 
@@ -141,8 +150,8 @@ function controller($window, adminService, alertService) {
   function populateRound() {
     adminService
       .populateRound(vm.round.id, {
-        import_method: 'gistcsv',
-        gist_url:
+        import_method: 'csv',
+        csv_url:
           'https://gist.githubusercontent.com/yarl/bc4b89847f9ced089f7169bbfec79841/raw/c8bd23d3b354ce9d20de578245e4dc7c9f095fb0/wlm2015_fr_5.csv',
       })
       .catch(alertService.error);

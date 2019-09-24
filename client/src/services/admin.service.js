@@ -30,6 +30,7 @@ const Service = ($http, $q, $window) => {
     advanceRound: (id, data) => $http.post(`${base}/round/${id}/advance`, data),
 
     downloadRound: id => `${base}/round/${id}/results/download`,
+    downloadEntries: id => `${base}/round/${id}/entries/download`
   };
 
   return admin;

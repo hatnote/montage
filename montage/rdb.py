@@ -1562,7 +1562,7 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_from_csv(self, round_id, gist_url):
+    def add_entries_from_csv(self, round_id, csv_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
@@ -1570,12 +1570,16 @@ class CoordinatorDAO(UserDAO):
             source = 'remote'
         else:
             source = 'local'
-        entries, warnings = loaders.get_entries_from_gist(gist_url,
-                                                              source=source)
+        try:
+            entries, warnings = loaders.get_entries_from_csv(csv_url,
+                                                             source=source)
+        except ValueError as e:
+            raise InvalidAction('unable to load csv "%s"' % csv_url)
+
         entries, new_entry_count = self.add_entries(rnd, entries)
 
-        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
-               % (self.user.username, len(entries), gist_url, new_entry_count))
+        msg = ('%s loaded %s entries from csv (%r), %s new entries added'
+               % (self.user.username, len(entries), csv_url, new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries, warnings

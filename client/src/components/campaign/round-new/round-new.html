@@ -72,7 +72,7 @@
                 ng-model="$ctrl.import.import_method"
                 ng-if="$ctrl.index === 1">
               <md-radio-button value="category">Category on Wikimedia Commons</md-radio-button>
-              <md-radio-button value="gistcsv">File List URL</md-radio-button>
+              <md-radio-button value="csv">File List URL</md-radio-button>
               <md-radio-button value="selected">File List</md-radio-button>
 
               <div ng-if="$ctrl.import.import_method === 'category'">
@@ -97,12 +97,12 @@
 
               <div 
                   layout="column" layout-align="start stretch"
-                  ng-if="$ctrl.import.import_method === 'gistcsv'">
-                <p class="muted">List of files saved as CSV and uploaded somewhere on the internet.</p>
+                  ng-if="$ctrl.import.import_method === 'csv'">
+                <p class="muted">List of files saved as CSV and uploaded as a Google Sheet or Gist.</p>
                 <md-input-container class="no-margin-bottom">
                   <label>Enter URL</label>
                   <input type="text" autofocus
-                      ng-model="$ctrl.import.gist_url"
+                      ng-model="$ctrl.import.csv_url"
                       ng-required="true">
                 </md-input-container>
               </div>

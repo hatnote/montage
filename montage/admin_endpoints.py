@@ -20,7 +20,6 @@ from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
-GISTCSV_METHOD = 'gistcsv'
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
 SELECTED_METHOD = 'selected'
@@ -333,11 +332,15 @@ def import_entries(user_dao, round_id, request_dict):
     # loader warnings
     import_warnings = list()
 
-    if import_method == GISTCSV_METHOD:
-        gist_url = request_dict['gist_url']
+    if import_method == 'csv' or import_method == 'gistcsv':
+        if import_method == 'gistcsv':
+            csv_url = request_dict['gist_url']
+        else:
+            csv_url = request_dict['csv_url']
+
         entries, warnings = coord_dao.add_entries_from_csv(round_id,
-                                                           gist_url)
-        params = {'gist_url': gist_url}
+                                                           csv_url)
+        params = {'csv_url': csv_url}
         if warnings:
             msg = 'unable to load {} files ({!r})'.format(len(warnings), warnings)
             import_warnings.append(msg)
