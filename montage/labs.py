@@ -14,9 +14,10 @@ IMAGE_COLS = ['img_width',
               'img_name',
               'img_major_mime',
               'img_minor_mime',
-              'actor_user AS img_user',
-              'actor_name AS img_user_text',
-              'img_timestamp']
+              'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
+              'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
+              'img_timestamp',
+              'oi_timestamp']
 
 
 class MissingMySQLClient(RuntimeError):
@@ -41,13 +42,22 @@ def fetchall_from_commonswiki(query, params):
 def get_files(category_name):
     query = '''
     SELECT {cols}
-    FROM commonswiki_p.image
-    LEFT JOIN actor ON img_actor=actor.actor_id
+    FROM commonswiki_p.image AS i
+    LEFT JOIN actor AS ci ON img_actor=ci.actor_id
+    LEFT JOIN (SELECT oi_name,
+                      oi_actor,
+                      actor_user,
+                      actor_name,
+                      oi_timestamp
+               FROM oldimage
+               LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
     JOIN page ON page_namespace = 6
     AND page_title = img_name
     JOIN categorylinks ON cl_from = page_id
     AND cl_type = 'file'
-    AND cl_to = %s;
+    AND cl_to = %s
+    GROUP BY img_name
+    ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (category_name.replace(' ', '_'),)
 
@@ -59,9 +69,18 @@ def get_files(category_name):
 def get_file_info(filename):
     query = '''
     SELECT {cols}
-    FROM commonswiki_p.image
-    LEFT JOIN actor ON img_actor=actor.actor_id
-    WHERE img_name = %s;
+    FROM commonswiki_p.image AS i
+    LEFT JOIN actor AS ci ON img_actor=ci.actor_id
+    LEFT JOIN (SELECT oi_name,
+                      oi_actor,
+                      actor_user,
+                      actor_name,
+                      oi_timestamp
+               FROM oldimage
+               LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+    WHERE img_name = %s
+    GROUP BY img_name
+    ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
