@@ -1526,11 +1526,7 @@ class CoordinatorDAO(UserDAO):
 
     def add_entries_from_cat(self, round_id, cat_name):
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries = loaders.load_category(cat_name, source=source)
+        entries = loaders.load_category(cat_name, source=get_source())
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from category (%s), %s new entries added'
@@ -1541,11 +1537,7 @@ class CoordinatorDAO(UserDAO):
 
     def add_entries_by_name(self, round_id, file_names):
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries = loaders.load_by_filename(file_names, source=source)
+        entries = loaders.load_by_filename(file_names, source=get_source())
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from filenames, %s new entries added'
@@ -1558,13 +1550,9 @@ class CoordinatorDAO(UserDAO):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
         try:
             entries, warnings = loaders.get_entries_from_csv(csv_url,
-                                                             source=source)
+                                                             source=get_source())
         except ValueError as e:
             raise InvalidAction('unable to load csv "%s"' % csv_url)
 
@@ -3095,6 +3083,23 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
             'reassigned_task_count': len(reassg_votes),
             'task_count_map': vote_count_map,
             'task_count_mean': mean(vote_count_map.values())}
+
+
+def get_source():
+    from utils import load_env_config
+
+    config = load_env_config()
+
+    config_source = config.get('source')
+    if config_source:
+        return config_source
+
+    if ENV_NAME == 'dev':
+        source = 'remote'
+    else:
+        source = 'local'
+
+    return source
 
 
 def make_rdb_session(echo=True):
