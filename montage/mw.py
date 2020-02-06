@@ -115,18 +115,22 @@ class UserMiddleware(Middleware):
                         or '/static/' in _route.pattern
                         or isinstance(_route, NullRoute))
 
-        try:
-            userid = cookie['userid']
-        except (KeyError, TypeError):
-            if config['__env__'] == 'devtest':
-                # TODO: until github.com/pallets/werkzeug/issues/1060
-                userid = 6024474
-            else:
-                if ep_is_public:
-                    return next(user=None, user_dao=None)
-                err = 'invalid cookie userid, try logging in again.'
-                response_dict['errors'].append(err)
-                return {}
+        config_userid = config.get('userid')
+        if config_userid:
+            userid = config_userid
+        else:
+            try:
+                userid = cookie['userid']
+            except (KeyError, TypeError):
+                if config['__env__'] == 'devtest':
+                    # TODO: until github.com/pallets/werkzeug/issues/1060
+                    userid = 6024474
+                else:
+                    if ep_is_public:
+                        return next(user=None, user_dao=None)
+                    err = 'invalid cookie userid, try logging in again.'
+                    response_dict['errors'].append(err)
+                    return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
