@@ -395,12 +395,41 @@ def full_run(base_url, remote):
                  {'post': True},
                  as_user='LilyOfTheWest')
 
-
+    # validate votes stats response format for yes/no-based rounds
     resp = fetch('juror: get votes stats',
                  '/juror/round/%s/votes-stats' % round_id,
                  as_user='Slaporte')
-    assert 'yes' in resp['stats']
-    assert 'no' in resp['stats']
+    if 'method' not in resp or resp['method'] != 'yesno':
+        raise AssertionError(
+            'Votes stats result must return method type with "yesno" value.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
+    if 'stats' not in resp:
+        raise AssertionError(
+            'Votes stats result does not contain "stats" key.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
+    for vote in ['yes', 'no']:
+        if vote not in resp['stats']:
+            raise AssertionError(
+                'Votes stats result does not contain values for "%s" votes.\n'
+                'API response for "votes-stats" request: %r' % (
+                    vote,
+                    resp,
+                )
+            )
+        if not isinstance(resp['stats'][vote], int):
+            raise AssertionError(
+                'Stats for "%s" votes is not an integer.\n'
+                'API response for "votes-stats" request: %r' % (
+                    vote,
+                    resp,
+                )
+            )
 
     resp = fetch('maintainer: view audit logs', '/logs/audit')
 
@@ -589,6 +618,43 @@ def full_run(base_url, remote):
 
     submit_ratings(client, rnd_2_id)
 
+    # validate votes stats response format for rating-based rounds
+    resp = fetch('juror: get votes stats',
+                 '/juror/round/%s/votes-stats' % rnd_2_id,
+                 as_user='Slaporte')
+    if 'stats' not in resp:
+        raise AssertionError(
+            'Votes stats result does not contain "stats" key.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
+    if 'method' not in resp or resp['method'] != 'rating':
+        raise AssertionError(
+            'Votes stats result must return method type with "rating" value.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
+    for star_num in xrange(1, 5):
+        star_key = unicode(star_num)
+        if star_key not in resp['stats']:
+            raise AssertionError(
+                'Votes stats result does not contain values for %s-star votes.\n'
+                'API response for "votes-stats" request: %r' % (
+                    star_key,
+                    resp,
+                )
+            )
+        if not isinstance(resp['stats'][star_key], int):
+            raise AssertionError(
+                'Stats for %s-star votes is not an integer.\n'
+                'API response for "votes-stats" request: %r' % (
+                    star_key,
+                    resp,
+                )
+            )
+
     resp = fetch('coordinator: preview results from second round',
                  '/admin/round/%s/preview_results' % rnd_2_id,
                  as_user='LilyOfTheWest')
@@ -687,6 +753,25 @@ def full_run(base_url, remote):
     # submit the remaining ratings
 
     submit_ratings(client, rnd_3_id)
+
+    # validate votes stats response format for ranking-based rounds
+    resp = fetch('juror: get votes stats',
+                 '/juror/round/%s/votes-stats' % rnd_3_id,
+                 as_user='Slaporte')
+    if 'stats' in resp:
+        raise AssertionError(
+            'No "stats" key is expected for ranking-based rounds.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
+    if 'method' in resp:
+        raise AssertionError(
+            'No "method" key is expected for ranking-based rounds.\n'
+            'API response for "votes-stats" request: %r' % (
+                resp,
+            )
+        )
 
     resp = fetch('coordinator: preview round 3 results',
                  '/admin/round/%s/preview_results' % rnd_3_id,
