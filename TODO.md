@@ -124,6 +124,7 @@ Ratings closing round interface:
   * Add tests + coverage
   * Update syntax
 * Migrate to k8s
+* Deploy script?
 * Sentry integration?
 * Dynamic assignment
 * Archiving?
