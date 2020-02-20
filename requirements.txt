@@ -20,6 +20,6 @@ requests-oauthlib==0.6.2
 six==1.10.0
 SQLAlchemy==1.0.14
 unicodecsv==0.14.1
-Werkzeug==0.9.4
+Werkzeug==0.15.3
 chert==0.3.0
 mysqlclient==1.4.2.post1
