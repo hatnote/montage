@@ -199,7 +199,7 @@ def load_category(category_name, source='local'):
         ret.append(entry)
 
     return ret
-        
+
 
 def get_from_category_remote(category_name):
     params = {'name': category_name}
@@ -209,9 +209,9 @@ def get_from_category_remote(category_name):
 
 
 def get_from_remote(url, params):
-    content_type = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json'}
     data = json.dumps(params)
-    request = urllib2.Request(url, data, content_type)
+    request = urllib2.Request(url, data, headers)
     response = urllib2.urlopen(request)
     resp_json = json.load(response)
     file_infos = resp_json['file_infos']

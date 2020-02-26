@@ -862,6 +862,8 @@ def main():
                           rfc2109=False)
     cookies.set_cookie(ck)
 
+    print('running tests on %s' % base_url)
+
     full_run(base_url, remote=args.remote)
 
 

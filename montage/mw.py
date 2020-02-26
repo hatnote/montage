@@ -193,7 +193,7 @@ class DBSessionMiddleware(Middleware):
         rdb_session = self.session_type()
         try:
             ret = next(rdb_session=rdb_session)
-        except:
+        except Exception:
             rdb_session.rollback()
             raise
         else:
