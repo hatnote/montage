@@ -1,0 +1,19 @@
+include *.html
+include *.in
+include *.md
+include *.py
+include *.txt
+include *.yaml
+include LICENSE
+prune client
+prune docs
+recursive-include montage *.css
+recursive-include montage *.html
+recursive-include montage *.js
+recursive-include montage *.json
+recursive-include montage *.map
+recursive-include montage *.md
+recursive-include montage *.py
+recursive-include montage *.svg
+recursive-include test_data *.csv
+recursive-include tools *.py

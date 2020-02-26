@@ -1,12 +1,12 @@
 
-from admin_endpoints import (get_index
+from admin_endpoints import (get_index,
                              get_campaign,
                              get_round,
                              get_flagged_entries,
                              get_disqualified,
                              get_round_entries,
                              get_results)
-                             
+
 
 def get_rendered_routes():
     # all campaigns
@@ -24,29 +24,29 @@ def get_rendered_routes():
     # -- -- -- download
     # -- -- entries
     # -- -- -- download
-    
+
     routes = [('/m/admin', view_index, 'admin_index.html'),
-              ('/m/admin/campaign/create', 
+              ('/m/admin/campaign/create',
                create_campaign, 'campaign_create.html'),
-              ('/m/admin/campaign/<campaign_id:int>', 
+              ('/m/admin/campaign/<campaign_id:int>',
                view_campaign, 'campaign.html'),
-              ('/m/admin/campaign/<campaign_id:int>/edit', 
+              ('/m/admin/campaign/<campaign_id:int>/edit',
                edit_campaign, 'campaign_edit.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/create', 
+              ('/m/admin/campaign/<campaign_id:int>/round/create',
                create_round, 'round_create.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>', 
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>',
                view_round, 'round.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/edit', 
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/edit',
                edit_round, 'round_edit.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/flags', 
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/flags',
                view_flags, 'flags_view.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/juror/<user_id:int>', 
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/juror/<user_id:int>',
                view_juror, 'juror_view.html'),
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/disqualified', 
-               view_disqualified, 'disqualified_view.html')              
-              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/entries', 
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/disqualified',
+               view_disqualified, 'disqualified_view.html')
+              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/entries',
                view_entries, 'entries_view.html')
-,              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/results', 
+,              ('/m/admin/campaign/<campaign_id:int>/round/<round_id:int>/results',
                view_results, 'results.html')]
     return routes
 
@@ -96,5 +96,3 @@ def view_entries(user_dao, round_id):
 def view_results(user_dao, round_id):
     raw = get_results(user_dao, round_id)
     return raw['data']
-
-

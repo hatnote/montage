@@ -10,7 +10,7 @@ from lithoxyl import DEBUG, INFO
 
 from montage import utils
 from montage.log import script_log
-from montage.server import app
+from montage.app import create_app
 
 
 class ClasticTestClient(Client):
@@ -21,8 +21,7 @@ class ClasticTestClient(Client):
 # TODO: could use clastic to route-match based on URL to determine
 # "role" of current route being tested
 class MontageTestClient(object):
-    def __init__(self, base_url, default_role='public'):
-        self.base_url = base_url.rstrip('/')
+    def __init__(self, app, default_role='public'):
         self.default_role = default_role
         self._test_client = ClasticTestClient(app)
         # TODO: default user?
@@ -73,7 +72,7 @@ class MontageTestClient(object):
             raise TypeError('unexpected kwargs: %r' % kw.keys())
 
         with script_log.action(log_level, 'fetch_url') as act:
-            resp = self.fetch_url(self.base_url + url,
+            resp = self.fetch_url(url,
                                   data=data,
                                   su_to=as_user,
                                   error_code=error_code,
@@ -95,29 +94,29 @@ class MontageTestClient(object):
         return data_dict
 
 
-'''
-def test_home():
-    c = get_test_client()
-    resp = c.get('/')
-    assert resp.status_code == 200
-    import pdb;pdb.set_trace()
-'''
+def _create_schema(db_url, echo=True):
+    from sqlalchemy import create_engine
+    from montage.rdb import Base
+
+    engine = create_engine(db_url, echo=echo)
+    Base.metadata.create_all(engine)
+
+    return
 
 
 def test_home_client():
     base_url = ''
-    config = utils.load_env_config()
-    parsed_url = urlparse.urlparse(base_url)
+    config = utils.load_env_config(env_name='devtest')
+    db_url = config.get('db_url')
+    _create_schema(db_url=db_url)
 
-    domain = parsed_url.netloc.partition(':')[0]
-    domain = ''  # 'localhost.local'
-    ck_val = config['dev_local_cookie_value']
+    app = create_app('devtest')
 
-    client = MontageTestClient(base_url=base_url)
-    client._test_client.set_cookie(domain, 'clastic_cookie', value=ck_val, path=parsed_url.path)
+    client = MontageTestClient(app)
+    client._test_client.set_cookie('', 'clastic_cookie', value=config['dev_local_cookie_value'], path='/')
     fetch = client.fetch
 
     fetch('organizer: home', '/')
 
     base_api_url = base_url + '/v1/'
-    client = MontageTestClient(base_url=base_api_url)  # TODO
+    client = MontageTestClient(app)  # TODO

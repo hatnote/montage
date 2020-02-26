@@ -15,8 +15,6 @@ from labs import get_files, get_file_info
 
 from utils import load_env_config, DoesNotExist, InvalidAction
 
-config = load_env_config()
-DEBUG = config.get('debug', False)
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 DOCS_PATH = CUR_PATH + '/docs'
@@ -143,9 +141,9 @@ def logout(request, cookie, root_path):
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log):
+def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log, config):
     # TODO: Remove or standardize the DEBUG option
-    if DEBUG:
+    if config.get('debug'):
         identity = {'sub': 6024474,
                     'username': 'Slaporte'}
     else:
@@ -193,7 +191,7 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
 
     return_to_url = cookie.get('return_to_url')
     # TODO: Clean up
-    if not DEBUG:
+    if not config.get('debug'):
         del cookie['request_token_key']
         del cookie['request_token_secret']
         del cookie['return_to_url']

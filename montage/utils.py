@@ -111,16 +111,37 @@ def get_env_name():
     return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
 
 
+DEVTEST_CONFIG = {'oauth_consumer_token': None,
+                  'oauth_secret_token': None,
+                  'cookie_secret': 'supertotallyrandomsecretcookiesecret8675309',
+                  'api_log_path': 'montage_api.log',
+                  'replay_log_path': 'montage_replay.log',
+                  'feel_log_path': 'montage_feel.log',
+                  'db_url': "sqlite:///tmp_montage.db",
+                  'db_echo': False,
+                  'debug': True,
+                  'superusers': ['Slaporte', 'MahmoudHashemi'],
+                  'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
+                  '__file__': 'devtest-builtin',
+}
+
+
 def load_env_config(env_name=None):
     if not env_name:
         env_name = get_env_name()
+    elif env_name == 'devtest':
+        return dict(DEVTEST_CONFIG)
 
     config_file_name = 'config.%s.yaml' % env_name
     config_file_path = os.path.join(PROJ_PATH, config_file_name)
 
-    # print '==  loading config file: %s' % (config_file_path,)
+    try:
+        config = yaml.safe_load(open(config_file_path))
+    except Exception:
+        print '!! failed to load config file: %s' % (config_file_path,)
+        raise
 
-    config = yaml.load(open(config_file_path))
+    config['__file__'] = config_file_path
 
     return config
 
