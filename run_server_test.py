@@ -76,7 +76,7 @@ def fetch_url(url, data=None, act=None, **kw):
 
 # TODO: could use clastic to route-match based on URL to determine
 # "role" of current route being tested
-class TestClient(object):
+class SysTestClient(object):
     def __init__(self, base_url, default_role='public'):
         self.base_url = base_url.rstrip('/')
         self.default_role = default_role
@@ -124,7 +124,7 @@ def full_run(base_url, remote):
     # Get the home page
     # - as maintainer
     base_api_url = base_url + '/v1/'
-    client = TestClient(base_url=base_api_url)  # TODO
+    client = SysTestClient(base_url=base_api_url)  # TODO
     fetch = client.fetch
 
     resp = fetch_raw(base_url).read()
@@ -292,7 +292,7 @@ def full_run(base_url, remote):
                  {'post': True},
                  as_user='LilyOfTheWest')
 
-  
+
 
 
     gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
