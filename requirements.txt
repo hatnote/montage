@@ -5,27 +5,35 @@
 #    pip-compile requirements.in
 #
 -e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core
-argparse==1.4.0           # via clastic
-ashes==17.0.0
-boltons==19.1.0
-chert==0.3.0
-clastic==0.5.0
-face==19.1.2
-html5lib==0.999999        # via chert
-hyperlink==17.2.1         # via chert
-lithoxyl==0.4.3
-markdown==2.6.2           # via chert
-mwoauth==0.2.8
-oauthlib==1.1.2           # via mwoauth, requests-oauthlib
-pygments==1.6             # via chert
-pyjwt==1.4.2              # via mwoauth
+ashes==19.2.0
+attrs==19.3.0             # via glom
+boltons==20.0.0
+certifi==2019.11.28       # via requests
+chardet==3.0.4            # via requests
+chert==19.1.0
+clastic==19.0.0
+face==20.1.1
+glom==19.10.0             # via clastic
+html5lib==1.0.1           # via chert
+hyperlink==19.0.0         # via chert
+idna==2.9                 # via hyperlink, requests
+lithoxyl==20.0.0
+markdown==3.1.1           # via chert
+mwoauth==0.3.7
+oauthlib==3.1.0           # via mwoauth, requests-oauthlib
+pyjwt==1.7.1              # via mwoauth
 pymysql==0.9.3
-python-dateutil==2.2      # via chert
+python-dateutil==2.8.1    # via chert
 python-graph-core==1.8.2
-pyyaml==3.11              # via chert
-requests-oauthlib==0.6.2  # via mwoauth
-requests==2.11.1          # via mwoauth, requests-oauthlib
-six==1.10.0               # via html5lib, mwoauth, python-dateutil
+pyyaml==5.3               # via chert
+requests-oauthlib==1.3.0  # via mwoauth
+requests==2.23.0          # via mwoauth, requests-oauthlib
+six==1.14.0               # via html5lib, mwoauth, python-dateutil
 sqlalchemy==1.0.14
 unicodecsv==0.14.1
-werkzeug==0.9.4           # via clastic
+urllib3==1.25.8           # via requests
+webencodings==0.5.1       # via html5lib
+werkzeug==0.14.1          # via clastic
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools==44.0.0        # via markdown
