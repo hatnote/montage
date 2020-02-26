@@ -296,6 +296,18 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    @property
+    def show_stats(self):
+        if self.config is None:
+            return None
+        return self.config.get('show_stats')
+
+    @show_stats.setter
+    def show_stats(self, value):
+        if self.config is None:
+            self.config = {}
+        self.config['show_stats'] = value
+
     def check_closability(self):
         task_count = self._get_task_count()
         open_task_count = self._get_open_task_count()
@@ -414,6 +426,7 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
+               'show_stats': self.show_stats,
                'round_sources': []}
         return ret
 
@@ -1185,7 +1198,7 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def create_round(self, name, description, directions, quorum,
-                     vote_method, jurors, deadline_date, config=None):
+                     vote_method, jurors, deadline_date, config=None, show_stats=None):
         if self.campaign.active_round:
             raise InvalidAction('can only create one active/paused round at a'
                                 ' time. cancel or complete your existing'
@@ -1214,6 +1227,8 @@ class CoordinatorDAO(UserDAO):
                     vote_method=vote_method,
                     jurors=jurors,
                     config=full_config)
+        if show_stats is not None:
+            rnd.show_stats = show_stats
 
         self.rdb_session.add(rnd)
         self.rdb_session.flush()
@@ -1263,6 +1278,10 @@ class CoordinatorDAO(UserDAO):
             else:
                 new_juror_stats = self.modify_quorum(round_id, new_quorum)
                 new_val_map['quorum'] = new_quorum
+        show_stats = round_dict.get('show_stats')
+        if show_stats is not None:
+            rnd.show_stats = show_stats
+
         msg = ('%s edited these columns in round "%s" (#%s): %r'
                % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
         self.log_action('edit_round', round=rnd, message=msg)
@@ -1543,7 +1562,7 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_from_csv(self, round_id, gist_url):
+    def add_entries_from_csv(self, round_id, csv_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
@@ -1551,12 +1570,16 @@ class CoordinatorDAO(UserDAO):
             source = 'remote'
         else:
             source = 'local'
-        entries, warnings = loaders.get_entries_from_gist(gist_url,
-                                                              source=source)
+        try:
+            entries, warnings = loaders.get_entries_from_csv(csv_url,
+                                                             source=source)
+        except ValueError as e:
+            raise InvalidAction('unable to load csv "%s"' % csv_url)
+
         entries, new_entry_count = self.add_entries(rnd, entries)
 
-        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
-               % (self.user.username, len(entries), gist_url, new_entry_count))
+        msg = ('%s loaded %s entries from csv (%r), %s new entries added'
+               % (self.user.username, len(entries), csv_url, new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries, warnings
@@ -2526,6 +2549,17 @@ class JurorDAO(object):
 
         if not ratings:
             raise Forbidden('no complete ratings')
+        return ratings
+
+    def get_rating_stats_from_round(self, round_id):
+        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)\
+                      .filter(Vote.user == self.user,
+                              Vote.status == COMPLETED_STATUS,
+                              Vote.round_entry.has(round_id=round_id))
+                      .group_by(Vote.value))
+
+        ratings = ratings_query.all()
+
         return ratings
 
     def get_rankings_from_round(self, round_id):

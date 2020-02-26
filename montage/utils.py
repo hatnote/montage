@@ -28,19 +28,23 @@ USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
 DEFAULT_ENV_NAME = 'dev'
 
 
-class PermissionDenied(Forbidden):
+class MontageError(Exception):
+    "A base type for expected errors."
+
+
+class PermissionDenied(MontageError, Forbidden):
     "Raised when users perform actions on the wrong resources"
 
 
-class DoesNotExist(NotFound):
+class DoesNotExist(MontageError, NotFound):
     "Raised when users perform actions on nonexistent resources"
 
 
-class InvalidAction(BadRequest):
+class InvalidAction(MontageError, BadRequest):
     "Raised when some user behavior would cause some other assumption to fail"
 
 
-class NotImplementedResponse(BadRequest, NotImplementedError):
+class NotImplementedResponse(MontageError, BadRequest, NotImplementedError):
     "Raised when a feature hasn't yet been implemented"
 
 

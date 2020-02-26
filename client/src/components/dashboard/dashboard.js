@@ -16,17 +16,24 @@ function controller(
   adminService,
   alertService,
   dialogService,
-  userService) {
+  userService,
+) {
   const vm = this;
 
   vm.isAdmin = false;
   vm.isJuror = false;
   vm.campaigns = [];
   vm.campaignsAdmin = null;
+  vm.campaignsAdminInactive = null;
+
+  vm.showInactiveCampaigns = false;
+  vm.collapseClosedCampaigns = () => {
+    vm.showInactiveCampaigns = !vm.showInactiveCampaigns;
+  };
 
   vm.addOrganizer = addOrganizer;
 
-  // functions 
+  // functions
 
   vm.$onInit = () => {
     getAdminData();
@@ -34,27 +41,41 @@ function controller(
   };
 
   function getAdminData() {
-    userService.getAdmin()
-      .then((data) => {
+    userService
+      .getAdmin()
+      .then(data => {
         vm.isAdmin = data.data.length;
-        vm.campaignsAdmin = data.data;
+        vm.campaignsAdmin = data.data.filter(
+          campaign => campaign.active_round || !campaign.rounds.length,
+        );
+        vm.campaignsAdminInactive = data.data.filter(
+          campaign => !campaign.active_round && campaign.rounds.length,
+        );
       })
-      .catch((err) => { vm.err = err; });
+      .catch(err => {
+        vm.err = err;
+      });
   }
 
   function getJurorData() {
-    userService.getJuror()
-      .then((data) => {
+    userService
+      .getJuror()
+      .then(data => {
         vm.isJuror = data.data.length;
         vm.user = data.user;
-        if (!data.data.length) { return; }
+        if (!data.data.length) {
+          return;
+        }
 
         const grupped = _.groupBy(
           data.data.filter(round => round.status !== 'cancelled'),
-          'campaign.id');
+          'campaign.id',
+        );
         vm.campaignsJuror = _.values(grupped);
       })
-      .catch((err) => { vm.err = err; });
+      .catch(err => {
+        vm.err = err;
+      });
   }
 
   function addOrganizer() {
@@ -73,19 +94,17 @@ function controller(
 
           loading.window = true;
           const username = data[0].name;
-          adminService
-            .addOrganizer({ username })
-            .then((response) => {
-              if (response.error) {
-                loading.window = false;
-                alertService.error(response.error);
-                return;
-              }
+          adminService.addOrganizer({ username }).then(response => {
+            if (response.error) {
+              loading.window = false;
+              alertService.error(response.error);
+              return;
+            }
 
-              alertService.success(`${username} added as an organizer`);
-              $mdDialog.hide(true);
-              $state.reload();
-            });
+            alertService.success(`${username} added as an organizer`);
+            $mdDialog.hide(true);
+            $state.reload();
+          });
         },
       },
     });

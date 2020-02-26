@@ -13,13 +13,13 @@ from utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    DoesNotExist,
+                   NotImplementedResponse,
                    js_isoparse)
 
 from rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
-GISTCSV_METHOD = 'gistcsv'
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
 SELECTED_METHOD = 'selected'
@@ -332,11 +332,15 @@ def import_entries(user_dao, round_id, request_dict):
     # loader warnings
     import_warnings = list()
 
-    if import_method == GISTCSV_METHOD:
-        gist_url = request_dict['gist_url']
+    if import_method == 'csv' or import_method == 'gistcsv':
+        if import_method == 'gistcsv':
+            csv_url = request_dict['gist_url']
+        else:
+            csv_url = request_dict['csv_url']
+
         entries, warnings = coord_dao.add_entries_from_csv(round_id,
-                                                           gist_url)
-        params = {'gist_url': gist_url}
+                                                           csv_url)
+        params = {'csv_url': csv_url}
         if warnings:
             msg = 'unable to load {} files ({!r})'.format(len(warnings), warnings)
             import_warnings.append(msg)
@@ -355,7 +359,7 @@ def import_entries(user_dao, round_id, request_dict):
         entries = coord_dao.add_entries_by_name(round_id, file_names)
         params = {'file_names': file_names}
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     new_entry_stats = coord_dao.add_round_entries(round_id, entries,
                                                   method=import_method,
@@ -436,7 +440,7 @@ def cancel_campaign(user_dao, campaign_id):
 def _prepare_round_params(coord_dao, request_dict):
     rnd_dict = {}
     req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
-    extra_columns = ['description', 'config', 'directions']
+    extra_columns = ['description', 'config', 'directions', 'show_stats']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
 
     for column in req_columns + extra_columns:
@@ -537,7 +541,7 @@ def get_round_results_preview(user_dao, round_id):
         data['rankings'] = [r.to_dict() for r in rankings]
 
     else:
-        raise NotImplementedError()
+        raise NotImplementedResponse()
 
     return {'data': data}
 
@@ -562,7 +566,7 @@ def advance_round(user_dao, round_id, request_dict):
     rnd = coord_dao.get_round(round_id)
 
     if rnd.vote_method not in ('rating', 'yesno'):
-        raise NotImplementedError()  # see docstring above
+        raise NotImplementedResponse()  # see docstring above
     threshold = float(request_dict['threshold'])
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)

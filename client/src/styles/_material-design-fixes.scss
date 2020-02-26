@@ -9,7 +9,7 @@
     margin-right: 5px;
 
     path {
-      stroke: rgba(0,0,0,0.38);
+      stroke: rgba(0, 0, 0, 0.38);
       stroke-width: 2.5;
     }
   }
@@ -43,9 +43,15 @@ md-tooltip .md-content {
 }
 
 md-input-container {
-  &.no-margin { margin: 0; }
-  &.no-margin-bottom { margin-bottom: 0; }
-  &.no-margin-top { margin-top: 0; }
+  &.no-margin {
+    margin: 0;
+  }
+  &.no-margin-bottom {
+    margin-bottom: 0;
+  }
+  &.no-margin-top {
+    margin-top: 0;
+  }
 }
 
 md-dialog {
@@ -56,5 +62,8 @@ md-dialog {
   md-input-container {
     margin-bottom: 0;
     margin-top: 0;
+  }
+  .md-dialog-content-body {
+    white-space: pre-line;
   }
 }

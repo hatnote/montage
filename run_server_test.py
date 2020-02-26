@@ -274,13 +274,6 @@ def full_run(base_url, remote):
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
 
-    data = {'import_method': 'category',
-            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
-    resp = fetch('coordinator: import entries from a category',
-                 '/admin/round/%s/import' % round_id,
-                 data, as_user='LilyOfTheWest')
-
-
     resp = fetch('coordinator: activate a round',
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
@@ -299,10 +292,13 @@ def full_run(base_url, remote):
                  {'post': True},
                  as_user='LilyOfTheWest')
 
-    gist_url = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
-    resp = fetch('coordinator: import more entries from different gist csv into an existing round',
+  
+
+
+    gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
+    resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
                  '/admin/round/%s/import' % round_id,
-                 {'import_method': 'gistcsv', 'gist_url': gist_url},
+                 {'import_method': 'csv', 'csv_url': gsheet_url},
                  as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: import files selected by name',
@@ -398,6 +394,13 @@ def full_run(base_url, remote):
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
+
+
+    resp = fetch('juror: get votes stats',
+                 '/juror/round/%s/votes-stats' % round_id,
+                 as_user='Slaporte')
+    assert 'yes' in resp['stats']
+    assert 'no' in resp['stats']
 
     resp = fetch('maintainer: view audit logs', '/logs/audit')
 
