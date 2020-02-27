@@ -37,7 +37,7 @@ TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
 
 
-def create_app(env_name='prod'):
+def create_app(env_name='prod', config=None):
     # rendering is handled by MessageMiddleware
     ui_routes = (PUBLIC_UI_ROUTES + JUROR_UI_ROUTES
                  + ADMIN_UI_ROUTES + META_UI_ROUTES)
@@ -48,7 +48,8 @@ def create_app(env_name='prod'):
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
-    config = load_env_config(env_name=env_name)
+    if config is None:
+        config = load_env_config(env_name=env_name)
     print '==  loaded config file: %s' % (config['__file__'],)
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
@@ -129,7 +130,7 @@ def create_app(env_name='prod'):
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
-    debug_errors = bool(os.getenv('MONTAGE_PDB', False))
+    debug_errors = bool(os.getenv('MONTAGE_PDB', False)) or config['__env__'] == 'devtest'
     api_app = Application(api_routes, resources,
                           middlewares=[MessageMiddleware(debug_errors=debug_errors)] + middlewares,
                           render_factory=render_basic)

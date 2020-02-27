@@ -1,6 +1,7 @@
 
 import json
 import time
+import os.path
 import datetime
 
 import clastic
@@ -60,6 +61,7 @@ class MessageMiddleware(Middleware):
         except Exception as e:
             if self.debug_errors and not isinstance(e, MontageError):
                 import pdb; pdb.post_mortem()
+                import pdb;pdb.set_trace()
             if self.raise_errors:
                 raise
             ret = None
@@ -115,12 +117,15 @@ class UserMiddleware(Middleware):
         try:
             userid = cookie['userid']
         except (KeyError, TypeError):
-            if ep_is_public:
-                return next(user=None, user_dao=None)
-            import pdb;pdb.set_trace()
-            err = 'invalid cookie userid, try logging in again.'
-            response_dict['errors'].append(err)
-            return {}
+            if config['__env__'] == 'devtest':
+                # TODO: until github.com/pallets/werkzeug/issues/1060
+                userid = 6024474
+            else:
+                if ep_is_public:
+                    return next(user=None, user_dao=None)
+                err = 'invalid cookie userid, try logging in again.'
+                response_dict['errors'].append(err)
+                return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
@@ -205,8 +210,6 @@ class DBSessionMiddleware(Middleware):
             rdb_session.close()
         return ret
 
-
-import os.path
 
 from lithoxyl import (Logger,
                       StreamEmitter,

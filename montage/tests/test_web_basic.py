@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from __future__ import print_function
 
@@ -51,6 +52,11 @@ class MontageTestClient(object):
         if data is None:
             res = c.get(url)
         else:
+            # TODO: careful, werkzeug's pretty liberal with "data",
+            # will take a dictionary and do weird stuff to it, turn it
+            # into a formencoded mess.
+            if not isinstance(data, (bytes, unicode)):
+                data = json.dumps(data)
             res = c.post(url, data=data,
                          content_type=kw.get('content_type', 'application/json'))
 
@@ -117,12 +123,13 @@ def _create_schema(db_url, echo=True):
     return
 
 
-def test_home_client():
+def test_home_client(tmpdir):
     config = utils.load_env_config(env_name='devtest')
-    db_url = config.get('db_url')
+    config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
+    db_url = config['db_url']
     _create_schema(db_url=db_url)
 
-    app = create_app('devtest')
+    app = create_app('devtest', config=config)
 
     client = MontageTestClient(app)
     from clastic.middleware.cookie import JSONCookie
@@ -150,3 +157,116 @@ def test_home_client():
     resp = fetch('organizer: cancel most recent series',
                  '/admin/series/%s/edit' % most_recent_series,
                  {'status': 'cancelled'})
+
+
+    resp = fetch('maintainer: add organizer',
+                 '/admin/add_organizer',
+                 {'username': 'Yarl'})
+
+    resp = fetch('maintainer: add another organizer, to be removed later',
+                 '/admin/add_organizer',
+                 {'username': 'Slaporte (WMF)'})
+
+    resp = fetch('maintainer: remove organizer',
+                 '/admin/remove_organizer',
+                 {'username': 'Slaporte (WMF)'})
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    data = {'name': 'Another Test Campaign 2017 - again',
+            'coordinators': [u'LilyOfTheWest',
+                             u'Slaporte',
+                             u'Yarl'],
+            'close_date': '2015-10-01 17:00:00',
+            'url': 'http://hatnote.com',
+            'series_id': series_id}
+    resp = fetch('organizer: create campaign',
+                 '/admin/add_campaign',
+                 data,
+                 as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view (list of all campaigns/rounds)',
+                 '/admin', as_user='LilyOfTheWest')
+
+    campaign_id = resp['data'][-1]['id']
+
+    resp = fetch('coordinator: get campaign detail view',
+                 '/admin/campaign/%s' % campaign_id,
+                 as_user='LilyOfTheWest')
+
+    data = {'name': 'A demo campaign 2016',
+            'open_date': "2015-09-01 17:00:00",  # UTC times,
+            'close_date': None}
+    resp = fetch('coordinator: edit campaign',
+                 '/admin/campaign/%s/edit' % campaign_id,
+                 data, as_user='Yarl')
+
+    resp = fetch('add frontend error log',
+                 '/logs/feel',
+                 {'error': 'TypologyError', 'stack': 'some text\nstack\netc.'},
+                 as_user='LilyOfTheWest')
+    resp = fetch('get frontend error log',
+                 '/logs/feel',
+                 as_user='LilyOfTheWest')
+
+    # note: you can also add coordinators when the round is created
+    resp = fetch('coordinator: add coordinator to campaign',
+                 '/admin/campaign/%s/add_coordinator' % campaign_id,
+                 {'username': 'Effeietsanders'},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: remove coordinator',
+                 '/admin/campaign/%s/remove_coordinator' % campaign_id,
+                 {'username': 'Effeietsanders'},
+                 as_user='LilyOfTheWest')
+
+    # for date inputs (like deadline_date below), the default format
+    # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
+    # Add a round to a campaign
+    rnd_data = {'name': 'Test yes/no round ნ',
+                'vote_method': 'yesno',
+                'quorum': 3,
+                'deadline_date': "2016-10-15T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'LilyOfTheWest'],
+                # a round will have these config settings by default
+                'config': {'show_link': True,
+                           'show_filename': True,
+                           'show_resolution': True,
+                           'dq_by_upload_date': True,
+                           'dq_by_resolution': False,
+                           'dq_by_uploader': True,
+                           'min_resolution': 2000000,  # 2 megapixels
+                           'dq_coords': True,
+                           'dq_organizers': True,
+                           'dq_maintainers': True}}
+
+    resp = fetch('coordinator: add round to a campaign',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+
+    round_id = resp['data']['id']
+
+    resp = fetch('coordinator: get round details',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: edit round details',
+                 '/admin/round/%s/edit' % round_id,
+                 {'directions': 'these are new directions'},
+                 as_user='LilyOfTheWest')
+
+    rnd = fetch('coordinator: get round config',
+                '/admin/round/%s' % round_id,
+                as_user='LilyOfTheWest')
+    config = rnd['data']['config']
+    config['show_filename'] = False
+    resp = fetch('coordinator: edit round config',
+                 '/admin/round/%s/edit' % round_id,
+                 {'config': config},
+                 as_user='LilyOfTheWest')

@@ -83,7 +83,8 @@ def get_mw_userid(username):
               'list': 'globalallusers',
               'agufrom': username,
               'format': 'json'}
-    resp = urlopen(api_url + urlencode(list(encode_dict_to_bytes(params))))
+    full_url = api_url + urlencode(list(encode_dict_to_bytes(params)))
+    resp = urlopen(full_url)
     data = json.loads(resp.read())
     user = data['query']['globalallusers'][0]
     if user['name'] == username:
@@ -123,6 +124,7 @@ DEVTEST_CONFIG = {'oauth_consumer_token': None,
                   'superusers': ['Slaporte', 'MahmoudHashemi'],
                   'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
                   '__file__': 'devtest-builtin',
+                  '__env__': 'devtest',
 }
 
 
