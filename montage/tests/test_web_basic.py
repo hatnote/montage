@@ -3,7 +3,6 @@ from __future__ import print_function
 
 import json
 import urllib
-import urlparse
 
 from werkzeug.test import Client
 from lithoxyl import DEBUG, INFO
@@ -21,10 +20,21 @@ class ClasticTestClient(Client):
 # TODO: could use clastic to route-match based on URL to determine
 # "role" of current route being tested
 class MontageTestClient(object):
-    def __init__(self, app, default_role='public'):
+    def __init__(self, app, default_role='public', base_path=''):
         self.default_role = default_role
+        self.base_path = base_path
         self._test_client = ClasticTestClient(app)
         # TODO: default user?
+
+    def set_session_cookie(self, val):
+        self._test_client.set_cookie('', 'clastic_cookie', value=val)
+
+    def get_session_cookie(self):
+        # https://github.com/pallets/werkzeug/issues/1060
+        # (This is a travesty, I can't believe they closed the issue
+        # with this as the recommended pattern)
+        for cookie in self._test_client.cookie_jar:
+            pass
 
     def fetch_url(self, url, data=None, act=None, **kw):
         # hyperlinkify url
@@ -65,6 +75,7 @@ class MontageTestClient(object):
             print('(%s)' % as_user)
         else:
             print()
+        url = self.base_path + url if self.base_path else url
 
         log_level = kw.pop('log_level', INFO)
         error_code = kw.pop('error_code', None)
@@ -82,15 +93,17 @@ class MontageTestClient(object):
         # fetch_url)
         if error_code and resp is True:
             return True
-        if resp.content_type != 'application/json':
+        if not resp.content_type.startswith('application/json'):
             return resp
-        data_dict = json.loads(resp.get_data())
+        data = resp.get_data()
+        data_dict = json.loads(data)
         try:
             assert data_dict['status'] == 'success'
         except AssertionError:
             print('!! did not successfully load %s' % url)
             print('  got: ', data_dict)
             import pdb;pdb.set_trace()
+            raise
         return data_dict
 
 
@@ -105,7 +118,6 @@ def _create_schema(db_url, echo=True):
 
 
 def test_home_client():
-    base_url = ''
     config = utils.load_env_config(env_name='devtest')
     db_url = config.get('db_url')
     _create_schema(db_url=db_url)
@@ -113,10 +125,28 @@ def test_home_client():
     app = create_app('devtest')
 
     client = MontageTestClient(app)
-    client._test_client.set_cookie('', 'clastic_cookie', value=config['dev_local_cookie_value'], path='/')
+    from clastic.middleware.cookie import JSONCookie
+    cookie = JSONCookie({'userid': 6024474, 'username': 'Slaporte'}, secret_key=config['cookie_secret'])
+    cookie_data = cookie.serialize()
+
+    client.set_session_cookie(cookie_data)
     fetch = client.fetch
 
     fetch('organizer: home', '/')
 
-    base_api_url = base_url + '/v1/'
-    client = MontageTestClient(app)  # TODO
+    api_client = MontageTestClient(app, base_path='/v1/')  # TODO
+    api_client.set_session_cookie(config['dev_local_cookie_value'])
+    fetch = api_client.fetch
+
+    resp = fetch('organizer: create a new series',
+                 '/admin/add_series',
+                 {'name': 'test series',
+                  'description': 'test',
+                  'url': 'test'})
+
+    resp = fetch('get list of all series', '/series')
+
+    most_recent_series = resp['data'][-1]['id']
+    resp = fetch('organizer: cancel most recent series',
+                 '/admin/series/%s/edit' % most_recent_series,
+                 {'status': 'cancelled'})

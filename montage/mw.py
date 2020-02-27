@@ -117,8 +117,8 @@ class UserMiddleware(Middleware):
         except (KeyError, TypeError):
             if ep_is_public:
                 return next(user=None, user_dao=None)
-
-            err = 'invalid cookie userid, try logging in again'
+            import pdb;pdb.set_trace()
+            err = 'invalid cookie userid, try logging in again.'
             response_dict['errors'].append(err)
             return {}
 
