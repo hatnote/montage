@@ -77,12 +77,9 @@ class MontageTestClient(object):
             raise ValueError('expected url starting with "/", not: %r' % url)
         role, sep, action = role_action.partition(':')
         role, action = (role, action) if sep else (self.default_role, role)
-        print('>>', action, 'as', role)
         as_user = kw.pop('as_user', None)
-        if as_user:
-            print('(%s)' % as_user)
-        else:
-            print()
+        print('>>', action, 'as', role, end='')
+        print((' (%s)' % as_user) if as_user else '')
         url = self.base_path + url if self.base_path else url
 
         log_level = kw.pop('log_level', INFO)
@@ -287,4 +284,60 @@ def test_home_client(base_client, api_client):
     resp = fetch('coordinator: edit round config',
                  '/admin/round/%s/edit' % round_id,
                  {'config': config},
+                 as_user='LilyOfTheWest')
+
+    data = {'import_method': 'category',
+            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
+    resp = fetch('coordinator: import entries from a category',
+                 '/admin/round/%s/import' % round_id,
+                 data, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: activate a round',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+    """
+    # Cancel a round
+    # - as coordinator
+    resp = fetch('coordinator: cancel a round',
+                 '/admin/round/%s/cancel' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+    """
+
+    resp = fetch('coordinator: pause a round',
+                 '/admin/round/%s/pause' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+
+
+
+    gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
+    resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'csv', 'csv_url': gsheet_url},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: import files selected by name',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: preview disqualifications',
+                 '/admin/round/%s/preview_disqualification' % round_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: disqualify by resolution',
+                 '/admin/round/%s/autodisqualify' % round_id,
+                 {'dq_by_resolution': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: view disqualified entries',
+                 '/admin/round/%s/disqualified' % round_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: reactivate the round',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
                  as_user='LilyOfTheWest')
