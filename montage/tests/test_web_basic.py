@@ -5,8 +5,10 @@ from __future__ import print_function
 import json
 import urllib
 
+import pytest
 from werkzeug.test import Client
 from lithoxyl import DEBUG, INFO
+from clastic.middleware.cookie import JSONCookie
 
 from montage import utils
 from montage.log import script_log
@@ -123,26 +125,42 @@ def _create_schema(db_url, echo=True):
     return
 
 
-def test_home_client(tmpdir):
+@pytest.fixture
+def montage_app(tmpdir):
     config = utils.load_env_config(env_name='devtest')
     config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
     db_url = config['db_url']
     _create_schema(db_url=db_url)
 
     app = create_app('devtest', config=config)
+    return app
 
-    client = MontageTestClient(app)
-    from clastic.middleware.cookie import JSONCookie
-    cookie = JSONCookie({'userid': 6024474, 'username': 'Slaporte'}, secret_key=config['cookie_secret'])
+
+@pytest.fixture
+def base_client(montage_app):
+    client = MontageTestClient(montage_app)
+
+    # TODO
+    cookie = JSONCookie({'userid': 6024474, 'username': 'Slaporte'},
+                        secret_key=montage_app.resources['config']['cookie_secret'])
     cookie_data = cookie.serialize()
-
     client.set_session_cookie(cookie_data)
-    fetch = client.fetch
+
+    return client
+
+
+@pytest.fixture
+def api_client(montage_app):
+    api_client = MontageTestClient(montage_app, base_path='/v1/')  # TODO
+    api_client.set_session_cookie(montage_app.resources['config']['dev_local_cookie_value'])
+    return api_client
+
+
+def test_home_client(base_client, api_client):
+    fetch = base_client.fetch
 
     fetch('organizer: home', '/')
 
-    api_client = MontageTestClient(app, base_path='/v1/')  # TODO
-    api_client.set_session_cookie(config['dev_local_cookie_value'])
     fetch = api_client.fetch
 
     resp = fetch('organizer: create a new series',

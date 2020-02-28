@@ -144,6 +144,7 @@ def create_app(env_name='prod', config=None):
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
-                            ('/meta', MetaApplication())])
+                            ('/meta', MetaApplication())],
+                           resources={'config': config})
 
     return root_app

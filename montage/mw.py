@@ -22,6 +22,7 @@ def public(endpoint_func):
 
     return endpoint_func
 
+
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
     endpoints.
