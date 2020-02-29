@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import json
 import urllib
+from pprint import pprint
 
 import pytest
 from werkzeug.test import Client
@@ -148,7 +149,7 @@ def base_client(montage_app):
 
 @pytest.fixture
 def api_client(montage_app):
-    api_client = MontageTestClient(montage_app, base_path='/v1/')  # TODO
+    api_client = MontageTestClient(montage_app, base_path='/v1')  # TODO
     api_client.set_session_cookie(montage_app.resources['config']['dev_local_cookie_value'])
     return api_client
 
@@ -311,8 +312,6 @@ def test_home_client(base_client, api_client):
                  as_user='LilyOfTheWest')
 
 
-
-
     gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
     resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
                  '/admin/round/%s/import' % round_id,
@@ -341,3 +340,457 @@ def test_home_client(base_client, api_client):
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
+
+
+    resp = fetch('coordinator: pause round',
+                 '/admin/round/%s/pause' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: edit jurors in a round',
+                 '/admin/round/%s/edit' % round_id,
+                 data={'new_jurors': [u'Slaporte',
+                                      u'MahmoudHashemi',
+                                      u'Effeietsanders',
+                                      u'Jean-Frédéric',
+                                      u'Jimbo Wales']},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: raise quorum value',
+                 '/admin/round/%s/edit' % round_id,
+                 {'quorum': 4},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: try to reduce quorum (not supported)',
+                 '/admin/round/%s/edit' % round_id,
+                 {'quorum': 1},
+                 as_user='LilyOfTheWest',
+                 error_code=400)
+
+    resp = fetch('coordinator: reactivate our round',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+
+    resp = fetch('juror: get votes stats',
+                 '/juror/round/%s/votes-stats' % round_id,
+                 as_user='Slaporte')
+    assert 'yes' in resp['stats']
+    assert 'no' in resp['stats']
+
+    resp = fetch('maintainer: view audit logs', '/logs/audit')
+
+    # Jury endpoints
+    # --------------
+
+    resp = fetch('juror: get the juror overview',
+                 '/juror', as_user='Slaporte')
+
+    """
+    # TODO: Jurors only see a list of rounds at this point, so there
+    # is no need to get the detailed view of campaign.
+
+    # Get a detailed view of a campaign
+    resp = fetch('juror: get campaign details',
+                 '/juror/campaign/' + campaign_id,
+                 as_user='Jimbo Wales')
+    """
+    resp = fetch('juror: get round details',
+                 '/juror/round/%s' % round_id,
+                 as_user='Jimbo Wales')
+
+    resp = fetch("juror: get juror's open tasks",
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Jimbo Wales')
+
+    # note: will return a default of 15 tasks, but you can request
+    # more or fewer with the count parameter, or can skip tasks with
+    # an offset paramter
+
+    # entry_id = resp['data']['tasks'][0]['round_entry_id']
+    tasks = resp['data']['tasks']
+    vote_id = tasks[0]['id']
+
+    resp = fetch('juror: submit a single rating task',
+                 '/juror/round/%s/tasks/submit' % round_id,
+                 {'ratings': [{'vote_id': vote_id, 'value': 1.0}]},
+                 as_user='Jimbo Wales')
+
+    skip_vote_id = tasks[1]['id']
+    resp = fetch('juror: skip a rating',
+                 '/juror/round/%s/tasks/skip' % round_id,
+                 {'vote_id': skip_vote_id},
+                 as_user='Jimbo Wales')
+
+    entry_id = tasks[-1]['entry']['id']
+    resp = fetch('juror: mark an entry as favorite',
+                 '/juror/round/%s/%s/fave' % (round_id, entry_id),
+                 {'post': True},
+                 as_user='Jimbo Wales')
+
+    resp = fetch("juror: get list of own faves",
+                 '/juror/faves', as_user='Jimbo Wales')
+
+    resp = fetch('juror: unfave a favorite',
+                 '/juror/round/%s/%s/unfave' % (round_id, entry_id),
+                 {'post': True}, as_user='Jimbo Wales')
+
+    resp = fetch('juror: flag an entry',
+                 '/juror/round/%s/%s/flag' % (round_id, entry_id),
+                 {'reason': 'I really do not like this photo, I am sorry.'},
+                 as_user='Jimbo Wales')
+
+    resp = fetch('coordinator: get list of flagged files',
+                 '/admin/round/%s/flags' % (round_id),
+                 as_user='LilyOfTheWest')
+
+    entry_id = resp['data'][0]['id']
+    resp = fetch('coordinator: pause round for manual disqualification',
+                 '/admin/round/%s/pause' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: disqualify particular file',
+                 '/admin/round/%s/%s/disqualify' % (round_id, entry_id),
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: requalify (undisqualify) particular file',
+                 '/admin/round/%s/%s/requalify' % (round_id, entry_id),
+                 {'post': True},                 as_user='LilyOfTheWest')
+
+
+    resp = fetch('coordinator: reactivate the round to continue',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    # Attempt to submit or get tasks while the round is paused
+
+    # Pause the round
+    resp = fetch('coordinator: pause round for submission-during-paused test',
+                 '/admin/round/%s/pause' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    vote_id = tasks[-1]['id']
+
+    resp = fetch('juror: submit rating during paused round',
+                 '/juror/round/%s/tasks/submit' % round_id,
+                 {'ratings': [{'vote_id': vote_id, 'value': 1.0}]},
+                 as_user='Jimbo Wales',
+                 error_code=400)
+
+    resp = fetch('juror: attempt to get more tasks from paused round',
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Jimbo Wales',
+                 error_code=400)
+
+    resp = fetch('coordinator: reactivate round',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('juror: confirm getting more tasks works again',
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Jimbo Wales')
+
+    rating_dicts = []
+
+    for vote in resp['data']['tasks']:
+        val = float(vote['id'] % 2)  # deterministic but arbitrary
+        rating_dicts.append({'vote_id': vote['id'], 'value': val})
+    data = {'ratings': rating_dicts}
+
+    resp = fetch('juror: submit rating tasks',
+                 '/juror/round/%s/tasks/submit' % round_id,
+                 data, as_user='Jimbo Wales')
+
+    resp = fetch('juror: get list of past ratings',
+                 '/juror/round/%s/votes' % round_id,
+                 as_user='Jimbo Wales')
+    recent_rating = resp['data'][-1]
+
+    # Adjust a recent rating
+    # - as juror
+    vote_id = recent_rating['id']
+    new_val = float((recent_rating['id'] + 1) % 2)
+    resp = fetch('juror: edit a recent rating',
+                 '/juror/round/%s/tasks/submit' % recent_rating['round_id'],
+                 {'ratings': [{'vote_id': vote_id, 'value': new_val}]},
+                 as_user='Jimbo Wales')
+
+        # Admin endpoints (part 2)
+    # --------------- --------
+
+    # Get a preview of results from a round
+    # - as coordinator
+    resp = fetch('coordinator: get a preview of results from a round',
+                 '/admin/round/%s/preview_results' % round_id,
+                 as_user='LilyOfTheWest')
+
+    # submit all remaining tasks for the round
+
+    submit_ratings(api_client, round_id)
+
+    resp = fetch('coordinator: preview round results in prep for closing',
+                 '/admin/round/%s/preview_results' % round_id,
+                 as_user='LilyOfTheWest')
+
+    rnd_data = {'name': 'Test advance to rating round',
+                'vote_method': 'rating',
+                'quorum': 3,
+                'deadline_date': "2016-10-20T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'LilyOfTheWest']}
+
+    resp = fetch('coordinator: close round, loading results into a new round',
+                 '/admin/round/%s/advance' % round_id,
+                 {'next_round': rnd_data, 'threshold': 0.5},
+                 as_user='LilyOfTheWest')
+
+    rnd_2_id = resp['data']['id']
+
+    # TODO: test getting a csv of final round results needs more instrumentation
+    print('>> downloading results')
+    resp = api_client.fetch_url('/v1/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
+    resp_data = resp.get_data()
+    assert len(resp_data) > 100
+    assert resp_data.count(',') > 10
+
+    resp = fetch('coordinator: activate new round',
+                 '/admin/round/%s/activate' % rnd_2_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    submit_ratings(api_client, rnd_2_id)
+
+    resp = fetch('coordinator: preview results from second round',
+                 '/admin/round/%s/preview_results' % rnd_2_id,
+                 as_user='LilyOfTheWest')
+
+    thresh_map = resp['data']['thresholds']  # TODO
+    cur_thresh = [t for t, c in sorted(thresh_map.items()) if 0 < c <= 20][-1]
+
+    rnd_data = {'name': 'Test advance to ranking round',
+                'vote_method': 'ranking',
+                'directions': 'Final round, rank the images, best to worst.',
+                # note the lack of quorum. quorum is same as juror count
+                'deadline_date': "2016-10-25T00:00:00",
+                'jurors': [u'Slaporte',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'MahmoudHashemi']}
+    resp = fetch('coordinator: advance to round 3',
+                 '/admin/round/%s/advance' % rnd_2_id,
+                 {'next_round': rnd_data, 'threshold': cur_thresh},
+                 as_user='LilyOfTheWest')
+    rnd_3_id = resp['data']['id']
+
+    resp = fetch('coordinator: activate round 3 to make assignments',
+                 '/admin/round/%s/activate' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+    resp = fetch('coordinator: pause round 3 for edits',
+                 '/admin/round/%s/pause' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    # adding jimbo
+    data = {'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'Jimbo Wales']}
+    resp = fetch('coordinator: add new juror jimbo to round 3',
+                 '/admin/round/%s/edit' % rnd_3_id,
+                 data, as_user='LilyOfTheWest')
+
+    # edit without changing the jurors, but with changing the description
+    data = {'directions': 'great new directions',
+            'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Effeietsanders',
+                           u'Jean-Frédéric',
+                           u'Jimbo Wales']}
+
+    resp = fetch('coordinator: change round 3 directions',
+                 '/admin/round/%s/edit' % rnd_3_id,
+                 data, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: reactivate round 3',
+                 '/admin/round/%s/activate' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: pause round 3 to remove jurors',
+                      '/admin/round/%s/pause' % rnd_3_id,
+                      {'post': True}, as_user='LilyOfTheWest')
+
+    # remove jf and eff
+    data = {'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Jimbo Wales']}
+    resp = fetch('coordinator: remove JF and EFF from round 3 jurors',
+                 '/admin/round/%s/edit' % rnd_3_id,
+                 data, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: reactivate round 3',
+                 '/admin/round/%s/activate' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: pause round 3 to readd a juror',
+                 '/admin/round/%s/pause' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    # readd jf
+    data = {'new_jurors': [u'Slaporte',
+                           u'MahmoudHashemi',
+                           u'Jean-Frédéric',
+                           u'Jimbo Wales']}
+    resp = fetch('coordinator: readd JF as juror',
+                 '/admin/round/%s/edit' % rnd_3_id,
+                 data, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: reactivate round 3 after readding JF as juror',
+                 '/admin/round/%s/activate' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    # cancel campaign -- warning, this cancels everything (campaign, rounds, and tasks)
+
+    #resp = fetch('coordinator: cancel campaign',
+    #             '/admin/campaign/%s/cancel' % campaign_id,
+    #             {'post': True}, as_user='LilyOfTheWest')
+    #import pdb;pdb.set_trace()
+
+    # submit the remaining ratings
+
+    submit_ratings(api_client, rnd_3_id)
+
+    resp = fetch('coordinator: preview round 3 results',
+                 '/admin/round/%s/preview_results' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: finalize campaign',
+                 '/admin/campaign/%s/finalize' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    # view the final campaign report (note: fetch_url, as this is an html page)
+    resp = base_client.fetch('coordinator: view final report',
+                             '/admin/campaign/%s/report' % campaign_id,
+                             as_user='LilyOfTheWest')  # , content_type='text/html')
+
+    resp = fetch('juror: view own rankings for round 3',
+                 '/juror/round/%s/rankings' % rnd_3_id,
+                 as_user='Jimbo Wales')
+
+    resp = fetch('coordinator: make campaign results public (publish report)',
+                 '/admin/campaign/%s/publish' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: unpublish campaign results',
+                 '/admin/campaign/%s/unpublish' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: republish campaign results',
+                 '/admin/campaign/%s/publish' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    pprint(resp['data'])
+
+    resp = fetch('coordinator: see the audit log with full campaign history',
+                 '/admin/campaign/%s/audit' % campaign_id,
+                 as_user='LilyOfTheWest')
+
+    pprint(resp['data'])
+
+
+@script_log.wrap('critical', verbose=True)
+def submit_ratings(client, round_id, coord_user='Yarl'):
+    """
+    A reminder of our key players:
+
+      * Maintainer: Slaporte
+      * Organizer: Yarl
+      * Coordinators: LilyOfTheWest, Slaporte, Yarl, Effeietsanders
+      * Jurors: (coordinators) + "Jean-Frédéric" + "Jimbo Wales"
+    """
+    fetch = client.fetch
+    r_dict = fetch('coordinator: get round details/jurors for submit_ratings',
+                   '/admin/round/%s' % round_id,
+                   as_user=coord_user)['data']
+    if not r_dict['status'] == 'active':
+        raise RuntimeError('round must be active to submit ratings')
+    j_dicts = r_dict['jurors']
+
+    per_fetch = 100  # max value
+
+    for j_dict in j_dicts:
+        j_username = j_dict['username']
+        for i in xrange(100):  # don't go on forever
+            t_dicts = fetch('juror: fetch open tasks',
+                            '/juror/round/%s/tasks?count=%s'
+                            % (round_id, per_fetch), log_level=DEBUG,
+                            as_user=j_username)['data']['tasks']
+            if len(t_dicts) < per_fetch:
+                print('!! last batch: %r' % ([t['id'] for t in t_dicts]))
+            if not t_dicts:
+                break  # right?
+            ratings = []
+            for i, t_dict in enumerate(t_dicts):
+                vote_id = t_dict['id']
+                review = None
+                rating_dict = {'vote_id': vote_id}
+
+                # arb scoring
+                if r_dict['vote_method'] == 'yesno':
+                    value = len(j_username + t_dict['entry']['name']) % 2
+                    if value == 1:
+                        review = '%s likes this' % j_username
+                elif r_dict['vote_method'] == 'rating':
+                    value = len(j_username + t_dict['entry']['name']) % 5 * 0.25
+                    entry_id = t_dict['entry']['id']
+                    if value == 1:
+                        review = '%s thinks this is great' % j_username
+                    '''
+                    # Note: only if you want some extra faves for testing
+                    if value == 1.0:
+                        review = '%s loves this' % j_username
+                        data = {'post': True}
+                        resp = fetch('juror: submit fave',
+                                     '/juror/round/%s/%s/fave' %
+                                     (round_id, entry_id),
+                                     data, as_user=j_username)
+                    '''
+                    '''
+                    # Note: only if you want some extra flags for testing
+                    if value <0.25:
+                        resp = fetch('juror: flag an entry',
+                                     '/juror/round/%s/%s/flag' % (round_id, entry_id),
+                                     {'reason': 'not cool'},
+                                     as_user=j_username)
+                    '''
+                elif r_dict['vote_method'] == 'ranking':
+                    value = (i + len(j_username)) % len(t_dicts)
+                    if value == 0:
+                        review = '%s thinks this should win' % j_username
+                else:
+                    raise NotImplementedError()
+
+                rating_dict['value'] = value
+                if review:
+                    print(review)
+                    rating_dict['review'] = review
+
+                ratings.append(rating_dict)
+
+            data = {'ratings': ratings}
+            t_resp = fetch('juror: submit ratings and reviews',
+                           '/juror/round/%s/tasks/submit' % round_id,
+                           data=data, as_user=j_username, log_level=DEBUG)
+        else:
+            raise RuntimeError('task list did not terminate')
+
+    return
+
+    # get all the jurors that have open tasks in a round
+    # get juror's tasks
+    # submit random valid votes until there are no more tasks
