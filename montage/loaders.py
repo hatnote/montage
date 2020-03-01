@@ -11,7 +11,7 @@ from unicodecsv import DictReader
 import rdb
 from labs import get_files, get_file_info
 
-REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage-dev/v1/utils/'
+REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage/v1/utils/'
 
 GSHEET_URL = 'https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv'
 
@@ -85,7 +85,7 @@ def load_full_csv(csv_file_obj, source='remote'):
     for key in CSV_FULL_COLS:
         if key not in dr.fieldnames:
             raise ValueError('missing required column "%s" in csv file' % key)
-    
+
     for edict in dr:
         try:
             entry = make_entry(edict)
