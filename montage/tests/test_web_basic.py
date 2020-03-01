@@ -280,8 +280,10 @@ def test_home_client(base_client, api_client):
     rnd = fetch('coordinator: get round config',
                 '/admin/round/%s' % round_id,
                 as_user='LilyOfTheWest')
+
     config = rnd['data']['config']
     config['show_filename'] = False
+    
     resp = fetch('coordinator: edit round config',
                  '/admin/round/%s/edit' % round_id,
                  {'config': config},
@@ -373,7 +375,7 @@ def test_home_client(base_client, api_client):
                  as_user='LilyOfTheWest')
 
 
-    resp = fetch('juror: get votes stats',
+    resp = fetch('juror: get votes stats for yes/no round',
                  '/juror/round/%s/votes-stats' % round_id,
                  as_user='Slaporte')
     assert 'yes' in resp['stats']
@@ -387,15 +389,14 @@ def test_home_client(base_client, api_client):
     resp = fetch('juror: get the juror overview',
                  '/juror', as_user='Slaporte')
 
-    """
     # TODO: Jurors only see a list of rounds at this point, so there
     # is no need to get the detailed view of campaign.
 
     # Get a detailed view of a campaign
     resp = fetch('juror: get campaign details',
-                 '/juror/campaign/' + campaign_id,
+                 '/juror/campaign/%s' % campaign_id,
                  as_user='Jimbo Wales')
-    """
+    
     resp = fetch('juror: get round details',
                  '/juror/round/%s' % round_id,
                  as_user='Jimbo Wales')
@@ -566,6 +567,16 @@ def test_home_client(base_client, api_client):
 
     submit_ratings(api_client, rnd_2_id)
 
+    resp = fetch('juror: get votes stats for rating round',
+                 '/juror/round/%s/votes-stats' % rnd_2_id,
+                 as_user='Slaporte')
+    assert '1' in resp['stats']
+    assert '5' in resp['stats']
+
+    resp = fetch('juror: view own ratings for round 3',
+                 '/juror/round/%s/ratings' % rnd_2_id,
+                 as_user='Slaporte')
+
     resp = fetch('coordinator: preview results from second round',
                  '/admin/round/%s/preview_results' % rnd_2_id,
                  as_user='LilyOfTheWest')
@@ -669,6 +680,10 @@ def test_home_client(base_client, api_client):
                  '/admin/round/%s/preview_results' % rnd_3_id,
                  as_user='LilyOfTheWest')
 
+    resp = fetch('coordinator: read round 3 reviews',
+                 '/admin/round/%s/reviews' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
     resp = fetch('coordinator: finalize campaign',
                  '/admin/campaign/%s/finalize' % campaign_id,
                  {'post': True}, as_user='LilyOfTheWest')
@@ -677,6 +692,14 @@ def test_home_client(base_client, api_client):
     resp = base_client.fetch('coordinator: view final report',
                              '/admin/campaign/%s/report' % campaign_id,
                              as_user='LilyOfTheWest')  # , content_type='text/html')
+
+    resp = fetch('coordinator: view round 3 entries',
+                 '/admin/round/%s/entries' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: download round 3 entries',
+                 '/admin/round/%s/entries/download' % rnd_3_id,
+                 as_user='LilyOfTheWest')
 
     resp = fetch('juror: view own rankings for round 3',
                  '/juror/round/%s/rankings' % rnd_3_id,
