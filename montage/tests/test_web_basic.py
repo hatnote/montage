@@ -183,6 +183,9 @@ def test_home_client(base_client, api_client):
                  '/admin/add_organizer',
                  {'username': 'Slaporte (WMF)'})
 
+    resp = fetch('organizer: list users',
+                 '/admin/users')
+
     resp = fetch('maintainer: remove organizer',
                  '/admin/remove_organizer',
                  {'username': 'Slaporte (WMF)'})
@@ -240,7 +243,7 @@ def test_home_client(base_client, api_client):
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
     # Add a round to a campaign
-    rnd_data = {'name': 'Test yes/no round ნ',
+    rnd_data = {'name': 'Test yes/no round',
                 'vote_method': 'yesno',
                 'quorum': 3,
                 'deadline_date': "2016-10-15T00:00:00",
@@ -262,6 +265,18 @@ def test_home_client(base_client, api_client):
                            'dq_maintainers': True}}
 
     resp = fetch('coordinator: add round to a campaign',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+
+    discarded_round_id = resp['data']['id']
+
+    resp = fetch('coordinator: cancel round',
+                 '/admin/round/%s/cancel' % discarded_round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: re-add round to a campaign',
                  '/admin/campaign/%s/add_round' % campaign_id,
                  rnd_data,
                  as_user='LilyOfTheWest')
@@ -299,20 +314,11 @@ def test_home_client(base_client, api_client):
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
-    """
-    # Cancel a round
-    # - as coordinator
-    resp = fetch('coordinator: cancel a round',
-                 '/admin/round/%s/cancel' % round_id,
-                 {'post': True},
-                 as_user='LilyOfTheWest')
-    """
 
     resp = fetch('coordinator: pause a round',
                  '/admin/round/%s/pause' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
-
 
     gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
     resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
@@ -699,6 +705,10 @@ def test_home_client(base_client, api_client):
 
     resp = fetch('coordinator: download round 3 entries',
                  '/admin/round/%s/entries/download' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: view round 3 results',
+                 '/admin/round/%s/results' % rnd_3_id,
                  as_user='LilyOfTheWest')
 
     resp = fetch('juror: view own rankings for round 3',

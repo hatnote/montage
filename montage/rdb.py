@@ -964,8 +964,6 @@ class UserDAO(PublicDAO):
     def _get_every_campaign(self):
         campaigns = (self.query(Campaign)
                          .all())
-        if not campaigns:
-            raise DoesNotExist('no campaigns exist')
         return campaigns
 
     def _get_any_round(self, round_id):
@@ -1168,14 +1166,6 @@ class CoordinatorDAO(UserDAO):
             name = entry.name
             ret[name] = entry
         return ret
-
-    def get_flags(self, round_id, limit=10, offset=0):
-        flags = (self.query(Flag)
-                 .filter(Flag.round_entry.has(round_id=round_id))
-                 .limit(10)
-                 .offset(0)
-                 .all())
-        return flags
 
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)

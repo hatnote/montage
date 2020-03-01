@@ -63,7 +63,6 @@ def get_admin_routes():
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
            GET('/admin/round/<round_id:int>/flags', get_flagged_entries),
-           GET('/admin/round/<round_id:int>/all_flags', get_all_flags),
            GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
@@ -817,17 +816,6 @@ def get_flagged_entries(user_dao, round_id):
                               in fe.flaggings]
         ret.append(entry)
     return {'data': ret}
-
-
-def get_all_flags(user_dao, round_id, request_dict):
-    if not request_dict:
-        request_dict = {}
-    limit = request_dict.get('limit', 10)
-    offset = request_dict.get('offset', 0)
-    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    flags = coord_dao.get_flags(round_id, limit, offset)
-    data = [f.to_details_dict() for f in flags]
-    return {'data': data}
 
 
 def get_disqualified(user_dao, round_id):
