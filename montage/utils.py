@@ -143,8 +143,8 @@ def load_env_config(env_name=None):
         print '!! failed to load config file: %s' % (config_file_path,)
         raise
 
+    config['__env__'] = env_name
     config['__file__'] = config_file_path
-
     return config
 
 
