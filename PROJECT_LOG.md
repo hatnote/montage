@@ -7,7 +7,7 @@
 * Migrated system test into tox + pytest (in prep for more tests + py3 conversion)
 * Added coverage report (time of writing: 75%)
 * Read up on new toolforge setup, make sure to restart with:
-  `webservice --cpu 1 --mem 4 python2 restart`
+  `webservice --cpu 1 --mem 4000Mi python2 restart`
 * requirements.in and requirements.txt working
 
 ## TODO
