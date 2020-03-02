@@ -5,6 +5,7 @@ include *.py
 include *.txt
 include *.yaml
 include LICENSE
+graft montage/static
 prune client
 prune docs
 recursive-include montage *.css
