@@ -28,6 +28,10 @@ from juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
 from admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
 from public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 
+import sentry_sdk
+
+from clastic_sentry import integrate_sentry
+
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -146,5 +150,12 @@ def create_app(env_name='prod', config=None):
                             ('/v1/', api_app),
                             ('/meta', MetaApplication())],
                            resources={'config': config})
+
+    if not debug_errors:
+        # don't need sentry if you've got pdb, etc.
+        sentry_sdk.init(environment=config['__env__'],
+                        request_bodies='medium',
+                        dsn="https://5738a89dcd5e4b599f7a801fd63bc217@sentry.io/3532775")
+        root_app = integrate_sentry(root_app)
 
     return root_app
