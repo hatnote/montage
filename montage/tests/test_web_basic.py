@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import os
 import json
 import urllib
 from pprint import pprint
@@ -10,10 +11,11 @@ import pytest
 from werkzeug.test import Client
 from lithoxyl import DEBUG, INFO
 from clastic.middleware.cookie import JSONCookie
+from boltons.fileutils import mkdir_p
 
 from montage import utils
 from montage.log import script_log
-from montage.app import create_app
+from montage.app import create_app, STATIC_PATH
 
 
 class ClasticTestClient(Client):
@@ -129,6 +131,12 @@ def montage_app(tmpdir):
     config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
     db_url = config['db_url']
     _create_schema(db_url=db_url)
+
+    index_path = STATIC_PATH + '/index.html'
+    if not os.path.exists(index_path):
+        mkdir_p(STATIC_PATH)
+        with open(index_path, 'w') as f:
+            f.write('<html><body>just for tests</body></html>')
 
     app = create_app('devtest', config=config)
     return app
@@ -298,7 +306,7 @@ def test_home_client(base_client, api_client):
 
     config = rnd['data']['config']
     config['show_filename'] = False
-    
+
     resp = fetch('coordinator: edit round config',
                  '/admin/round/%s/edit' % round_id,
                  {'config': config},
@@ -402,7 +410,7 @@ def test_home_client(base_client, api_client):
     resp = fetch('juror: get campaign details',
                  '/juror/campaign/%s' % campaign_id,
                  as_user='Jimbo Wales')
-    
+
     resp = fetch('juror: get round details',
                  '/juror/round/%s' % round_id,
                  as_user='Jimbo Wales')
