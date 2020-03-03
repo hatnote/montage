@@ -23,33 +23,6 @@ if MYPY:
     from sentry_sdk._types import EventProcessor
 
 
-from clastic import version_info as clastic_version_info
-
-
-"""
-try:
-    import flask_login  # type: ignore
-except ImportError:
-    flask_login = None
-
-try:
-    from flask import (  # type: ignore
-        Request,
-        Flask,
-        _request_ctx_stack,
-        _app_ctx_stack,
-        __version__ as FLASK_VERSION,
-    )
-    from flask.signals import (
-        appcontext_pushed,
-        appcontext_tearing_down,
-        got_request_exception,
-        request_started,
-    )
-except ImportError:
-    raise DidNotEnable("Flask is not installed")
-"""
-
 from clastic import Middleware, Application, SubApplication
 from clastic.errors import BadRequest
 
