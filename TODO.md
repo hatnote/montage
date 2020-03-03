@@ -111,20 +111,3 @@ Ratings closing round interface:
 * Inherent in coordinator opt-in language: "By checking this you
   assert that all jurors have been informed/consented that anonymized
   voting data will may be used for research."
-
-## 2020 Technical Roadmap
-
-* Admin tools refactor
-  * Integrate admin tools into montage package
-  * Make montage installable
-* Switch to in-process integration tests + unit tests instead of big
-  system test.
-* Python 3 migration
-  * Upgrade dependencies
-  * Add tests + coverage
-  * Update syntax
-* Migrate to k8s
-* Deploy script?
-* Sentry integration?
-* Dynamic assignment
-* Archiving?
