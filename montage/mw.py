@@ -1,6 +1,7 @@
 
 import json
 import time
+import os.path
 import datetime
 
 import clastic
@@ -10,6 +11,7 @@ from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
 from rdb import User, UserDAO
+from utils import MontageError
 
 
 def public(endpoint_func):
@@ -19,6 +21,7 @@ def public(endpoint_func):
     endpoint_func.is_public = True
 
     return endpoint_func
+
 
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
@@ -31,9 +34,10 @@ class MessageMiddleware(Middleware):
     """
     provides = ('response_dict', 'request_dict')
 
-    def __init__(self, raise_errors=True, use_ashes=False):
+    def __init__(self, raise_errors=True, use_ashes=False, debug_errors=False):
         self.raise_errors = raise_errors
         self.use_ashes = use_ashes
+        self.debug_errors = debug_errors
 
     def request(self, next, request):
         response_dict = {'errors': [], 'status': 'success'}
@@ -55,7 +59,10 @@ class MessageMiddleware(Middleware):
         # TODO: autoswitch resp status code
         try:
             ret = next()
-        except Exception:
+        except Exception as e:
+            if self.debug_errors and not isinstance(e, MontageError):
+                import pdb; pdb.post_mortem()
+                import pdb;pdb.set_trace()
             if self.raise_errors:
                 raise
             ret = None
@@ -111,12 +118,15 @@ class UserMiddleware(Middleware):
         try:
             userid = cookie['userid']
         except (KeyError, TypeError):
-            if ep_is_public:
-                return next(user=None, user_dao=None)
-
-            err = 'invalid cookie userid, try logging in again'
-            response_dict['errors'].append(err)
-            return {}
+            if config['__env__'] == 'devtest':
+                # TODO: until github.com/pallets/werkzeug/issues/1060
+                userid = 6024474
+            else:
+                if ep_is_public:
+                    return next(user=None, user_dao=None)
+                err = 'invalid cookie userid, try logging in again.'
+                response_dict['errors'].append(err)
+                return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
@@ -189,7 +199,7 @@ class DBSessionMiddleware(Middleware):
         rdb_session = self.session_type()
         try:
             ret = next(rdb_session=rdb_session)
-        except:
+        except Exception:
             rdb_session.rollback()
             raise
         else:
@@ -201,8 +211,6 @@ class DBSessionMiddleware(Middleware):
             rdb_session.close()
         return ret
 
-
-import os.path
 
 from lithoxyl import (Logger,
                       StreamEmitter,

@@ -176,6 +176,11 @@
         <md-icon>file_download</md-icon>
         Download Results
       </md-button>
+      <md-button
+          ng-click="$ctrl.downloadEntries()">
+        <md-icon>collections</md-icon>
+        Download Entries
+      </md-button>
       <md-button ng-if="false"
           ng-disabled="($ctrl.round.status !== 'paused' && $ctrl.round.status !== 'finalized') || $ctrl.loading"
           ng-click="$ctrl.populateRound()">

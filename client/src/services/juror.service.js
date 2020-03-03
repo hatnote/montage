@@ -15,6 +15,7 @@ const UserService = ($http, $q, $window, dataService) => {
 
     getRound: id => $http.get(base + '/juror/round/' + id),
     getRoundTasks,
+    getRoundVotesStats: id => $http.get(base + '/juror/round/' + id + '/votes-stats'),
 
     faveImage: (roundId, entryId) => $http.post(base + '/juror/round/' + roundId + '/' + entryId + '/fave', {}),
     unfaveImage: (roundId, entryId) => $http.post(base + '/juror/round/' + roundId + '/' + entryId + '/unfave', {}),

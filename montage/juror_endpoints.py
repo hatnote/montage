@@ -37,6 +37,7 @@ def get_juror_routes():
            POST('/juror/round/<round_id:int>/tasks/submit', submit_ratings),
            POST('/juror/round/<round_id:int>/tasks/skip', skip_rating),
            GET('/juror/round/<round_id:int>/votes', get_votes_from_round),
+           GET('/juror/round/<round_id:int>/votes-stats', get_votes_stats_from_round),
            GET('/juror/round/<round_id:int>/ratings', get_ratings_from_round),
            GET('/juror/round/<round_id:int>/rankings', get_rankings_from_round),
            POST('/juror/round/<round_id:int>/<entry_id:int>/fave', submit_fave),
@@ -63,7 +64,8 @@ def make_juror_round_details(rnd, rnd_stats, ballot):
            'total_open_tasks': rnd_stats['total_open_tasks'],
            'percent_tasks_open': rnd_stats['percent_tasks_open'],
            'ballot': ballot,
-           'campaign': rnd.campaign.to_info_dict()}
+           'campaign': rnd.campaign.to_info_dict(),
+           'show_stats': rnd.show_stats,}
     return ret
 
 
@@ -89,7 +91,7 @@ def get_campaign(user_dao, campaign_id):
     data = campaign.to_details_dict()
     rounds = []
     for rnd in campaign.rounds:
-        rnd_stats = user_dao.get_round_task_counts(rnd.id)
+        rnd_stats = juror_dao.get_round_task_counts(rnd.id)
         ballot = juror_dao.get_ballot(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds
@@ -150,6 +152,43 @@ def get_votes_from_round(user_dao, round_id, request, rnd=None):
         data = [r.to_details_dict() for r in rankings]
         data.sort(key=lambda x: x['value'])
     return {'data': data}
+
+
+def get_votes_stats_from_round(user_dao, round_id):
+    juror_dao = JurorDAO(user_dao)
+    rnd = juror_dao.get_round(round_id)
+
+    stats = None
+
+    if rnd.vote_method == 'yesno':
+        # dict: raw value => yes/no
+        vote_map = {0.0: 'no', 1.0: 'yes'}
+        stats = _get_summarized_votes_stats(juror_dao, round_id, vote_map)
+    elif rnd.vote_method == 'rating':
+        # dict: raw value => number of stars
+        vote_map = {0.0: 1, 0.25: 2, 0.5: 3, 0.75: 4, 1.0: 5}
+        stats = _get_summarized_votes_stats(juror_dao, round_id, vote_map)
+
+    result = None
+    if stats is not None:
+        result = {'method': rnd.vote_method, 'stats': stats}
+
+    return result
+
+
+#  vote_map is a dict: raw database value => output value
+def _get_summarized_votes_stats(juror_dao, round_id, vote_map):
+    stats = {}
+
+    for value in vote_map.itervalues():
+        stats[value] = 0
+
+    raw_ratings = juror_dao.get_rating_stats_from_round(round_id)
+    for count, rating_value in raw_ratings:
+        if rating_value in vote_map:
+            stats[vote_map[rating_value]] = count
+
+    return stats
 
 
 def get_ratings_from_round(user_dao, round_id, request):

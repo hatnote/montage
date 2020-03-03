@@ -1,0 +1,27 @@
+sudo: false
+cache:
+directories:
+- $HOME/.cache/pip
+
+language: python
+
+
+matrix:
+  include:
+    - python: "2.7"
+      env: TOXENV=py27
+
+install:
+  - "pip install -r requirements.txt"
+
+script:
+  - tox
+
+before_install:
+  - pip install codecov coverage
+
+
+after_success:
+  - tox -e coverage-report
+  - COVERAGE_FILE=.tox/.coverage coverage xml
+  - codecov -f coverage.xml

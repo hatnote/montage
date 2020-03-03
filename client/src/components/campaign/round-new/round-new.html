@@ -72,7 +72,8 @@
                 ng-model="$ctrl.import.import_method"
                 ng-if="$ctrl.index === 1">
               <md-radio-button value="category">Category on Wikimedia Commons</md-radio-button>
-              <md-radio-button value="gistcsv">File List URL</md-radio-button>
+              <md-radio-button value="csv">File List URL</md-radio-button>
+              <md-radio-button value="selected">File List</md-radio-button>
 
               <div ng-if="$ctrl.import.import_method === 'category'">
                 <p class="muted">Category on Wikimedia Commons that gathers all contest images. Example of such category may be e.g. "Images from Wiki Loves Monuments 2017 in Ghana".</p>
@@ -96,13 +97,25 @@
 
               <div 
                   layout="column" layout-align="start stretch"
-                  ng-if="$ctrl.import.import_method === 'gistcsv'">
-                <p class="muted">List of files saved as CSV and uploaded somewhere on the internet.</p>
+                  ng-if="$ctrl.import.import_method === 'csv'">
+                <p class="muted">List of files saved as CSV and uploaded as a Google Sheet or Gist.</p>
                 <md-input-container class="no-margin-bottom">
                   <label>Enter URL</label>
                   <input type="text" autofocus
-                      ng-model="$ctrl.import.gist_url"
+                      ng-model="$ctrl.import.csv_url"
                       ng-required="true">
+                </md-input-container>
+              </div>
+
+              <div 
+                  layout="column" layout-align="start stretch"
+                  ng-if="$ctrl.import.import_method === 'selected'">
+                <p class="muted">List of files, one each line without File: prefix</p>
+                <md-input-container class="no-margin-bottom">
+                  <label>List</label>
+                  <textarea autofocus
+                      ng-model="$ctrl.import.file_names"
+                      ng-required="true"></textarea>
                 </md-input-container>
               </div>
             </md-radio-group>
@@ -113,6 +126,17 @@
                 ng-model="$ctrl.round.directions"
                 rows="2" ></textarea>
             </md-input-container>
+
+            <div ng-if="$ctrl.round.vote_method === 'yesno' || $ctrl.round.vote_method === 'rating'"
+                 class="round__directions"
+                 style="margin-bottom: 10px;">
+              <h4>Show own statistics (Beta)</h4>
+              <p class="muted">
+                Whether to show own voting statistics (e.g. number of accepted or declined images) of juror for the round.
+              </p>
+              <input type="checkbox"
+                  ng-model="$ctrl.round.show_stats">
+            </div>
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">

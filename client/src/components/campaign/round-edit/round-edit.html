@@ -56,6 +56,14 @@
                   rows="2" ></textarea>
               </md-input-container>
             </div>
+            <div ng-if="$ctrl.canEditShowStats" class="round__directions" style="margin-bottom: 10px;">
+              <h4>Show own statistics (Beta)</h4>
+              <p class="muted">
+                Whether to show own voting statistics (e.g. number of accepted or declined images) of juror for the round.
+              </p>
+              <input type="checkbox"
+                  ng-model="$ctrl.round.show_stats">
+            </div>
           </div>
           <div flex></div>
           <div class="round__settings" flex="30">

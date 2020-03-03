@@ -1,7 +1,9 @@
 
 import datetime
+import StringIO
 import urllib2
 import json
+import re
 
 from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
@@ -9,7 +11,9 @@ from unicodecsv import DictReader
 import rdb
 from labs import get_files, get_file_info
 
-REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage-dev/v1/utils/'
+REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage/v1/utils/'
+
+GSHEET_URL = 'https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv'
 
 CSV_FULL_COLS = ['img_name',
                  'img_major_mime',
@@ -23,7 +27,23 @@ CSV_FULL_COLS = ['img_name',
 
 def wpts2dt(timestamp):
     wpts_format = '%Y%m%d%H%M%S'
-    return datetime.datetime.strptime(timestamp, wpts_format)
+    try:
+        ret = datetime.datetime.strptime(timestamp, wpts_format)
+    except ValueError as e:
+        wpts_format = '%Y-%m-%dT%H:%M:%S'  # based on output format
+        ret = datetime.datetime.strptime(timestamp, wpts_format)
+    return ret
+
+
+def parse_doc_id(raw_url):
+    doc_id_re = re.compile(r'/spreadsheets/d/([a-zA-Z0-9-_]+)')
+    #sheet_id_re = re.compile(r'[#&]gid=([0-9]+)')
+    doc_id = re.findall(doc_id_re, raw_url)
+    try:
+        ret = doc_id[0]
+    except IndexError as e:
+        raise ValueError('invalid spreadsheet url "%s"' % raw_url)
+    return ret
 
 
 def make_entry(edict):
@@ -36,6 +56,14 @@ def make_entry(edict):
                  'height': height,
                  'upload_user_id': edict['img_user'],
                  'upload_user_text': edict['img_user_text']}
+    if edict.get('oi_archive_name'):
+        # The file has multiple versions
+        raw_entry['flags'] = {
+            'reupload': True,
+            'reupload_date': wpts2dt(edict['rec_img_timestamp']),
+            'reupload_user_id': edict['rec_img_user'],
+            'reupload_user_text': edict['rec_img_text'],
+            'archive_name': edict['oi_archive_name']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
     if edict.get('flags'):
@@ -43,13 +71,16 @@ def make_entry(edict):
     return rdb.Entry(**raw_entry)
 
 
-def load_full_csv(csv_file_obj):
+def load_full_csv(csv_file_obj, source='remote'):
     # TODO: streaming this for big CSVs is an unnecessary headache
 
     ret = []
     warnings = []
 
     dr = DictReader(csv_file_obj)
+
+    if 'filename' in dr.fieldnames:
+        return load_partial_csv(dr, source=source)
 
     for key in CSV_FULL_COLS:
         if key not in dr.fieldnames:
@@ -64,6 +95,14 @@ def load_full_csv(csv_file_obj):
             ret.append(entry)
 
     return ret, warnings
+
+
+def load_partial_csv(dr, source='remote'):
+    ret = []
+    warnings = []
+    file_names = [r['filename'] for r in dr]
+    file_names_obj = StringIO.StringIO('\n'.join(file_names))
+    return load_name_list(file_names_obj, source=source)
 
 
 def load_name_list(file_obj, source='local'):
@@ -87,7 +126,7 @@ def load_name_list(file_obj, source='local'):
         edicts, warnings = get_by_filename_remote(rl)
     else:
         for filename in rl:
-            edict = get_file_info(filename)
+            edict, warnings = get_file_info(filename)
             edicts.append(edict)
 
     for edict in edicts:
@@ -100,18 +139,44 @@ def load_name_list(file_obj, source='local'):
 
     return ret, warnings
 
-
+def get_entries_from_csv(raw_url, source='local'):
+    if 'google.com' in raw_url:
+        return get_entries_from_gsheet(raw_url, source)
+    return get_entries_from_gist(raw_url, source)
 
 def get_entries_from_gist(raw_url, source='local'):
     if 'githubusercontent' not in raw_url:
         raw_url = raw_url.replace('gist.github.com',
                                   'gist.githubusercontent.com') + '/raw'
     resp = urllib2.urlopen(raw_url)
+
     try:
         ret, warnings = load_full_csv(resp)
     except ValueError as e:
         # not a full csv
         ret, warnings = load_name_list(resp, source=source)
+
+    return ret, warnings
+
+
+def get_entries_from_gsheet(raw_url, source='local'):
+    #TODO: add support for sheet tabs
+    doc_id = parse_doc_id(raw_url)
+    url = GSHEET_URL % doc_id
+    resp = urllib2.urlopen(url)
+
+    if not 'text/csv' in resp.headers.getheader('content-type'):
+        raise ValueError('cannot load Google Sheet "%s" (is link sharing on?)' % raw_url)
+
+    try:
+        ret, warnings = load_full_csv(resp, source=source)
+    except ValueError:
+        try:
+            ret, warnings = load_partial_csv(resp)
+        except ValueError:
+            file_names = [fn.strip('\"') for fn in resp.read().split('\n')]
+            file_names_obj = StringIO.StringIO('\n'.join(file_names))
+            ret, warnings = load_name_list(file_names_obj, source=source)
 
     return ret, warnings
 
@@ -142,7 +207,7 @@ def load_category(category_name, source='local'):
         ret.append(entry)
 
     return ret
-        
+
 
 def get_from_category_remote(category_name):
     params = {'name': category_name}
@@ -152,9 +217,9 @@ def get_from_category_remote(category_name):
 
 
 def get_from_remote(url, params):
-    content_type = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json'}
     data = json.dumps(params)
-    request = urllib2.Request(url, data, content_type)
+    request = urllib2.Request(url, data, headers)
     response = urllib2.urlopen(request)
     resp_json = json.load(response)
     file_infos = resp_json['file_infos']
@@ -162,7 +227,7 @@ def get_from_remote(url, params):
     return file_infos, no_infos
 
 
-def get_by_filename_remote(filenames, chunk_size=250):
+def get_by_filename_remote(filenames, chunk_size=200):
     file_infos = []
     warnings = []
     for filenames_chunk in chunked_iter(filenames, chunk_size):
@@ -190,5 +255,19 @@ TODO:
 
 if __name__ == '__main__':
     #imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
-    #imgs = get_entries_from_gist_csv('https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/9181d59224cd3335a8f434ff4683c83023f7a3f9/wlm2015_fr_12k.csv')
+    #imgs, warnings = get_entries_from_gist('https://gist.github.com/slaporte/a773b4f9a7d1b7fbda62f12507eb40be', source='remote')
+    print('!! results csv')
+    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1RDlpT23SV_JB1mIz0OA-iuc3MNdNVLbaK_LtWAC7vzg/edit?usp=sharing', source='remote')
+    print('-- loaded %s files' % len(imgs))
+    print('!! filename list')
+    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1Nqj-JsX3L5qLp5ITTAcAFYouglbs5OpnFwP6zSFpa0M/edit?usp=sharing', source='remote')
+    print('-- loaded %s files' % len(imgs))
+    print('!! full CSV')
+    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819', source='remote')
+    print('-- loaded %s files' % len(imgs))
+    print('!! unshared doc')
+    try:
+        imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1tza92brMKkZBTykw3iS6X9ij1D4_kvIYAiUlq1Yi7Fs/edit', source='remote')
+    except ValueError as e:
+        print('-- %s ' % e)
     import pdb; pdb.set_trace()

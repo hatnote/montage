@@ -1,98 +1,89 @@
 # -*- coding: utf-8 -*-
 
-import sys
+from __future__ import print_function
+
+import os
 import json
-import os.path
 import urllib
-import urllib2
-import urlparse
-import argparse
-import cookielib
 from pprint import pprint
 
+import pytest
+from werkzeug.test import Client
 from lithoxyl import DEBUG, INFO
-
-CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-PROJ_PATH = os.path.dirname(CUR_PATH)
-sys.path.append(PROJ_PATH)
+from clastic.middleware.cookie import JSONCookie
+from boltons.fileutils import mkdir_p
 
 from montage import utils
 from montage.log import script_log
+from montage.app import create_app, STATIC_PATH
 
 
-cookies = cookielib.LWPCookieJar()
+class ClasticTestClient(Client):
+    def __init__(self, app):
+        super(ClasticTestClient, self).__init__(app, app.response_type)
 
-handlers = [
-    urllib2.HTTPHandler(),
-    urllib2.HTTPCookieProcessor(cookies)
-]
-
-opener = urllib2.build_opener(*handlers)
-
-
-def fetch_raw(url, data=None, content_type='application/json'):
-    if not data:
-        req = urllib2.Request(url)
-    else:
-        data_bytes = json.dumps(data)
-        req = urllib2.Request(url, data_bytes,
-                              {'Content-Type': content_type})
-    return opener.open(req)
-
-
-def fetch_url(url, data=None, act=None, **kw):
-    su_to = kw.get('su_to')
-    if su_to:
-        url_su_to = urllib.quote_plus(su_to.encode('utf8'))
-        if '?' in url:
-            url += '&su_to=' + url_su_to
-        else:
-            url += '?su_to=' + url_su_to
-    if act:
-        act['url'] = url
-    try:
-        res = fetch_raw(url, data=data,
-                        content_type=kw.get('content_type', 'application/json'))
-    except urllib2.HTTPError as he:
-        error_code = kw.get('error_code')
-        if error_code and error_code == he.getcode():
-            return True
-        print '!! ', he.read()
-        print
-        import pdb;pdb.set_trace()
-        raise
-    return res
-
-
-"""
-* role
-* action
-* url
-* data
-* username
-* assert_error/success
-* http method (whether or not data is passed)
-"""
 
 # TODO: could use clastic to route-match based on URL to determine
 # "role" of current route being tested
-class SysTestClient(object):
-    def __init__(self, base_url, default_role='public'):
-        self.base_url = base_url.rstrip('/')
+class MontageTestClient(object):
+    def __init__(self, app, default_role='public', base_path=''):
         self.default_role = default_role
+        self.base_path = base_path
+        self._test_client = ClasticTestClient(app)
         # TODO: default user?
+
+    def set_session_cookie(self, val):
+        self._test_client.set_cookie('', 'clastic_cookie', value=val)
+
+    def get_session_cookie(self):
+        # https://github.com/pallets/werkzeug/issues/1060
+        # (This is a travesty, I can't believe they closed the issue
+        # with this as the recommended pattern)
+        for cookie in self._test_client.cookie_jar:
+            pass
+
+    def fetch_url(self, url, data=None, act=None, **kw):
+        # hyperlinkify url
+        su_to = kw.get('su_to')
+        if su_to:
+            url_su_to = urllib.quote_plus(su_to.encode('utf8'))
+            if '?' in url:
+                url += '&su_to=' + url_su_to
+            else:
+                url += '?su_to=' + url_su_to
+        if act:
+            act['url'] = url
+        c = self._test_client
+        if data is None:
+            res = c.get(url)
+        else:
+            # TODO: careful, werkzeug's pretty liberal with "data",
+            # will take a dictionary and do weird stuff to it, turn it
+            # into a formencoded mess.
+            if not isinstance(data, (bytes, unicode)):
+                data = json.dumps(data)
+            res = c.post(url, data=data,
+                         content_type=kw.get('content_type', 'application/json'))
+
+        if res.status_code != 200:
+            error_code = kw.get('error_code')
+            if error_code and error_code == res.status_code:
+                return res
+            print('!! ', res.get_data())
+            print()
+            import pdb;pdb.set_trace()
+            raise AssertionError('got error code %s when fetching %s' % (res.status_code, url))
+        return res
 
     def fetch(self, role_action, url, data=None, **kw):
         if not url.startswith('/'):
             raise ValueError('expected url starting with "/", not: %r' % url)
         role, sep, action = role_action.partition(':')
         role, action = (role, action) if sep else (self.default_role, role)
-        print '>>', action, 'as', role,
         as_user = kw.pop('as_user', None)
-        if as_user:
-            print '(%s)' % as_user
-        else:
-            print
+        print('>>', action, 'as', role, end='')
+        print((' (%s)' % as_user) if as_user else '')
+        url = self.base_path + url if self.base_path else url
 
         log_level = kw.pop('log_level', INFO)
         error_code = kw.pop('error_code', None)
@@ -100,38 +91,83 @@ class SysTestClient(object):
             raise TypeError('unexpected kwargs: %r' % kw.keys())
 
         with script_log.action(log_level, 'fetch_url') as act:
-            resp = fetch_url(self.base_url + url,
-                             data=data,
-                             su_to=as_user,
-                             error_code=error_code,
-                             act=act)
+            resp = self.fetch_url(url,
+                                  data=data,
+                                  su_to=as_user,
+                                  error_code=error_code,
+                                  act=act)
+        # TODO: the following should be replaced with an internal
+        # assert (along with the coupled status code check in
+        # fetch_url)
         if error_code and resp is True:
             return True
-        data_dict = json.load(resp)
+        if not resp.content_type.startswith('application/json'):
+            return resp
+        data = resp.get_data()
+        data_dict = json.loads(data)
         try:
             assert data_dict['status'] == 'success'
         except AssertionError:
-            print '!! did not successfully load %s' % url
-            print '  got: ', data_dict
+            print('!! did not successfully load %s' % url)
+            print('  got: ', data_dict)
             import pdb;pdb.set_trace()
+            raise
         return data_dict
 
 
-def full_run(base_url, remote):
-    # Admin endpoints
-    # ---------------
+def _create_schema(db_url, echo=True):
+    from sqlalchemy import create_engine
+    from montage.rdb import Base
 
-    # Get the home page
-    # - as maintainer
-    base_api_url = base_url + '/v1/'
-    client = SysTestClient(base_url=base_api_url)  # TODO
-    fetch = client.fetch
+    engine = create_engine(db_url, echo=echo)
+    Base.metadata.create_all(engine)
 
-    resp = fetch_raw(base_url).read()
+    return
 
-    # Login - TODO: this approach does not work
-    # - as maintainer
-    # resp = fetch_raw(base_url + '/complete_login').read()
+
+@pytest.fixture
+def montage_app(tmpdir):
+    config = utils.load_env_config(env_name='devtest')
+    config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
+    db_url = config['db_url']
+    _create_schema(db_url=db_url)
+
+    index_path = STATIC_PATH + '/index.html'
+    if not os.path.exists(index_path):
+        mkdir_p(STATIC_PATH)
+        with open(index_path, 'w') as f:
+            f.write('<html><body>just for tests</body></html>')
+
+    app = create_app('devtest', config=config)
+    return app
+
+
+@pytest.fixture
+def base_client(montage_app):
+    client = MontageTestClient(montage_app)
+
+    # TODO
+    cookie = JSONCookie({'userid': 6024474, 'username': 'Slaporte'},
+                        secret_key=montage_app.resources['config']['cookie_secret'])
+    cookie_data = cookie.serialize()
+    client.set_session_cookie(cookie_data)
+
+    return client
+
+
+@pytest.fixture
+def api_client(montage_app):
+    api_client = MontageTestClient(montage_app, base_path='/v1')  # TODO
+    api_client.set_session_cookie(montage_app.resources['config']['dev_local_cookie_value'])
+    return api_client
+
+
+def test_home_client(base_client, api_client):
+    fetch = base_client.fetch
+
+    fetch('organizer: home', '/')
+
+    fetch = api_client.fetch
 
     resp = fetch('organizer: create a new series',
                  '/admin/add_series',
@@ -146,6 +182,7 @@ def full_run(base_url, remote):
                  '/admin/series/%s/edit' % most_recent_series,
                  {'status': 'cancelled'})
 
+
     resp = fetch('maintainer: add organizer',
                  '/admin/add_organizer',
                  {'username': 'Yarl'})
@@ -153,6 +190,9 @@ def full_run(base_url, remote):
     resp = fetch('maintainer: add another organizer, to be removed later',
                  '/admin/add_organizer',
                  {'username': 'Slaporte (WMF)'})
+
+    resp = fetch('organizer: list users',
+                 '/admin/users')
 
     resp = fetch('maintainer: remove organizer',
                  '/admin/remove_organizer',
@@ -211,7 +251,7 @@ def full_run(base_url, remote):
     # for date inputs (like deadline_date below), the default format
     # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
     # Add a round to a campaign
-    rnd_data = {'name': 'Test yes/no round ნ',
+    rnd_data = {'name': 'Test yes/no round',
                 'vote_method': 'yesno',
                 'quorum': 3,
                 'deadline_date': "2016-10-15T00:00:00",
@@ -237,6 +277,18 @@ def full_run(base_url, remote):
                  rnd_data,
                  as_user='LilyOfTheWest')
 
+    discarded_round_id = resp['data']['id']
+
+    resp = fetch('coordinator: cancel round',
+                 '/admin/round/%s/cancel' % discarded_round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: re-add round to a campaign',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+
     round_id = resp['data']['id']
 
     resp = fetch('coordinator: get round details',
@@ -251,23 +303,15 @@ def full_run(base_url, remote):
     rnd = fetch('coordinator: get round config',
                 '/admin/round/%s' % round_id,
                 as_user='LilyOfTheWest')
+
     config = rnd['data']['config']
     config['show_filename'] = False
+
     resp = fetch('coordinator: edit round config',
                  '/admin/round/%s/edit' % round_id,
                  {'config': config},
                  as_user='LilyOfTheWest')
 
-    # Import entries to a round from a gistcsv
-    # - as coordinator
-    """
-    gist_url = 'https://gist.githubusercontent.com/slaporte/2074004d1fb76893b23f91fc2d4951a1/raw/26d49a976b6f5c13ecc0bee28747f9c1dce4a5ef/gistfile1.txt'
-    resp = fetch('coordinator: import entries from gist csv',
-                 '/admin/round/%s/import' % round_id,
-                 {'import_method': 'gistcsv', 'gist_url': gist_url},
-                 as_user='LilyOfTheWest')
-
-    """
     data = {'import_method': 'category',
             'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
     resp = fetch('coordinator: import entries from a category',
@@ -278,22 +322,11 @@ def full_run(base_url, remote):
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
-    """
-    # Cancel a round
-    # - as coordinator
-    resp = fetch('coordinator: cancel a round',
-                 '/admin/round/%s/cancel' % round_id,
-                 {'post': True},
-                 as_user='LilyOfTheWest')
-    """
 
     resp = fetch('coordinator: pause a round',
                  '/admin/round/%s/pause' % round_id,
                  {'post': True},
                  as_user='LilyOfTheWest')
-
-
-
 
     gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
     resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
@@ -324,46 +357,6 @@ def full_run(base_url, remote):
                  {'post': True},
                  as_user='LilyOfTheWest')
 
-    """
-    # Try to activate a second round (will fail bc prev round not closed)
-
-    data = {'name': 'Test second round',
-            'vote_method': 'rating',
-            'quorum': 4,
-            'deadline_date': "2016-10-15T00:00:00",
-            'jurors': [u'Slaporte',
-                       u'MahmoudHashemi',
-                       u'Effeietsanders',
-                       u'Jean-Frédéric',
-                       u'LilyOfTheWest'],
-            # a round will have these config settings by default
-            'config': {'show_link': True,
-                       'show_filename': True,
-                       'show_resolution': True,
-                       'dq_by_upload_date': True,
-                       'dq_by_resolution': True,
-                       'dq_by_uploader': True,
-                       'dq_by_filetype': True,
-                       'allowed_filetypes': ['jpeg', 'png', 'gif'],
-                       'min_resolution': 2000000, #2 megapixels
-                       'dq_coords': True,
-                       'dq_organizers': True,
-                       'dq_maintainers': True}}
-
-
-    resp = fetch('coordinator: try to create second round',
-                 '/admin/campaign/%s/add_round' % campaign_id,
-                 data, as_user='LilyOfTheWest')
-
-    secound_round_id = resp['data']['id']
-
-    data = {'post': True}
-    resp = fetch('coordinator: activate round (will fail)',
-                 '/admin/round/%s/activate' % second_round_id,
-                 data, as_user='LilyOfTheWest')
-
-    import pdb;pdb.set_trace()
-    """
 
     resp = fetch('coordinator: pause round',
                  '/admin/round/%s/pause' % round_id,
@@ -396,7 +389,7 @@ def full_run(base_url, remote):
                  as_user='LilyOfTheWest')
 
 
-    resp = fetch('juror: get votes stats',
+    resp = fetch('juror: get votes stats for yes/no round',
                  '/juror/round/%s/votes-stats' % round_id,
                  as_user='Slaporte')
     assert 'yes' in resp['stats']
@@ -410,15 +403,14 @@ def full_run(base_url, remote):
     resp = fetch('juror: get the juror overview',
                  '/juror', as_user='Slaporte')
 
-    """
     # TODO: Jurors only see a list of rounds at this point, so there
     # is no need to get the detailed view of campaign.
 
     # Get a detailed view of a campaign
     resp = fetch('juror: get campaign details',
-                 '/juror/campaign/' + campaign_id,
+                 '/juror/campaign/%s' % campaign_id,
                  as_user='Jimbo Wales')
-    """
+
     resp = fetch('juror: get round details',
                  '/juror/round/%s' % round_id,
                  as_user='Jimbo Wales')
@@ -543,7 +535,7 @@ def full_run(base_url, remote):
                  {'ratings': [{'vote_id': vote_id, 'value': new_val}]},
                  as_user='Jimbo Wales')
 
-    # Admin endpoints (part 2)
+        # Admin endpoints (part 2)
     # --------------- --------
 
     # Get a preview of results from a round
@@ -554,7 +546,7 @@ def full_run(base_url, remote):
 
     # submit all remaining tasks for the round
 
-    submit_ratings(client, round_id)
+    submit_ratings(api_client, round_id)
 
     resp = fetch('coordinator: preview round results in prep for closing',
                  '/admin/round/%s/preview_results' % round_id,
@@ -578,16 +570,26 @@ def full_run(base_url, remote):
 
     # TODO: test getting a csv of final round results needs more instrumentation
     print('>> downloading results')
-    resp = fetch_raw(base_api_url + '/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
-    resp_bytes = resp.read()
-    assert len(resp_bytes) > 100
-    assert resp_bytes.count(',') > 10
+    resp = api_client.fetch_url('/v1/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
+    resp_data = resp.get_data()
+    assert len(resp_data) > 100
+    assert resp_data.count(',') > 10
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
                  {'post': True}, as_user='LilyOfTheWest')
 
-    submit_ratings(client, rnd_2_id)
+    submit_ratings(api_client, rnd_2_id)
+
+    resp = fetch('juror: get votes stats for rating round',
+                 '/juror/round/%s/votes-stats' % rnd_2_id,
+                 as_user='Slaporte')
+    assert '1' in resp['stats']
+    assert '5' in resp['stats']
+
+    resp = fetch('juror: view own ratings for round 3',
+                 '/juror/round/%s/ratings' % rnd_2_id,
+                 as_user='Slaporte')
 
     resp = fetch('coordinator: preview results from second round',
                  '/admin/round/%s/preview_results' % rnd_2_id,
@@ -686,10 +688,14 @@ def full_run(base_url, remote):
 
     # submit the remaining ratings
 
-    submit_ratings(client, rnd_3_id)
+    submit_ratings(api_client, rnd_3_id)
 
     resp = fetch('coordinator: preview round 3 results',
                  '/admin/round/%s/preview_results' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: read round 3 reviews',
+                 '/admin/round/%s/reviews' % rnd_3_id,
                  as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: finalize campaign',
@@ -697,8 +703,21 @@ def full_run(base_url, remote):
                  {'post': True}, as_user='LilyOfTheWest')
 
     # view the final campaign report (note: fetch_url, as this is an html page)
-    resp = fetch_url(base_url + '/admin/campaign/%s/report' % campaign_id,
-                     as_user='LilyOfTheWest', content_type='text/html')
+    resp = base_client.fetch('coordinator: view final report',
+                             '/admin/campaign/%s/report' % campaign_id,
+                             as_user='LilyOfTheWest')  # , content_type='text/html')
+
+    resp = fetch('coordinator: view round 3 entries',
+                 '/admin/round/%s/entries' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: download round 3 entries',
+                 '/admin/round/%s/entries/download' % rnd_3_id,
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: view round 3 results',
+                 '/admin/round/%s/results' % rnd_3_id,
+                 as_user='LilyOfTheWest')
 
     resp = fetch('juror: view own rankings for round 3',
                  '/juror/round/%s/rankings' % rnd_3_id,
@@ -723,7 +742,6 @@ def full_run(base_url, remote):
                  as_user='LilyOfTheWest')
 
     pprint(resp['data'])
-    import pdb;pdb.set_trace()
 
 
 @script_log.wrap('critical', verbose=True)
@@ -754,7 +772,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
                             % (round_id, per_fetch), log_level=DEBUG,
                             as_user=j_username)['data']['tasks']
             if len(t_dicts) < per_fetch:
-                print '!! last batch: %r' % ([t['id'] for t in t_dicts])
+                print('!! last batch: %r' % ([t['id'] for t in t_dicts]))
             if not t_dicts:
                 break  # right?
             ratings = []
@@ -800,7 +818,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
                 rating_dict['value'] = value
                 if review:
-                    print review
+                    print(review)
                     rating_dict['review'] = review
 
                 ratings.append(rating_dict)
@@ -817,55 +835,3 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
-
-
-def main():
-    config = utils.load_env_config()
-
-    prs = argparse.ArgumentParser('test the montage server endpoints')
-    add_arg = prs.add_argument
-    add_arg('--remote', type=str,
-            help='run tests on a remote montage installation')
-    add_arg('--remote_prod', action='store_true',
-            help='run tests on https://tools.wmflabs.org/montage')
-    add_arg('--remote_dev', action='store_true',
-            help='run tests on https://tools.wmflabs.org/montage-dev')
-
-    args = prs.parse_args()
-
-    if args.remote:
-        base_url = args.remote
-    elif args.remote_prod:
-        base_url = 'https://tools.wmflabs.org/montage'
-    elif args.remote_dev:
-        base_url = 'https://tools.wmflabs.org/montage-dev'
-    else:
-        base_url = 'http://localhost:5000'
-
-    parsed_url = urlparse.urlparse(base_url)
-
-    domain = parsed_url.netloc.partition(':')[0]
-    if domain.startswith('localhost'):
-        domain = 'localhost.local'
-        ck_val = config['dev_local_cookie_value']
-    else:
-        ck_val = config['dev_remote_cookie_value']
-
-    ck = cookielib.Cookie(version=0, name='clastic_cookie',
-                          value=ck_val,
-                          port=None, port_specified=False,
-                          domain=domain, domain_specified=True,
-                          domain_initial_dot=False,
-                          path=parsed_url.path, path_specified=True,
-                          secure=False, expires=None, discard=False,
-                          comment=None, comment_url=None, rest={},
-                          rfc2109=False)
-    cookies.set_cookie(ck)
-
-    print('running tests on %s' % base_url)
-
-    full_run(base_url, remote=args.remote)
-
-
-if __name__ == '__main__':
-    main()

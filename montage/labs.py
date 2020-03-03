@@ -14,9 +14,13 @@ IMAGE_COLS = ['img_width',
               'img_name',
               'img_major_mime',
               'img_minor_mime',
-              'img_user',
-              'img_user_text',
-              'img_timestamp']
+              'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
+              'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
+              'IFNULL(oi_timestamp, img_timestamp) AS img_timestamp',
+              'img_timestamp AS rec_img_timestamp',
+              'ci.actor_user AS rec_img_user',
+              'ci.actor_name AS rec_img_text',
+              'oi.oi_archive_name AS oi_archive_name']
 
 
 class MissingMySQLClient(RuntimeError):
@@ -25,7 +29,7 @@ class MissingMySQLClient(RuntimeError):
 
 def fetchall_from_commonswiki(query, params):
     if pymysql is None:
-        raise MissingMySQLClient('could not import oursql, check your'
+        raise MissingMySQLClient('could not import pymysql, check your'
                                  ' environment and restart the service')
     db_title = 'commonswiki_p'
     db_host = 'commonswiki.labsdb'
@@ -40,15 +44,24 @@ def fetchall_from_commonswiki(query, params):
 
 def get_files(category_name):
     query = '''
-    SELECT {cols}
-    FROM commonswiki_p.image
-    JOIN page
-    ON page_namespace = 6
-    AND page_title = img_name
-    JOIN categorylinks
-    ON cl_from = page_id
-    AND cl_type = 'file'
-    AND cl_to = %s;
+        SELECT {cols}
+        FROM commonswiki_p.image AS i
+        LEFT JOIN actor AS ci ON img_actor=ci.actor_id
+        LEFT JOIN (SELECT oi_name,
+                          oi_actor,
+                          actor_user,
+                          actor_name,
+                          oi_timestamp,
+                          oi_archive_name
+                   FROM oldimage
+                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        JOIN page ON page_namespace = 6
+        AND page_title = img_name
+        JOIN categorylinks ON cl_from = page_id
+        AND cl_type = 'file'
+        AND cl_to = %s
+        GROUP BY img_name
+        ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (category_name.replace(' ', '_'),)
 
@@ -59,9 +72,20 @@ def get_files(category_name):
 
 def get_file_info(filename):
     query = '''
-    SELECT {cols}
-    FROM commonswiki_p.image
-    WHERE img_name = %s;
+        SELECT {cols}
+        FROM commonswiki_p.image AS i
+        LEFT JOIN actor AS ci ON img_actor=ci.actor_id
+        LEFT JOIN (SELECT oi_name,
+                          oi_actor,
+                          actor_user,
+                          actor_name,
+                          oi_timestamp,
+                          oi_archive_name
+                   FROM oldimage
+                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        WHERE img_name = %s
+        GROUP BY img_name
+        ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)

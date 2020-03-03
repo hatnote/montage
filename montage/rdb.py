@@ -296,6 +296,18 @@ class Round(Base):
     entries = association_proxy('round_entries', 'entry',
                                 creator=lambda e: RoundEntry(entry=e))
 
+    @property
+    def show_stats(self):
+        if self.config is None:
+            return None
+        return self.config.get('show_stats')
+
+    @show_stats.setter
+    def show_stats(self, value):
+        if self.config is None:
+            self.config = {}
+        self.config['show_stats'] = value
+
     def check_closability(self):
         task_count = self._get_task_count()
         open_task_count = self._get_open_task_count()
@@ -414,6 +426,7 @@ class Round(Base):
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
                'config': self.config,
+               'show_stats': self.show_stats,
                'round_sources': []}
         return ret
 
@@ -951,8 +964,6 @@ class UserDAO(PublicDAO):
     def _get_every_campaign(self):
         campaigns = (self.query(Campaign)
                          .all())
-        if not campaigns:
-            raise DoesNotExist('no campaigns exist')
         return campaigns
 
     def _get_any_round(self, round_id):
@@ -1076,8 +1087,8 @@ class CoordinatorDAO(UserDAO):
     #     campaign_id/seq
 
     def __init__(self, user_dao, campaign):
-        if not type(campaign) is Campaign:
-            InvalidAction('cannot load campaign')
+        if type(campaign) is not Campaign:
+            raise InvalidAction('cannot load campaign')
         self.query = user_dao.query
         self.rdb_session = user_dao.rdb_session
         self.user_dao = user_dao
@@ -1156,14 +1167,6 @@ class CoordinatorDAO(UserDAO):
             ret[name] = entry
         return ret
 
-    def get_flags(self, round_id, limit=10, offset=0):
-        flags = (self.query(Flag)
-                 .filter(Flag.round_entry.has(round_id=round_id))
-                 .limit(10)
-                 .offset(0)
-                 .all())
-        return flags
-
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)
                            .filter_by(round_id=round_id)
@@ -1185,7 +1188,7 @@ class CoordinatorDAO(UserDAO):
         return ret
 
     def create_round(self, name, description, directions, quorum,
-                     vote_method, jurors, deadline_date, config=None):
+                     vote_method, jurors, deadline_date, config=None, show_stats=None):
         if self.campaign.active_round:
             raise InvalidAction('can only create one active/paused round at a'
                                 ' time. cancel or complete your existing'
@@ -1214,6 +1217,8 @@ class CoordinatorDAO(UserDAO):
                     vote_method=vote_method,
                     jurors=jurors,
                     config=full_config)
+        if show_stats is not None:
+            rnd.show_stats = show_stats
 
         self.rdb_session.add(rnd)
         self.rdb_session.flush()
@@ -1263,6 +1268,10 @@ class CoordinatorDAO(UserDAO):
             else:
                 new_juror_stats = self.modify_quorum(round_id, new_quorum)
                 new_val_map['quorum'] = new_quorum
+        show_stats = round_dict.get('show_stats')
+        if show_stats is not None:
+            rnd.show_stats = show_stats
+
         msg = ('%s edited these columns in round "%s" (#%s): %r'
                % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
         self.log_action('edit_round', round=rnd, message=msg)
@@ -1543,7 +1552,7 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_from_csv(self, round_id, gist_url):
+    def add_entries_from_csv(self, round_id, csv_url):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
@@ -1551,12 +1560,16 @@ class CoordinatorDAO(UserDAO):
             source = 'remote'
         else:
             source = 'local'
-        entries, warnings = loaders.get_entries_from_gist(gist_url,
-                                                              source=source)
+        try:
+            entries, warnings = loaders.get_entries_from_csv(csv_url,
+                                                             source=source)
+        except ValueError as e:
+            raise InvalidAction('unable to load csv "%s"' % csv_url)
+
         entries, new_entry_count = self.add_entries(rnd, entries)
 
-        msg = ('%s loaded %s entries from csv gist (%r), %s new entries added'
-               % (self.user.username, len(entries), gist_url, new_entry_count))
+        msg = ('%s loaded %s entries from csv (%r), %s new entries added'
+               % (self.user.username, len(entries), csv_url, new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries, warnings
@@ -1965,7 +1978,7 @@ class CoordinatorDAO(UserDAO):
         new_juror_names = sorted([nj.username for nj in new_jurors])
         old_jurors = self.get_active_jurors(rnd.id)
         old_juror_names = sorted([oj.username for oj in old_jurors])
-        
+
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
@@ -2227,14 +2240,14 @@ class OrganizerDAO(object):
         return campaign
 
     def cancel_campaign(self, campaign_id):
-        cancel_date = datetime.datetime.utcnow()
         campaign = self.user_dao.get_campaign(campaign_id)
+        coord_dao = CoordinatorDAO(self.user_dao, campaign)
         rounds = (self.query(Round)
-                      .filter(Round.campaign_id == campaign_id)
-                      .all())
+                  .filter(Round.campaign_id == campaign_id)
+                  .all())
         campaign.status = CANCELLED_STATUS
-        for round in rounds:
-            self.cancel_round(round)
+        for rnd in rounds:
+            coord_dao.cancel_round(rnd.id)
         msg = '%s cancelled campaign "%s" and %s rounds' %\
               (self.user.username, campaign.name, len(rounds))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
@@ -2314,7 +2327,7 @@ class MaintainerDAO(object):
     def remove_organizer(self, username):
         user = lookup_user(self.rdb_session, username=username)
         if not user:
-            raise InvalidAction('user %s is not an organizer' % username)
+            raise InvalidAction('user %s is not present in the system' % username)
         user.is_organizer = False
         msg = ('%s removed %s as an organizer' % (self.user.username, username))
         self.log_action('remove_organizer', message=msg, role='maintianer')
@@ -2404,7 +2417,7 @@ class JurorDAO(object):
                        .one_or_none())
 
         if not round_entry:
-            raise DoesNotExist('round entry %s does not exist' % round_entry_id)
+            raise DoesNotExist('round entry %s does not exist' % entry_id)
         return round_entry
 
     def confirm_active(self, round_id):
@@ -2468,7 +2481,7 @@ class JurorDAO(object):
                           .filter(
                             Vote.round_entry.has(round_id=round_id))
                           .order_by(Vote.id))
-        
+
         # Check if this round_juror has skipped any tasks
         round_juror = self._get_round_juror(round_id)
         skip = round_juror.skip
@@ -2526,6 +2539,17 @@ class JurorDAO(object):
 
         if not ratings:
             raise Forbidden('no complete ratings')
+        return ratings
+
+    def get_rating_stats_from_round(self, round_id):
+        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)\
+                      .filter(Vote.user == self.user,
+                              Vote.status == COMPLETED_STATUS,
+                              Vote.round_entry.has(round_id=round_id))
+                      .group_by(Vote.value))
+
+        ratings = ratings_query.all()
+
         return ratings
 
     def get_rankings_from_round(self, round_id):
@@ -2775,7 +2799,15 @@ class JurorDAO(object):
 
 def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()
+    if user:
+        return user
+    user_id = get_mw_userid(username)
+    user = rdb_session.query(User).filter_by(id=user_id).one_or_none()
+    if not user:
+        return user
+    user.username = username  # update our local cache of the username
     return user
+
 
 def lookup_series(rdb_session, name):
     series = (rdb_session.query(Series)
@@ -2896,7 +2928,7 @@ def reassign_tasks(session, rnd, new_jurors, strategy=None):
 
 def swap_tasks(session, rnd, new_juror, old_juror):
     # Transfer tasks from one juror to another
-       
+
     votes_to_swap = (session.query(Vote)
                             .filter_by(status=ACTIVE_STATUS, user=old_juror)
                             .join(RoundEntry)
@@ -2983,8 +3015,6 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
     * Evens out work queues, so that workload can be redistributed.
 
     """
-    # TODO: have this cancel tasks and create new ones.
-
     assert len(new_jurors) >= rnd.quorum
 
     cur_votes = session.query(Vote)\
