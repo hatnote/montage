@@ -252,22 +252,3 @@ TODO:
 * What to do when an image fails verification?
 
 """
-
-if __name__ == '__main__':
-    #imgs = load_category('Images_from_Wiki_Loves_Monuments_2015_in_France')
-    #imgs, warnings = get_entries_from_gist('https://gist.github.com/slaporte/a773b4f9a7d1b7fbda62f12507eb40be', source='remote')
-    print('!! results csv')
-    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1RDlpT23SV_JB1mIz0OA-iuc3MNdNVLbaK_LtWAC7vzg/edit?usp=sharing', source='remote')
-    print('-- loaded %s files' % len(imgs))
-    print('!! filename list')
-    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1Nqj-JsX3L5qLp5ITTAcAFYouglbs5OpnFwP6zSFpa0M/edit?usp=sharing', source='remote')
-    print('-- loaded %s files' % len(imgs))
-    print('!! full CSV')
-    imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819', source='remote')
-    print('-- loaded %s files' % len(imgs))
-    print('!! unshared doc')
-    try:
-        imgs, warnings = get_entries_from_gsheet('https://docs.google.com/spreadsheets/d/1tza92brMKkZBTykw3iS6X9ij1D4_kvIYAiUlq1Yi7Fs/edit', source='remote')
-    except ValueError as e:
-        print('-- %s ' % e)
-    import pdb; pdb.set_trace()

@@ -163,9 +163,9 @@ def api_client(montage_app):
 
 
 def test_home_client(base_client, api_client):
-    fetch = base_client.fetch
 
-    fetch('organizer: home', '/')
+    resp = base_client.fetch('organizer: home', '/')
+    #resp = base_client.fetch('public: login', '/login')
 
     fetch = api_client.fetch
 
@@ -535,7 +535,7 @@ def test_home_client(base_client, api_client):
                  {'ratings': [{'vote_id': vote_id, 'value': new_val}]},
                  as_user='Jimbo Wales')
 
-        # Admin endpoints (part 2)
+    # Admin endpoints (part 2)
     # --------------- --------
 
     # Get a preview of results from a round
@@ -743,6 +743,21 @@ def test_home_client(base_client, api_client):
 
     pprint(resp['data'])
 
+
+    # maintainer stuff
+    resp = fetch('maintainer: see active users',
+                 '/maintainer/active_users')
+
+    resp = fetch('maintainer: see api logs',
+                 '/logs/api')
+
+    resp = fetch('maintainer: see api exec logs',
+                 '/logs/api_exc')
+
+    resp = base_client.fetch('public: view docs', '/docs')
+
+    resp = base_client.fetch('public: view report', '/campaign/1')    
+    #resp = base_client.fetch('public: logout', '/logout')
 
 @script_log.wrap('critical', verbose=True)
 def submit_ratings(client, round_id, coord_user='Yarl'):
