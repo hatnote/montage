@@ -40,9 +40,15 @@ def get_public_routes():
            ('/series', get_series),
            ('/entry/<entry_name:str>', get_entry_info),
            ('/campaign', get_all_reports),
+           ('/raise', raise_error),
            ('/utils/category', get_file_info_by_category),
            ('/utils/file', get_files_info_by_name)]
     return api, ui
+
+
+@public
+def raise_error():
+    raise RuntimeError('testing')
 
 
 @public

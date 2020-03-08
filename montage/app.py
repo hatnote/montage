@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from mwoauth import ConsumerToken
 
 from mw import (UserMiddleware,
+                UserIPMiddleware,
                 TimingMiddleware,
                 LoggingMiddleware,
                 ReplayLogMiddleware,
@@ -30,7 +31,7 @@ from public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 
 import sentry_sdk
 
-from clastic_sentry import integrate_sentry
+from clastic_sentry import SentryMiddleware
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -111,6 +112,7 @@ def create_app(env_name='prod', config=None):
     blank_session_type = sessionmaker()
 
     middlewares = [TimingMiddleware(),
+                   UserIPMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(blank_session_type, get_engine),
                    UserMiddleware()]
@@ -144,18 +146,21 @@ def create_app(env_name='prod', config=None):
 
     static_app = StaticApplication(STATIC_PATH)
 
-    root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
-                            ('/', static_app),
-                            ('/', ui_app),
-                            ('/v1/', api_app),
-                            ('/meta', MetaApplication())],
-                           resources={'config': config})
-
+    root_mws = []
     if not debug_errors:
         # don't need sentry if you've got pdb, etc.
         sentry_sdk.init(environment=config['__env__'],
                         request_bodies='medium',
                         dsn="https://5738a89dcd5e4b599f7a801fd63bc217@sentry.io/3532775")
-        root_app = integrate_sentry(root_app)
+        root_mws.append(SentryMiddleware())
+
+    root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
+                            ('/', static_app),
+                            ('/', ui_app),
+                            ('/v1/', api_app),
+                            ('/meta', MetaApplication())],
+                           resources={'config': config},
+                           middlewares=root_mws)
+
 
     return root_app
