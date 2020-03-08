@@ -229,7 +229,8 @@ class Campaign(Base):
                'name': self.name,
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
-               'close_date': format_date(self.close_date)}
+               'close_date': format_date(self.close_date),
+               'status': self.status}
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?

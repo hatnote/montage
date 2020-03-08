@@ -10,13 +10,14 @@
 </div>
 
 <h2>Wiki Loves Monuments</h2>
-  <MontageAPI api='/v1/admin' let:data={data}>
+  <MontageAPI api='/v1/admin/campaigns' let:data={data}>
     <DataTable class="full-width-table">
       <Head>
         <Row>
           <Cell>Name</Cell>
           <Cell>Open date</Cell>
           <Cell>Close date</Cell>
+          <Cell>Status</Cell>
         </Row>
       </Head>
       <Body>
@@ -25,7 +26,8 @@
           <Cell><a href="#/campaign/{campaign.id}">{campaign.name}</a></Cell>
           <Cell>{campaign.open_date.split('T')[0]}</Cell>
           <Cell>{campaign.close_date.split('T')[0]}</Cell>
-        </Row> 
+          <Cell>{campaign.status}</Cell>
+        </Row>
       {/each}
       </Body>
     </DataTable>

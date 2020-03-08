@@ -40,6 +40,7 @@ def get_admin_routes():
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/users', get_users),
+           GET('/admin/campaigns/', get_campaigns),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
@@ -644,9 +645,8 @@ def get_campaigns(user_dao):
     data = []
 
     # TODO: group by series
-    # TODO: limit to active by default
-    for campaign in campaigns:
-        data.append(campaign.to_details_dict())
+    for campaign in sorted(campaigns, key=lambda c: c.create_date, reverse=True):
+        data.append(campaign.to_info_dict())
 
     return {'data': data}
 
