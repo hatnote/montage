@@ -27,6 +27,12 @@
     <h2>Coordinators</h2>
     <p>Coordinators are people who have access to editing the campaign and rounds, and viewing voting statistics.</p>
 
+
+    <Set bind:chips={coordinators} chips={coordinators} let:chip input>
+      <Chip><Text>{chip}</Text><Icon class="material-icons" trailing tabindex="0">cancel</Icon></Chip>
+    </Set>
+
+
     <Textfield
       bind:value={search_name}
       on:keyup={({ target: { value } }) => debounce(search_name)}
@@ -34,40 +40,43 @@
       input$aria-controls="helper-text"
       input$aria-describedby="helper-text" />
 
-      <Button>
-        add
-      </Button>
-
-      {#await usernames}
-      loading...
-      {:then usernames}
-      <Menu 
-        bind:this={menu}
-        anchorCorner="BOTTOM_LEFT">
-      
-        <List>
-          {#each usernames as username}
-            <Item><Text>{username}</Text></Item>
-          {/each}
-        </List>
-      </Menu>
+      {#await confirmed_username}
+      Confirming...
+      {:then confirmed_username}
+         {#if search_name != '' && confirmed_username}
+          <Button on:click={addName}><Label>Add</Label></Button>
+        {:else}
+          <Button disabled><Label>Add</Label> </Button>
+        {/if}
       {/await}
 
   </Content>
 </Paper>
 
+
+
 <script>
   import Textfield, {Input, Textarea} from '@smui/textfield';
   import Paper, {Title, Subtitle, Content} from '@smui/paper';
   import HelperText from '@smui/textfield/helper-text/index';
-  import Menu from '@smui/menu';
-  import {Anchor} from '@smui/menu-surface';
-  import Button, {Icon, Label, GroupItem} from '@smui/button';
-  import List, {Item, Separator, Text} from '@smui/list';
+  import Button, {Label} from '@smui/button';
+  import Chip, {Set, Icon, Checkmark, Text} from '@smui/chips';
 
-  let usernames;
-  let menu;
+
+  let confirmed_username;
+  let chipSet;
   let search_name = '';
+  let coordinators = ['test'];
+
+
+
+
+
+
+  function addName() {
+    coordinators = [...coordinators, search_name];
+    console.log(coordinators)
+  }
 
   let debounced_name='';
   let timer;
@@ -80,13 +89,10 @@
   }
 
   $: {
-    usernames = get_usernames(debounced_name)
-    usernames.then(() => {
-      menu.setOpen(true)
-    })
+    confirmed_username = check_username(debounced_name)
   } 
 
-  async function get_usernames(str) {
+  async function check_username(str) {
     if (!str) {
       return []
     }
@@ -95,7 +101,8 @@
                   agufrom: str,
                   format: 'json',
                   list: 'globalallusers',
-                  rawcontinue: 'true'}
+                  rawcontinue: 'true',
+                  limit: 1}
     url = url + '?origin=*'
     Object.keys(params).forEach(function(key){
       url += "&" + key + "=" + params[key]
@@ -103,8 +110,7 @@
     var response = await fetch(url)
     var json = await response.json()
 
-    var users = json.query.globalallusers.map(user => user.name)
-    return users
+    return json.query.globalallusers[0].name === str
   }
 
 </script>
