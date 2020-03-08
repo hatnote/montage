@@ -36,7 +36,7 @@
   import Button, {Icon, Label, GroupItem} from '@smui/button';
   import Menu from '@smui/menu';
   import List, {Item, Separator, Text} from '@smui/list';
-  
+
   import Router from 'svelte-spa-router'
 
   import Campaigns from './routes/Campaigns.svelte'
@@ -55,21 +55,16 @@
     // Catch-all
     // This is optional, but if present it must be the last
     //'*': NotFound,
-}
+  }
 </script>
 
-
 <style>
-  .grayed {
-    opacity: .6;
-  }
   .top-bar-container {
     width: 800px;
     margin: 0 auto;
   }
-  
+
   :global(.full-width-table) {
     width: 100%;
   }
 </style>
-
