@@ -1,3 +1,5 @@
+# NB: code heavily modified from sentry's own flask integration
+
 from __future__ import absolute_import
 
 import weakref
@@ -8,58 +10,17 @@ from sentry_sdk.integrations import Integration, DidNotEnable
 from sentry_sdk.integrations.wsgi import SentryWsgiMiddleware
 from sentry_sdk.integrations._wsgi_common import RequestExtractor
 
-from sentry_sdk._types import MYPY
-
-if MYPY:
-    from sentry_sdk.integrations.wsgi import _ScopedResponse
-    from typing import Any
-    from typing import Dict
-    from werkzeug.datastructures import ImmutableTypeConversionDict
-    from werkzeug.datastructures import ImmutableMultiDict
-    from werkzeug.datastructures import FileStorage
-    from typing import Union
-    from typing import Callable
-
-    from sentry_sdk._types import EventProcessor
-
-
 from clastic import Middleware, Application, SubApplication
 from clastic.errors import BadRequest
 
 
-def integrate_sentry(clastic_app):
-    # avoid double-wrapping
-    if getattr(clastic_app._dispatch_wsgi, '_sentry_integrated', None):
-        return clastic_app
-
-    ret = Application(routes=[SubApplication('/', clastic_app)],
-                      middlewares=[SentryMiddleware()])
-
-    orig_wsgi = ret._dispatch_wsgi
-
-    def sentry_patched_wsgi_app(environ, start_response):
-        # type: (Any, Dict[str, str], Callable[..., Any]) -> _ScopedResponse
-        # if Hub.current.get_integration(ClasticIntegration) is None:
-        #     return old_app(self, environ, start_response)
-
-        return SentryWsgiMiddleware(lambda *a, **kw: orig_wsgi(*a, **kw))(
-            environ, start_response
-        )
-
-    ret._dispatch_wsgi = sentry_patched_wsgi_app
-    ret._dispatch_wsgi._sentry_integrated = True
-    return ret
-
-
 class SentryMiddleware(Middleware):
-    provides = ('sentry_scope',)
+    provides = ('sentry_scope', 'sentry_hub')
+
+    wsgi_wrapper = SentryWsgiMiddleware
 
     def request(self, next, request, _route):
-        # type: (Clastic, **Any) -> None
         hub = Hub.current
-        #integration = hub.get_integration(ClasticIntegration)
-        #if integration is None:
-        #    return next(sentry_scope=None)
 
         with hub.configure_scope() as scope:
             # Rely on WSGI middleware to start a trace
@@ -70,11 +31,11 @@ class SentryMiddleware(Middleware):
             scope.add_event_processor(evt_processor)
 
             try:
-                ret = next(sentry_scope=scope)  # TODO
+                ret = next(sentry_scope=scope, sentry_hub=hub)
             except BadRequest:
                 raise
             except Exception as exc:
-                client = hub.client  # type: Any
+                client = hub.client
 
                 event, hint = event_from_exception(
                     exc,
@@ -85,29 +46,6 @@ class SentryMiddleware(Middleware):
                 hub.capture_event(event, hint=hint)
                 raise
         return ret
-
-
-
-"""
-def _push_appctx(*args, **kwargs):
-    # type: (*Clastic, **Any) -> None
-    hub = Hub.current
-    if hub.get_integration(ClasticIntegration) is not None:
-        # always want to push scope regardless of whether WSGI app might already
-        # have (not the case for CLI for example)
-        scope_manager = hub.push_scope()
-        scope_manager.__enter__()
-        _app_ctx_stack.top.sentry_sdk_scope_manager = scope_manager
-        with hub.configure_scope() as scope:
-            scope._name = "clastic"
-
-
-def _pop_appctx(*args, **kwargs):
-    # type: (*Clastic, **Any) -> None
-    scope_manager = getattr(_app_ctx_stack.top, "sentry_sdk_scope_manager", None)
-    if scope_manager is not None:
-        scope_manager.__exit__(None, None, None)
-"""
 
 
 class ClasticRequestExtractor(RequestExtractor):
@@ -145,9 +83,7 @@ class ClasticRequestExtractor(RequestExtractor):
 
 
 def _make_request_event_processor(weak_request):
-    # type: (Clastic, Callable[[], Request], ClasticIntegration) -> EventProcessor
     def inner(event, hint):
-        # type: (Dict[str, Any], Dict[str, Any]) -> Dict[str, Any]
         request = weak_request()
 
         # if the request is gone we are fine not logging the data from
@@ -159,57 +95,6 @@ def _make_request_event_processor(weak_request):
         with capture_internal_exceptions():
             ClasticRequestExtractor(request).extract_into_event(event)
 
-        # if _should_send_default_pii():
-        #     with capture_internal_exceptions():
-        #         _add_user_to_event(event)
-
         return event
 
     return inner
-
-
-# suitable for montage perhaps
-"""
-def _add_user_to_event(event):
-    # type: (Dict[str, Any]) -> None
-    if clastic_login is None:
-        return
-
-    user = clastic_login.current_user
-    if user is None:
-        return
-
-    with capture_internal_exceptions():
-        # Access this object as late as possible as accessing the user
-        # is relatively costly
-
-        user_info = event.setdefault("user", {})
-
-        try:
-            user_info.setdefault("id", user.get_id())
-            # TODO: more configurable user attrs here
-        except AttributeError:
-            # might happen if:
-            # - clastic_login could not be imported
-            # - clastic_login is not configured
-            # - no user is logged in
-            pass
-
-        # The following attribute accesses are ineffective for the general
-        # Clastic-Login case, because the User interface of Clastic-Login does not
-        # care about anything but the ID. However, Clastic-User (based on
-        # Clastic-Login) documents a few optional extra attributes.
-        #
-        # https://github.com/lingthio/Clastic-User/blob/a379fa0a281789618c484b459cb41236779b95b1/docs/source/data_models.rst#fixed-data-model-property-names
-
-        try:
-            user_info.setdefault("email", user.email)
-        except Exception:
-            pass
-
-        try:
-            user_info.setdefault("username", user.username)
-            user_info.setdefault("username", user.email)
-        except Exception:
-            pass
-"""
