@@ -4,7 +4,7 @@ import commonjs from 'rollup-plugin-commonjs';
 import postcss from 'rollup-plugin-postcss';
 
 module.exports = {
-  input: 'index.js',
+  input: 'src/index.js',
   output: {
     file: '../montage/static/a/dist/bundle.js',
     format: 'iife',
@@ -25,7 +25,7 @@ module.exports = {
       use: [
         ['sass', {
           includePaths: [
-            './theme',
+            './src/theme',
             './node_modules'
           ]
         }]
