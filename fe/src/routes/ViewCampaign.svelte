@@ -1,4 +1,7 @@
 <MontageAPI api='/v1/admin/campaign/{params.id}' let:data={data}>
+
+<p><a href='#'>Admin</a> > {data.name}</p>
+
   <Paper>
     <Content>
       <Title>{data.name}</Title>
@@ -28,7 +31,7 @@
             <span class="round-line"></span>
           {/if}
           <div flex class="round-card">
-            <h2 class="mdc-typography--headline6" style="margin: 0;"><a href="#">{round.name}</a></h2>
+            <h2 class="mdc-typography--headline6" style="margin: 0;"><a href="#/round/{round.id}">{round.name}</a></h2>
             <h3 class="mdc-typography--subtitle2" style="margin: 0 0 10px; color: #888;">{round.open_date}</h3>
             <div class="round-card-body mdc-typography--body2">
              

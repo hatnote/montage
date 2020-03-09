@@ -42,7 +42,7 @@
   import Campaigns from './routes/Campaigns.svelte'
   import NewCampaign from './routes/NewCampaign.svelte'
   import ViewCampaign from './routes/ViewCampaign.svelte'
-  //import ViewRound from './routes/ViewRound.svelte'
+  import ViewRound from './routes/ViewRound.svelte'
 
   let dense = true;
   let menu;
@@ -52,7 +52,7 @@
     '/': Campaigns,
     '/new-campaign': NewCampaign,
     '/campaign/:id': ViewCampaign,
-    //'/round/:id': ViewRound,
+    '/round/:id': ViewRound,
 
     // Catch-all
     // This is optional, but if present it must be the last
