@@ -1,4 +1,7 @@
 
+# NB: this file requires fabric 3
+from __future__ import print_function
+
 import sys
 import time
 import atexit
@@ -10,10 +13,10 @@ env.hosts = ['login.tools.wmflabs.org']
 env.sudo_prefix = "sudo -ni -p '%(sudo_prompt)s' "
 
 # TODO
-RELEASE_BRANCH_NAME = 'master'
+DEFAULT_TOOL = 'montage-dev'
+DEFAULT_RELEASE_BRANCH = 'master'
 SHELL_POD_NAME = 'interactive'  # this'll only change if the webservce command does
-TOOL_NAME = 'montage-dev'
-TOOL_IMAGE = 'python2'
+TOOL_IMAGE = 'python2'  # TODO: py3
 
 
 # if you hit ctrl-c while ssh'd in, it kills the session, and if you
@@ -31,11 +34,15 @@ except:
     pass
 
 def _shutdown_shell():
-    if _SHELL_UP:
-        # host string has to be reset for some unknown reason.
-        env.host_string = 'login.tools.wmflabs.org'
-        env.sudo_prefix = "sudo -ni -p '%(sudo_prompt)s' "
-        sudo('kubectl delete pod %s' % SHELL_POD_NAME)
+    try:
+        if _SHELL_UP:
+            # host string has to be reset for some unknown reason.
+            env.host_string = 'login.tools.wmflabs.org'
+            env.sudo_prefix = "sudo -ni -p '%(sudo_prompt)s' "
+            sudo('kubectl delete pod %s' % SHELL_POD_NAME)
+    except SystemExit:
+        pass
+
     if old_termios_attrs is not None:
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_termios_attrs)
     return
@@ -43,34 +50,34 @@ def _shutdown_shell():
 atexit.register(_shutdown_shell)
 
 
-def deploy():
+def deploy(tool=DEFAULT_TOOL, branch=DEFAULT_RELEASE_BRANCH):
     cur_branch = local('git symbolic-ref --short HEAD', capture=True).stdout.strip()
 
     print()
-    print(' ++ deploying %s to %s' % (RELEASE_BRANCH_NAME, TOOL_NAME))
-    if cur_branch != RELEASE_BRANCH_NAME:
+    print(' ++ deploying %s to %s' % (branch, tool))
+    if cur_branch != branch:
         print(' -- note that you are on %s' % cur_branch)
         time.sleep(3)
     print()
 
-    res = local('git --no-pager log origin/{0}...{0}'.format(RELEASE_BRANCH_NAME), capture=True)
+    res = local('git --no-pager log origin/{0}...{0}'.format(branch), capture=True)
     if res.stdout != '':
         raise SystemExit(' !! unpushed/unpulled commits on release branch %s,'
-                         ' run git push, test, and try again.' % RELEASE_BRANCH_NAME)
+                         ' run git push, test, and try again.' % branch)
 
     time.sleep(3)
     result = run('whoami')
     prefix = run('cat /etc/wmflabs-project').stdout.strip()
 
-    username = '%s.%s' % (prefix, TOOL_NAME)
+    username = '%s.%s' % (prefix, tool)
     env.sudo_user = username
 
     result = sudo('whoami')
     assert result == username
 
     with cd('montage'):
-        out = sudo('git checkout %s' % RELEASE_BRANCH_NAME)
-        out = sudo('git pull origin %s' % RELEASE_BRANCH_NAME)
+        out = sudo('git checkout %s' % branch)
+        out = sudo('git pull origin %s' % branch)
 
 
     def _webservice_shell_steps():
@@ -82,8 +89,8 @@ def deploy():
         _SHELL_UP = True
 
         out = sudo(pip_upgrade_cmd)
-        sudo('kubectl delete pod %s' % SHELL_POD_NAME)
 
+        sudo('kubectl delete pod %s' % SHELL_POD_NAME)
         _SHELL_UP = False
 
         return
