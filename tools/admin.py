@@ -30,6 +30,7 @@ sys.path.append(PROJ_PATH)
 import montage.rdb
 from montage.rdb import (make_rdb_session,
                          UserDAO,
+                         PublicDAO,
                          OrganizerDAO,
                          MaintainerDAO,
                          CoordinatorDAO,
@@ -46,7 +47,7 @@ def warn(msg, force=False):
         confirmed = raw_input('??  %s. Type yes to confirm: ' % msg)
 
         if not confirmed == 'yes':
-            print '-- you typed %r, aborting' % confirmed
+            print('-- you typed %r, aborting' % confirmed)
             sys.exit(0)
 
     return
@@ -74,11 +75,17 @@ def main():
 
     cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
 
+    ser_cmd = Command(name='series', func=None, doc='tools for administrating Montage series')
+    ser_cmd.add(add_series, name='add')
+
+    cmd.add(ser_cmd)
+
     cmp_cmd = Command(name='campaign', func=None, doc='tools for administrating Montage campaigns')
     cmp_cmd.add(list_campaigns, name='list')
     cmp_cmd.add(create_campaign, name='create')
     cmp_cmd.add(add_coordinator, name='add-coordinator')
     cmp_cmd.add(cancel_campaign, name='cancel')
+    cmp_cmd.add(backfill_series)
 
     cmd.add(cmp_cmd)
 
@@ -102,6 +109,64 @@ def main():
     return cmd.run()
 
 
+def add_series(org_dao):
+    name = _input('New series name: ')
+    if not name:
+        return
+    desc = _input('New series description: ')
+    url = _input('New series URL: ')
+    if url:
+        assert url.startswith('http'), 'url expected to start with http'
+
+    series = org_dao.create_series(name, desc, url)
+
+    print('Created new series "%s" (#%s)' % (series.name, series.id))
+    return
+
+
+
+def _input(prompt, blank=None):
+    # TODO: if blank is MISSING, be more insistent, with message about
+    # ctrld/ctrlc to exit
+    try:
+        ret = raw_input(prompt).strip() or blank
+    except (EOFError, KeyboardInterrupt):
+        raise SystemExit(0)
+    return ret
+
+
+def backfill_series(org_dao, user_dao, maint_dao, public_dao):
+    cur_series = 'Unofficial'
+    cur_camp_id = 0
+    all_series = [s for s in public_dao.get_all_series()]
+
+    val = _input('enter series name [%s] > ' % cur_series, cur_series)
+
+    while 1:
+        print('---')
+        campaign = maint_dao.get_campaign_by_series(val, cur_camp_id)
+        cur_camp_id = campaign.id
+
+        print('\nCampaign "%s" (#%s) from series: %s (#%s)\n'
+              % (campaign.name, campaign.id, campaign.series.name, campaign.series.id))
+        print('Choose from the following (or leave blank to skip):')
+        for i, s in enumerate(all_series):
+            print('  %s - %s (#%s)' % (i + 1, s.name, s.id))
+
+        idx = _input('> ')
+        if not idx:
+            continue
+        idx = int(idx)
+        assert idx > 0
+        new_series = all_series[idx - 1]
+        campaign.series = new_series
+        public_dao.rdb_session.commit()
+
+        #if new_series == campaign.series:
+        #    continue
+    return
+
+
 def create_round(user_dao, campaign_id, advance=False, debug=False):
     'interactively create a round in the specified campaign'
     # TODO: this looks messy below, campaign was semi-undefined and
@@ -109,13 +174,13 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     rnd_name = raw_input('?? Round name: ')
     if not rnd_name:
-        print '-- round name required, aborting'
+        print('-- round name required, aborting')
         sys.exit(0)
     juror_names_str = raw_input('?? Juror names (comma separated): ')
     juror_names = [j.strip() for j in juror_names_str.split(',')]
     vote_method = raw_input('?? Vote method (rating, yesno, or ranking): ')
     if vote_method not in ['rating', 'yesno', 'ranking']:
-        print '-- vote method must be rating, yesno, or ranking, aborting'
+        print('-- vote method must be rating, yesno, or ranking, aborting')
         sys.exit(0)
     if vote_method != 'ranking':
         quorum = raw_input('?? Voting quorum: ')
@@ -190,7 +255,7 @@ def pause_round(maint_dao, round_id):
     maint_dao.pause_round(rnd)
     maint_dao.rdb_session.commit()
 
-    print '++ paused round %s (%r)' % (rnd.id, rnd.name)
+    print('++ paused round %s (%r)' % (rnd.id, rnd.name))
 
     return rnd
 
@@ -211,7 +276,7 @@ def retask_duplicate_ratings(maint_dao, round_id):
     'reassign all ratings that were duplicated'
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
-    print 'scanning round %s for duplicate tasks and juror eligibility' % round_id
+    print('scanning round %s for duplicate tasks and juror eligibility' % round_id)
 
     session = maint_dao.rdb_session
     rnd = session.query(Round).get(round_id)
@@ -241,8 +306,8 @@ def retask_duplicate_ratings(maint_dao, round_id):
             pass
         dup_map[(task.round_entry_id, task.user_id)].append(task)
     dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
-    print 'found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))
-    print 'starting retaskification'
+    print('found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks)))
+    print('starting retaskification')
     reassign_count = 0
     revert_count = 0
     for _, dup_tasks in dup_items:
@@ -573,15 +638,15 @@ def _rdb_session_mw(next_, debug):
 
 
 
-@face_middleware(provides=['user_dao', 'maint_dao', 'org_dao'])
+@face_middleware(provides=['user_dao', 'maint_dao', 'org_dao', 'public_dao'])
 def _admin_dao_mw(next_, rdb_session):
     # TODO: autolookup from login.wmflabs username
     user = lookup_user(rdb_session, 'Slaporte')
     user_dao = UserDAO(rdb_session, user)
     maint_dao = MaintainerDAO(user_dao)
     org_dao = OrganizerDAO(user_dao)
-
-    return next_(user_dao=user_dao, maint_dao=maint_dao, org_dao=org_dao)
+    public_dao = PublicDAO(user_dao.rdb_session)
+    return next_(user_dao=user_dao, maint_dao=maint_dao, org_dao=org_dao, public_dao=public_dao)
 
 
 
