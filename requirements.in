@@ -7,7 +7,6 @@ lithoxyl
 mwoauth
 # mysqlclient  # only on labs
 sentry-sdk
-tox
 
 
 # look at:
