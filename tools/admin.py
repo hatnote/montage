@@ -138,13 +138,23 @@ def _input(prompt, blank=None):
 def backfill_series(org_dao, user_dao, maint_dao, public_dao):
     cur_series = 'Unofficial'
     cur_camp_id = 0
-    all_series = [s for s in public_dao.get_all_series()]
+    all_series = public_dao.get_all_series()
 
-    val = _input('enter series name [%s] > ' % cur_series, cur_series)
+    print('Choose from the following series to browse and backfill:')
+    for i, s in enumerate(all_series):
+        print('  %s - %s (#%s)' % (i + 1, s.name, s.id))
+    idx = _input('[%s] > ' % cur_series)
+    if idx:
+        idx = int(idx)
+        assert idx > 0
+        cur_series = all_series[idx - 1].name
 
     while 1:
         print('---')
-        campaign = maint_dao.get_campaign_by_series(val, cur_camp_id)
+        campaign = maint_dao.get_campaign_by_series(cur_series, cur_camp_id)
+        if campaign is None:
+            print('no campaigns of series "%s" remaining' % cur_series)
+            break
         cur_camp_id = campaign.id
 
         print('\nCampaign "%s" (#%s) from series: %s (#%s)\n'
