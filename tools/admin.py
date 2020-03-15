@@ -71,8 +71,6 @@ def main():
     cmd.add('--csv-path', missing=ERROR)
     cmd.add('--url', missing=ERROR)
 
-    # TODO: more hierarchy? "montage-cli round activate" instead of "montage-cli activate-round?
-
     cmd.add(add_organizer)  # , posargs={'count': 1, 'name': 'username'})  # TODO: figure out if we want posarg/flag overriding
 
     ser_cmd = Command(name='series', func=None, doc='tools for administrating Montage series')
