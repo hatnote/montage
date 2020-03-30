@@ -207,13 +207,19 @@ class TimingMiddleware(Middleware):
 
     def request(self, next, response_dict):
         response_dict['timings'] = timings_dict = {}
-        ret = next(timings_dict=timings_dict)
+        start_time = time.time()
+        try:
+            ret = next(timings_dict=timings_dict)
+        finally:
+            timings_dict['request'] = round(time.time() - start_time, 3)
         return ret
 
     def endpoint(self, next, timings_dict):
         start_time = time.time()
-        ret = next()
-        timings_dict['endpoint'] = round(time.time() - start_time, 3)
+        try:
+            ret = next()
+        finally:
+            timings_dict['endpoint'] = round(time.time() - start_time, 3)
         if (isinstance(ret, BaseResponse)
             and getattr(ret, 'mimetype', '').startswith('text/html')
             and isinstance(ret.data, basestring)):
