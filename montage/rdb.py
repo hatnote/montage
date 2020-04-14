@@ -20,7 +20,8 @@ from sqlalchemy import (Text,
                         DateTime,
                         TIMESTAMP,
                         ForeignKey,
-                        inspect)
+                        inspect,
+                        MetaData)
 from sqlalchemy.sql import func, asc, distinct
 from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
@@ -47,7 +48,18 @@ from imgutils import make_mw_img_url
 import loaders
 from simple_serdes import DictableBase, JSONEncodedDict
 
-Base = declarative_base(cls=DictableBase)
+
+_naming_convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+
+_metadata = MetaData(naming_convention=_naming_convention)
+
+Base = declarative_base(cls=DictableBase, metadata=_metadata)
 
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL

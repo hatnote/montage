@@ -5,6 +5,7 @@
 #    pip-compile requirements.in
 #
 -e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core
+alembic==1.4.2
 appdirs==1.4.3            # via virtualenv
 ashes==19.2.0
 attrs==19.3.0             # via glom
