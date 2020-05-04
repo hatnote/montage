@@ -17,20 +17,20 @@ from montage.rdb import Base
 from montage.utils import load_env_config
 
 
-def create_schema(db_url, echo=True):
+def migrate_schema(db_url, revision="head", echo=True):
 
     # echo="debug" also prints results of selects, etc.
     engine = create_engine(db_url, echo=echo)
-    Base.metadata.create_all(engine)
+    # Base.metadata.create_all(engine)
 
     alembic_cfg = Config(PROJ_PATH + "/alembic.ini")
-    command.stamp(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, revision)
 
     return
 
 
 def main():
-    prs = argparse.ArgumentParser('create montage db and load initial data')
+    prs = argparse.ArgumentParser('migrate montage db if necessary')
     add_arg = prs.add_argument
     add_arg('--db_url')
     add_arg('--debug', action="store_true", default=False)
@@ -50,13 +50,13 @@ def main():
             db_url = config.get('db_url')
 
     try:
-        create_schema(db_url=db_url, echo=args.verbose)
+        migrate_schema(db_url=db_url, echo=args.verbose)
     except Exception:
         if not args.debug:
             raise
         pdb.post_mortem()
     else:
-        print '++  schema created'
+        print '++  schema migration complete'
 
     return
 

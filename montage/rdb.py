@@ -138,7 +138,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
 
     username = Column(String(255), index=True)
-    is_organizer = Column(Boolean, default=False)
+    is_organizer = Column(Boolean(name='is_organizer'), default=False)
     last_active_date = Column(DateTime)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -465,7 +465,7 @@ class RoundJuror(Base):
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     round_id = Column(Integer, ForeignKey('rounds.id'), primary_key=True)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean(name='is_active'), default=True)
     flags = Column(JSONEncodedDict)
 
     user = relationship('User', back_populates='jurored_rounds')
