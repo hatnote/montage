@@ -759,6 +759,48 @@ def test_home_client(base_client, api_client):
     resp = base_client.fetch('public: view report', '/campaign/1')    
     #resp = base_client.fetch('public: logout', '/logout')
 
+def test_multiple_jurors(api_client):
+    # This is copied from above. What's the best way to break up the tests into
+    # various stages? Should I use a pytest.fixture?
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    data = {'name': 'Another Test Campaign 2017 - again',
+            'coordinators': [u'LilyOfTheWest',
+                             u'Slaporte',
+                             u'Yarl'],
+            'close_date': '2015-10-01 17:00:00',
+            'url': 'http://hatnote.com',
+            'series_id': series_id}
+    resp = fetch('organizer: create campaign',
+                 '/admin/add_campaign',
+                 data,
+                 as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view (list of all campaigns/rounds)',
+                 '/admin', as_user='LilyOfTheWest')
+
+    campaign_id = resp['data'][-1]['id']
+
+    # for date inputs (like deadline_date below), the default format
+    # is %Y-%m-%d %H:%M:%S  (aka ISO8601)
+    # Add a round to a campaign
+    rnd_data = {'name': 'Test yes/no round',
+                'vote_method': 'yesno',
+                'quorum': 1,
+                'deadline_date': "2016-10-15T00:00:00",
+                'jurors': [u'Haylad',
+                           u'Slaporte',
+                           u'Haylad']}  # Testing duplicate usres
+
+    resp = fetch('coordinator: add round to a campaign',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+
+
 @script_log.wrap('critical', verbose=True)
 def submit_ratings(client, round_id, coord_user='Yarl'):
     """

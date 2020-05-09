@@ -1197,7 +1197,7 @@ class CoordinatorDAO(UserDAO):
                                 ' rounds before trying again')
         config = config or {}
         jurors = [self.get_or_create_user(j, 'juror', campaign=self.campaign)
-                  for j in jurors]
+                  for j in set(jurors)]
 
         if type(deadline_date) is not datetime.datetime:
             deadline_date = js_isoparse(deadline_date)
