@@ -5,6 +5,7 @@ import logging
 from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
+from clastic.middleware import HTTPCacheMiddleware
 from clastic.middleware.cookie import SignedCookieMiddleware, NEVER
 from clastic.render import AshesRenderFactory, render_basic
 
@@ -146,7 +147,7 @@ def create_app(env_name='prod', config=None):
 
     static_app = StaticApplication(STATIC_PATH)
 
-    root_mws = []
+    root_mws = [HTTPCacheMiddleware(use_etags=True)]
     if not debug_errors:
         # don't need sentry if you've got pdb, etc.
         sentry_sdk.init(environment=config['__env__'],
@@ -155,6 +156,7 @@ def create_app(env_name='prod', config=None):
         root_mws.append(SentryMiddleware())
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
+                            StaticFileRoute('/a/', STATIC_PATH + '/a/index.html'),
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),

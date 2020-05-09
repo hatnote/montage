@@ -229,7 +229,8 @@ class Campaign(Base):
                'name': self.name,
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
-               'close_date': format_date(self.close_date)}
+               'close_date': format_date(self.close_date),
+               'status': self.status}
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
@@ -932,6 +933,7 @@ class PublicDAO(object):
                        'source': round_entry.round_source.params}
             ret['campaigns'].append(re_info)
         return ret
+
 
 class UserDAO(PublicDAO):
     """The Data Acccess Object wraps the rdb_session and active user
@@ -2277,9 +2279,6 @@ class OrganizerDAO(object):
         return ret
 
 
-
-
-
 class MaintainerDAO(object):
     def __init__(self, user_dao):
         self.user = user_dao.user
@@ -2332,6 +2331,16 @@ class MaintainerDAO(object):
         msg = ('%s removed %s as an organizer' % (self.user.username, username))
         self.log_action('remove_organizer', message=msg, role='maintianer')
         return user
+
+    def get_campaign_by_series(self, series_name, start_id=0):
+        series = lookup_series(self.rdb_session, series_name)
+        if series is None:
+            raise ValueError('unrecognized series name: %r' % series)
+        qs = self.query(Campaign).filter_by(series=series)
+        if start_id:
+            qs = qs.filter(Campaign.id > start_id)
+        qs = qs.order_by(Campaign.id)
+        return qs.first()
 
 
 def bootstrap_maintainers(rdb_session):
