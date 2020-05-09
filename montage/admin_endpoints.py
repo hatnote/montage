@@ -639,6 +639,19 @@ def get_index(user_dao):
     return {'data': data}
 
 
+def get_campaigns(user_dao):
+    campaigns = user_dao.get_all_campaigns()
+    data = []
+
+    # TODO: group by series
+    # TODO: limit to active by default
+    for campaign in campaigns:
+        data.append(campaign.to_details_dict())
+
+    return {'data': data}
+
+
+
 def get_campaign(user_dao, campaign_id):
     """
     Summary: Get admin-level details for a campaign, identified by campaign ID.
