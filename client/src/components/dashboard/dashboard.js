@@ -45,11 +45,13 @@ function controller(
       .getAdmin()
       .then(data => {
         vm.isAdmin = data.data.length;
+        const isActiveCampaign = campaign =>
+            (campaign.active_round || !campaign.rounds.length) && !(campaign.status === 'finalized');
         vm.campaignsAdmin = data.data.filter(
-          campaign => campaign.active_round || !campaign.rounds.length,
+          campaign => isActiveCampaign(campaign),
         );
         vm.campaignsAdminInactive = data.data.filter(
-          campaign => !campaign.active_round && campaign.rounds.length,
+          campaign => !isActiveCampaign(campaign),
         );
       })
       .catch(err => {

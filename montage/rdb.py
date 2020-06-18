@@ -1741,12 +1741,16 @@ class CoordinatorDAO(UserDAO):
         return result_summary
 
     def finalize_campaign(self):
-        last_rnd = self.campaign.rounds[-1]
+        last_rnd = self.campaign.rounds[-1] if len(self.campaign.rounds) > 0 else None
         self.campaign.status = FINALIZED_STATUS
         #self.campaign.close_date = datetime.datetime.utcnow() # TODO
-        msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
-               % (self.user.username, self.campaign.name, self.campaign.id,
-                  last_rnd.vote_method, last_rnd.name))
+        if last_rnd:
+            msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
+                   % (self.user.username, self.campaign.name, self.campaign.id,
+                      last_rnd.vote_method, last_rnd.name))
+        else:
+            msg = ('%s finalized campaign %r (#%s)'
+                   % (self.user.username, self.campaign.name, self.campaign.id,))
         self.log_action('finalize_campaign', campaign=self.campaign, message=msg)
         return self.campaign
 
