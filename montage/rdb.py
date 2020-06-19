@@ -2606,6 +2606,7 @@ class JurorDAO(object):
         campaign_name = '_campaign_name'
         campaign_open_date = '_campaign_open_date'
         campaign_close_date = '_campaign_close_date'
+        campaign_status = '_campaign_status'
 
         user_rounds_join = rounds_t.join(
                 round_jurors_t,
@@ -2620,6 +2621,7 @@ class JurorDAO(object):
                 campaigns_t.c.name.label(campaign_name),
                 campaigns_t.c.open_date.label(campaign_open_date),
                 campaigns_t.c.close_date.label(campaign_close_date),
+                campaigns_t.c.status.label(campaign_status),
             ] +
             [
                 func.count(round_entries_t.c.id).label(entry_count),
@@ -2677,7 +2679,8 @@ class JurorDAO(object):
             campaign = Campaign(id=round_kwargs.pop(campaign_id),
                                 name=round_kwargs.pop(campaign_name),
                                 open_date=round_kwargs.pop(campaign_open_date),
-                                close_date=round_kwargs.pop(campaign_close_date))
+                                close_date=round_kwargs.pop(campaign_close_date),
+                                status=round_kwargs.pop(campaign_status))
 
             round = Round(**round_kwargs)
             round.campaign = campaign

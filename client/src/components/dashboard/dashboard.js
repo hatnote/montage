@@ -69,11 +69,51 @@ function controller(
           return;
         }
 
-        const grupped = _.groupBy(
+        const roundsGroupedByCampaigns = _.groupBy(
           data.data.filter(round => round.status !== 'cancelled'),
           'campaign.id',
         );
-        vm.campaignsJuror = _.values(grupped);
+        let campaignsJuror = _.values(roundsGroupedByCampaigns);
+
+        // show finalized campaigns at the bottom; order campaigns by open date (more recent at the top)
+        campaignsJuror.sort((campaign1, campaign2) => {
+          const getStatus = campaign =>
+              campaign.length > 0 && campaign[0].campaign
+                  ? campaign[0].campaign.status
+                  : null;
+
+          const getOpenDate = campaign =>
+              campaign.length > 0 && campaign[0].campaign
+                  ? campaign[0].campaign.open_date
+                  : null;
+
+          const campaign1Status = getStatus(campaign1);
+          const campaign2Status = getStatus(campaign2);
+          const campaign1OpenDate = getOpenDate(campaign1);
+          const campaign2OpenDate = getOpenDate(campaign2);
+
+          if (
+              campaign1Status === campaign2Status ||
+              (
+                campaign1Status !== 'finalized' &&
+                campaign2Status !== 'finalized'
+              )
+          ) {
+            if (campaign1OpenDate === campaign2OpenDate) {
+              return 0;
+            } else if (campaign1OpenDate < campaign2OpenDate) {
+              return 1;
+            } else { // if (campaign1OpenDate > campaign2OpenDate)
+              return -1;
+            }
+          } else if (campaign1Status === 'finalized') {
+            return 1;
+          } else { // if (campaign2Status === 'finalized')
+            return -1;
+          }
+        });
+
+        vm.campaignsJuror = campaignsJuror;
       })
       .catch(err => {
         vm.err = err;

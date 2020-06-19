@@ -29,6 +29,9 @@ function controller($state) {
       vm.collapsed = lastRound.vote_method === 'ranking'
         && lastRound.status === 'finalized';
     }
+    if (vm.campaign && vm.campaign.status === 'finalized') {
+      vm.collapsed = true;
+    }
 
     vm.voteMethods = {
       yesno: {
