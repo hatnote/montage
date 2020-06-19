@@ -34,6 +34,8 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
         if (!vm.campaign.rounds.length) {
           vm.campaign.rounds.push({});
         }
+
+        vm.isCampaignClosed = vm.campaign.status === 'finalized';
       })
       .catch((err) => {
         vm.err = err;
