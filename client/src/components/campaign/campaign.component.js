@@ -1,5 +1,6 @@
 import './campaign.scss';
 import template from './campaign.html';
+import { CAMPAIGN_STATUS_ACTIVE, CAMPAIGN_STATUS_FINALIZED } from "../../constants";
 
 const Component = {
   controller,
@@ -36,7 +37,8 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
           vm.campaign.rounds.push({});
         }
 
-        vm.isCampaignClosed = vm.campaign.status === 'finalized';
+        vm.canCloseCampaign = vm.campaign.status === CAMPAIGN_STATUS_ACTIVE;
+        vm.canReopenCampaign = vm.campaign.status === CAMPAIGN_STATUS_FINALIZED;
       })
       .catch((err) => {
         vm.err = err;

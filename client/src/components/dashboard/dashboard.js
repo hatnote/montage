@@ -3,6 +3,7 @@ import _ from 'lodash';
 import './dashboard.scss';
 import template from './dashboard.tpl.html';
 import templateNewOrganizer from './new-organizer.tpl.html';
+import {CAMPAIGN_STATUS_ACTIVE, CAMPAIGN_STATUS_FINALIZED} from "../../constants";
 
 const Component = {
   controller,
@@ -46,7 +47,7 @@ function controller(
       .then(data => {
         vm.isAdmin = data.data.length;
         const isActiveCampaign = campaign =>
-            (campaign.active_round || !campaign.rounds.length) && !(campaign.status === 'finalized');
+            (campaign.active_round || !campaign.rounds.length) && !(campaign.status === CAMPAIGN_STATUS_FINALIZED);
         vm.campaignsAdmin = data.data.filter(
           campaign => isActiveCampaign(campaign),
         );
@@ -95,8 +96,8 @@ function controller(
           if (
               campaign1Status === campaign2Status ||
               (
-                campaign1Status !== 'finalized' &&
-                campaign2Status !== 'finalized'
+                campaign1Status === CAMPAIGN_STATUS_ACTIVE &&
+                campaign2Status === CAMPAIGN_STATUS_ACTIVE
               )
           ) {
             if (campaign1OpenDate === campaign2OpenDate) {
@@ -106,9 +107,9 @@ function controller(
             } else { // if (campaign1OpenDate > campaign2OpenDate)
               return -1;
             }
-          } else if (campaign1Status === 'finalized') {
+          } else if (campaign1Status !== CAMPAIGN_STATUS_ACTIVE) {
             return 1;
-          } else { // if (campaign2Status === 'finalized')
+          } else { // if (campaign2Status !== CAMPAIGN_STATUS_ACTIVE)
             return -1;
           }
         });
