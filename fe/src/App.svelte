@@ -25,10 +25,7 @@
   </div>
 </TopAppBar>
 
-
-<div class="container">
-  <Router {routes}/>
-</div>
+<Router {routes}/>
 
 <script>
   import TopAppBar, {Section, Title, Row} from '@smui/top-app-bar';
@@ -42,6 +39,7 @@
   import Campaigns from './routes/Campaigns.svelte'
   import NewCampaign from './routes/NewCampaign.svelte'
   import ViewCampaign from './routes/ViewCampaign.svelte'
+  import EditCampaign from './routes/EditCampaign.svelte'
   import ViewRound from './routes/ViewRound.svelte'
 
   let dense = true;
@@ -52,6 +50,7 @@
     '/': Campaigns,
     '/new-campaign': NewCampaign,
     '/campaign/:id': ViewCampaign,
+    '/campaign/:id/edit': EditCampaign,
     '/round/:id': ViewRound,
 
     // Catch-all

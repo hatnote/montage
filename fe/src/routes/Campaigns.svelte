@@ -1,15 +1,17 @@
-<h1>Campaigns</h1>
+<div class="container">
 
-<div class="controls">
-  <a href="#/new-campaign">
-  <Button variant=raised>
-    <Icon class="material-icons">add</Icon>
-    <Label>New campaign</Label>
-  </Button>
-  </a>
-</div>
+  <h1>Campaigns</h1>
 
-<h2>Wiki Loves Monuments</h2>
+  <div class="controls">
+    <a href="#/new-campaign">
+    <Button variant=raised>
+      <Icon class="material-icons">add</Icon>
+      <Label>New campaign</Label>
+    </Button>
+    </a>
+  </div>
+
+  <h2>Wiki Loves Monuments</h2>
   <MontageAPI api='/v1/admin/campaigns' let:data={data}>
     <DataTable class="full-width-table">
       <Head>
@@ -32,6 +34,7 @@
       </Body>
     </DataTable>
   </MontageAPI>
+</div>
 
 <style>
 .controls {

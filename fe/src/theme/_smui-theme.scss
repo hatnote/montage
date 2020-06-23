@@ -7,6 +7,10 @@ $mdc-theme-secondary: #fff;
     border-bottom: 4px solid #fff;
 }
 
+.container {
+  padding: 0;
+}
+
 html {
   @include mdc-typography('body1');
 }

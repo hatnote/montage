@@ -1,79 +1,81 @@
-<Paper>
-  <Title>Create a new campaign</Title>
-  <Content>
-    <h2>Basic information</h2>
-    <div>
-      <Select enhanced bind:value={series_choice} label="Series">
-      <MontageAPI api='/v1/series' let:data={serieses}>
-        {#each serieses as series}
-          <Option value={series.id}>{series.name}</Option>
-        {/each}
-        <Option value="new">New Series</Option>
-      </MontageAPI>
-      </Select>
-    </div>
+<div class="container">
+  <Paper>
+    <Title>Create a new campaign</Title>
+    <Content>
+      <h2>Basic information</h2>
+      <div>
+        <Select enhanced bind:value={series_choice} label="Series">
+        <MontageAPI api='/v1/series' let:data={serieses}>
+          {#each serieses as series}
+            <Option value={series.id}>{series.name}</Option>
+          {/each}
+          <Option value="new">New Series</Option>
+        </MontageAPI>
+        </Select>
+      </div>
 
-    <Textfield
-      fullwidth
-      bind:value={name}
-      label="Name"
-      input$aria-controls="helper-text"
-      input$aria-describedby="helper-text" />
-    <HelperText id="helper-text">Campaign name</HelperText>
+      <Textfield
+        fullwidth
+        bind:value={name}
+        label="Name"
+        input$aria-controls="helper-text"
+        input$aria-describedby="helper-text" />
+      <HelperText id="helper-text">Campaign name</HelperText>
 
-    <Textfield
-      fullwidth
-      bind:value={url}
-      label="Campaign URL"
-      input$aria-controls="helper-text"
-      input$aria-describedby="helper-text" />
-    <HelperText id="helper-text">URL for your campaign website</HelperText>
+      <Textfield
+        fullwidth
+        bind:value={url}
+        label="Campaign URL"
+        input$aria-controls="helper-text"
+        input$aria-describedby="helper-text" />
+      <HelperText id="helper-text">URL for your campaign website</HelperText>
 
-    <div>
-      <h2>Date range</h2>
-      <p>Select the start and end date for the competition you will be judging. When you import photos, you can disqualify photos that were not uploaded during this range.</p>
-      <Textfield bind:value={startDate} label="Start date" type="date" />
-      <Textfield bind:value={endDate} label="End date" type="date" />
-    </div>
-    <h2>Coordinators</h2>
-    <p>Coordinators are people who have access to editing the campaign and rounds, and viewing voting statistics.</p>
+      <div>
+        <h2>Date range</h2>
+        <p>Select the start and end date for the competition you will be judging. When you import photos, you can disqualify photos that were not uploaded during this range.</p>
+        <Textfield bind:value={startDate} label="Start date" type="date" />
+        <Textfield bind:value={endDate} label="End date" type="date" />
+      </div>
+      <h2>Coordinators</h2>
+      <p>Coordinators are people who have access to editing the campaign and rounds, and viewing voting statistics.</p>
 
-    <Textfield
-      bind:value={search_name}
-      on:keyup={({ target: { value } }) => debounce(search_name)}
-      label="Name"/>
+      <Textfield
+        bind:value={search_name}
+        on:keyup={({ target: { value } }) => debounce(search_name)}
+        label="Name"/>
 
-      {#await confirmed_username}
-      Confirming...
-      {:then confirmed_username}
-         {#if search_name != '' && confirmed_username}
-          <Button on:click={addName}><Label>Add</Label></Button>
-        {:else}
-          <Button disabled><Label>Add</Label> </Button>
-        {/if}
-      {/await}
+        {#await confirmed_username}
+        Confirming...
+        {:then confirmed_username}
+           {#if search_name != '' && confirmed_username}
+            <Button on:click={addName}><Label>Add</Label></Button>
+          {:else}
+            <Button disabled><Label>Add</Label> </Button>
+          {/if}
+        {/await}
 
-    <Set chips={coordinators} let:chip input>
-      <Chip><Text>{chip}</Text><Icon class="material-icons" trailing tabindex="0">cancel</Icon></Chip>
-    </Set>
-    <h2>Next</h2>
-    <p>After you create the campaign, you will create and add photos to the first round.</p>
-  </Content>
-</Paper>
-<div style="display: flex; align-items: center; flex-wrap: wrap;">
-  <Button variant="raised" float="right" style="width:100%" on:click|once={addCampaign}>
-    <Icon class="material-icons">add</Icon>
-    <Label>Create</Label>
-  </Button>
+      <Set chips={coordinators} let:chip input>
+        <Chip><Text>{chip}</Text><Icon class="material-icons" trailing tabindex="0">cancel</Icon></Chip>
+      </Set>
+      <h2>Next</h2>
+      <p>After you create the campaign, you will create and add photos to the first round.</p>
+    </Content>
+  </Paper>
+  <div style="display: flex; align-items: center; flex-wrap: wrap;">
+    <Button variant="raised" float="right" style="width:100%" on:click|once={addCampaign}>
+      <Icon class="material-icons">add</Icon>
+      <Label>Create</Label>
+    </Button>
+  </div>
+
+  {#if post_promise}
+    {#await post_promise}
+    ... creating campaign
+    {:then post_data}
+      Created: {post_data.data.name}
+    {/await}
+  {/if}
 </div>
-
-{#if post_promise}
-  {#await post_promise}
-  ... creating campaign
-  {:then post_data}
-    Created: {post_data.data.name}
-  {/await}
-{/if}
 
 <script>
   import Select, {Option} from '@smui/select';
