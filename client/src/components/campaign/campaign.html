@@ -42,6 +42,14 @@
         Close Campaign
       </md-button>
       <md-button
+        aria-label="Reopen Campaign"
+        ng-if="!$ctrl.edit && $ctrl.isCampaignClosed"
+        ng-click="$ctrl.reopenCampaign()"
+      >
+        <md-icon>assignment_turned_in</md-icon>
+        Reopen Campaign
+      </md-button>
+      <md-button
         aria-label="Edit Campaign"
         ng-if="!$ctrl.edit"
         ng-click="$ctrl.editCampaign(true)"

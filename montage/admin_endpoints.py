@@ -51,6 +51,7 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
                 remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
+           POST('/admin/campaign/<campaign_id:int>/reopen', reopen_campaign),
            POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
@@ -611,6 +612,11 @@ def finalize_campaign(user_dao, campaign_id):
         campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
     coord_dao.finalize_campaign()
     return campaign_summary
+
+
+def reopen_campaign(user_dao, campaign_id):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    coord_dao.reopen_campaign()
 
 
 def get_index(user_dao):

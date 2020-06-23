@@ -15,6 +15,7 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
   vm.newRound = false;
 
   vm.closeCampaign = closeCampaign;
+  vm.reopenCampaign = reopenCampaign;
   vm.editCampaign = editCampaign;
   vm.saveEditCampaign = saveEditCampaign;
 
@@ -70,6 +71,17 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
     vm.loading = true;
     adminService
       .finalizeCampaign(vm.campaign.id)
+      .then(() => $state.reload())
+      .catch(alertService.error)
+      .finally(() => {
+        vm.loading = false;
+      });
+  }
+
+  function reopenCampaign() {
+    vm.loading = true;
+    adminService
+      .reopenCampaign(vm.campaign.id)
       .then(() => $state.reload())
       .catch(alertService.error)
       .finally(() => {

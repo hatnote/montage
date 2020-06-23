@@ -1754,6 +1754,12 @@ class CoordinatorDAO(UserDAO):
         self.log_action('finalize_campaign', campaign=self.campaign, message=msg)
         return self.campaign
 
+    def reopen_campaign(self):
+        msg = ('%s reopen campaign %r (#%s)'
+               % (self.user.username, self.campaign.name, self.campaign.id,))
+        self.log_action('reopen_campaign', campaign=self.campaign, message=msg)
+        self.campaign.status = ACTIVE_STATUS
+
     def get_campaign_report(self):
         if self.campaign.status != FINALIZED_STATUS:
             raise Forbidden('cannot open report for campaign %s' % self.campaign.id)
