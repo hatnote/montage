@@ -269,10 +269,12 @@ def full_run(base_url, remote):
 
     """
     data = {'import_method': 'category',
-            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
+            'category': 'National_finalists_for_the_Microscopy_category_from_Wiki_Science_Competition_2019'}
     resp = fetch('coordinator: import entries from a category',
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
+
+    import pdb;pdb.set_trace()
 
     resp = fetch('coordinator: activate a round',
                  '/admin/round/%s/activate' % round_id,
@@ -829,7 +831,7 @@ def main():
     add_arg('--remote_prod', action='store_true',
             help='run tests on https://tools.wmflabs.org/montage')
     add_arg('--remote_dev', action='store_true',
-            help='run tests on https://tools.wmflabs.org/montage-dev')
+            help='run tests on https://montage-dev.toolforge.org')
 
     args = prs.parse_args()
 
@@ -838,7 +840,7 @@ def main():
     elif args.remote_prod:
         base_url = 'https://tools.wmflabs.org/montage'
     elif args.remote_dev:
-        base_url = 'https://tools.wmflabs.org/montage-dev'
+        base_url = 'https://montage-dev.toolforge.org'
     else:
         base_url = 'http://localhost:5000'
 

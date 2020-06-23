@@ -24,7 +24,7 @@ in a virtualenv of your choosing.
 2. Run the tests (`tox`)
 3. Deploy to the dev instance with `fab deploy`. Ensure the script
    runs successfully.
-   1. Check that the [the dev site](https://tools.wmflabs.org/montage-dev/meta/)
+   1. Check that the [the dev site](https://montage-dev.toolforge.org/meta/)
    came back up fine.
    2. Log in and test things out.
    3. Check the [montage-dev sentry (devlabs)](https://sentry.io/organizations/hatnote/issues/?environment=devlabs&project=3532775)
