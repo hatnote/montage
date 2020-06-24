@@ -2605,7 +2605,7 @@ class JurorDAO(object):
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
-    def get_all_rounds_task_counts(self):
+    def get_all_rounds_task_counts(self, desired_campaign_status=None):
         entry_count = 'entry_count'
         task_count = 'task_count'
         campaign_id = '_campaign_id'
@@ -2639,11 +2639,16 @@ class JurorDAO(object):
                     round_entries_t,
                     onclause=(rounds_t.c.id == round_entries_t.c.round_id),
                 ),
-            ).group_by(
-                rounds_t.c.id,
-            ).order_by(
-                campaign_id,
             )
+
+        if desired_campaign_status is not None:
+            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == desired_campaign_status)
+
+        users_rounds_query = users_rounds_query.group_by(
+            rounds_t.c.id,
+        ).order_by(
+            campaign_id,
+        )
 
         all_user_rounds = self.rdb_session.execute(
             users_rounds_query,

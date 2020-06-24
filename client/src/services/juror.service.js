@@ -5,6 +5,7 @@ const UserService = ($http, $q, $window, dataService) => {
 
   const juror = {
     get: () => $http.get(base + '/juror'),
+    archive: () => $http.get(base + '/juror/archive'),
     getCampaign: id => $http.get(base + '/juror/campaign/' + id),
     getPastVotes: (id, offset, orderBy, sort) => $http.get([
       base, 'juror/round', id,
