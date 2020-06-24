@@ -28,10 +28,10 @@ in a virtualenv of your choosing.
    came back up fine.
    2. Log in and test things out.
    3. Check the [montage-dev sentry (devlabs)](https://sentry.io/organizations/hatnote/issues/?environment=devlabs&project=3532775)
-4. Use [the audit log](https://tools.wmflabs.org/montage/v1/logs/audit)
+4. Use [the audit log](https://montage.toolforge.org/montage/v1/logs/audit)
    to check that the production instance isn't in active use.
 5. Deploy to the production instance with `fab deploy:tool=montage`
-   1. Check that the [the production site](https://tools.wmflabs.org/montage/meta/)
+   1. Check that the [the production site](https://montage.toolforge.org/montage/meta/)
       came back up fine.
    2. Log in and test things out.
    3. Check the [montage sentry (prod)](https://sentry.io/organizations/hatnote/issues/?environment=prod&project=3532775)

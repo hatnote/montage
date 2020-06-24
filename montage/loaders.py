@@ -11,7 +11,7 @@ from unicodecsv import DictReader
 import rdb
 from labs import get_files, get_file_info
 
-REMOTE_UTILS_URL = 'https://tools.wmflabs.org/montage/v1/utils/'
+REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
 
 GSHEET_URL = 'https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv'
 

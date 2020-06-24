@@ -829,7 +829,7 @@ def main():
     add_arg('--remote', type=str,
             help='run tests on a remote montage installation')
     add_arg('--remote_prod', action='store_true',
-            help='run tests on https://tools.wmflabs.org/montage')
+            help='run tests on https://montage.toolforge.org')
     add_arg('--remote_dev', action='store_true',
             help='run tests on https://montage-dev.toolforge.org')
 
@@ -838,7 +838,7 @@ def main():
     if args.remote:
         base_url = args.remote
     elif args.remote_prod:
-        base_url = 'https://tools.wmflabs.org/montage'
+        base_url = 'https://montage.toolforge.org'
     elif args.remote_dev:
         base_url = 'https://montage-dev.toolforge.org'
     else:
