@@ -34,6 +34,7 @@ def get_admin_routes():
     /role/(object/id/object/id/...)verb is the guiding principle
     """
     api = [GET('/admin', get_index),
+           GET('/admin/archive', get_archive),
            POST('/admin/add_series', add_series),
            POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
@@ -633,7 +634,29 @@ def get_index(user_dao):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    campaigns = user_dao.get_all_campaigns()
+    campaigns = user_dao.get_all_campaigns('active')
+    data = []
+
+    for campaign in campaigns:
+        data.append(campaign.to_details_dict())
+
+    return {'data': data}
+
+
+def get_archive(user_dao):
+    """
+    Summary: Get admin-level details for archived campaigns.
+
+    Response model:
+        campaigns:
+            type: array
+            items:
+                type: AdminCampaignDetails
+
+    Errors:
+       403: User does not have permission to access any campaigns
+    """
+    campaigns = user_dao.get_all_campaigns('finalized')
     data = []
 
     for campaign in campaigns:

@@ -12,24 +12,33 @@ function controller(
   $filter,
   $state,
   $mdDialog,
+  adminService,
   jurorService,
 ) {
   const vm = this;
 
-  vm.isJuror = false;
-
   // functions
 
   vm.$onInit = () => {
+    getAdminData();
     getJurorData();
   };
+
+  function getAdminData() {
+    adminService
+       .archive()
+      .then(data => {
+        vm.campaignsAdmin = data.data;
+      })
+      .catch(err => {
+        vm.err = err;
+      });
+  }
 
   function getJurorData() {
     jurorService
       .archive()
       .then(data => {
-        vm.isJuror = data.data.length;
-        vm.user = data.user;
         if (!data.data.length) {
           return;
         }
@@ -44,8 +53,6 @@ function controller(
         vm.err = err;
       });
   }
-
-
 }
 
 export default Component;

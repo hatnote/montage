@@ -16,28 +16,6 @@
     >
     </mont-campaign-admin-box>
   </div>
-
-  <h2 class="section__title">
-    <md-button
-      class="md-icon-button"
-      aria-label="Show/hide campaigns"
-      ng-click="$ctrl.collapseClosedCampaigns()"
-    >
-      <md-icon ng-if="!$ctrl.showInactiveCampaigns"
-        >keyboard_arrow_right</md-icon
-      >
-      <md-icon ng-if="$ctrl.showInactiveCampaigns">keyboard_arrow_down</md-icon>
-    </md-button>
-    Your Closed Campaigns
-  </h2>
-  <div class="section__content" ng-if="$ctrl.showInactiveCampaigns">
-    <mont-campaign-admin-box
-      ng-repeat="campaign in $ctrl.campaignsAdminInactive | orderBy : 'id' : true"
-      campaign="campaign"
-      index="$index"
-    >
-    </mont-campaign-admin-box>
-  </div>
 </div>
 
 <div class="dashboard__section">
@@ -47,11 +25,12 @@
       rounds="campaign"
     >
     </mont-campaign-juror-box>
-    <md-button aria-label="View archive" ui-sref="main.archive">
-    View archive
-</md-button>
   </div>
 </div>
+
+<md-button aria-label="View archive" ui-sref="main.archive">
+    View archive
+</md-button>
 
 <div flex></div>
 <div layout="row" layout-align="end end" ng-if="$ctrl.user.is_maintainer">

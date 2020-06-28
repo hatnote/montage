@@ -1,5 +1,18 @@
 <h1>Archive of old campaigns</h1>
-<div class="dashboard__section">
+<div class="dashboard__section dashboard__section--admin" ng-if="$ctrl.campaignsAdmin">
+  <h2>Coordinator campaigns</h2>
+  <div class="section__content">
+    <mont-campaign-admin-box
+      ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'id' : true"
+      campaign="campaign"
+      index="$index"
+    >
+    </mont-campaign-admin-box>
+  </div>
+</div>
+
+<div class="dashboard__section" ng-if="$ctrl.campaignsJuror">
+  <h2>Juror campaigns</h2>
   <div class="section__content">
     <mont-campaign-juror-box
       ng-repeat="campaign in $ctrl.campaignsJuror"

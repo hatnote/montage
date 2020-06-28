@@ -3,6 +3,7 @@ const Service = ($http, $q, $window) => {
 
   const admin = {
     get: () => $http.get(base),
+    archive: () => $http.get(base + '/archive'),
     getCampaign: id => $http.get([base, 'campaign', id].join('/')),
     getRound: id => $http.get([base, 'round', id].join('/')),
 

@@ -963,9 +963,14 @@ class UserDAO(PublicDAO):
             raise DoesNotExist('campaign %s does not exist' % campaign_id)
         return campaign
 
-    def _get_every_campaign(self):
-        campaigns = (self.query(Campaign)
-                         .all())
+    def _get_every_campaign(self, desired_campaign_status=None):
+        campaigns = self.query(Campaign)
+
+        if desired_campaign_status is not None:
+            campaigns = campaigns.filter_by(status=desired_campaign_status)
+
+        campaigns = campaigns.all()
+
         return campaigns
 
     def _get_any_round(self, round_id):
@@ -988,13 +993,15 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator on campaign %s' % campaign_id)
         return campaign
 
-    def get_all_campaigns(self):
+    def get_all_campaigns(self, desired_campaign_status=None):
         if self.user.is_maintainer:
-            return self._get_every_campaign()
+            return self._get_every_campaign(desired_campaign_status)
         campaigns = self.query(Campaign)\
                         .filter(
-                            Campaign.coords.any(username=self.user.username))\
-                        .all()
+                            Campaign.coords.any(username=self.user.username))
+        if desired_campaign_status is not None:
+            campaigns = campaigns.filter_by(status=desired_campaign_status)
+        campaigns = campaigns.all()
         user = self.user
         if not (campaigns or user.is_organizer or user.is_maintainer):
             raise Forbidden('not a coordinator on any campaigns')
