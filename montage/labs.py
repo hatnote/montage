@@ -90,8 +90,9 @@ def get_file_info(filename):
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
     if results:
-        results = results[0]
-    return results
+        return results[0]
+    else:
+        return None
 
 
 if __name__ == '__main__':
