@@ -91,7 +91,7 @@ def get_campaign(user_dao, campaign_id):
     data = campaign.to_details_dict()
     rounds = []
     for rnd in campaign.rounds:
-        rnd_stats = user_dao.get_round_task_counts(rnd.id)
+        rnd_stats = juror_dao.get_round_task_counts(rnd.id)
         ballot = juror_dao.get_ballot(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds

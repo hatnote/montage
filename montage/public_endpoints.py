@@ -15,8 +15,6 @@ from labs import get_files, get_file_info
 
 from utils import load_env_config, DoesNotExist, InvalidAction
 
-config = load_env_config()
-DEBUG = config.get('debug', False)
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 DOCS_PATH = CUR_PATH + '/docs'
@@ -42,9 +40,15 @@ def get_public_routes():
            ('/series', get_series),
            ('/entry/<entry_name:str>', get_entry_info),
            ('/campaign', get_all_reports),
+           ('/raise', raise_error),
            ('/utils/category', get_file_info_by_category),
            ('/utils/file', get_files_info_by_name)]
     return api, ui
+
+
+@public
+def raise_error():
+    raise RuntimeError('testing')
 
 
 @public
@@ -143,9 +147,9 @@ def logout(request, cookie, root_path):
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log):
+def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log, config):
     # TODO: Remove or standardize the DEBUG option
-    if DEBUG:
+    if config.get('debug'):
         identity = {'sub': 6024474,
                     'username': 'Slaporte'}
     else:
@@ -193,7 +197,7 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
 
     return_to_url = cookie.get('return_to_url')
     # TODO: Clean up
-    if not DEBUG:
+    if not config.get('debug'):
         del cookie['request_token_key']
         del cookie['request_token_secret']
         del cookie['return_to_url']

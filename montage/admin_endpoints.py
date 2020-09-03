@@ -40,6 +40,7 @@ def get_admin_routes():
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/users', get_users),
+           GET('/admin/campaigns/', get_campaigns),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
@@ -63,7 +64,6 @@ def get_admin_routes():
                get_round_results_preview),
            POST('/admin/round/<round_id:int>/advance', advance_round),
            GET('/admin/round/<round_id:int>/flags', get_flagged_entries),
-           GET('/admin/round/<round_id:int>/all_flags', get_all_flags),
            GET('/admin/round/<round_id:int>/disqualified',
                get_disqualified),
            POST('/admin/round/<round_id:int>/autodisqualify',
@@ -640,6 +640,18 @@ def get_index(user_dao):
     return {'data': data}
 
 
+def get_campaigns(user_dao):
+    campaigns = user_dao.get_all_campaigns()
+    data = []
+
+    # TODO: group by series
+    for campaign in sorted(campaigns, key=lambda c: c.create_date, reverse=True):
+        data.append(campaign.to_info_dict())
+
+    return {'data': data}
+
+
+
 def get_campaign(user_dao, campaign_id):
     """
     Summary: Get admin-level details for a campaign, identified by campaign ID.
@@ -817,17 +829,6 @@ def get_flagged_entries(user_dao, round_id):
                               in fe.flaggings]
         ret.append(entry)
     return {'data': ret}
-
-
-def get_all_flags(user_dao, round_id, request_dict):
-    if not request_dict:
-        request_dict = {}
-    limit = request_dict.get('limit', 10)
-    offset = request_dict.get('offset', 0)
-    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    flags = coord_dao.get_flags(round_id, limit, offset)
-    data = [f.to_details_dict() for f in flags]
-    return {'data': data}
 
 
 def get_disqualified(user_dao, round_id):

@@ -1,6 +1,7 @@
 
 import json
 import time
+import os.path
 import datetime
 
 import clastic
@@ -20,6 +21,7 @@ def public(endpoint_func):
     endpoint_func.is_public = True
 
     return endpoint_func
+
 
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
@@ -60,6 +62,7 @@ class MessageMiddleware(Middleware):
         except Exception as e:
             if self.debug_errors and not isinstance(e, MontageError):
                 import pdb; pdb.post_mortem()
+                import pdb;pdb.set_trace()
             if self.raise_errors:
                 raise
             ret = None
@@ -102,7 +105,7 @@ class UserMiddleware(Middleware):
     endpoint_provides = ('user', 'user_dao')
 
     def endpoint(self, next, cookie, rdb_session, _route, config,
-                 request_dict, response_dict, timings_dict):
+                 request_dict, response_dict, timings_dict, sentry_scope=None):
         # endpoints are default non-public
         response_dict['user'] = None
         start_time = time.time()
@@ -115,12 +118,15 @@ class UserMiddleware(Middleware):
         try:
             userid = cookie['userid']
         except (KeyError, TypeError):
-            if ep_is_public:
-                return next(user=None, user_dao=None)
-
-            err = 'invalid cookie userid, try logging in again'
-            response_dict['errors'].append(err)
-            return {}
+            if config['__env__'] == 'devtest':
+                # TODO: until github.com/pallets/werkzeug/issues/1060
+                userid = 6024474
+            else:
+                if ep_is_public:
+                    return next(user=None, user_dao=None)
+                err = 'invalid cookie userid, try logging in again.'
+                response_dict['errors'].append(err)
+                return {}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
@@ -151,9 +157,49 @@ class UserMiddleware(Middleware):
         response_dict['user'] = user.to_dict() if user else user
         user_dao = UserDAO(rdb_session=rdb_session, user=user)
         timings_dict['lookup_user'] = time.time() - start_time
+
+        if sentry_scope is not None:
+            user_dict = response_dict['user']
+            user_dict.pop('flags')
+            user_dict.pop('last_active_date')
+            sentry_scope._user.update(user_dict)
+
         ret = next(user=user, user_dao=user_dao)
 
         return ret
+
+
+class UserIPMiddleware(Middleware):
+    provides = ('user_ip',)
+
+    def request(self, next, request):
+        user_ip = None
+        if 'X-Forwarded-For' in request.headers:
+            user_ip = request.headers.getlist("X-Forwarded-For")[0].rpartition(' ')[-1]
+        else:
+            user_ip = request.remote_addr or 'unknown_ip'
+
+        return next(user_ip=user_ip)
+
+    def endpoint(self, next, user_ip, sentry_scope=None):
+        # user is only set on sentry_scope after UserMiddleware (which
+        # requires db session, etc.), so we use the endpoint mw to set
+        # ip address on the sentry scope to ensure the ip comes after
+        # all that's set up.
+        try:
+            # was getting unreadable attribute error when following
+            # the instructions at
+            # https://docs.sentry.io/enriching-error-data/scopes/?platform=python#configuring-the-scope
+            user_dict = sentry_scope._user
+            if not user_dict:
+                sentry_scope.set_user({'ip_address': user_ip})
+            else:
+                user_dict['ip_address'] = user_ip
+        except Exception as e:
+            # if sentry's not enabled or the user object isn't there, etc.
+            pass
+        return next()
+
 
 
 class TimingMiddleware(Middleware):
@@ -161,13 +207,19 @@ class TimingMiddleware(Middleware):
 
     def request(self, next, response_dict):
         response_dict['timings'] = timings_dict = {}
-        ret = next(timings_dict=timings_dict)
+        start_time = time.time()
+        try:
+            ret = next(timings_dict=timings_dict)
+        finally:
+            timings_dict['request'] = round(time.time() - start_time, 3)
         return ret
 
     def endpoint(self, next, timings_dict):
         start_time = time.time()
-        ret = next()
-        timings_dict['endpoint'] = round(time.time() - start_time, 3)
+        try:
+            ret = next()
+        finally:
+            timings_dict['endpoint'] = round(time.time() - start_time, 3)
         if (isinstance(ret, BaseResponse)
             and getattr(ret, 'mimetype', '').startswith('text/html')
             and isinstance(ret.data, basestring)):
@@ -193,7 +245,7 @@ class DBSessionMiddleware(Middleware):
         rdb_session = self.session_type()
         try:
             ret = next(rdb_session=rdb_session)
-        except:
+        except Exception:
             rdb_session.rollback()
             raise
         else:
@@ -205,8 +257,6 @@ class DBSessionMiddleware(Middleware):
             rdb_session.close()
         return ret
 
-
-import os.path
 
 from lithoxyl import (Logger,
                       StreamEmitter,

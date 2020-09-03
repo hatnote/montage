@@ -229,7 +229,8 @@ class Campaign(Base):
                'name': self.name,
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
-               'close_date': format_date(self.close_date)}
+               'close_date': format_date(self.close_date),
+               'status': self.status}
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
@@ -933,6 +934,7 @@ class PublicDAO(object):
             ret['campaigns'].append(re_info)
         return ret
 
+
 class UserDAO(PublicDAO):
     """The Data Acccess Object wraps the rdb_session and active user
     model, providing a layer for model manipulation through
@@ -964,8 +966,6 @@ class UserDAO(PublicDAO):
     def _get_every_campaign(self):
         campaigns = (self.query(Campaign)
                          .all())
-        if not campaigns:
-            raise DoesNotExist('no campaigns exist')
         return campaigns
 
     def _get_any_round(self, round_id):
@@ -1089,8 +1089,8 @@ class CoordinatorDAO(UserDAO):
     #     campaign_id/seq
 
     def __init__(self, user_dao, campaign):
-        if not type(campaign) is Campaign:
-            InvalidAction('cannot load campaign')
+        if type(campaign) is not Campaign:
+            raise InvalidAction('cannot load campaign')
         self.query = user_dao.query
         self.rdb_session = user_dao.rdb_session
         self.user_dao = user_dao
@@ -1169,14 +1169,6 @@ class CoordinatorDAO(UserDAO):
             ret[name] = entry
         return ret
 
-    def get_flags(self, round_id, limit=10, offset=0):
-        flags = (self.query(Flag)
-                 .filter(Flag.round_entry.has(round_id=round_id))
-                 .limit(10)
-                 .offset(0)
-                 .all())
-        return flags
-
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)
                            .filter_by(round_id=round_id)
@@ -1205,7 +1197,7 @@ class CoordinatorDAO(UserDAO):
                                 ' rounds before trying again')
         config = config or {}
         jurors = [self.get_or_create_user(j, 'juror', campaign=self.campaign)
-                  for j in jurors]
+                  for j in set(jurors)]
 
         if type(deadline_date) is not datetime.datetime:
             deadline_date = js_isoparse(deadline_date)
@@ -2250,14 +2242,14 @@ class OrganizerDAO(object):
         return campaign
 
     def cancel_campaign(self, campaign_id):
-        cancel_date = datetime.datetime.utcnow()
         campaign = self.user_dao.get_campaign(campaign_id)
+        coord_dao = CoordinatorDAO(self.user_dao, campaign)
         rounds = (self.query(Round)
-                      .filter(Round.campaign_id == campaign_id)
-                      .all())
+                  .filter(Round.campaign_id == campaign_id)
+                  .all())
         campaign.status = CANCELLED_STATUS
-        for round in rounds:
-            self.cancel_round(round)
+        for rnd in rounds:
+            coord_dao.cancel_round(rnd.id)
         msg = '%s cancelled campaign "%s" and %s rounds' %\
               (self.user.username, campaign.name, len(rounds))
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
@@ -2285,9 +2277,6 @@ class OrganizerDAO(object):
                                      'name': camp.name,
                                      'coorinators': coords})
         return ret
-
-
-
 
 
 class MaintainerDAO(object):
@@ -2342,6 +2331,16 @@ class MaintainerDAO(object):
         msg = ('%s removed %s as an organizer' % (self.user.username, username))
         self.log_action('remove_organizer', message=msg, role='maintianer')
         return user
+
+    def get_campaign_by_series(self, series_name, start_id=0):
+        series = lookup_series(self.rdb_session, series_name)
+        if series is None:
+            raise ValueError('unrecognized series name: %r' % series)
+        qs = self.query(Campaign).filter_by(series=series)
+        if start_id:
+            qs = qs.filter(Campaign.id > start_id)
+        qs = qs.order_by(Campaign.id)
+        return qs.first()
 
 
 def bootstrap_maintainers(rdb_session):
@@ -2427,7 +2426,7 @@ class JurorDAO(object):
                        .one_or_none())
 
         if not round_entry:
-            raise DoesNotExist('round entry %s does not exist' % round_entry_id)
+            raise DoesNotExist('round entry %s does not exist' % entry_id)
         return round_entry
 
     def confirm_active(self, round_id):

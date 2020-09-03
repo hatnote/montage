@@ -1,0 +1,14 @@
+[run]
+branch = True
+source =
+    montage
+    ../montage
+
+[paths]
+source =
+   ../montage
+   */lib/python*/site-packages/montage
+   */Lib/site-packages/montage
+   */pypy/site-packages/montage
+omit =
+   */flycheck_*
