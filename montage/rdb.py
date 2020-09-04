@@ -1545,14 +1545,14 @@ class CoordinatorDAO(UserDAO):
             source = 'remote'
         else:
             source = 'local'
-        entries = loaders.load_by_filename(file_names, source=source)
+        entries, warnings = loaders.load_by_filename(file_names, source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from filenames, %s new entries added'
                % (self.user.username, len(entries), new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
-        return entries
+        return entries, warnings
 
     def add_entries_from_csv(self, round_id, csv_url):
         # NOTE: this no longer creates RoundEntries, use

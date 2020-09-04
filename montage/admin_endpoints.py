@@ -356,7 +356,13 @@ def import_entries(user_dao, round_id, request_dict):
                   'round_id': prev_round_id}
     elif import_method == SELECTED_METHOD:
         file_names = request_dict['file_names']
-        entries = coord_dao.add_entries_by_name(round_id, file_names)
+        entries, warnings = coord_dao.add_entries_by_name(round_id, file_names)
+        if warnings:
+            formatted_warnings = '\n'.join([
+                '- {}'.format(warning) for warning in warnings
+            ])
+            msg = 'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
+            import_warnings.append({'import issues', msg})
         params = {'file_names': file_names}
     else:
         raise NotImplementedResponse()

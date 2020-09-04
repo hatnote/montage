@@ -138,7 +138,7 @@ function controller($filter, $mdDialog, $state, adminService, alertService, data
             .filter((value, index, array) => array.indexOf(value) === index)
             .join('\n');
 
-          const text = `${warningsList.join(', ')}\n\n${filesList}`;
+          const text = `${warningsList.join('\n\n')}\n\n${filesList}`;
 
           const dialog = $mdDialog
             .confirm()

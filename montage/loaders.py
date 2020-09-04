@@ -126,8 +126,10 @@ def load_name_list(file_obj, source='local'):
         edicts, warnings = get_by_filename_remote(rl)
     else:
         for filename in rl:
-            edict, warnings = get_file_info(filename)
-            edicts.append(edict)
+            file_info = get_file_info(filename)
+            if file_info is not None:
+                edict, warnings = file_info
+                edicts.append(edict)
 
     for edict in edicts:
         try:
@@ -182,18 +184,25 @@ def get_entries_from_gsheet(raw_url, source='local'):
 
 
 def load_by_filename(filenames, source='local'):
-    ret = []
+    entries = []
+    warnings = []
     if source == 'remote':
         files, warnings = get_by_filename_remote(filenames)
     else:
         files = []
         for filename in filenames:
             file_info = get_file_info(filename)
-            files.append(file_info)
+            if file_info is not None:
+                files.append(file_info)
+            else:
+                warnings.append(
+                    'file "%s" does not exist, please check that its name is spelled correctly, '
+                    'that it has not been renamed or removed' % (filename,)
+                )
     for edict in files:
         entry = make_entry(edict)
-        ret.append(entry)
-    return ret
+        entries.append(entry)
+    return entries, warnings
 
 
 def load_category(category_name, source='local'):
