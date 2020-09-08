@@ -15,7 +15,7 @@
 (function (window) {
   window.__env = window.__env || {};
   window.__env.name = 'local';
-  window.__env.baseUrl = '//localhost:5000';
+  window.__env.baseUrl = '//' + window.location.hostname + ':' + window.location.port;
 }(this));
 </script>
 </body>
