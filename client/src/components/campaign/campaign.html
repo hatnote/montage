@@ -35,11 +35,19 @@
       </md-button>
       <md-button
         aria-label="Close Campaign"
-        ng-if="!$ctrl.edit"
+        ng-if="!$ctrl.edit && $ctrl.canCloseCampaign"
         ng-click="$ctrl.closeCampaign()"
       >
         <md-icon>assignment_turned_in</md-icon>
         Close Campaign
+      </md-button>
+      <md-button
+        aria-label="Reopen Campaign"
+        ng-if="!$ctrl.edit && $ctrl.canReopenCampaign"
+        ng-click="$ctrl.reopenCampaign()"
+      >
+        <md-icon>assignment_turned_in</md-icon>
+        Reopen Campaign
       </md-button>
       <md-button
         aria-label="Edit Campaign"

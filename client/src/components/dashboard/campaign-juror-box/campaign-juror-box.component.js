@@ -1,5 +1,6 @@
 import './campaign-juror-box.scss';
 import template from './campaign-juror-box.html';
+import {CAMPAIGN_STATUS_ACTIVE, CAMPAIGN_STATUS_FINALIZED} from "../../../constants";
 
 const Component = {
   bindings: {
@@ -24,10 +25,8 @@ function controller($state) {
       ? vm.rounds[0].campaign
       : null;
 
-    if (vm.rounds.length) {
-      const lastRound = vm.rounds[vm.rounds.length - 1];
-      vm.collapsed = lastRound.vote_method === 'ranking'
-        && lastRound.status === 'finalized';
+    if (vm.campaign && vm.campaign.status !== CAMPAIGN_STATUS_ACTIVE) {
+      vm.collapsed = true;
     }
 
     vm.voteMethods = {

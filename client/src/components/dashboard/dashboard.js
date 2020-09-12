@@ -20,16 +20,8 @@ function controller(
 ) {
   const vm = this;
 
-  vm.isAdmin = false;
-  vm.isJuror = false;
-  vm.campaigns = [];
   vm.campaignsAdmin = null;
-  vm.campaignsAdminInactive = null;
-
-  vm.showInactiveCampaigns = false;
-  vm.collapseClosedCampaigns = () => {
-    vm.showInactiveCampaigns = !vm.showInactiveCampaigns;
-  };
+  vm.campaignsJuror = null;
 
   vm.addOrganizer = addOrganizer;
 
@@ -44,13 +36,7 @@ function controller(
     userService
       .getAdmin()
       .then(data => {
-        vm.isAdmin = data.data.length;
-        vm.campaignsAdmin = data.data.filter(
-          campaign => campaign.active_round || !campaign.rounds.length,
-        );
-        vm.campaignsAdminInactive = data.data.filter(
-          campaign => !campaign.active_round && campaign.rounds.length,
-        );
+        vm.campaignsAdmin = data.data;
       })
       .catch(err => {
         vm.err = err;
@@ -61,17 +47,37 @@ function controller(
     userService
       .getJuror()
       .then(data => {
-        vm.isJuror = data.data.length;
         vm.user = data.user;
         if (!data.data.length) {
           return;
         }
 
-        const grupped = _.groupBy(
+        const roundsGroupedByCampaigns = _.groupBy(
           data.data.filter(round => round.status !== 'cancelled'),
           'campaign.id',
         );
-        vm.campaignsJuror = _.values(grupped);
+        const campaignsJuror = _.values(roundsGroupedByCampaigns);
+
+        // order campaigns by open date (more recent at the top)
+        campaignsJuror.sort((campaign1, campaign2) => {
+          const getOpenDate = campaign =>
+              campaign.length > 0 && campaign[0].campaign
+                  ? campaign[0].campaign.open_date
+                  : null;
+
+          const campaign1OpenDate = getOpenDate(campaign1);
+          const campaign2OpenDate = getOpenDate(campaign2);
+
+          if (campaign1OpenDate === campaign2OpenDate) {
+            return 0;
+          } else if (campaign1OpenDate < campaign2OpenDate) {
+            return 1;
+          } else { // if (campaign1OpenDate > campaign2OpenDate)
+            return -1;
+          }
+        });
+
+        vm.campaignsJuror = campaignsJuror;
       })
       .catch(err => {
         vm.err = err;

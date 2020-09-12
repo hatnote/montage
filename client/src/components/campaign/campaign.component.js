@@ -1,5 +1,6 @@
 import './campaign.scss';
 import template from './campaign.html';
+import { CAMPAIGN_STATUS_ACTIVE, CAMPAIGN_STATUS_FINALIZED } from "../../constants";
 
 const Component = {
   controller,
@@ -15,6 +16,7 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
   vm.newRound = false;
 
   vm.closeCampaign = closeCampaign;
+  vm.reopenCampaign = reopenCampaign;
   vm.editCampaign = editCampaign;
   vm.saveEditCampaign = saveEditCampaign;
 
@@ -34,6 +36,9 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
         if (!vm.campaign.rounds.length) {
           vm.campaign.rounds.push({});
         }
+
+        vm.canCloseCampaign = vm.campaign.status === CAMPAIGN_STATUS_ACTIVE;
+        vm.canReopenCampaign = vm.campaign.status === CAMPAIGN_STATUS_FINALIZED;
       })
       .catch((err) => {
         vm.err = err;
@@ -68,6 +73,17 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
     vm.loading = true;
     adminService
       .finalizeCampaign(vm.campaign.id)
+      .then(() => $state.reload())
+      .catch(alertService.error)
+      .finally(() => {
+        vm.loading = false;
+      });
+  }
+
+  function reopenCampaign() {
+    vm.loading = true;
+    adminService
+      .reopenCampaign(vm.campaign.id)
       .then(() => $state.reload())
       .catch(alertService.error)
       .finally(() => {
