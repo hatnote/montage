@@ -3,6 +3,7 @@ const Service = ($http, $q, $window) => {
 
   const admin = {
     get: () => $http.get(base),
+    archive: () => $http.get(base + '/archive'),
     getCampaign: id => $http.get([base, 'campaign', id].join('/')),
     getRound: id => $http.get([base, 'round', id].join('/')),
 
@@ -10,6 +11,7 @@ const Service = ($http, $q, $window) => {
     addCampaign: data => $http.post(`${base}/add_campaign`, data),
     addRound: (id, data) => $http.post(`${base}/campaign/${id}/add_round`, data),
     finalizeCampaign: id => $http.post(`${base}/campaign/${id}/finalize`, { post: true }),
+    reopenCampaign: id => $http.post(`${base}/campaign/${id}/reopen`, { post: true }),
     addCoordinator: (id, username) =>
       $http.post(`${base}/campaign/${id}/add_coordinator`, { username }),
     removeCoordinator: (id, username) =>

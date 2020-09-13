@@ -963,9 +963,14 @@ class UserDAO(PublicDAO):
             raise DoesNotExist('campaign %s does not exist' % campaign_id)
         return campaign
 
-    def _get_every_campaign(self):
-        campaigns = (self.query(Campaign)
-                         .all())
+    def _get_every_campaign(self, desired_campaign_status=None):
+        campaigns = self.query(Campaign)
+
+        if desired_campaign_status is not None:
+            campaigns = campaigns.filter_by(status=desired_campaign_status)
+
+        campaigns = campaigns.all()
+
         return campaigns
 
     def _get_any_round(self, round_id):
@@ -988,13 +993,15 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator on campaign %s' % campaign_id)
         return campaign
 
-    def get_all_campaigns(self):
+    def get_all_campaigns(self, desired_campaign_status=None):
         if self.user.is_maintainer:
-            return self._get_every_campaign()
+            return self._get_every_campaign(desired_campaign_status)
         campaigns = self.query(Campaign)\
                         .filter(
-                            Campaign.coords.any(username=self.user.username))\
-                        .all()
+                            Campaign.coords.any(username=self.user.username))
+        if desired_campaign_status is not None:
+            campaigns = campaigns.filter_by(status=desired_campaign_status)
+        campaigns = campaigns.all()
         user = self.user
         if not (campaigns or user.is_organizer or user.is_maintainer):
             raise Forbidden('not a coordinator on any campaigns')
@@ -1741,14 +1748,24 @@ class CoordinatorDAO(UserDAO):
         return result_summary
 
     def finalize_campaign(self):
-        last_rnd = self.campaign.rounds[-1]
+        last_rnd = self.campaign.rounds[-1] if len(self.campaign.rounds) > 0 else None
         self.campaign.status = FINALIZED_STATUS
         #self.campaign.close_date = datetime.datetime.utcnow() # TODO
-        msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
-               % (self.user.username, self.campaign.name, self.campaign.id,
-                  last_rnd.vote_method, last_rnd.name))
+        if last_rnd:
+            msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
+                   % (self.user.username, self.campaign.name, self.campaign.id,
+                      last_rnd.vote_method, last_rnd.name))
+        else:
+            msg = ('%s finalized campaign %r (#%s)'
+                   % (self.user.username, self.campaign.name, self.campaign.id,))
         self.log_action('finalize_campaign', campaign=self.campaign, message=msg)
         return self.campaign
+
+    def reopen_campaign(self):
+        msg = ('%s reopen campaign %r (#%s)'
+               % (self.user.username, self.campaign.name, self.campaign.id,))
+        self.log_action('reopen_campaign', campaign=self.campaign, message=msg)
+        self.campaign.status = ACTIVE_STATUS
 
     def get_campaign_report(self):
         if self.campaign.status != FINALIZED_STATUS:
@@ -2595,13 +2612,14 @@ class JurorDAO(object):
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
-    def get_all_rounds_task_counts(self):
+    def get_all_rounds_task_counts(self, desired_campaign_status=None):
         entry_count = 'entry_count'
         task_count = 'task_count'
         campaign_id = '_campaign_id'
         campaign_name = '_campaign_name'
         campaign_open_date = '_campaign_open_date'
         campaign_close_date = '_campaign_close_date'
+        campaign_status = '_campaign_status'
 
         user_rounds_join = rounds_t.join(
                 round_jurors_t,
@@ -2616,6 +2634,7 @@ class JurorDAO(object):
                 campaigns_t.c.name.label(campaign_name),
                 campaigns_t.c.open_date.label(campaign_open_date),
                 campaigns_t.c.close_date.label(campaign_close_date),
+                campaigns_t.c.status.label(campaign_status),
             ] +
             [
                 func.count(round_entries_t.c.id).label(entry_count),
@@ -2627,11 +2646,16 @@ class JurorDAO(object):
                     round_entries_t,
                     onclause=(rounds_t.c.id == round_entries_t.c.round_id),
                 ),
-            ).group_by(
-                rounds_t.c.id,
-            ).order_by(
-                campaign_id,
             )
+
+        if desired_campaign_status is not None:
+            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == desired_campaign_status)
+
+        users_rounds_query = users_rounds_query.group_by(
+            rounds_t.c.id,
+        ).order_by(
+            campaign_id,
+        )
 
         all_user_rounds = self.rdb_session.execute(
             users_rounds_query,
@@ -2673,7 +2697,8 @@ class JurorDAO(object):
             campaign = Campaign(id=round_kwargs.pop(campaign_id),
                                 name=round_kwargs.pop(campaign_name),
                                 open_date=round_kwargs.pop(campaign_open_date),
-                                close_date=round_kwargs.pop(campaign_close_date))
+                                close_date=round_kwargs.pop(campaign_close_date),
+                                status=round_kwargs.pop(campaign_status))
 
             round = Round(**round_kwargs)
             round.campaign = campaign
