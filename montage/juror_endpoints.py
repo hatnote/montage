@@ -31,7 +31,8 @@ def get_juror_routes():
       unified submission URL which includes the round_id
     """
     api = [GET('/juror', get_index),
-           GET('/juror/archive', get_archive),
+           GET('/juror/campaigns', get_index),
+           GET('/juror/campaigns/all', get_all_campaigns),
            GET('/juror/campaign/<campaign_id:int>', get_campaign),
            GET('/juror/round/<round_id:int>', get_round),
            GET('/juror/round/<round_id:int>/tasks', get_tasks_from_round),
@@ -72,26 +73,23 @@ def make_juror_round_details(rnd, rnd_stats, ballot):
 
 # Endpoint functions
 
-def get_index(user_dao):
+def get_index(user_dao, status='active', include_archived=False):
     """
     Summary: Get juror-level index of active campaigns and rounds.
     """
     juror_dao = JurorDAO(user_dao)
+    counts = juror_dao.get_all_rounds_task_counts(status,
+                                                  include_archived=include_archived)
     stats = [make_juror_round_details(rnd, rnd_stats, ballot)
-             for rnd, rnd_stats, ballot
-             in juror_dao.get_all_rounds_task_counts('active')]
+             for rnd, rnd_stats, ballot in counts]
     return stats
 
 
-def get_archive(user_dao):
+def get_all_campaigns(user_dao):
     """
     Summary: Get juror-level archive of finalized campaigns and rounds.
     """
-    juror_dao = JurorDAO(user_dao)
-    stats = [make_juror_round_details(rnd, rnd_stats, ballot)
-             for rnd, rnd_stats, ballot
-             in juror_dao.get_all_rounds_task_counts('finalized')]
-    return stats
+    return get_index(user_dao, status=None, include_archived=True)
 
 
 def get_campaign(user_dao, campaign_id):
@@ -344,7 +342,7 @@ def submit_ratings(user_dao, request_dict):
 
 def skip_rating(user_dao, round_id, request, request_dict):
     juror_dao = JurorDAO(user_dao)
-    
+
     try:
         vote_id = request_dict['vote_id']
     except Exception as e:
