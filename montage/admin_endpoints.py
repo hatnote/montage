@@ -619,10 +619,13 @@ def finalize_campaign(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     last_rnd = coord_dao.campaign.active_round
 
-    campaign_summary = None
-    if last_rnd and last_rnd.vote_method == 'ranking':
-        campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
-    coord_dao.finalize_campaign()
+    if not last_rnd:
+        raise InvalidAction('no active rounds')
+
+    if last_rnd.vote_method != 'ranking':
+        raise InvalidAction('only ranking rounds can be finalized')
+
+    campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
     return campaign_summary
 
 

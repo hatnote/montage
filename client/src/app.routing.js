@@ -10,9 +10,9 @@ function stateConfig(
       url: '/',
       template: '<mont-dashboard></mont-dashboard>',
     })
-    .state('main.archive', {
-      url: '/archive',
-      template: '<mont-archive></mont-archive>',
+    .state('main.campaigns-all', {
+      url: '/campaigns/all',
+      template: '<mont-campaigns-all></mont-campaigns-all>',
     })
     .state('main.campaign-new', {
       url: '/campaign/new',

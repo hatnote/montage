@@ -16,7 +16,8 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
   vm.newRound = false;
 
   vm.closeCampaign = closeCampaign;
-  vm.reopenCampaign = reopenCampaign;
+  vm.archiveCampaign = archiveCampaign;
+  vm.unarchiveCampaign = unarchiveCampaign;
   vm.editCampaign = editCampaign;
   vm.saveEditCampaign = saveEditCampaign;
 
@@ -38,7 +39,6 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
         }
 
         vm.canCloseCampaign = vm.campaign.status === CAMPAIGN_STATUS_ACTIVE;
-        vm.canReopenCampaign = vm.campaign.status === CAMPAIGN_STATUS_FINALIZED;
       })
       .catch((err) => {
         vm.err = err;
@@ -80,10 +80,23 @@ function controller($filter, $q, $state, $stateParams, adminService, alertServic
       });
   }
 
-  function reopenCampaign() {
+  function archiveCampaign() {
     vm.loading = true;
+    let data = {'is_archived': true}
     adminService
-      .reopenCampaign(vm.campaign.id)
+      .editCampaign(vm.campaign.id, data)
+      .then(() => $state.reload())
+      .catch(alertService.error)
+      .finally(() => {
+        vm.loading = false;
+      });
+  }
+
+  function unarchiveCampaign() {
+    vm.loading = true;
+    let data = {'is_archived': false}
+    adminService
+      .editCampaign(vm.campaign.id, data)
       .then(() => $state.reload())
       .catch(alertService.error)
       .finally(() => {

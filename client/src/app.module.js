@@ -26,7 +26,7 @@ import campaignNew from './components/campaign-new/campaign-new.component';
 import campaignOld from './components/campaign-old/campaign';
 
 import dashboard from './components/dashboard/dashboard';
-import archive from './components/dashboard/archive';
+import all_campaigns from './components/dashboard/all_campaigns';
 import campaignAdminBox from './components/dashboard/campaign-admin-box/campaign-admin-box.component';
 import campaignJurorBox from './components/dashboard/campaign-juror-box/campaign-juror-box.component';
 import footer from './components/footer/footer.component';
@@ -84,7 +84,7 @@ angular.module('montage',
   .component('montCampaignAdminBox', campaignAdminBox)
   .component('montCampaignJurorBox', campaignJurorBox)
   .component('montDashboard', dashboard)
-  .component('montArchive', archive)
+  .component('montCampaignsAll', all_campaigns)
   .component('montFooter', footer)
 
   .component('montVote', vote)

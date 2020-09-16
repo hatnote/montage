@@ -1,7 +1,7 @@
 import _ from 'lodash';
 
 import './dashboard.scss';
-import template from './archive.tpl.html';
+import template from './all_campaigns.tpl.html';
 
 const Component = {
   controller,
@@ -26,7 +26,7 @@ function controller(
 
   function getAdminData() {
     adminService
-       .archive()
+       .allCampaigns()
       .then(data => {
         vm.campaignsAdmin = data.data;
       })
@@ -37,7 +37,7 @@ function controller(
 
   function getJurorData() {
     jurorService
-      .archive()
+      .allCampaigns()
       .then(data => {
         if (!data.data.length) {
           return;

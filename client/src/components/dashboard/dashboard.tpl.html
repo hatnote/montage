@@ -26,11 +26,10 @@
     >
     </mont-campaign-juror-box>
   </div>
+  <md-button aria-label="View all campaigns" ui-sref="main.campaigns-all" ng-if="!$ctrl.err.length">
+    View all campaigns
+  </md-button>
 </div>
-
-<md-button aria-label="View archive" ui-sref="main.archive">
-    View archive
-</md-button>
 
 <div flex></div>
 <div layout="row" layout-align="end end" ng-if="$ctrl.user.is_maintainer">
