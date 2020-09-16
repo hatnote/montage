@@ -274,6 +274,7 @@ def get_campaign_report(user_dao, campaign_id):
     ctx['use_ashes'] = True
     return ctx
 
+
 def get_campaign_report_raw(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     summary = coord_dao.get_campaign_report()
@@ -626,6 +627,7 @@ def finalize_campaign(user_dao, campaign_id):
         raise InvalidAction('only ranking rounds can be finalized')
 
     campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
+    coord_dao.finalize_campaign()
     return campaign_summary
 
 
