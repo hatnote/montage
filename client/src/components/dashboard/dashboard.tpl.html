@@ -1,7 +1,7 @@
 <div class="dashboard__section dashboard__section--admin"
     ng-if="$ctrl.campaignsAdmin">
-  <h2 class="section__title">Hello {{ $ctrl.user.username }}!</h2>
-  <p>Resume voting on current campaigns</p>
+  <h1 class="section__title">Active Campaigns</h1>
+  <p>Manage current campaigns below, or <a ui-sref="main.campaigns-all">view all campaigns and rounds</a>. </p>
   <div class="section__content">
     <mont-campaign-admin-box
       ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'id' : true"
@@ -19,6 +19,10 @@
 </div>
 
 <div class="dashboard__section">
+  <div ng-if="!$ctrl.err.length">
+    <h1 class="section__title">Active Voting Rounds</h1>
+    <p>Vote on currently open rounds.</p>
+  </div>
   <div class="section__content">
     <mont-campaign-juror-box
       ng-repeat="campaign in $ctrl.campaignsJuror"
@@ -26,10 +30,12 @@
     >
     </mont-campaign-juror-box>
   </div>
-  <md-button aria-label="View all campaigns" ui-sref="main.campaigns-all" ng-if="!$ctrl.err.length">
-    View all campaigns
-  </md-button>
 </div>
+
+<md-button aria-label="View all campaigns" ui-sref="main.campaigns-all" ng-if="!$ctrl.err.length">
+  View all campaigns and rounds
+</md-button>
+
 
 <div flex></div>
 <div layout="row" layout-align="end end" ng-if="$ctrl.user.is_maintainer">
