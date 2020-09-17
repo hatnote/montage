@@ -966,19 +966,6 @@ class UserDAO(PublicDAO):
             raise DoesNotExist('campaign %s does not exist' % campaign_id)
         return campaign
 
-    def _get_every_campaign(self, desired_campaign_status=None, include_archived=True):
-        campaigns = self.query(Campaign)
-
-        if desired_campaign_status is not None:
-            campaigns = campaigns.filter_by(status=desired_campaign_status)
-
-        if not include_archived:
-            campaigns = campaigns.filter_by(is_archived=include_archived)
-
-        campaigns = campaigns.all()
-
-        return campaigns
-
     def _get_any_round(self, round_id):
         rnd = (self.query(Round)
                    .filter_by(id=round_id)
@@ -999,18 +986,19 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator on campaign %s' % campaign_id)
         return campaign
 
-    def get_all_campaigns(self, desired_campaign_status=None, include_archived=True):
-        if self.user.is_maintainer:
-            return self._get_every_campaign(desired_campaign_status, include_archived=include_archived)
-        campaigns = (self.query(Campaign)
-                     .filter(
-                         Campaign.coords.any(username=self.user.username)))
-        if desired_campaign_status is not None:
-            campaigns = campaigns.filter_by(status=desired_campaign_status)
-        if not include_archived:
-            campaigns = campaigns.filter_by(is_archived=include_archived)
-        campaigns = campaigns.all()
+    def get_all_campaigns(self, only_active=False):
         user = self.user
+        campaigns = self.query(Campaign)
+        if not self.user.is_maintainer:
+            campaigns = (campaigns
+                         .filter(Campaign.coords.any(username=user.username)))
+        if only_active:
+            campaigns = (campaigns
+                         .filter_by(status='active')
+                         .filter_by(is_archived=False))
+
+        campaigns = campaigns.all()
+
         if not (campaigns or user.is_organizer or user.is_maintainer):
             raise Forbidden('not a coordinator on any campaigns')
         return campaigns
@@ -2280,7 +2268,7 @@ class OrganizerDAO(object):
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
 
     def get_user_list(self):
-        all_camps = self.user_dao._get_every_campaign()
+        all_camps = self.query(Campaign).all()
         orgs = (self.query(User)
                     .filter_by(is_organizer=True)
                     .all())
@@ -2620,8 +2608,7 @@ class JurorDAO(object):
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
-    def get_all_rounds_task_counts(self, desired_campaign_status=None, include_archived=None):
-        include_archived = True if include_archived is None else include_archived
+    def get_all_rounds_task_counts(self, only_active=False):
         entry_count = 'entry_count'
         task_count = 'task_count'
         campaign_id = '_campaign_id'
@@ -2659,9 +2646,8 @@ class JurorDAO(object):
                 ),
             )
 
-        if desired_campaign_status is not None:
-            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == desired_campaign_status)
-        if not include_archived:
+        if only_active:
+            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == 'active')
             users_rounds_query = users_rounds_query.where(campaigns_t.c.is_archived == False)
 
         users_rounds_query = users_rounds_query.group_by(

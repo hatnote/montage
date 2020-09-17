@@ -73,13 +73,12 @@ def make_juror_round_details(rnd, rnd_stats, ballot):
 
 # Endpoint functions
 
-def get_index(user_dao, status='active', include_archived=False):
+def get_index(user_dao, only_active=True):
     """
     Summary: Get juror-level index of active campaigns and rounds.
     """
     juror_dao = JurorDAO(user_dao)
-    counts = juror_dao.get_all_rounds_task_counts(status,
-                                                  include_archived=include_archived)
+    counts = juror_dao.get_all_rounds_task_counts(only_active=True)
     stats = [make_juror_round_details(rnd, rnd_stats, ballot)
              for rnd, rnd_stats, ballot in counts]
     return stats
@@ -89,7 +88,7 @@ def get_all_campaigns(user_dao):
     """
     Summary: Get juror-level archive of finalized campaigns and rounds.
     """
-    return get_index(user_dao, status=None, include_archived=True)
+    return get_index(user_dao, only_active=False)
 
 
 def get_campaign(user_dao, campaign_id):

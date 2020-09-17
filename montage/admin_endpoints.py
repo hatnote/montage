@@ -636,7 +636,7 @@ def reopen_campaign(user_dao, campaign_id):
     coord_dao.reopen_campaign()
 
 
-def get_index(user_dao, state='active', include_archived=False):
+def get_index(user_dao, only_active=True):
     """
     Summary: Get admin-level details for all campaigns.
 
@@ -650,7 +650,7 @@ def get_index(user_dao, state='active', include_archived=False):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    campaigns = user_dao.get_all_campaigns(state, include_archived=include_archived)
+    campaigns = user_dao.get_all_campaigns(only_active=only_active)
     data = []
 
     for campaign in campaigns:
@@ -660,7 +660,7 @@ def get_index(user_dao, state='active', include_archived=False):
 
 
 def get_all_campaigns(user_dao):
-    return get_index(user_dao, state=None, include_archived=True)
+    return get_index(user_dao, only_active=False)
 
 
 def get_campaigns(user_dao):
