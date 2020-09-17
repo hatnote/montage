@@ -25,9 +25,6 @@ function controller($state, $window, userService) {
   // functions
 
   vm.$onInit = () => {
-    userService.getAdmin();
-    userService.getJuror();
-
     userService.getUser()
       .then((data) => { vm.user = data; });
   };
