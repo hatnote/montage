@@ -42,13 +42,22 @@
         Close Campaign
       </md-button>
       <md-button
-        aria-label="Reopen Campaign"
-        ng-if="!$ctrl.edit && $ctrl.canReopenCampaign"
-        ng-click="$ctrl.reopenCampaign()"
+        aria-label="Archive Campaign"
+        ng-if="!$ctrl.edit && !$ctrl.campaign.is_archived"
+        ng-click="$ctrl.archiveCampaign()"
       >
-        <md-icon>assignment_turned_in</md-icon>
-        Reopen Campaign
+        <md-icon>archive</md-icon>
+        Archive Campaign
       </md-button>
+      <md-button
+        aria-label="Unarchive Campaign"
+        ng-if="!$ctrl.edit && $ctrl.campaign.is_archived"
+        ng-click="$ctrl.unarchiveCampaign()"
+      >
+        <md-icon>inbox</md-icon>
+        Unarchive Campaign
+      </md-button>
+
       <md-button
         aria-label="Edit Campaign"
         ng-if="!$ctrl.edit"

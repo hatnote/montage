@@ -34,7 +34,6 @@ def get_admin_routes():
     /role/(object/id/object/id/...)verb is the guiding principle
     """
     api = [GET('/admin', get_index),
-           GET('/admin/archive', get_archive),
            POST('/admin/add_series', add_series),
            POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
@@ -42,6 +41,7 @@ def get_admin_routes():
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/users', get_users),
            GET('/admin/campaigns/', get_campaigns),
+           GET('/admin/campaigns/all', get_all_campaigns),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
            POST('/admin/campaign/<campaign_id:int>/edit', edit_campaign),
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
@@ -274,6 +274,7 @@ def get_campaign_report(user_dao, campaign_id):
     ctx['use_ashes'] = True
     return ctx
 
+
 def get_campaign_report_raw(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     summary = coord_dao.get_campaign_report()
@@ -426,6 +427,11 @@ def edit_campaign(user_dao, campaign_id, request_dict):
     name = request_dict.get('name')
     if name:
         edit_dict['name'] = name
+
+    is_archived = request_dict.get('is_archived')
+    if is_archived is not None:
+        edit_dict['is_archived'] = is_archived
+
     open_date = request_dict.get('open_date')
     if open_date:
         edit_dict['open_date'] = js_isoparse(open_date)
@@ -614,9 +620,13 @@ def finalize_campaign(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     last_rnd = coord_dao.campaign.active_round
 
-    campaign_summary = None
-    if last_rnd and last_rnd.vote_method == 'ranking':
-        campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
+    if not last_rnd:
+        raise InvalidAction('no active rounds')
+
+    if last_rnd.vote_method != 'ranking':
+        raise InvalidAction('only ranking rounds can be finalized')
+
+    campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
     coord_dao.finalize_campaign()
     return campaign_summary
 
@@ -626,7 +636,7 @@ def reopen_campaign(user_dao, campaign_id):
     coord_dao.reopen_campaign()
 
 
-def get_index(user_dao):
+def get_index(user_dao, only_active=True):
     """
     Summary: Get admin-level details for all campaigns.
 
@@ -640,7 +650,7 @@ def get_index(user_dao):
     Errors:
        403: User does not have permission to access any campaigns
     """
-    campaigns = user_dao.get_all_campaigns('active')
+    campaigns = user_dao.get_all_campaigns(only_active=only_active)
     data = []
 
     for campaign in campaigns:
@@ -649,26 +659,8 @@ def get_index(user_dao):
     return {'data': data}
 
 
-def get_archive(user_dao):
-    """
-    Summary: Get admin-level details for archived campaigns.
-
-    Response model:
-        campaigns:
-            type: array
-            items:
-                type: AdminCampaignDetails
-
-    Errors:
-       403: User does not have permission to access any campaigns
-    """
-    campaigns = user_dao.get_all_campaigns('finalized')
-    data = []
-
-    for campaign in campaigns:
-        data.append(campaign.to_details_dict())
-
-    return {'data': data}
+def get_all_campaigns(user_dao):
+    return get_index(user_dao, only_active=False)
 
 
 def get_campaigns(user_dao):

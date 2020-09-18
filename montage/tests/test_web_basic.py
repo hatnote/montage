@@ -12,6 +12,7 @@ from werkzeug.test import Client
 from lithoxyl import DEBUG, INFO
 from clastic.middleware.cookie import JSONCookie
 from boltons.fileutils import mkdir_p
+from glom import glom, T
 
 from montage import utils
 from montage.log import script_log
@@ -698,6 +699,46 @@ def test_home_client(base_client, api_client):
                  '/admin/round/%s/reviews' % rnd_3_id,
                  as_user='LilyOfTheWest')
 
+    ### ARCHIVING (2020-09)
+    data = {'is_archived': True}
+    resp = fetch('coordinator: archive campaign',
+                 '/admin/campaign/%s/edit' % campaign_id,
+                 data, as_user='Yarl')
+
+    resp = fetch('coordinator: see active campaigns, check archived hidden',
+                 '/admin',
+                 as_user='Yarl')
+    assert len(resp['data']) == 0
+
+    resp = fetch('juror: check archived campaign rounds hidden',
+                 '/juror', as_user='Slaporte')
+    assert len(resp['data']) == 0
+
+    resp = fetch('coordinator: see all campaigns, check archived shown',
+                 '/admin/campaigns/all',
+                 as_user='Yarl')
+    assert len(resp['data']) == 1
+    assert resp['data'][0]['is_archived'] is True
+
+    data = {'is_archived': False}
+    resp = fetch('coordinator: unarchive campaign',
+                 '/admin/campaign/%s/edit' % campaign_id,
+                 data, as_user='Yarl')
+
+    resp = fetch('coordinator: see active campaigns, check archived shown again',
+                 '/admin',
+                 as_user='Yarl')
+    assert len(resp['data']) == 1
+    assert glom(resp, 'data.0.is_archived') is False
+
+    resp = fetch('juror: check archived campaign rounds shown',
+                 '/juror', as_user='Slaporte')
+    assert len(resp['data']) > 1  # 4 rounds at time of writing
+    assert glom(resp, 'data.0.campaign.is_archived') is False
+
+
+    ### END ARCHIVING (2020-09)
+
     resp = fetch('coordinator: finalize campaign',
                  '/admin/campaign/%s/finalize' % campaign_id,
                  {'post': True}, as_user='LilyOfTheWest')
@@ -756,7 +797,7 @@ def test_home_client(base_client, api_client):
 
     resp = base_client.fetch('public: view docs', '/docs')
 
-    resp = base_client.fetch('public: view report', '/campaign/1')    
+    resp = base_client.fetch('public: view report', '/campaign/1')
     #resp = base_client.fetch('public: logout', '/logout')
 
 def test_multiple_jurors(api_client):

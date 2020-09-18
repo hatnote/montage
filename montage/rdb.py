@@ -208,6 +208,7 @@ class Campaign(Base):
 
     url = Column(Text)
     status = Column(String(255), index=True)  # active, cancelled, finalized
+    is_archived = Column(Boolean, default=False, index=True)  # added 2020-09
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
@@ -230,7 +231,9 @@ class Campaign(Base):
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
-               'status': self.status}
+               'status': self.status,
+               'is_archived': self.is_archived or False,
+        }
         return ret
 
     def to_details_dict(self, admin=None):  # TODO: with_admin?
@@ -963,16 +966,6 @@ class UserDAO(PublicDAO):
             raise DoesNotExist('campaign %s does not exist' % campaign_id)
         return campaign
 
-    def _get_every_campaign(self, desired_campaign_status=None):
-        campaigns = self.query(Campaign)
-
-        if desired_campaign_status is not None:
-            campaigns = campaigns.filter_by(status=desired_campaign_status)
-
-        campaigns = campaigns.all()
-
-        return campaigns
-
     def _get_any_round(self, round_id):
         rnd = (self.query(Round)
                    .filter_by(id=round_id)
@@ -993,16 +986,19 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator on campaign %s' % campaign_id)
         return campaign
 
-    def get_all_campaigns(self, desired_campaign_status=None):
-        if self.user.is_maintainer:
-            return self._get_every_campaign(desired_campaign_status)
-        campaigns = self.query(Campaign)\
-                        .filter(
-                            Campaign.coords.any(username=self.user.username))
-        if desired_campaign_status is not None:
-            campaigns = campaigns.filter_by(status=desired_campaign_status)
-        campaigns = campaigns.all()
+    def get_all_campaigns(self, only_active=False):
         user = self.user
+        campaigns = self.query(Campaign)
+        if not self.user.is_maintainer:
+            campaigns = (campaigns
+                         .filter(Campaign.coords.any(username=user.username)))
+        if only_active:
+            campaigns = (campaigns
+                         .filter_by(status='active')
+                         .filter_by(is_archived=False))
+
+        campaigns = campaigns.all()
+
         if not (campaigns or user.is_organizer or user.is_maintainer):
             raise Forbidden('not a coordinator on any campaigns')
         return campaigns
@@ -2272,7 +2268,7 @@ class OrganizerDAO(object):
         self.log_action('cancel_campaign', campaign=campaign, message=msg)
 
     def get_user_list(self):
-        all_camps = self.user_dao._get_every_campaign()
+        all_camps = self.query(Campaign).all()
         orgs = (self.query(User)
                     .filter_by(is_organizer=True)
                     .all())
@@ -2612,13 +2608,14 @@ class JurorDAO(object):
                                .count()
         return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
-    def get_all_rounds_task_counts(self, desired_campaign_status=None):
+    def get_all_rounds_task_counts(self, only_active=False):
         entry_count = 'entry_count'
         task_count = 'task_count'
         campaign_id = '_campaign_id'
         campaign_name = '_campaign_name'
         campaign_open_date = '_campaign_open_date'
         campaign_close_date = '_campaign_close_date'
+        campaign_is_archived = '_campaign_is_archived'
         campaign_status = '_campaign_status'
 
         user_rounds_join = rounds_t.join(
@@ -2634,6 +2631,7 @@ class JurorDAO(object):
                 campaigns_t.c.name.label(campaign_name),
                 campaigns_t.c.open_date.label(campaign_open_date),
                 campaigns_t.c.close_date.label(campaign_close_date),
+                campaigns_t.c.is_archived.label(campaign_is_archived),
                 campaigns_t.c.status.label(campaign_status),
             ] +
             [
@@ -2648,8 +2646,9 @@ class JurorDAO(object):
                 ),
             )
 
-        if desired_campaign_status is not None:
-            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == desired_campaign_status)
+        if only_active:
+            users_rounds_query = users_rounds_query.where(campaigns_t.c.status == 'active')
+            users_rounds_query = users_rounds_query.where(campaigns_t.c.is_archived == False)
 
         users_rounds_query = users_rounds_query.group_by(
             rounds_t.c.id,
@@ -2698,6 +2697,7 @@ class JurorDAO(object):
                                 name=round_kwargs.pop(campaign_name),
                                 open_date=round_kwargs.pop(campaign_open_date),
                                 close_date=round_kwargs.pop(campaign_close_date),
+                                is_archived=round_kwargs.pop(campaign_is_archived),
                                 status=round_kwargs.pop(campaign_status))
 
             round = Round(**round_kwargs)
