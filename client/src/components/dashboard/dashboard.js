@@ -20,8 +20,8 @@ function controller(
 ) {
   const vm = this;
 
-  vm.campaignsAdmin = null;
-  vm.campaignsJuror = null;
+  vm.campaignsAdmin = false;
+  vm.campaignsJuror = false;
 
   vm.addOrganizer = addOrganizer;
 
@@ -36,7 +36,7 @@ function controller(
     userService
       .getAdmin()
       .then(data => {
-        vm.campaignsAdmin = data.data;
+        vm.campaignsAdmin = data.data || [];
       })
       .catch(err => {
         vm.err = err;
@@ -49,6 +49,7 @@ function controller(
       .then(data => {
         vm.user = data.user;
         if (!data.data.length) {
+          vm.campaignsJuror = [];
           return;
         }
 

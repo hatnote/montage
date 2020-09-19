@@ -17,6 +17,9 @@ function controller(
 ) {
   const vm = this;
 
+  vm.campaignsAdmin = false;
+  vm.campaignsJuror = false;
+
   // functions
 
   vm.$onInit = () => {
@@ -28,7 +31,7 @@ function controller(
     adminService
        .allCampaigns()
       .then(data => {
-        vm.campaignsAdmin = data.data;
+        vm.campaignsAdmin = data.data || [];
       })
       .catch(err => {
         vm.err = err;
@@ -40,6 +43,7 @@ function controller(
       .allCampaigns()
       .then(data => {
         if (!data.data.length) {
+          vm.campaignsJuror = [];
           return;
         }
 

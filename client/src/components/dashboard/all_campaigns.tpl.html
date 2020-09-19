@@ -1,7 +1,13 @@
 <h1>All Campaigns</h1>
 <p>View all campaigns, active and archived below, or <a ui-sref="main.dashboard">view only active campaigns and rounds</a>.</p>
-<div class="dashboard__section dashboard__section--admin" ng-if="$ctrl.campaignsAdmin">
+<div class="dashboard__section dashboard__section--admin" ng-if="$ctrl.campaignsAdmin.length != 0">
   <h2>Coordinator campaigns</h2>
+
+  <md-progress-circular
+    ng-if="$ctrl.campaignsAdmin === false"
+    md-diameter="60">
+  </md-progress-circular>
+
   <div class="section__content">
     <mont-campaign-admin-box
       ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'id' : true"
@@ -12,8 +18,14 @@
   </div>
 </div>
 
-<div class="dashboard__section" ng-if="$ctrl.campaignsJuror">
+<div class="dashboard__section" ng-if="$ctrl.campaignsJuror.length != 0">
   <h2>Juror campaigns</h2>
+
+    <md-progress-circular
+    ng-if="$ctrl.campaignsJuror === false"
+    md-diameter="60">
+  </md-progress-circular>
+
   <div class="section__content">
     <mont-campaign-juror-box
       ng-repeat="campaign in $ctrl.campaignsJuror"
