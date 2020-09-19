@@ -8,7 +8,7 @@
     md-diameter="60">
   </md-progress-circular>
 
-  <div class="section__content">
+  <div class="section__content" ng-if="$ctrl.campaignsAdmin">
     <mont-campaign-admin-box
       ng-repeat="campaign in $ctrl.campaignsAdmin | orderBy : 'id' : true"
       campaign="campaign"
