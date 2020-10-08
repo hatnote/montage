@@ -345,7 +345,7 @@ def import_entries(user_dao, round_id, request_dict):
                                                            csv_url)
         params = {'csv_url': csv_url}
         if warnings:
-            msg = 'unable to load {} files ({!r})'.format(len(warnings), warnings)
+            msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
             import_warnings.append(msg)
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
@@ -361,10 +361,10 @@ def import_entries(user_dao, round_id, request_dict):
         file_names = request_dict['file_names']
         entries, warnings = coord_dao.add_entries_by_name(round_id, file_names)
         if warnings:
-            formatted_warnings = '\n'.join([
-                '- {}'.format(warning) for warning in warnings
+            formatted_warnings = u'\n'.join([
+                u'- {}'.format(warning) for warning in warnings
             ])
-            msg = 'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
+            msg = u'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
             import_warnings.append({'import issues', msg})
         params = {'file_names': file_names}
     else:
