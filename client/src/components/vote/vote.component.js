@@ -24,8 +24,10 @@ function controller(
   alertService,
   jurorService) {
   const vm = this;
-  vm.round = vm.data.data;
 
+  vm.$onInit = () => {
+    vm.round = vm.data.data;
+  }
   /*
 
   let counter = 0;
