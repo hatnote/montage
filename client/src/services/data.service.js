@@ -15,8 +15,7 @@ const DataService = function ($http, $q) {
             titles: part.map((image) => 'File:' + image).join('|'),
             format: 'json',
             iiprop: 'timestamp|user|userid|size|dimensions|url',
-            iilimit: '10',
-            callback: 'JSON_CALLBACK'
+            iilimit: '10'
           }
         }));
       }
@@ -31,7 +30,6 @@ const DataService = function ($http, $q) {
         format: 'json',
         rawcontinue: 'true',
         agufrom: username,
-        callback: 'JSON_CALLBACK'
       }
     }),
     searchCategory: (category) => $http({
@@ -43,7 +41,6 @@ const DataService = function ($http, $q) {
         namespace: '14',
         limit: '10',
         search: category,
-        callback: 'JSON_CALLBACK'
       }
     }),
   };

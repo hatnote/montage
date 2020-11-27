@@ -72,6 +72,12 @@ angular.module('montage',
   .config(themeConfig)
   .config(localeConfig)
   .config(translateConfig)
+  .config(function($sceDelegateProvider) {
+    $sceDelegateProvider.trustedResourceUrlList([
+      'self',
+      'https://commons.wikimedia.org/**'
+    ])
+  })
 
   .component('montMain', main)
   .component('montCampaign', campaign)
