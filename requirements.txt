@@ -5,37 +5,100 @@
 #    pip-compile requirements.in
 #
 -e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core  # via -r requirements.in
-ashes==19.2.0             # via -r requirements.in, chert, clastic
-attrs==19.3.0             # via glom
-boltons==20.0.0           # via -r requirements.in, chert, clastic, face, glom, lithoxyl
-certifi==2019.11.28       # via requests, sentry-sdk
-chardet==3.0.4            # via requests
-chert==19.1.0             # via -r requirements.in
-clastic==20.0.0           # via -r requirements.in
-face==20.1.1              # via -r requirements.in, chert, glom
-glom==19.10.0             # via clastic
-html5lib==1.0.1           # via chert
-hyperlink==19.0.0         # via chert
-idna==2.9                 # via hyperlink, requests
-lithoxyl==20.0.0          # via -r requirements.in, chert
-markdown==3.1.1           # via chert
-mwoauth==0.3.7            # via -r requirements.in
-oauthlib==3.1.0           # via mwoauth, requests-oauthlib
-pyjwt==1.7.1              # via mwoauth
-pymysql==0.9.3            # via -r requirements.in
-python-dateutil==2.8.1    # via chert
-python-graph-core==1.8.2  # via -r requirements.in, python-vote-core
-pyyaml==5.3               # via chert
-requests-oauthlib==1.3.0  # via mwoauth
-requests==2.23.0          # via mwoauth, requests-oauthlib
-secure-cookie==0.1.0      # via clastic
-sentry-sdk==0.14.2        # via -r requirements.in
-six==1.14.0               # via html5lib, mwoauth, python-dateutil
-sqlalchemy==1.0.14        # via -r requirements.in
-unicodecsv==0.14.1        # via -r requirements.in
-urllib3==1.25.8           # via requests, sentry-sdk
-webencodings==0.5.1       # via html5lib
-werkzeug==1.0.0           # via clastic, secure-cookie
+    # via -r requirements.in
+ashes==19.2.0
+    # via
+    #   -r requirements.in
+    #   chert
+    #   clastic
+attrs==19.3.0
+    # via glom
+boltons==20.0.0
+    # via
+    #   -r requirements.in
+    #   chert
+    #   clastic
+    #   face
+    #   glom
+    #   lithoxyl
+certifi==2019.11.28
+    # via
+    #   requests
+    #   sentry-sdk
+chardet==3.0.4
+    # via requests
+chert==19.1.0
+    # via -r requirements.in
+clastic==20.0.0
+    # via -r requirements.in
+face==20.1.1
+    # via
+    #   -r requirements.in
+    #   chert
+    #   glom
+glom==19.10.0
+    # via clastic
+html5lib==1.0.1
+    # via chert
+hyperlink==19.0.0
+    # via chert
+idna==2.9
+    # via
+    #   hyperlink
+    #   requests
+lithoxyl==20.0.0
+    # via
+    #   -r requirements.in
+    #   chert
+markdown==3.1.1
+    # via chert
+mwoauth==0.3.7
+    # via -r requirements.in
+oauthlib==3.1.0
+    # via
+    #   mwoauth
+    #   requests-oauthlib
+pyjwt==1.7.1
+    # via mwoauth
+pymysql==0.9.3
+    # via -r requirements.in
+python-dateutil==2.8.1
+    # via chert
+python-graph-core==1.8.2
+    # via
+    #   -r requirements.in
+    #   python-vote-core
+pyyaml==5.4
+    # via chert
+requests-oauthlib==1.3.0
+    # via mwoauth
+requests==2.23.0
+    # via
+    #   mwoauth
+    #   requests-oauthlib
+secure-cookie==0.1.0
+    # via clastic
+sentry-sdk==0.14.2
+    # via -r requirements.in
+six==1.14.0
+    # via
+    #   html5lib
+    #   mwoauth
+    #   python-dateutil
+sqlalchemy==1.0.14
+    # via -r requirements.in
+unicodecsv==0.14.1
+    # via -r requirements.in
+urllib3==1.25.8
+    # via
+    #   requests
+    #   sentry-sdk
+webencodings==0.5.1
+    # via html5lib
+werkzeug==1.0.0
+    # via
+    #   clastic
+    #   secure-cookie
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
