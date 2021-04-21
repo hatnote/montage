@@ -97,7 +97,7 @@ displays reduced resolution versions of images.
 The tool shows some simple stats that let you verify it's all in
 working order.
 
-##Other notes
+## Other notes
 
  - [Commons:Jury tools/WLM jury tool
 requirements](https://commons.wikimedia.org/wiki/Commons:Jury_tools/WLM_jury_tool_requirements)
