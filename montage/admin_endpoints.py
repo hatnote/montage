@@ -111,7 +111,7 @@ def download_round_entries_csv(user_dao, round_id):
     output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True)
     output = io.BytesIO()
     csv_fieldnames = sorted(entry_infos[0].keys())
-    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames, encoding='utf-8-sig')
     csv_writer.writeheader()
     csv_writer.writerows(entry_infos)
     ret = output.getvalue()
