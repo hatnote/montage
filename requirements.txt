@@ -8,7 +8,7 @@
 ashes==19.2.0             # via -r requirements.in, chert, clastic
 attrs==19.3.0             # via glom
 boltons==20.0.0           # via -r requirements.in, chert, clastic, face, glom, lithoxyl
-certifi==2019.11.28       # via requests, sentry-sdk
+certifi==2020.4.5.1       # via requests, sentry-sdk
 chardet==3.0.4            # via requests
 chert==19.1.0             # via -r requirements.in
 clastic==20.0.0           # via -r requirements.in
