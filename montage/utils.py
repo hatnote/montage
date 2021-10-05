@@ -8,9 +8,10 @@ import getpass
 import os.path
 import datetime
 from urllib import urlencode
-from urllib2 import urlopen
+
 
 import yaml
+import requests
 from clastic.errors import Forbidden, NotFound, BadRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -84,8 +85,8 @@ def get_mw_userid(username):
               'agufrom': username,
               'format': 'json'}
     full_url = api_url + urlencode(list(encode_dict_to_bytes(params)))
-    resp = urlopen(full_url)
-    data = json.loads(resp.read())
+    resp = requests.get(full_url)
+    data = resp.json()
     user = data['query']['globalallusers'][0]
     if user['name'] == username:
         user_id = int(user['id'])
