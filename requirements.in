@@ -7,7 +7,7 @@ lithoxyl
 mwoauth
 # mysqlclient  # only on labs
 sentry-sdk
-
+pyopenssl
 
 # look at:
 python-graph-core==1.8.2
