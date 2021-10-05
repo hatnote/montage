@@ -1,12 +1,12 @@
 
 import datetime
 import StringIO
-import urllib2
 import json
 import re
 
 from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
+import requests
 
 import rdb
 from labs import get_files, get_file_info
@@ -150,13 +150,13 @@ def get_entries_from_gist(raw_url, source='local'):
     if 'githubusercontent' not in raw_url:
         raw_url = raw_url.replace('gist.github.com',
                                   'gist.githubusercontent.com') + '/raw'
-    resp = urllib2.urlopen(raw_url)
+    resp = requests.get(raw_url)
 
     try:
-        ret, warnings = load_full_csv(resp)
+        ret, warnings = load_full_csv(StringIO.StringIO(resp.content))
     except ValueError as e:
         # not a full csv
-        ret, warnings = load_name_list(resp, source=source)
+        ret, warnings = load_name_list(StringIO.StringIO(resp.content), source=source)
 
     return ret, warnings
 
@@ -165,18 +165,18 @@ def get_entries_from_gsheet(raw_url, source='local'):
     #TODO: add support for sheet tabs
     doc_id = parse_doc_id(raw_url)
     url = GSHEET_URL % doc_id
-    resp = urllib2.urlopen(url)
+    resp = requests.get(url)
 
     if not 'text/csv' in resp.headers.getheader('content-type'):
         raise ValueError('cannot load Google Sheet "%s" (is link sharing on?)' % raw_url)
 
     try:
-        ret, warnings = load_full_csv(resp, source=source)
+        ret, warnings = load_full_csv(StringIO.StringIO(resp.content), source=source)
     except ValueError:
         try:
-            ret, warnings = load_partial_csv(resp)
+            ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
         except ValueError:
-            file_names = [fn.strip('\"') for fn in resp.read().split('\n')]
+            file_names = [fn.strip('\"') for fn in resp.content.split('\n')]
             file_names_obj = StringIO.StringIO('\n'.join(file_names))
             ret, warnings = load_name_list(file_names_obj, source=source)
 
@@ -228,9 +228,8 @@ def get_from_category_remote(category_name):
 def get_from_remote(url, params):
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(params)
-    request = urllib2.Request(url, data, headers)
-    response = urllib2.urlopen(request)
-    resp_json = json.load(response)
+    response = requests.post(url, data=data, headers=headers)
+    resp_json = response.json()
     file_infos = resp_json['file_infos']
     no_infos = resp_json.get('no_info')
     return file_infos, no_infos
