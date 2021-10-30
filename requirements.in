@@ -1,9 +1,9 @@
 ashes
 boltons
-chert
+chert>=21.0.0
 clastic
 face
-lithoxyl
+lithoxyl>=21.0.0
 mwoauth
 # mysqlclient  # only on labs
 sentry-sdk
