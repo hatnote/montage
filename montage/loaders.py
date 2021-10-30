@@ -167,7 +167,7 @@ def get_entries_from_gsheet(raw_url, source='local'):
     url = GSHEET_URL % doc_id
     resp = requests.get(url)
 
-    if not 'text/csv' in resp.headers.getheader('content-type'):
+    if not 'text/csv' in resp.headers['content-type']:
         raise ValueError('cannot load Google Sheet "%s" (is link sharing on?)' % raw_url)
 
     try:
