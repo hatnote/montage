@@ -1,6 +1,10 @@
 
-import urllib
+from __future__ import absolute_import
+
 import hashlib
+
+import six.moves.urllib.parse, six.moves.urllib.error
+from .utils import unicode
 
 """
 https://upload.wikimedia.org/wikipedia/commons/8/8e/%D9%86%D9%82%D8%B4_%D8%A8%D8%B1%D8%AC%D8%B3%D8%AA%D9%87_%D8%A8%D9%84%D8%A7%D8%B4_2.JPG
@@ -15,10 +19,10 @@ def make_mw_img_url(title, size=None):
     "returns a unicode object URL"
     if isinstance(title, unicode):
         thash = hashlib.md5(title.encode('utf8')).hexdigest()
-        url_title = urllib.quote(title.encode('utf8'))
+        url_title = six.moves.urllib.parse.quote(title.encode('utf8'))
     elif isinstance(title, bytes):
         thash = hashlib.md5(title).hexdigest()
-        url_title = urllib.quote(title)
+        url_title = six.moves.urllib.parse.quote(title)
     else:
         raise TypeError('image title must be bytes or unicode')
 

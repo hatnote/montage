@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unicodecsv
 import io
 import datetime
@@ -9,14 +10,14 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import (format_date,
+from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    DoesNotExist,
                    NotImplementedResponse,
                    js_isoparse)
 
-from rdb import (CoordinatorDAO,
+from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 

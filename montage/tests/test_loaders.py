@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 from pytest import raises
 
 from montage.loaders import get_entries_from_gsheet

@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import json
 import datetime
 
@@ -7,7 +8,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import indent
 from boltons.jsonutils import reverse_iter_lines
 
-from rdb import MaintainerDAO
+from .rdb import MaintainerDAO
 
 DEFAULT_LINE_COUNT = 500
 

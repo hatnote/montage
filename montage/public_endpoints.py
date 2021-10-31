@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import os
 import datetime
 
@@ -9,11 +10,11 @@ from markdown import Markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
 from chert import hypertext as html_utils
 
-from mw import public
-from rdb import User, PublicDAO
-from labs import get_files, get_file_info
+from .mw import public
+from .rdb import User, PublicDAO
+from .labs import get_files, get_file_info
 
-from utils import load_env_config, DoesNotExist, InvalidAction
+from .utils import load_env_config, DoesNotExist, InvalidAction
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))

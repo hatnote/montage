@@ -1,8 +1,9 @@
 
+from __future__ import absolute_import
 import json
 import datetime
 
-from utils import json_serial
+from .utils import json_serial
 
 from sqlalchemy import inspect
 from sqlalchemy.types import TypeDecorator, Text
@@ -38,7 +39,7 @@ def get_entity_propnames(entity):
         :rtype: set
     """
     e = entity if isinstance(entity, InstanceState) else inspect(entity)
-    ret = set(e.mapper.column_attrs.keys() + e.mapper.relationships.keys())
+    ret = set(list(e.mapper.column_attrs.keys()) + list(e.mapper.relationships.keys()))
 
     type_props = [a for a in dir(entity.object)
                   if isinstance(getattr(entity.object.__class__, a, None), property)]

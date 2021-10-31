@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import json
 import time
 import os.path
@@ -10,8 +11,8 @@ from clastic.route import NullRoute
 from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
-from rdb import User, UserDAO
-from utils import MontageError
+from .rdb import User, UserDAO
+from .utils import MontageError
 
 
 def public(endpoint_func):
@@ -49,9 +50,9 @@ class MessageMiddleware(Middleware):
             request_dict = None
         if request.args:
             if request_dict:
-                request_dict.update(request.args.items())
+                request_dict.update(list(request.args.items()))
             else:
-                request_dict = dict(request.args.items())
+                request_dict = dict(list(request.args.items()))
 
         return next(response_dict=response_dict, request_dict=request_dict)
 
@@ -289,7 +290,7 @@ class LoggingMiddleware(Middleware):
             with self.api_log.critical(act_name) as api_act:
                 # basic redacted url
                 api_act['path'] = request.path
-                api_act.data_map.update(request.args.items())
+                api_act.data_map.update(list(request.args.items()))
                 try:
                     ret = next(api_act=api_act, api_log=self.api_log)
                 except clastic.errors.BadRequest as br:

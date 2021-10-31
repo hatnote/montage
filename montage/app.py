@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import os.path
 import logging
@@ -14,25 +16,25 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken
 
-from mw import (UserMiddleware,
+from .mw import (UserMiddleware,
                 UserIPMiddleware,
                 TimingMiddleware,
                 LoggingMiddleware,
                 ReplayLogMiddleware,
                 DBSessionMiddleware,
                 MessageMiddleware)
-from rdb import Base, bootstrap_maintainers, ensure_series
-from utils import get_env_name, load_env_config
-from check_rdb import get_schema_errors, ping_connection
+from .rdb import Base, bootstrap_maintainers, ensure_series
+from .utils import get_env_name, load_env_config
+from .check_rdb import get_schema_errors, ping_connection
 
-from meta_endpoints import META_API_ROUTES, META_UI_ROUTES
-from juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
-from admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
-from public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
+from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
+from .juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
+from .admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
+from .public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 
 import sentry_sdk
 
-from clastic_sentry import SentryMiddleware
+from .clastic_sentry import SentryMiddleware
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -49,14 +51,14 @@ def create_app(env_name='prod', config=None):
                  + ADMIN_UI_ROUTES + META_UI_ROUTES)
     api_routes = (PUBLIC_API_ROUTES + JUROR_API_ROUTES
                  + ADMIN_API_ROUTES + META_API_ROUTES)
-    print '==  creating WSGI app using env name: %s' % (env_name,)
+    print('==  creating WSGI app using env name: %s' % (env_name,))
 
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
     if config is None:
         config = load_env_config(env_name=env_name)
-    print '==  loaded config file: %s' % (config['__file__'],)
+    print('==  loaded config file: %s' % (config['__file__'],))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
@@ -65,21 +67,21 @@ def create_app(env_name='prod', config=None):
 
     schema_errors = get_schema_errors(Base, tmp_rdb_session)
     if not schema_errors:
-        print '++  schema validated ok'
+        print('++  schema validated ok')
     else:
         for err in schema_errors:
-            print '!! ', err
-        print '!!  recreate the database and update the code, then try again'
+            print('!! ', err)
+        print('!!  recreate the database and update the code, then try again')
         sys.exit(2)
 
     # create maintainer users if they don't exist yet
     musers = bootstrap_maintainers(tmp_rdb_session)
     if musers:
-        print '++ created new users for maintainers: %r' % (musers,)
+        print('++ created new users for maintainers: %r' % (musers,))
 
     new_series = ensure_series(tmp_rdb_session)
     if new_series:
-        print '++ created new series: %r' % new_series
+        print('++ created new series: %r' % new_series)
 
     tmp_rdb_session.commit()
 

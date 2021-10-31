@@ -2,9 +2,10 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os
 import json
-import urllib
+import six.moves.urllib.parse, six.moves.urllib.error
 from pprint import pprint
 
 import pytest
@@ -17,6 +18,7 @@ from glom import glom, T
 from montage import utils
 from montage.log import script_log
 from montage.app import create_app, STATIC_PATH
+from montage.utils import unicode
 
 
 class ClasticTestClient(Client):
@@ -47,7 +49,7 @@ class MontageTestClient(object):
         # hyperlinkify url
         su_to = kw.get('su_to')
         if su_to:
-            url_su_to = urllib.quote_plus(su_to.encode('utf8'))
+            url_su_to = six.moves.urllib.parse.quote_plus(su_to.encode('utf8'))
             if '?' in url:
                 url += '&su_to=' + url_su_to
             else:
@@ -89,7 +91,7 @@ class MontageTestClient(object):
         log_level = kw.pop('log_level', INFO)
         error_code = kw.pop('error_code', None)
         if kw:
-            raise TypeError('unexpected kwargs: %r' % kw.keys())
+            raise TypeError('unexpected kwargs: %r' % list(kw.keys()))
 
         with script_log.action(log_level, 'fetch_url') as act:
             resp = self.fetch_url(url,

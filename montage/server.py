@@ -32,8 +32,9 @@ can create Campaigns, and see and interact only with Campaigns they've
 created or been added to. Can Coordinators create other Coordinators?
 
 """
-from app import create_app
-from utils import get_env_name
+from __future__ import absolute_import
+from .app import create_app
+from .utils import get_env_name
 
 # TODO: don't forget to update the app.py one level above on toolforge
 

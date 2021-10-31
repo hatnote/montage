@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # Relational database models for Montage
+from __future__ import absolute_import
+from __future__ import print_function
 import json
 import time
 import random
@@ -10,7 +12,11 @@ import itertools
 from collections import Counter, defaultdict
 from math import ceil
 
-from pyvotecore.schulze_npr import SchulzeNPR
+try:
+    from pyvotecore.schulze_npr import SchulzeNPR
+except ImportError:
+    from py3votecore.schulze_npr import SchulzeNPR
+
 from sqlalchemy import (Text,
                         Column,
                         String,
@@ -33,7 +39,7 @@ from boltons.statsutils import mean
 
 from clastic.errors import Forbidden
 
-from utils import (format_date,
+from .utils import (format_date,
                    to_unicode,
                    get_mw_userid,
                    weighted_choice,
@@ -43,9 +49,9 @@ from utils import (format_date,
                    load_default_series,
                    js_isoparse)
 
-from imgutils import make_mw_img_url
-import loaders
-from simple_serdes import DictableBase, JSONEncodedDict
+from .imgutils import make_mw_img_url
+from . import loaders
+from .simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
@@ -1188,7 +1194,7 @@ class CoordinatorDAO(UserDAO):
                   .update(campaign_dict)
         msg = ('%s edited these columns in campaign "%s" (#%s): %r'
                % (self.user.username, self.campaign.name, self.campaign.id,
-                  campaign_dict.keys()))
+                  list(campaign_dict.keys())))
         self.log_action('edit_campaign', campaign=self.campaign, message=msg)
         return ret
 
@@ -1278,7 +1284,7 @@ class CoordinatorDAO(UserDAO):
             rnd.show_stats = show_stats
 
         msg = ('%s edited these columns in round "%s" (#%s): %r'
-               % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
+               % (self.user.username, rnd.name, rnd.id, list(new_val_map.keys())))
         self.log_action('edit_round', round=rnd, message=msg)
         return new_val_map
 
@@ -2120,7 +2126,7 @@ class CoordinatorDAO(UserDAO):
         juror_alias_map = None
 
         def make_juror_alias_map(juror_ranking_map):
-            jurors = juror_ranking_map.keys()
+            jurors = list(juror_ranking_map.keys())
             random.shuffle(jurors)
             # TODO: gonna be in trouble for final rounds with greater
             # than 26 jurors (double letters)
@@ -2222,7 +2228,7 @@ class OrganizerDAO(object):
                   .update(series_dict))
         msg = ('%s edited these columns in series %s: %r'
                % (self.user.username, series_id,
-                  series_dict.keys()))
+                  list(series_dict.keys())))
         self.log_action('edit_series', message=msg, role='organizer')
         return series
 
@@ -3119,18 +3125,18 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
     return {'incomplete_task_count': len(incomp_votes),
             'reassigned_task_count': len(reassg_votes),
             'task_count_map': vote_count_map,
-            'task_count_mean': mean(vote_count_map.values())}
+            'task_count_mean': mean(list(vote_count_map.values()))}
 
 
 def make_rdb_session(echo=True):
-    from utils import load_env_config
+    from .utils import load_env_config
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     try:
         config = load_env_config()
     except Exception:
-        print '!!  no db_url specified and could not load config file'
+        print('!!  no db_url specified and could not load config file')
         raise
     else:
         db_url = config.get('db_url')

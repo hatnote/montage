@@ -4,7 +4,8 @@
 #
 #    pip-compile --annotation-style=line requirements.in
 #
--e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core  # via -r requirements.in
+-e git+https://github.com/bradbeattie/python-vote-core.git@4c52ccdeb50c265e0a622eac5a02ac7c1dcbd6d2#egg=python_vote_core ; python_version < '3.0'
+-e git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3_vote_core
 ashes==19.2.0             # via -r requirements.in, chert, clastic
 attrs==19.3.0             # via glom
 boltons==20.0.0           # via -r requirements.in, chert, clastic, face, glom, lithoxyl
