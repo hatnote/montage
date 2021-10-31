@@ -349,7 +349,7 @@ import socket
 class ReplayLogMiddleware(Middleware):
     def __init__(self, log_path):
         self.log_path = os.path.abspath(log_path)
-        self.log_file = open(self.log_path, 'ab')
+        self.log_file = open(self.log_path, 'a')
         self.start_timestamp = datetime.datetime.utcnow().isoformat()
         self.hostname = socket.gethostname()
 
