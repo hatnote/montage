@@ -36,7 +36,7 @@ requests-oauthlib==1.3.0  # via mwoauth
 secure-cookie==0.1.0      # via clastic
 sentry-sdk==0.14.2        # via -r requirements.in
 six==1.14.0               # via cryptography, html5lib, mwoauth, pyopenssl, python-dateutil
-sqlalchemy==1.0.14        # via -r requirements.in
+sqlalchemy==1.2.19        # via -r requirements.in
 unicodecsv==0.14.1        # via -r requirements.in
 urllib3==1.25.8           # via requests, sentry-sdk
 webencodings==0.5.1       # via html5lib
