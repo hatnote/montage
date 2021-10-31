@@ -107,12 +107,12 @@ def post_frontend_error_log(user, config, request_dict):
     now_str = now.isoformat()
 
     username = user.username if user else '<nouser>'
-    err_bytes = json.dumps(request_dict, sort_keys=True, indent=2)
-    err_bytes = indent(err_bytes, '  ')
-    with open(feel_path, 'ab') as feel_file:
+    err_str = json.dumps(request_dict, sort_keys=True, indent=2)
+    err_str = indent(err_str, '  ')
+    with open(feel_path, 'a') as feel_file:
         feel_file.write('Begin error at %s:\n\n' % now_str)
         feel_file.write('  + Username: ' + username + '\n')
-        feel_file.write(err_bytes)
+        feel_file.write(err_str)
         feel_file.write('\n\nEnd error at %s\n\n' % now_str)
 
     return

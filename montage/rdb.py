@@ -11,6 +11,10 @@ import datetime
 import itertools
 from collections import Counter, defaultdict
 from math import ceil
+try:
+    from itertools import izip_longest as zip_longest
+except ImportError:
+    from itertools import zip_longest  # py3
 
 try:
     from pyvotecore.schulze_npr import SchulzeNPR
@@ -40,14 +44,15 @@ from boltons.statsutils import mean
 from clastic.errors import Forbidden
 
 from .utils import (format_date,
-                   to_unicode,
-                   get_mw_userid,
-                   weighted_choice,
-                   PermissionDenied, InvalidAction, NotImplementedResponse,
-                   DoesNotExist,
-                   get_env_name,
-                   load_default_series,
-                   js_isoparse)
+                    basestring,
+                    to_unicode,
+                    get_mw_userid,
+                    weighted_choice,
+                    PermissionDenied, InvalidAction, NotImplementedResponse,
+                    DoesNotExist,
+                    get_env_name,
+                    load_default_series,
+                    js_isoparse)
 
 from .imgutils import make_mw_img_url
 from . import loaders
@@ -58,6 +63,7 @@ Base = declarative_base(cls=DictableBase)
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
+UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 # By default, srounds will support all the file types allowed on
 # Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
@@ -2131,7 +2137,7 @@ class CoordinatorDAO(UserDAO):
             # TODO: gonna be in trouble for final rounds with greater
             # than 26 jurors (double letters)
             return dict([(juror, alias) for juror, alias
-                         in zip(jurors, string.uppercase)])
+                         in zip(jurors, UPPERCASE)])
 
         def alias_jurors(juror_ranking_map):
             ret = {}
@@ -2941,7 +2947,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
                                                  for j in jurors])
 
-    pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
+    pairs = zip_longest(to_process, juror_iters, fillvalue=None)
 
     for entry, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'

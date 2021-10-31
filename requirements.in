@@ -1,5 +1,5 @@
 ashes
-boltons
+boltons>=21.0.0
 chert>=21.0.0
 clastic
 face

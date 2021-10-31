@@ -63,7 +63,7 @@ def get_doc(ashes_renderer, path):
     if not doc_path.startswith(DOCS_PATH):
         raise BadRequest('invalid doc path: %r' % doc_path)
     try:
-        doc_md = open(doc_path, 'rb').read()
+        doc_md = open(doc_path, 'r').read()
     except OSError:
         raise BadRequest('could not open doc: %r' % doc_rel_path)
 

@@ -12,7 +12,7 @@ from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
 from .rdb import User, UserDAO
-from .utils import MontageError
+from .utils import MontageError, basestring
 
 
 def public(endpoint_func):

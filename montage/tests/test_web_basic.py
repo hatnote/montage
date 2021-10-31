@@ -576,7 +576,7 @@ def test_home_client(base_client, api_client):
     resp = api_client.fetch_url('/v1/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
     resp_data = resp.get_data()
     assert len(resp_data) > 100
-    assert resp_data.count(',') > 10
+    assert resp_data.count(b',') > 10
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
@@ -866,7 +866,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
     for j_dict in j_dicts:
         j_username = j_dict['username']
-        for i in xrange(100):  # don't go on forever
+        for i in range(100):  # don't go on forever
             t_dicts = fetch('juror: fetch open tasks',
                             '/juror/round/%s/tasks?count=%s'
                             % (round_id, per_fetch), log_level=DEBUG,

@@ -23,8 +23,10 @@ import six
 
 try:
     unicode = unicode
+    basestring = basestring
 except NameError:
     unicode = str
+    basestring = str
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
