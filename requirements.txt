@@ -13,7 +13,7 @@ certifi==2020.4.5.1       # via requests, sentry-sdk
 cffi==1.14.6              # via cryptography
 chardet==3.0.4            # via requests
 chert==21.0.0             # via -r requirements.in
-clastic==20.0.0           # via -r requirements.in
+clastic==21.1.0           # via -r requirements.in
 cryptography==3.3.2       # via pyopenssl
 face==20.1.1              # via -r requirements.in, chert, glom
 glom==19.10.0             # via clastic
