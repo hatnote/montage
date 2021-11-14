@@ -800,7 +800,11 @@ def test_home_client(base_client, api_client):
     resp = base_client.fetch('public: view docs', '/docs')
 
     resp = base_client.fetch('public: view report', '/campaign/1')
+
+    resp = base_client.fetch('meta: view base meta', '/meta/')
+
     #resp = base_client.fetch('public: logout', '/logout')
+
 
 def test_multiple_jurors(api_client):
     # This is copied from above. What's the best way to break up the tests into

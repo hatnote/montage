@@ -38,6 +38,15 @@ def get_active_users(user_dao):
 
 
 def get_audit_logs(user_dao, request):
+    """
+    Available filters (as query parameters):
+
+    - limit (default 10)
+    - offset (default 0)
+    - campaign_id
+    - round_id
+    - action
+    """
     limit = request.values.get('limit', 10)
     offset = request.values.get('offset', 0)
     log_campaign_id = request.values.get('campaign_id')

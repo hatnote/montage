@@ -185,7 +185,7 @@ def get_entries_from_gsheet(raw_url, source='local'):
     except ValueError:
         try:
             ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
-        except ValueError:
+        except (ValueError, TypeError):
             file_names = [fn.strip('\"') for fn in resp.content.split('\n')]
             file_names_obj = BytesIO('\n'.join(file_names))
             ret, warnings = load_name_list(file_names_obj, source=source)

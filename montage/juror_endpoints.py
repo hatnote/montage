@@ -347,7 +347,6 @@ def skip_rating(user_dao, round_id, request, request_dict):
     try:
         vote_id = request_dict['vote_id']
     except Exception as e:
-        import pdb;pdb.set_trace()
         raise InvalidAction('must provide skip id')
 
     juror_dao.skip_voting(vote_id)
