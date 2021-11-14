@@ -18,3 +18,4 @@ recursive-include montage *.py
 recursive-include montage *.svg
 recursive-include test_data *.csv
 recursive-include tools *.py
+global-exclude flycheck_*
