@@ -297,7 +297,7 @@ def submit_ratings(user_dao, request_dict):
                                 % (sorted(set(invalid))))
         ranks = sorted([int(v) for v in id_map.values()])
         last_rank = max(ranks)
-        len_rnd_entries = len(rnd.entries)
+        len_rnd_entries = len([e for e in rnd.round_entries if not e.dq_reason])
         max_ok_rank = len_rnd_entries - 1
         if last_rank > max_ok_rank:
             raise InvalidAction('ranking for round #%s expects ranks 0 - %s,'
