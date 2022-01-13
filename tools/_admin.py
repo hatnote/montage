@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 import os
 import sys
 
@@ -77,7 +79,7 @@ class AdminTool(object):
 
     def coordinator(self, round_id=None, campaign_id=None):
         if round_id:
-            print round_id
+            print(round_id)
             coord = CoordinatorDAO.from_round(self.user_dao, round_id)
         elif campaign_id:
             coord = CoordinatorDAO.from_campaign(self.user_dao,
