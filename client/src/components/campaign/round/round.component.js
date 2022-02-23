@@ -18,6 +18,7 @@ function controller($window, adminService, alertService) {
   vm.activateRound = activateRound;
   vm.downloadResults = downloadResults;
   vm.downloadEntries = downloadEntries;
+  vm.downloadReviews = downloadReviews;
   vm.finalizeRound = finalizeRound;
   vm.pauseRound = pauseRound;
   vm.populateRound = populateRound;
@@ -25,12 +26,19 @@ function controller($window, adminService, alertService) {
     vm.round.edit = true;
   };
   vm.getReportedFiles = getReportedFiles;
+  vm.hasReviews = false
 
   // functions
 
   vm.$onInit = () => {
     getRoundDetails(vm.round);
     getRoundResults(vm.round);
+
+    adminService.getReviews(vm.round.id).then(data => {
+      if (data.data.length > 0) {
+        vm.hasReviews = true
+      }
+    })
   };
 
   /**
@@ -61,6 +69,15 @@ function controller($window, adminService, alertService) {
     const url = adminService.downloadEntries(vm.round.id);
     $window.open(url);
   }
+
+  /**
+   *
+   */
+  function downloadReviews() {
+    const url = adminService.downloadReviews(vm.round.id);
+    $window.open(url);
+  }
+
 
   /**
    *

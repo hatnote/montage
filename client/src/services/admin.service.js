@@ -6,6 +6,7 @@ const Service = ($http, $q, $window) => {
     allCampaigns: () => $http.get(base + '/campaigns/all'),
     getCampaign: id => $http.get([base, 'campaign', id].join('/')),
     getRound: id => $http.get([base, 'round', id].join('/')),
+    getReviews: id => $http.get([base, 'round', id, 'reviews'].join('/')),
 
     addOrganizer: data => $http.post(`${base}/add_organizer`, data),
     addCampaign: data => $http.post(`${base}/add_campaign`, data),
@@ -31,7 +32,8 @@ const Service = ($http, $q, $window) => {
     advanceRound: (id, data) => $http.post(`${base}/round/${id}/advance`, data),
 
     downloadRound: id => `${base}/round/${id}/results/download`,
-    downloadEntries: id => `${base}/round/${id}/entries/download`
+    downloadEntries: id => `${base}/round/${id}/entries/download`,
+    downloadReviews: id => `${base}/round/${id}/reviews`
   };
 
   return admin;

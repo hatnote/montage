@@ -181,6 +181,12 @@
         <md-icon>collections</md-icon>
         Download Entries
       </md-button>
+      <md-button
+          ng-click="$ctrl.downloadReviews()"
+          ng-if="$ctrl.hasReviews">
+        <md-icon>feedback</md-icon>
+        See Jury Comments
+      </md-button>
       <md-button ng-if="false"
           ng-disabled="($ctrl.round.status !== 'paused' && $ctrl.round.status !== 'finalized') || $ctrl.loading"
           ng-click="$ctrl.populateRound()">
