@@ -22,7 +22,7 @@
     "rollup-plugin-svelte": "^5.1.1",
     "sass": "^1.26.2",
     "serve": "^11.3.0",
-    "svelte": "^3.18.1",
+    "svelte": "^3.49.0",
     "svelte-material-ui": "^1.0.0-beta.20",
     "svelte-spa-router": "^2.0.0"
   }
