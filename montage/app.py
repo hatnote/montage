@@ -4,8 +4,6 @@ import sys
 import os.path
 import logging
 
-from boltons.urlutils import URL
-
 from clastic import Application, StaticFileRoute, MetaApplication
 
 from clastic.static import StaticApplication
@@ -108,15 +106,7 @@ def create_app(env_name='prod', config=None):
         scm_mw.data_expiry = NEVER
 
     def get_engine():
-        db_url = config.get('db_url', DEFAULT_DB_URL)
-        if 'mysql' in db_url:
-            url_obj = URL(db_url)
-            # session collation is utf8mb4_general_ci by default, 
-            # all our tables are utf8mb4_unicode_ci.
-            # without this, "in" operators fail with error code 1271.
-            url_obj.qp.update({'charset': 'utf8mb4', 'collation': 'utf8mb4_unicode_ci'})
-            db_url = url_obj.to_text()
-        engine = create_engine(db_url, pool_recycle=60)
+        engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
         engine.echo = config.get('db_echo', False)
         if not config.get('db_disable_ping'):
             event.listen(engine, 'engine_connect', ping_connection)
