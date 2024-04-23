@@ -45,7 +45,7 @@ TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
 
 
-def set_mysql_session_charset_and_collation(connection):
+def set_mysql_session_charset_and_collation(connection, branch):
     # https://dev.mysql.com/doc/refman/8.0/en/set-names.html
     connection.execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'")
     return
@@ -120,7 +120,7 @@ def create_app(env_name='prod', config=None):
 
         if 'mysql' in db_url:
             event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
-            
+
         return engine
 
     blank_session_type = sessionmaker()
