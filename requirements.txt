@@ -13,7 +13,7 @@ cffi==1.16.0              # via cryptography
 charset-normalizer==3.3.2  # via requests
 chert==21.0.0             # via -r requirements.in
 clastic==24.0.0           # via -r requirements.in
-cryptography==42.0.5      # via pyopenssl
+cryptography==40.0.2      # via -r requirements.in, pyopenssl
 face==20.1.1              # via -r requirements.in, chert, glom
 glom==23.5.0              # via clastic
 html5lib==1.1             # via chert
@@ -27,7 +27,7 @@ oauthlib==3.2.2           # via mwoauth, requests-oauthlib
 pycparser==2.22           # via cffi
 pyjwt==2.8.0              # via mwoauth
 pymysql==0.9.3            # via -r requirements.in
-pyopenssl==24.1.0         # via -r requirements.in
+pyopenssl==23.2.0         # via -r requirements.in
 python-dateutil==2.9.0.post0  # via chert
 python-graph-core==1.8.2  # via -r requirements.in, python3-vote-core
 pyyaml==6.0.1             # via chert
