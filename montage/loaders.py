@@ -186,8 +186,9 @@ def get_entries_from_gsheet(raw_url, source='local'):
         try:
             ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
         except (ValueError, TypeError):
-            file_names = [fn.strip('\"') for fn in resp.content.split('\n')]
-            file_names_obj = BytesIO('\n'.join(file_names))
+            resp_content = resp.content.decode('utf8')
+            file_names = [fn.strip('\"') for fn in resp_content.split('\n')]
+            file_names_obj = StringIO('\n'.join(file_names))
             ret, warnings = load_name_list(file_names_obj, source=source)
 
     return ret, warnings
@@ -234,9 +235,8 @@ def get_from_category_remote(category_name):
     file_infos, _ = get_from_remote(url, params)
     return file_infos
 
-
 def get_from_remote(url, params):
-    headers = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     data = json.dumps(params)
     response = requests.post(url, data=data, headers=headers)
     resp_json = response.json()
