@@ -582,7 +582,10 @@ def advance_round(user_dao, round_id, request_dict):
 
     if rnd.vote_method not in ('rating', 'yesno'):
         raise NotImplementedResponse()  # see docstring above
-    threshold = float(request_dict['threshold'])
+    try:
+        threshold = float(request_dict['threshold'])
+    except KeyError:
+        raise InvalidAction('unset threshold. set the threshold and try again.')
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
 
