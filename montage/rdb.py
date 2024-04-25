@@ -1276,6 +1276,8 @@ class CoordinatorDAO(UserDAO):
             if rnd.status != PAUSED_STATUS:
                 raise InvalidAction('round must be paused to edit jurors')
             else:
+                if not all([isinstance(jn, str) for jn in new_juror_names]):
+                    raise InvalidAction('new_jurors must be a list of strings')
                 new_juror_stats = self.modify_jurors(round_id, new_juror_names)
                 new_val_map['new_jurors'] = new_juror_names
         new_quorum = round_dict.get('quorum')
