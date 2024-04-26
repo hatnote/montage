@@ -8,6 +8,7 @@ mwoauth
 # mysqlclient  # only on toolforge
 sentry-sdk
 pyopenssl
+sqltap
 
 # look at:
 python-graph-core==1.8.2

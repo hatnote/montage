@@ -22,7 +22,8 @@ from .mw import (UserMiddleware,
                 LoggingMiddleware,
                 ReplayLogMiddleware,
                 DBSessionMiddleware,
-                MessageMiddleware)
+                MessageMiddleware,
+                SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
 from .utils import get_env_name, load_env_config
 from .check_rdb import get_schema_errors, ping_connection
@@ -127,6 +128,7 @@ def create_app(env_name='prod', config=None):
 
     middlewares = [TimingMiddleware(),
                    UserIPMiddleware(),
+                   SQLProfilerMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(blank_session_type, get_engine),
                    UserMiddleware()]

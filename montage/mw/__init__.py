@@ -11,8 +11,10 @@ from clastic.route import NullRoute
 from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
-from .rdb import User, UserDAO
-from .utils import MontageError, basestring
+from montage.rdb import User, UserDAO
+from montage.utils import MontageError, basestring
+
+from .sqlprof import SQLProfilerMiddleware
 
 
 def public(endpoint_func):
@@ -22,7 +24,6 @@ def public(endpoint_func):
     endpoint_func.is_public = True
 
     return endpoint_func
-
 
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
@@ -172,7 +173,7 @@ class UserMiddleware(Middleware):
         ret = next(user=user, user_dao=user_dao)
 
         return ret
-
+    
 
 class UserIPMiddleware(Middleware):
     provides = ('user_ip',)

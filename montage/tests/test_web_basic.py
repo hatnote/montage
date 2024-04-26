@@ -185,7 +185,6 @@ def test_home_client(base_client, api_client):
                  '/admin/series/%s/edit' % most_recent_series,
                  {'status': 'cancelled'})
 
-
     resp = fetch('maintainer: add organizer',
                  '/admin/add_organizer',
                  {'username': 'Yarl'})
@@ -295,8 +294,9 @@ def test_home_client(base_client, api_client):
     round_id = resp['data']['id']
 
     resp = fetch('coordinator: get round details',
-                 '/admin/round/%s' % round_id,
+                 '/admin/round/%s?profilesql=true' % round_id,
                  as_user='LilyOfTheWest')
+    assert resp['__sql_profile__'] and len(resp['__sql_profile__']) > 1000
 
     resp = fetch('coordinator: edit round details',
                  '/admin/round/%s/edit' % round_id,
