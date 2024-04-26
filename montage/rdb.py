@@ -352,9 +352,10 @@ class Round(Base):
         if not rdb_session:
             rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
-                          .filter(Vote.round_entry.has(round_id=self.id),
-                                  Vote.status != CANCELLED_STATUS)
-                          .count())
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == self.id,
+                                Vote.status != CANCELLED_STATUS)
+                        .count())
         return ret
 
     def get_count_map(self):
