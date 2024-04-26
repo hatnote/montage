@@ -1681,7 +1681,8 @@ class CoordinatorDAO(UserDAO):
     def cancel_round(self, round_id):
         rnd = self.get_round(round_id)
         votes = self.query(Vote)\
-                    .filter(Vote.round_entry.has(round_id=round_id),
+                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                    .filter(RoundEntry.round_id == round_id,
                             Vote.status == 'active')\
                     .all()
         cancel_date = datetime.datetime.utcnow()
@@ -1840,11 +1841,11 @@ class CoordinatorDAO(UserDAO):
 
     def get_round_average_rating_map(self, round_id):
         results = self.query(Vote, func.avg(Vote.value).label('average'))\
-                      .join(RoundEntry)\
-                      .filter(Vote.round_entry.has(round_id=round_id),
-                              Vote.status == COMPLETED_STATUS)\
-                      .group_by(Vote.round_entry_id)\
-                      .all()
+                 .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                 .filter(RoundEntry.round_id == round_id,
+                         Vote.status == COMPLETED_STATUS)\
+                 .group_by(Vote.round_entry_id)\
+                 .all()
 
         # thresh_counts = get_threshold_map(r[1] for r in ratings)
         rating_ctr = Counter([r[1] for r in results])
@@ -1853,10 +1854,11 @@ class CoordinatorDAO(UserDAO):
 
     def get_round_ranking_list(self, round_id, notation=None):
         res = (self.query(Vote)
-               .options(joinedload('round_entry'))
-               .filter(Vote.round_entry.has(round_id=round_id),
-                       Vote.status == COMPLETED_STATUS)
-               .all())
+                .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                .options(joinedload('round_entry'))
+                .filter(RoundEntry.round_id == round_id,
+                        Vote.status == COMPLETED_STATUS)
+                .all())
         all_inputs = []
         by_juror_id = bucketize(res, lambda r: r.user_id)
         entry_user_review_map = {}
@@ -2472,15 +2474,17 @@ class JurorDAO(object):
         # should be on the Round model or somewhere else shared
         re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
         total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=round_id),
+                          .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                          .filter(RoundEntry.round_id == round_id,
                                   Vote.user_id == self.user.id,
                                   Vote.status != CANCELLED_STATUS)\
                           .count()
         total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=round_id),
-                                       Vote.user_id == self.user.id,
-                                       Vote.status == ACTIVE_STATUS)\
-                               .count()
+                            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                            .filter(RoundEntry.round_id == round_id,
+                                    Vote.user_id == self.user.id,
+                                    Vote.status == ACTIVE_STATUS)\
+                            .count()
 
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
@@ -2519,11 +2523,11 @@ class JurorDAO(object):
     def get_tasks_from_round(self, round_id, num=1, offset=0):
         # TODO: remove offset once it's removed from the client
         task_query = (self.query(Vote)
-                          .filter_by(user=self.user,
-                                     status=ACTIVE_STATUS)
-                          .filter(
-                            Vote.round_entry.has(round_id=round_id))
-                          .order_by(Vote.id))
+                        .filter_by(user=self.user,
+                                   status=ACTIVE_STATUS)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == round_id)
+                        .order_by(Vote.id))
 
         # Check if this round_juror has skipped any tasks
         round_juror = self._get_round_juror(round_id)
@@ -2564,11 +2568,12 @@ class JurorDAO(object):
                                sort, order_by, offset=0):
         # all the filter fields but cancel_date are actually on Vote
         # already
-        ratings_query = (self.query(Vote)\
-                      .options(joinedload('round_entry'))
-                      .filter(Vote.user == self.user,
-                              Vote.status == COMPLETED_STATUS,
-                              Vote.round_entry.has(round_id=round_id)))
+        ratings_query = (self.query(Vote)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(Vote.user == self.user,
+                                Vote.status == COMPLETED_STATUS,
+                                RoundEntry.round_id == round_id)
+                        .options(joinedload('round_entry')))
         if order_by == 'value' and sort == 'desc':
             ratings_query = ratings_query.order_by(Vote.value.desc())
         elif order_by == 'value' and sort == 'asc':
@@ -2585,11 +2590,12 @@ class JurorDAO(object):
         return ratings
 
     def get_rating_stats_from_round(self, round_id):
-        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)\
-                      .filter(Vote.user == self.user,
-                              Vote.status == COMPLETED_STATUS,
-                              Vote.round_entry.has(round_id=round_id))
-                      .group_by(Vote.value))
+        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(Vote.user == self.user,
+                                Vote.status == COMPLETED_STATUS,
+                                RoundEntry.round_id == round_id)
+                        .group_by(Vote.value))
 
         ratings = ratings_query.all()
 
@@ -2597,9 +2603,10 @@ class JurorDAO(object):
 
     def get_rankings_from_round(self, round_id):
         rankings = self.query(Vote)\
+                       .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
                        .filter(Vote.user == self.user,
                                Vote.status == COMPLETED_STATUS,
-                               Vote.round_entry.has(round_id=round_id))\
+                               RoundEntry.round_id == round_id)\
                        .options(joinedload('round_entry'))\
                        .all()
         return rankings
@@ -2737,7 +2744,8 @@ class JurorDAO(object):
 
     def get_ballot(self, round_id):
         results = (self.query(Vote, Vote.value)
-                       .filter(Vote.round_entry.has(round_id=round_id),
+                       .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                       .filter(RoundEntry.round_id == round_id,
                                Vote.status == COMPLETED_STATUS,
                                Vote.user == self.user)
                        .all())
@@ -2837,9 +2845,10 @@ class JurorDAO(object):
 
     def unfave(self, round_id, entry_id):
         fave = (self.query(Favorite)
-               .filter_by(entry_id=entry_id,
-                          user=self.user)
-               .filter(Favorite.round_entry.has(round_id=round_id))
+               .join(RoundEntry, RoundEntry.id == Favorite.round_entry_id)
+               .filter(Favorite.entry_id == entry_id,
+                       Favorite.user == self.user,
+                       RoundEntry.round_id == round_id)
                .one())
         fave.status = CANCELLED_STATUS
         fave.modified_date = datetime.datetime.utcnow()
