@@ -343,9 +343,10 @@ class Round(Base):
         if not rdb_session:
             rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
-                          .filter(Vote.round_entry.has(round_id=self.id),
-                                  Vote.status == ACTIVE_STATUS)
-                          .count())
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == self.id,
+                                Vote.status == ACTIVE_STATUS)
+                        .count())
         return ret
 
     def _get_task_count(self, rdb_session=None):
@@ -370,9 +371,10 @@ class Round(Base):
         open_task_count = self._get_open_task_count(rdb_session=rdb_session)
         task_count = self._get_task_count(rdb_session=rdb_session)
         cancelled_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.id),
-                                             Vote.status == CANCELLED_STATUS)\
-                                     .count()
+                                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                        .filter(RoundEntry.round_id == self.id,
+                                                Vote.status == CANCELLED_STATUS)\
+                                        .count()
         dq_entry_count = rdb_session.query(RoundEntry)\
                                     .filter_by(round_id=self.id)\
                                     .filter(RoundEntry.dq_reason != None)\
@@ -415,17 +417,11 @@ class Round(Base):
         if not rdb_session:
             # TODO: see above
             raise RuntimeError('cannot get counts for detached Round')
-        '''
-        open_tasks = rdb_session.query(Task)\
-                                .filter(Task.round_entry.has(round_id=self.id),
-                                        Task.complete_date == None,
-                                        Task.cancel_date == None)\
-                                .count()
-        '''
+
         if self.entries and self.status == ACTIVE_STATUS or self.status == PAUSED_STATUS:
             active_votes = rdb_session.query(Vote)\
-                                    .options(joinedload('round_entry'))\
-                                    .filter(Vote.round_entry.has(round_id=self.id),
+                                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                    .filter(RoundEntry.round_id == self.id,
                                             Vote.status == ACTIVE_STATUS)\
                                     .first()
             return not active_votes
@@ -494,21 +490,27 @@ class RoundJuror(Base):
         if not rdb_session:
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
+
         task_count = rdb_session.query(Vote)\
-                                .filter(Vote.round_entry.has(round_id=self.round_id),
+                                .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                .filter(RoundEntry.round_id == self.round_id,
                                         Vote.user_id == self.user_id,
                                         Vote.status != CANCELLED_STATUS)\
                                 .count()
+
         open_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.round_id),
-                                             Vote.user_id == self.user_id,
-                                             Vote.status == ACTIVE_STATUS)\
-                                     .count()
+                                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                    .filter(RoundEntry.round_id == self.round_id,
+                                            Vote.user_id == self.user_id,
+                                            Vote.status == ACTIVE_STATUS)\
+                                    .count()
+
         cancelled_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.round_id),
-                                             Vote.user_id == self.user_id,
-                                             Vote.status == CANCELLED_STATUS)\
-                                     .count()
+                                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                        .filter(RoundEntry.round_id == self.round_id,
+                                                Vote.user_id == self.user_id,
+                                                Vote.status == CANCELLED_STATUS)\
+                                        .count()
         if task_count:
             percent_open = round((100.0 * open_task_count) / task_count, 3)
         else:
@@ -1155,16 +1157,20 @@ class CoordinatorDAO(UserDAO):
         # the fact that these are identical for two DAOs shows it
         # should be on the Round model or somewhere else shared
         re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
+
         total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=round_id),
-                                  Vote.user_id == self.user.id,
-                                  Vote.status != CANCELLED_STATUS)\
-                          .count()
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                        .filter(RoundEntry.round_id == round_id,
+                                Vote.user_id == self.user.id,
+                                Vote.status != CANCELLED_STATUS)\
+                        .count()
+
         total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=round_id),
-                                       Vote.user_id == self.user.id,
-                                       Vote.status == ACTIVE_STATUS)\
-                               .count()
+                            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                            .filter(RoundEntry.round_id == round_id,
+                                    Vote.user_id == self.user.id,
+                                    Vote.status == ACTIVE_STATUS)\
+                            .count()
 
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)

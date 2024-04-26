@@ -49,7 +49,7 @@ Some tips (at the time of writing):
   thread for details on using `GOMAXPROCS`.
 - All this only deploys the backend for now.
 
-### Installing on toolforge rom scratch
+### Installing on toolforge from scratch
 
 2024-04-23
 
@@ -75,3 +75,13 @@ pip install mysqlclient
 ```
 
 From https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#Python:_Django
+
+## Database administration notes
+
+With the move to mariadb, the easiest way to access Montage's own data (not the replicas) is:
+
+```
+# on toolforge, become montage
+$ sql tools
+> use s53490__montage;s
+```
