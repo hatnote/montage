@@ -166,7 +166,7 @@ def create_app(env_name='prod', config=None):
     if not debug_errors:
         # don't need sentry if you've got pdb, etc.
         sentry_sdk.init(environment=config['__env__'],
-                        request_bodies='medium',
+                        max_request_body_size='medium',
                         dsn="https://5738a89dcd5e4b599f7a801fd63bc217@sentry.io/3532775")
         root_mws.append(SentryMiddleware())
 
