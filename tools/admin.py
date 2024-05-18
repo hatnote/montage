@@ -46,7 +46,7 @@ RANKING_MAX = 40
 
 def warn(msg, force=False):
     if not force:
-        confirmed = raw_input('??  %s. Type yes to confirm: ' % msg)
+        confirmed = input('??  %s. Type yes to confirm: ' % msg)
 
         if not confirmed == 'yes':
             print(('-- you typed %r, aborting' % confirmed))
@@ -129,7 +129,7 @@ def _input(prompt, blank=None):
     # TODO: if blank is MISSING, be more insistent, with message about
     # ctrld/ctrlc to exit
     try:
-        ret = raw_input(prompt).strip() or blank
+        ret = input(prompt).strip() or blank
     except (EOFError, KeyboardInterrupt):
         raise SystemExit(0)
     return ret
@@ -182,26 +182,26 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     # TODO: this looks messy below, campaign was semi-undefined and
     # the comment about rdb_session rollback may not be true.
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    rnd_name = raw_input('?? Round name: ')
+    rnd_name = input('?? Round name: ')
     if not rnd_name:
         print('-- round name required, aborting')
         sys.exit(0)
-    juror_names_str = raw_input('?? Juror names (comma separated): ')
+    juror_names_str = input('?? Juror names (comma separated): ')
     juror_names = [j.strip() for j in juror_names_str.split(',')]
-    vote_method = raw_input('?? Vote method (rating, yesno, or ranking): ')
+    vote_method = input('?? Vote method (rating, yesno, or ranking): ')
     if vote_method not in ['rating', 'yesno', 'ranking']:
         print('-- vote method must be rating, yesno, or ranking, aborting')
         sys.exit(0)
     if vote_method != 'ranking':
-        quorum = raw_input('?? Voting quorum: ')
+        quorum = input('?? Voting quorum: ')
     else:
         quorum = len(juror_names)
-    deadline_date_str = raw_input('?? Deadline date: ')
+    deadline_date_str = input('?? Deadline date: ')
     deadline_date = datetime.datetime.strptime(deadline_date_str, '%Y-%m-%d')
-    description = raw_input('?? Description: ')
-    directions = raw_input('?? Directions: ')
+    description = input('?? Description: ')
+    directions = input('?? Directions: ')
     if not advance:
-        category_name = raw_input('?? Category: ')
+        category_name = input('?? Category: ')
     rnd = coord_dao.create_round(name=rnd_name,
                                  quorum=quorum,
                                  vote_method=vote_method,
@@ -273,14 +273,7 @@ def pause_round(maint_dao, round_id):
 def remove_coordinator(maint_dao, campaign_id, username):
     # TODO: the campaign_coords table should have an is_active column
     raise NotImplementedError('cannot remove coordinators for now')
-    '''
-    camp = maint_dao.get_campaign(campaign_id)
-    user = maint_dao.get_or_create_user(username, 'coordinator',
-                                        campaign=camp)
-    print ('-- remvoed %s as coordinator from campaign %s (%s)'
-           % (username, campaign_id, camp.name))
-    return
-    '''
+
 
 def retask_duplicate_ratings(maint_dao, round_id):
     'reassign all ratings that were duplicated'
@@ -487,11 +480,11 @@ def edit_round_quorum(maint_dao, round_id):
     rnd = maint_dao.get_round(round_id)
     old_quorum = rnd.quorum
     if rnd.status != 'paused':
-        print ('-- round must be paused to edit quorum, aborting')
+        print('-- round must be paused to edit quorum, aborting')
         return
     print(('!! new quorum cannot be lower than current quorum: %s' % old_quorum))
     print(('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors)))
-    new_quorum = int(raw_input('?? New quorum: '))
+    new_quorum = int(input('?? New quorum: '))
     new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
 
     maint_dao.rdb_session.commit()
@@ -511,7 +504,7 @@ def advance_round(user_dao, round_id, debug):
     threshold_map = get_threshold_map(avg_ratings_map)
     print('-- Round threshold map...')
     pprint(threshold_map)
-    threshold = raw_input('?? Include at least how many images: ')
+    threshold = input('?? Include at least how many images: ')
     threshold = int(threshold)
     if not threshold:
         print('-- no threshold provided, aborting')
@@ -602,13 +595,13 @@ def rdb_console(command_, maint_dao, user_dao, org_dao, rdb_session):
 
 def create_campaign(org_dao):
     "interactively create a campaign"
-    camp_name = raw_input('?? Campaign name: ')
+    camp_name = input('?? Campaign name: ')
     if not camp_name:
         print('-- campaign name required, aborting')
         sys.exit(0)
-    open_date_str = raw_input('?? Open date: ')
+    open_date_str = input('?? Open date: ')
     open_date = datetime.datetime.strptime(open_date_str, '%Y-%m-%d')
-    close_date_str = raw_input('?? Close date: ')
+    close_date_str = input('?? Close date: ')
     close_date = datetime.datetime.strptime(close_date_str, '%Y-%m-%d')
     campaign = org_dao.create_campaign(name=camp_name,
                                        open_date=open_date,

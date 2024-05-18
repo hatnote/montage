@@ -51,7 +51,7 @@ def main():
             db_url = config.get('db_url')
 
     if not args.force:
-        confirmed = raw_input('??  this will drop all tables from %r.'
+        confirmed = input('??  this will drop all tables from %r.'
                               ' type yes to confirm: ' % db_url)
         if not confirmed == 'yes':
             print('--  you typed %r, aborting' % confirmed)
