@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import os.path
 import logging
@@ -14,25 +16,26 @@ from sqlalchemy.orm import sessionmaker
 
 from mwoauth import ConsumerToken
 
-from mw import (UserMiddleware,
+from .mw import (UserMiddleware,
                 UserIPMiddleware,
                 TimingMiddleware,
                 LoggingMiddleware,
                 ReplayLogMiddleware,
                 DBSessionMiddleware,
-                MessageMiddleware)
-from rdb import Base, bootstrap_maintainers, ensure_series
-from utils import get_env_name, load_env_config
-from check_rdb import get_schema_errors, ping_connection
+                MessageMiddleware,
+                SQLProfilerMiddleware)
+from .rdb import Base, bootstrap_maintainers, ensure_series
+from .utils import get_env_name, load_env_config
+from .check_rdb import get_schema_errors, ping_connection
 
-from meta_endpoints import META_API_ROUTES, META_UI_ROUTES
-from juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
-from admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
-from public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
+from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
+from .juror_endpoints import JUROR_API_ROUTES, JUROR_UI_ROUTES
+from .admin_endpoints import ADMIN_API_ROUTES, ADMIN_UI_ROUTES
+from .public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 
 import sentry_sdk
 
-from clastic_sentry import SentryMiddleware
+from .clastic_sentry import SentryMiddleware
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -43,20 +46,26 @@ TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
 
 
+def set_mysql_session_charset_and_collation(connection, branch):
+    # https://dev.mysql.com/doc/refman/8.0/en/set-names.html
+    connection.execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'")
+    return
+
+
 def create_app(env_name='prod', config=None):
     # rendering is handled by MessageMiddleware
     ui_routes = (PUBLIC_UI_ROUTES + JUROR_UI_ROUTES
                  + ADMIN_UI_ROUTES + META_UI_ROUTES)
     api_routes = (PUBLIC_API_ROUTES + JUROR_API_ROUTES
                  + ADMIN_API_ROUTES + META_API_ROUTES)
-    print '==  creating WSGI app using env name: %s' % (env_name,)
+    print('==  creating WSGI app using env name: %s' % (env_name,))
 
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
     if config is None:
         config = load_env_config(env_name=env_name)
-    print '==  loaded config file: %s' % (config['__file__'],)
+    print('==  loaded config file: %s' % (config['__file__'],))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
@@ -65,21 +74,21 @@ def create_app(env_name='prod', config=None):
 
     schema_errors = get_schema_errors(Base, tmp_rdb_session)
     if not schema_errors:
-        print '++  schema validated ok'
+        print('++  schema validated ok')
     else:
         for err in schema_errors:
-            print '!! ', err
-        print '!!  recreate the database and update the code, then try again'
+            print('!! ', err)
+        print('!!  recreate the database and update the code, then try again')
         sys.exit(2)
 
     # create maintainer users if they don't exist yet
     musers = bootstrap_maintainers(tmp_rdb_session)
     if musers:
-        print '++ created new users for maintainers: %r' % (musers,)
+        print('++ created new users for maintainers: %r' % (musers,))
 
     new_series = ensure_series(tmp_rdb_session)
     if new_series:
-        print '++ created new series: %r' % new_series
+        print('++ created new series: %r' % new_series)
 
     tmp_rdb_session.commit()
 
@@ -104,16 +113,22 @@ def create_app(env_name='prod', config=None):
         scm_mw.data_expiry = NEVER
 
     def get_engine():
-        engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
+        db_url = config.get('db_url', DEFAULT_DB_URL)
+        engine = create_engine(db_url, pool_recycle=60)
         engine.echo = config.get('db_echo', False)
         if not config.get('db_disable_ping'):
             event.listen(engine, 'engine_connect', ping_connection)
+
+        if 'mysql' in db_url:
+            event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
+
         return engine
 
     blank_session_type = sessionmaker()
 
     middlewares = [TimingMiddleware(),
                    UserIPMiddleware(),
+                   SQLProfilerMiddleware(),
                    scm_mw,
                    DBSessionMiddleware(blank_session_type, get_engine),
                    UserMiddleware()]
@@ -151,7 +166,7 @@ def create_app(env_name='prod', config=None):
     if not debug_errors:
         # don't need sentry if you've got pdb, etc.
         sentry_sdk.init(environment=config['__env__'],
-                        request_bodies='medium',
+                        max_request_body_size='medium',
                         dsn="https://5738a89dcd5e4b599f7a801fd63bc217@sentry.io/3532775")
         root_mws.append(SentryMiddleware())
 

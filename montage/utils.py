@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
-import json
 import bisect
 import random
 import getpass
 import os.path
 import datetime
-from urllib import urlencode
+from six.moves.urllib.parse import urlencode
 
 
 import yaml
@@ -17,7 +18,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from boltons.timeutils import isoparse
 
-from check_rdb import get_schema_errors
+from .check_rdb import get_schema_errors
+import six
+
+try:
+    unicode = unicode
+    basestring = basestring
+except NameError:
+    unicode = str
+    basestring = str
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -63,7 +72,7 @@ def to_unicode(obj):
 
 def encode_dict_to_bytes(query):
     if hasattr(query, 'items'):
-        query = query.items()
+        query = list(query.items())
 
     for key, value in query:
         if isinstance(value, list):
@@ -141,7 +150,7 @@ def load_env_config(env_name=None):
     try:
         config = yaml.safe_load(open(config_file_path))
     except Exception:
-        print '!! failed to load config file: %s' % (config_file_path,)
+        print('!! failed to load config file: %s' % (config_file_path,))
         raise
 
     config['__env__'] = env_name
@@ -163,11 +172,11 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
     tmp_rdb_session = session_type()
     schema_errors = get_schema_errors(base_type, tmp_rdb_session)
     if not schema_errors:
-        print '++  schema validated ok'
+        print('++  schema validated ok')
     else:
         for err in schema_errors:
-            print '!! ', err
-        print '!!  recreate the database and update the code, then try again'
+            print('!! ', err)
+        print('!!  recreate the database and update the code, then try again')
         if autoexit:
             sys.exit(2)
     return schema_errors
@@ -218,7 +227,7 @@ def process_weighted_choices(wcp):
     if not wcp:
         raise ValueError('expected weight-choice list or map, not %r' % wcp)
     if isinstance(wcp, dict):
-        wcp = wcp.items()
+        wcp = list(wcp.items())
     else:
         wcp = list(wcp)
     if any([p[0] < 0 for p in wcp]):

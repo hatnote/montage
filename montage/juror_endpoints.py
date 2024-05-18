@@ -1,12 +1,14 @@
 
+from __future__ import absolute_import
 from itertools import groupby
 
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
-from rdb import JurorDAO
-from utils import format_date, PermissionDenied, InvalidAction
+from .rdb import JurorDAO
+from .utils import format_date, PermissionDenied, InvalidAction
+import six
 
 MAX_RATINGS_SUBMIT = 100
 VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
@@ -189,7 +191,7 @@ def get_votes_stats_from_round(user_dao, round_id):
 def _get_summarized_votes_stats(juror_dao, round_id, vote_map):
     stats = {}
 
-    for value in vote_map.itervalues():
+    for value in six.itervalues(vote_map):
         stats[value] = 0
 
     raw_ratings = juror_dao.get_rating_stats_from_round(round_id)
@@ -268,7 +270,7 @@ def submit_ratings(user_dao, request_dict):
     if not len(id_map) == len(r_dicts):
         pass  # duplicate values
 
-    tasks = juror_dao.get_tasks_by_id(id_map.keys())
+    tasks = juror_dao.get_tasks_by_id(list(id_map.keys()))
     task_map = dict([(t.id, t) for t in tasks])
     round_id_set = set([t.round_entry.round_id for t in tasks])
     if not len(round_id_set) == 1:
@@ -345,7 +347,6 @@ def skip_rating(user_dao, round_id, request, request_dict):
     try:
         vote_id = request_dict['vote_id']
     except Exception as e:
-        import pdb;pdb.set_trace()
         raise InvalidAction('must provide skip id')
 
     juror_dao.skip_voting(vote_id)

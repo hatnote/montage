@@ -11,6 +11,8 @@ TODO:
 
 """
 
+from __future__ import print_function
+from __future__ import absolute_import
 import os
 import sys
 import random
@@ -47,7 +49,7 @@ def warn(msg, force=False):
         confirmed = raw_input('??  %s. Type yes to confirm: ' % msg)
 
         if not confirmed == 'yes':
-            print('-- you typed %r, aborting' % confirmed)
+            print(('-- you typed %r, aborting' % confirmed))
             sys.exit(0)
 
     return
@@ -118,7 +120,7 @@ def add_series(org_dao):
 
     series = org_dao.create_series(name, desc, url)
 
-    print('Created new series "%s" (#%s)' % (series.name, series.id))
+    print(('Created new series "%s" (#%s)' % (series.name, series.id)))
     return
 
 
@@ -140,7 +142,7 @@ def backfill_series(org_dao, user_dao, maint_dao, public_dao):
 
     print('Choose from the following series to browse and backfill:')
     for i, s in enumerate(all_series):
-        print('  %s - %s (#%s)' % (i + 1, s.name, s.id))
+        print(('  %s - %s (#%s)' % (i + 1, s.name, s.id)))
     idx = _input('[%s] > ' % cur_series)
     if idx:
         idx = int(idx)
@@ -151,15 +153,15 @@ def backfill_series(org_dao, user_dao, maint_dao, public_dao):
         print('---')
         campaign = maint_dao.get_campaign_by_series(cur_series, cur_camp_id)
         if campaign is None:
-            print('no campaigns of series "%s" remaining' % cur_series)
+            print(('no campaigns of series "%s" remaining' % cur_series))
             break
         cur_camp_id = campaign.id
 
-        print('\nCampaign "%s" (#%s) from series: %s (#%s)\n'
-              % (campaign.name, campaign.id, campaign.series.name, campaign.series.id))
+        print(('\nCampaign "%s" (#%s) from series: %s (#%s)\n'
+              % (campaign.name, campaign.id, campaign.series.name, campaign.series.id)))
         print('Choose from the following (or leave blank to skip):')
         for i, s in enumerate(all_series):
-            print('  %s - %s (#%s)' % (i + 1, s.name, s.id))
+            print(('  %s - %s (#%s)' % (i + 1, s.name, s.id)))
 
         idx = _input('> ')
         if not idx:
@@ -209,8 +211,8 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
                                  description=description)
 
     pprint(rnd.to_info_dict())
-    print ('++ round %s (%r) created in campaign %s'
-           % (rnd.id, rnd.name, campaign_id))
+    print(('++ round %s (%r) created in campaign %s'
+           % (rnd.id, rnd.name, campaign_id)))
 
     campaign = user_dao.get_campaign(campaign_id)
 
@@ -220,8 +222,8 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
         # GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
         # entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
         # source = GIST_URL
-        print ('++ prepared %s entries from %r' %
-               (len(entries), source))
+        print(('++ prepared %s entries from %r' %
+               (len(entries), source)))
         coord_dao.add_round_entries(rnd.id, entries)
     else:
         final_rnds = [r for r in campaign.rounds if r.status == 'finalized']
@@ -229,14 +231,14 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
         advancing_group = coord_dao.get_rating_advancing_group(last_successful_rnd)
         entries = advancing_group
         if vote_method == 'ranking' and len(entries) > RANKING_MAX:
-            print ('-- %s is too many entries for ranking round, aborting'
-                   % len(entries))
+            print(('-- %s is too many entries for ranking round, aborting'
+                   % len(entries)))
             raise UsageError('too many entries for ranking round')
 
         source = 'round(#%s)' % last_successful_rnd.id
         coord_dao.add_round_entries(rnd.id, advancing_group, source)
-    print ('++ added entries from %s to round %s (%r)'
-           % (source, rnd.id, rnd.name))
+    print(('++ added entries from %s to round %s (%r)'
+           % (source, rnd.id, rnd.name)))
 
     return rnd
 
@@ -251,8 +253,8 @@ def cancel_campaign(user_dao, org_dao, campaign_id, force=False):
 
     org_dao.cancel_campaign(campaign)
 
-    print ('++ cancelled campaign %s (%r) and %s rounds'
-           % (campaign_id, campaign.name, len(campaign.rounds)))
+    print(('++ cancelled campaign %s (%r) and %s rounds'
+           % (campaign_id, campaign.name, len(campaign.rounds))))
 
 
 
@@ -263,7 +265,7 @@ def pause_round(maint_dao, round_id):
     maint_dao.pause_round(rnd)
     maint_dao.rdb_session.commit()
 
-    print('++ paused round %s (%r)' % (rnd.id, rnd.name))
+    print(('++ paused round %s (%r)' % (rnd.id, rnd.name)))
 
     return rnd
 
@@ -284,7 +286,7 @@ def retask_duplicate_ratings(maint_dao, round_id):
     'reassign all ratings that were duplicated'
     from montage.rdb import User, Rating, Round, RoundJuror, Task, RoundEntry
 
-    print('scanning round %s for duplicate tasks and juror eligibility' % round_id)
+    print(('scanning round %s for duplicate tasks and juror eligibility' % round_id))
 
     session = maint_dao.rdb_session
     rnd = session.query(Round).get(round_id)
@@ -314,7 +316,7 @@ def retask_duplicate_ratings(maint_dao, round_id):
             pass
         dup_map[(task.round_entry_id, task.user_id)].append(task)
     dup_items = [(k, v) for k, v in dup_map.items() if len(v) > 1]
-    print('found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks)))
+    print(('found %s duplicate tasks out of %s tasks total' % (len(dup_items), len(cur_tasks))))
     print('starting retaskification')
     reassign_count = 0
     revert_count = 0
@@ -324,7 +326,7 @@ def retask_duplicate_ratings(maint_dao, round_id):
                 continue  # leave the most recent one alone
             reassign_count += 1
             new_j = random.choice(elig_map[task.round_entry])
-            print task, 'is being assigned from', task.user, 'to', new_j
+            print(task, 'is being assigned from', task.user, 'to', new_j)
             task.user = new_j
             elig_map[task.round_entry].remove(task.user)
             # the following line makes this safer, but slower
@@ -335,8 +337,8 @@ def retask_duplicate_ratings(maint_dao, round_id):
                 session.query(Rating).filter_by(task_id=task.id).delete()
                 task.complete_date = None
 
-    print ('reassigned %s tasks and reverted %s ratings for round %s'
-           % (reassign_count, revert_count, round_id))
+    print(('reassigned %s tasks and reverted %s ratings for round %s'
+           % (reassign_count, revert_count, round_id)))
 
     return
 
@@ -345,7 +347,7 @@ def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path):
     "apply ratings to a round based on an input file"
     from montage.rdb import Round, User, Entry, RoundEntry, Task, Rating
 
-    print 'applying ratings from %s to round #%s' % (csv_path, round_id)
+    print('applying ratings from %s to round #%s' % (csv_path, round_id))
 
     rnd = rdb_session.query(Round).get(round_id)
 
@@ -398,8 +400,8 @@ def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path):
             new_ratings.append(new_rating)
             rdb_session.add(new_rating)
 
-    print 'deleted %s old tasks, created %s new ratings' % (del_ratings_count,
-                                                            len(new_ratings))
+    print('deleted %s old tasks, created %s new ratings' % (del_ratings_count,
+                                                            len(new_ratings)))
 
     return
 
@@ -410,7 +412,7 @@ def show_round_thresholds(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
     thresh_map = get_threshold_map(avg_ratings_map)
-    print '-- Round threshold map for round %s (%r) ...' % round_id
+    print('-- Round threshold map for round %s (%r) ...' % round_id)
     pprint(thresh_map)
 
 
@@ -422,7 +424,7 @@ def shuffle_round_assignments(user_dao, round_id):
     stats = reassign_rating_tasks(user_dao.rdb_session,
                                   rnd, new_jurors,
                                   reassign_all=True)
-    print '++ reassignment stats: '
+    print('++ reassignment stats: ')
     pprint(stats)
 
 
@@ -460,12 +462,12 @@ def check_round_dupes(user_dao, round_id):
                                                 {'round_id': round_id}).fetchall()
 
     if len(dupe_tasks) - len(dupe_ratings):
-        print ('-- found %s double-assigned tasks'
-               % len(dupe_tasks))
+        print(('-- found %s double-assigned tasks'
+               % len(dupe_tasks)))
 
     if dupe_ratings:
-        print ('-- found %s double-assigned ratings'
-               % len(dupe_ratings))
+        print(('-- found %s double-assigned ratings'
+               % len(dupe_ratings)))
 
     return
 
@@ -477,7 +479,7 @@ def import_gist(user_dao, round_id, url):
     stats = coord_dao.add_round_entries(round_id, entries,
                                         method='gistcsv',
                                         params={'gist_url': url})
-    print '++ added entries to round %s: %r' % (round_id, stats)
+    print('++ added entries to round %s: %r' % (round_id, stats))
 
 
 def edit_round_quorum(maint_dao, round_id):
@@ -487,17 +489,17 @@ def edit_round_quorum(maint_dao, round_id):
     if rnd.status != 'paused':
         print ('-- round must be paused to edit quorum, aborting')
         return
-    print ('!! new quorum cannot be lower than current quorum: %s' % old_quorum)
-    print ('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors))
+    print(('!! new quorum cannot be lower than current quorum: %s' % old_quorum))
+    print(('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors)))
     new_quorum = int(raw_input('?? New quorum: '))
     new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
 
     maint_dao.rdb_session.commit()
 
-    print ('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
-           % (rnd.id, rnd.name, old_quorum, new_quorum))
-    print ('++ reassigned %s tasks, with mean load of %s tasks per juror'
-           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean']))
+    print(('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
+           % (rnd.id, rnd.name, old_quorum, new_quorum)))
+    print(('++ reassigned %s tasks, with mean load of %s tasks per juror'
+           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean'])))
 
     return new_juror_stats
 
@@ -507,19 +509,19 @@ def advance_round(user_dao, round_id, debug):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     avg_ratings_map = coord_dao.get_round_average_rating_map(round_id)
     threshold_map = get_threshold_map(avg_ratings_map)
-    print '-- Round threshold map...'
+    print('-- Round threshold map...')
     pprint(threshold_map)
     threshold = raw_input('?? Include at least how many images: ')
     threshold = int(threshold)
     if not threshold:
-        print '-- no threshold provided, aborting'
+        print('-- no threshold provided, aborting')
         sys.exit(0)
     cur_thresh = [t for t, c in sorted(threshold_map.items()) \
                   if c >= threshold][-1]
     coord_dao.finalize_rating_round(round_id, cur_thresh)
     campaign_id = coord_dao.campaign.id
-    print ('++ ready to import %s entries to the next round in campaign %s...'
-           % (threshold_map[cur_thresh], campaign_id))
+    print(('++ ready to import %s entries to the next round in campaign %s...'
+           % (threshold_map[cur_thresh], campaign_id)))
     next_round = create_round(user_dao, campaign_id, advance=True, debug=debug)
     return
 
@@ -528,7 +530,7 @@ def activate_round(user_dao, round_id):
     'activate a round to start or resume voting'
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     coord_dao.activate_round(round_id)
-    print '++ activated round %s' % round_id
+    print('++ activated round %s' % round_id)
 
 
 def cancel_round(user_dao, round_id, force):
@@ -543,8 +545,8 @@ def cancel_round(user_dao, round_id, force):
     rnd = coord_dao.cancel_round(round_id)
     stats = rnd.get_count_map()
 
-    print ('++ cancelled round %s (%s), with %s tasks'
-           % (round_id, rnd.name, stats['total_cancelled_tasks']))
+    print(('++ cancelled round %s (%s), with %s tasks'
+           % (round_id, rnd.name, stats['total_cancelled_tasks'])))
     return
 
 
@@ -558,15 +560,15 @@ def list_campaigns(user_dao):
 def add_organizer(maint_dao, username):
     "Add a top-level organizer to the system, capable of creating campaigns and adding coordinators."
     maint_dao.add_organizer(username)
-    print '++ added %s as organizer' % username
+    print('++ added %s as organizer' % username)
 
 
 def add_coordinator(user_dao, org_dao, campaign_id, username):
     "add specified user as coordinator of a given campaign"
     camp = user_dao.get_campaign(campaign_id)
     org_dao.add_coordinator(campaign_id, username=username)
-    print ('++ added %r as coordinator for campaign %s (%r)'
-           % (username, campaign_id, camp.name))
+    print(('++ added %r as coordinator for campaign %s (%r)'
+           % (username, campaign_id, camp.name)))
     return
 
 
@@ -602,7 +604,7 @@ def create_campaign(org_dao):
     "interactively create a campaign"
     camp_name = raw_input('?? Campaign name: ')
     if not camp_name:
-        print '-- campaign name required, aborting'
+        print('-- campaign name required, aborting')
         sys.exit(0)
     open_date_str = raw_input('?? Open date: ')
     open_date = datetime.datetime.strptime(open_date_str, '%Y-%m-%d')
@@ -612,8 +614,8 @@ def create_campaign(org_dao):
                                        open_date=open_date,
                                        close_date=close_date)
     pprint(campaign.to_info_dict())
-    print ('++ campaign %s (%r) created with %r as coordinator'
-           % (campaign.id, campaign.name, org_dao.user.username))
+    print(('++ campaign %s (%r) created with %r as coordinator'
+           % (campaign.id, campaign.name, org_dao.user.username)))
     return
 
 
@@ -625,7 +627,7 @@ def _rdb_session_mw(next_, debug):
         ret = next_(rdb_session=rdb_session)
     except Exception as e:
         if debug:
-            print('!! %s: %s' % (e.__class__.__name__, e))
+            print(('!! %s: %s' % (e.__class__.__name__, e)))
             print(".. pre-rollback debug console, about to undo changes to db."
                   " When debuggig is complete, press 'c' to rollback changes"
                   " and resume exiting.")

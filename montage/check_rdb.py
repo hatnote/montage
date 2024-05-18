@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 from sqlalchemy import exc
 from sqlalchemy import event
 from sqlalchemy import select

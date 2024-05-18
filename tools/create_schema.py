@@ -1,4 +1,6 @@
 
+from __future__ import print_function
+from __future__ import absolute_import
 import pdb
 import sys
 import os.path
@@ -39,7 +41,7 @@ def main():
         try:
             config = load_env_config()
         except Exception:
-            print '!!  no db_url specified and could not load config file'
+            print('!!  no db_url specified and could not load config file')
             raise
         else:
             db_url = config.get('db_url')
@@ -51,7 +53,7 @@ def main():
             raise
         pdb.post_mortem()
     else:
-        print '++  schema created'
+        print('++  schema created')
 
     return
 

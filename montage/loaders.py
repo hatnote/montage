@@ -1,6 +1,11 @@
 
+from __future__ import absolute_import
 import datetime
-import StringIO
+try:
+    from StringIO import StringIO as BytesIO
+    from io import StringIO
+except ImportError:
+    from io import BytesIO, StringIO
 import json
 import re
 
@@ -8,8 +13,9 @@ from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
 import requests
 
-import rdb
-from labs import get_files, get_file_info
+import montage.rdb  # TODO: circular import
+from .labs import get_files, get_file_info
+from .utils import unicode
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
 
@@ -68,7 +74,7 @@ def make_entry(edict):
     raw_entry['resolution'] = width * height
     if edict.get('flags'):
         raw_entry['flags'] = edict['flags']
-    return rdb.Entry(**raw_entry)
+    return montage.rdb.Entry(**raw_entry)
 
 
 def load_full_csv(csv_file_obj, source='remote'):
@@ -101,7 +107,11 @@ def load_partial_csv(dr, source='remote'):
     ret = []
     warnings = []
     file_names = [r['filename'] for r in dr]
-    file_names_obj = StringIO.StringIO('\n'.join(file_names))
+    if not file_names or isinstance(file_names[0], unicode):
+        file_names_obj = StringIO('\n'.join(file_names))
+    else:
+        file_names_obj = BytesIO(b'\n'.join(file_names))
+
     return load_name_list(file_names_obj, source=source)
 
 
@@ -153,10 +163,10 @@ def get_entries_from_gist(raw_url, source='local'):
     resp = requests.get(raw_url)
 
     try:
-        ret, warnings = load_full_csv(StringIO.StringIO(resp.content))
+        ret, warnings = load_full_csv(BytesIO(resp.content))
     except ValueError as e:
         # not a full csv
-        ret, warnings = load_name_list(StringIO.StringIO(resp.content), source=source)
+        ret, warnings = load_name_list(BytesIO(resp.content), source=source)
 
     return ret, warnings
 
@@ -171,13 +181,14 @@ def get_entries_from_gsheet(raw_url, source='local'):
         raise ValueError('cannot load Google Sheet "%s" (is link sharing on?)' % raw_url)
 
     try:
-        ret, warnings = load_full_csv(StringIO.StringIO(resp.content), source=source)
+        ret, warnings = load_full_csv(BytesIO(resp.content), source=source)
     except ValueError:
         try:
             ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
         except (ValueError, TypeError):
-            file_names = [fn.strip('\"') for fn in resp.content.split('\n')]
-            file_names_obj = StringIO.StringIO('\n'.join(file_names))
+            resp_content = resp.content.decode('utf8')
+            file_names = [fn.strip('\"') for fn in resp_content.split('\n')]
+            file_names_obj = StringIO('\n'.join(file_names))
             ret, warnings = load_name_list(file_names_obj, source=source)
 
     return ret, warnings
@@ -224,9 +235,8 @@ def get_from_category_remote(category_name):
     file_infos, _ = get_from_remote(url, params)
     return file_infos
 
-
 def get_from_remote(url, params):
-    headers = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     data = json.dumps(params)
     response = requests.post(url, data=data, headers=headers)
     resp_json = response.json()

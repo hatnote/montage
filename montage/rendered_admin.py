@@ -1,5 +1,6 @@
 
-from admin_endpoints import (get_index,
+from __future__ import absolute_import
+from .admin_endpoints import (get_index,
                              get_campaign,
                              get_round,
                              get_flagged_entries,

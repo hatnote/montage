@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # Relational database models for Montage
+from __future__ import absolute_import
+from __future__ import print_function
 import json
 import time
 import random
@@ -9,8 +11,16 @@ import datetime
 import itertools
 from collections import Counter, defaultdict
 from math import ceil
+try:
+    from itertools import izip_longest as zip_longest
+except ImportError:
+    from itertools import zip_longest  # py3
 
-from pyvotecore.schulze_npr import SchulzeNPR
+try:
+    from pyvotecore.schulze_npr import SchulzeNPR
+except ImportError:
+    from py3votecore.schulze_npr import SchulzeNPR
+
 from sqlalchemy import (Text,
                         Column,
                         String,
@@ -33,25 +43,27 @@ from boltons.statsutils import mean
 
 from clastic.errors import Forbidden
 
-from utils import (format_date,
-                   to_unicode,
-                   get_mw_userid,
-                   weighted_choice,
-                   PermissionDenied, InvalidAction, NotImplementedResponse,
-                   DoesNotExist,
-                   get_env_name,
-                   load_default_series,
-                   js_isoparse)
+from .utils import (format_date,
+                    basestring,
+                    to_unicode,
+                    get_mw_userid,
+                    weighted_choice,
+                    PermissionDenied, InvalidAction, NotImplementedResponse,
+                    DoesNotExist,
+                    get_env_name,
+                    load_default_series,
+                    js_isoparse)
 
-from imgutils import make_mw_img_url
-import loaders
-from simple_serdes import DictableBase, JSONEncodedDict
+from .imgutils import make_mw_img_url
+from . import loaders
+from .simple_serdes import DictableBase, JSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
 ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
+UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 # By default, srounds will support all the file types allowed on
 # Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
@@ -331,18 +343,20 @@ class Round(Base):
         if not rdb_session:
             rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
-                          .filter(Vote.round_entry.has(round_id=self.id),
-                                  Vote.status == ACTIVE_STATUS)
-                          .count())
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == self.id,
+                                Vote.status == ACTIVE_STATUS)
+                        .count())
         return ret
 
     def _get_task_count(self, rdb_session=None):
         if not rdb_session:
             rdb_session = self._get_rdb_session()
         ret = (rdb_session.query(Vote)
-                          .filter(Vote.round_entry.has(round_id=self.id),
-                                  Vote.status != CANCELLED_STATUS)
-                          .count())
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == self.id,
+                                Vote.status != CANCELLED_STATUS)
+                        .count())
         return ret
 
     def get_count_map(self):
@@ -357,9 +371,10 @@ class Round(Base):
         open_task_count = self._get_open_task_count(rdb_session=rdb_session)
         task_count = self._get_task_count(rdb_session=rdb_session)
         cancelled_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.id),
-                                             Vote.status == CANCELLED_STATUS)\
-                                     .count()
+                                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                        .filter(RoundEntry.round_id == self.id,
+                                                Vote.status == CANCELLED_STATUS)\
+                                        .count()
         dq_entry_count = rdb_session.query(RoundEntry)\
                                     .filter_by(round_id=self.id)\
                                     .filter(RoundEntry.dq_reason != None)\
@@ -402,17 +417,11 @@ class Round(Base):
         if not rdb_session:
             # TODO: see above
             raise RuntimeError('cannot get counts for detached Round')
-        '''
-        open_tasks = rdb_session.query(Task)\
-                                .filter(Task.round_entry.has(round_id=self.id),
-                                        Task.complete_date == None,
-                                        Task.cancel_date == None)\
-                                .count()
-        '''
+
         if self.entries and self.status == ACTIVE_STATUS or self.status == PAUSED_STATUS:
             active_votes = rdb_session.query(Vote)\
-                                    .options(joinedload('round_entry'))\
-                                    .filter(Vote.round_entry.has(round_id=self.id),
+                                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                    .filter(RoundEntry.round_id == self.id,
                                             Vote.status == ACTIVE_STATUS)\
                                     .first()
             return not active_votes
@@ -481,21 +490,27 @@ class RoundJuror(Base):
         if not rdb_session:
             # TODO: just make a session
             raise RuntimeError('cannot get counts for detached Round')
+
         task_count = rdb_session.query(Vote)\
-                                .filter(Vote.round_entry.has(round_id=self.round_id),
+                                .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                .filter(RoundEntry.round_id == self.round_id,
                                         Vote.user_id == self.user_id,
                                         Vote.status != CANCELLED_STATUS)\
                                 .count()
+
         open_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.round_id),
-                                             Vote.user_id == self.user_id,
-                                             Vote.status == ACTIVE_STATUS)\
-                                     .count()
+                                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                    .filter(RoundEntry.round_id == self.round_id,
+                                            Vote.user_id == self.user_id,
+                                            Vote.status == ACTIVE_STATUS)\
+                                    .count()
+
         cancelled_task_count = rdb_session.query(Vote)\
-                                     .filter(Vote.round_entry.has(round_id=self.round_id),
-                                             Vote.user_id == self.user_id,
-                                             Vote.status == CANCELLED_STATUS)\
-                                     .count()
+                                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                                        .filter(RoundEntry.round_id == self.round_id,
+                                                Vote.user_id == self.user_id,
+                                                Vote.status == CANCELLED_STATUS)\
+                                        .count()
         if task_count:
             percent_open = round((100.0 * open_task_count) / task_count, 3)
         else:
@@ -1142,16 +1157,20 @@ class CoordinatorDAO(UserDAO):
         # the fact that these are identical for two DAOs shows it
         # should be on the Round model or somewhere else shared
         re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
+
         total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=round_id),
-                                  Vote.user_id == self.user.id,
-                                  Vote.status != CANCELLED_STATUS)\
-                          .count()
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                        .filter(RoundEntry.round_id == round_id,
+                                Vote.user_id == self.user.id,
+                                Vote.status != CANCELLED_STATUS)\
+                        .count()
+
         total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=round_id),
-                                       Vote.user_id == self.user.id,
-                                       Vote.status == ACTIVE_STATUS)\
-                               .count()
+                            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                            .filter(RoundEntry.round_id == round_id,
+                                    Vote.user_id == self.user.id,
+                                    Vote.status == ACTIVE_STATUS)\
+                            .count()
 
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
@@ -1188,7 +1207,7 @@ class CoordinatorDAO(UserDAO):
                   .update(campaign_dict)
         msg = ('%s edited these columns in campaign "%s" (#%s): %r'
                % (self.user.username, self.campaign.name, self.campaign.id,
-                  campaign_dict.keys()))
+                  list(campaign_dict.keys())))
         self.log_action('edit_campaign', campaign=self.campaign, message=msg)
         return ret
 
@@ -1264,6 +1283,8 @@ class CoordinatorDAO(UserDAO):
             if rnd.status != PAUSED_STATUS:
                 raise InvalidAction('round must be paused to edit jurors')
             else:
+                if not all([isinstance(jn, str) for jn in new_juror_names]):
+                    raise InvalidAction('new_jurors must be a list of strings')
                 new_juror_stats = self.modify_jurors(round_id, new_juror_names)
                 new_val_map['new_jurors'] = new_juror_names
         new_quorum = round_dict.get('quorum')
@@ -1278,7 +1299,7 @@ class CoordinatorDAO(UserDAO):
             rnd.show_stats = show_stats
 
         msg = ('%s edited these columns in round "%s" (#%s): %r'
-               % (self.user.username, rnd.name, rnd.id, new_val_map.keys()))
+               % (self.user.username, rnd.name, rnd.id, list(new_val_map.keys())))
         self.log_action('edit_round', round=rnd, message=msg)
         return new_val_map
 
@@ -1660,7 +1681,8 @@ class CoordinatorDAO(UserDAO):
     def cancel_round(self, round_id):
         rnd = self.get_round(round_id)
         votes = self.query(Vote)\
-                    .filter(Vote.round_entry.has(round_id=round_id),
+                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                    .filter(RoundEntry.round_id == round_id,
                             Vote.status == 'active')\
                     .all()
         cancel_date = datetime.datetime.utcnow()
@@ -1819,11 +1841,11 @@ class CoordinatorDAO(UserDAO):
 
     def get_round_average_rating_map(self, round_id):
         results = self.query(Vote, func.avg(Vote.value).label('average'))\
-                      .join(RoundEntry)\
-                      .filter(Vote.round_entry.has(round_id=round_id),
-                              Vote.status == COMPLETED_STATUS)\
-                      .group_by(Vote.round_entry_id)\
-                      .all()
+                 .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                 .filter(RoundEntry.round_id == round_id,
+                         Vote.status == COMPLETED_STATUS)\
+                 .group_by(Vote.round_entry_id)\
+                 .all()
 
         # thresh_counts = get_threshold_map(r[1] for r in ratings)
         rating_ctr = Counter([r[1] for r in results])
@@ -1832,10 +1854,11 @@ class CoordinatorDAO(UserDAO):
 
     def get_round_ranking_list(self, round_id, notation=None):
         res = (self.query(Vote)
-               .options(joinedload('round_entry'))
-               .filter(Vote.round_entry.has(round_id=round_id),
-                       Vote.status == COMPLETED_STATUS)
-               .all())
+                .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                .options(joinedload('round_entry'))
+                .filter(RoundEntry.round_id == round_id,
+                        Vote.status == COMPLETED_STATUS)
+                .all())
         all_inputs = []
         by_juror_id = bucketize(res, lambda r: r.user_id)
         entry_user_review_map = {}
@@ -2120,12 +2143,12 @@ class CoordinatorDAO(UserDAO):
         juror_alias_map = None
 
         def make_juror_alias_map(juror_ranking_map):
-            jurors = juror_ranking_map.keys()
+            jurors = list(juror_ranking_map.keys())
             random.shuffle(jurors)
             # TODO: gonna be in trouble for final rounds with greater
             # than 26 jurors (double letters)
             return dict([(juror, alias) for juror, alias
-                         in zip(jurors, string.uppercase)])
+                         in zip(jurors, UPPERCASE)])
 
         def alias_jurors(juror_ranking_map):
             ret = {}
@@ -2222,7 +2245,7 @@ class OrganizerDAO(object):
                   .update(series_dict))
         msg = ('%s edited these columns in series %s: %r'
                % (self.user.username, series_id,
-                  series_dict.keys()))
+                  list(series_dict.keys())))
         self.log_action('edit_series', message=msg, role='organizer')
         return series
 
@@ -2451,15 +2474,17 @@ class JurorDAO(object):
         # should be on the Round model or somewhere else shared
         re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
         total_tasks = self.query(Vote)\
-                          .filter(Vote.round_entry.has(round_id=round_id),
+                          .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                          .filter(RoundEntry.round_id == round_id,
                                   Vote.user_id == self.user.id,
                                   Vote.status != CANCELLED_STATUS)\
                           .count()
         total_open_tasks = self.query(Vote)\
-                               .filter(Vote.round_entry.has(round_id=round_id),
-                                       Vote.user_id == self.user.id,
-                                       Vote.status == ACTIVE_STATUS)\
-                               .count()
+                            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                            .filter(RoundEntry.round_id == round_id,
+                                    Vote.user_id == self.user.id,
+                                    Vote.status == ACTIVE_STATUS)\
+                            .count()
 
         if total_tasks:
             percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
@@ -2498,11 +2523,11 @@ class JurorDAO(object):
     def get_tasks_from_round(self, round_id, num=1, offset=0):
         # TODO: remove offset once it's removed from the client
         task_query = (self.query(Vote)
-                          .filter_by(user=self.user,
-                                     status=ACTIVE_STATUS)
-                          .filter(
-                            Vote.round_entry.has(round_id=round_id))
-                          .order_by(Vote.id))
+                        .filter_by(user=self.user,
+                                   status=ACTIVE_STATUS)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == round_id)
+                        .order_by(Vote.id))
 
         # Check if this round_juror has skipped any tasks
         round_juror = self._get_round_juror(round_id)
@@ -2543,11 +2568,12 @@ class JurorDAO(object):
                                sort, order_by, offset=0):
         # all the filter fields but cancel_date are actually on Vote
         # already
-        ratings_query = (self.query(Vote)\
-                      .options(joinedload('round_entry'))
-                      .filter(Vote.user == self.user,
-                              Vote.status == COMPLETED_STATUS,
-                              Vote.round_entry.has(round_id=round_id)))
+        ratings_query = (self.query(Vote)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(Vote.user == self.user,
+                                Vote.status == COMPLETED_STATUS,
+                                RoundEntry.round_id == round_id)
+                        .options(joinedload('round_entry')))
         if order_by == 'value' and sort == 'desc':
             ratings_query = ratings_query.order_by(Vote.value.desc())
         elif order_by == 'value' and sort == 'asc':
@@ -2564,11 +2590,12 @@ class JurorDAO(object):
         return ratings
 
     def get_rating_stats_from_round(self, round_id):
-        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)\
-                      .filter(Vote.user == self.user,
-                              Vote.status == COMPLETED_STATUS,
-                              Vote.round_entry.has(round_id=round_id))
-                      .group_by(Vote.value))
+        ratings_query = (self.query(func.count(Vote.value).label('count'), Vote.value)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(Vote.user == self.user,
+                                Vote.status == COMPLETED_STATUS,
+                                RoundEntry.round_id == round_id)
+                        .group_by(Vote.value))
 
         ratings = ratings_query.all()
 
@@ -2576,9 +2603,10 @@ class JurorDAO(object):
 
     def get_rankings_from_round(self, round_id):
         rankings = self.query(Vote)\
+                       .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
                        .filter(Vote.user == self.user,
                                Vote.status == COMPLETED_STATUS,
-                               Vote.round_entry.has(round_id=round_id))\
+                               RoundEntry.round_id == round_id)\
                        .options(joinedload('round_entry'))\
                        .all()
         return rankings
@@ -2716,7 +2744,8 @@ class JurorDAO(object):
 
     def get_ballot(self, round_id):
         results = (self.query(Vote, Vote.value)
-                       .filter(Vote.round_entry.has(round_id=round_id),
+                       .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                       .filter(RoundEntry.round_id == round_id,
                                Vote.status == COMPLETED_STATUS,
                                Vote.user == self.user)
                        .all())
@@ -2816,9 +2845,10 @@ class JurorDAO(object):
 
     def unfave(self, round_id, entry_id):
         fave = (self.query(Favorite)
-               .filter_by(entry_id=entry_id,
-                          user=self.user)
-               .filter(Favorite.round_entry.has(round_id=round_id))
+               .join(RoundEntry, RoundEntry.id == Favorite.round_entry_id)
+               .filter(Favorite.entry_id == entry_id,
+                       Favorite.user == self.user,
+                       RoundEntry.round_id == round_id)
                .one())
         fave.status = CANCELLED_STATUS
         fave.modified_date = datetime.datetime.utcnow()
@@ -2935,7 +2965,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     juror_iters = itertools.chain.from_iterable([itertools.repeat(j, per_juror)
                                                  for j in jurors])
 
-    pairs = itertools.izip_longest(to_process, juror_iters, fillvalue=None)
+    pairs = zip_longest(to_process, juror_iters, fillvalue=None)
 
     for entry, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'
@@ -3119,18 +3149,18 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
     return {'incomplete_task_count': len(incomp_votes),
             'reassigned_task_count': len(reassg_votes),
             'task_count_map': vote_count_map,
-            'task_count_mean': mean(vote_count_map.values())}
+            'task_count_mean': mean(list(vote_count_map.values()))}
 
 
 def make_rdb_session(echo=True):
-    from utils import load_env_config
+    from .utils import load_env_config
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     try:
         config = load_env_config()
     except Exception:
-        print '!!  no db_url specified and could not load config file'
+        print('!!  no db_url specified and could not load config file')
         raise
     else:
         db_url = config.get('db_url')

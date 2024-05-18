@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unicodecsv
 import io
 import datetime
@@ -9,14 +10,14 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 from boltons.timeutils import isoparse
 
-from utils import (format_date,
+from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    DoesNotExist,
                    NotImplementedResponse,
                    js_isoparse)
 
-from rdb import (CoordinatorDAO,
+from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
@@ -581,7 +582,10 @@ def advance_round(user_dao, round_id, request_dict):
 
     if rnd.vote_method not in ('rating', 'yesno'):
         raise NotImplementedResponse()  # see docstring above
-    threshold = float(request_dict['threshold'])
+    try:
+        threshold = float(request_dict['threshold'])
+    except KeyError:
+        raise InvalidAction('unset threshold. set the threshold and try again.')
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
 

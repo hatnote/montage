@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import json
 import datetime
 
@@ -7,7 +8,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import indent
 from boltons.jsonutils import reverse_iter_lines
 
-from rdb import MaintainerDAO
+from .rdb import MaintainerDAO
 
 DEFAULT_LINE_COUNT = 500
 
@@ -37,6 +38,15 @@ def get_active_users(user_dao):
 
 
 def get_audit_logs(user_dao, request):
+    """
+    Available filters (as query parameters):
+
+    - limit (default 10)
+    - offset (default 0)
+    - campaign_id
+    - round_id
+    - action
+    """
     limit = request.values.get('limit', 10)
     offset = request.values.get('offset', 0)
     log_campaign_id = request.values.get('campaign_id')
@@ -106,12 +116,12 @@ def post_frontend_error_log(user, config, request_dict):
     now_str = now.isoformat()
 
     username = user.username if user else '<nouser>'
-    err_bytes = json.dumps(request_dict, sort_keys=True, indent=2)
-    err_bytes = indent(err_bytes, '  ')
-    with open(feel_path, 'ab') as feel_file:
+    err_str = json.dumps(request_dict, sort_keys=True, indent=2)
+    err_str = indent(err_str, '  ')
+    with open(feel_path, 'a') as feel_file:
         feel_file.write('Begin error at %s:\n\n' % now_str)
         feel_file.write('  + Username: ' + username + '\n')
-        feel_file.write(err_bytes)
+        feel_file.write(err_str)
         feel_file.write('\n\nEnd error at %s\n\n' % now_str)
 
     return

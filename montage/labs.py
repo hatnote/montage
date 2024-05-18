@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 
 try:
@@ -39,7 +40,19 @@ def fetchall_from_commonswiki(query, params):
                                  charset='utf8')
     cursor = connection.cursor(pymysql.cursors.DictCursor)
     cursor.execute(query, params)
-    return cursor.fetchall()
+    res = cursor.fetchall()
+
+    # looking at the schema on labs, it's all varbinary, not varchar,
+    # so this block converts values
+    ret = []
+    for rec in res:
+        new_rec = {}
+        for k, v in rec.items():
+            if isinstance(v, bytes):
+                v = v.decode('utf8')
+            new_rec[k] = v
+        ret.append(new_rec)
+    return ret
 
 
 def get_files(category_name):

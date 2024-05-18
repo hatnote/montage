@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import json
 import time
 import os.path
@@ -10,8 +11,10 @@ from clastic.route import NullRoute
 from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
-from rdb import User, UserDAO
-from utils import MontageError
+from montage.rdb import User, UserDAO
+from montage.utils import MontageError, basestring
+
+from .sqlprof import SQLProfilerMiddleware
 
 
 def public(endpoint_func):
@@ -21,7 +24,6 @@ def public(endpoint_func):
     endpoint_func.is_public = True
 
     return endpoint_func
-
 
 class MessageMiddleware(Middleware):
     """Manages the data format consistency and serialization for all
@@ -49,9 +51,9 @@ class MessageMiddleware(Middleware):
             request_dict = None
         if request.args:
             if request_dict:
-                request_dict.update(request.args.items())
+                request_dict.update(list(request.args.items()))
             else:
-                request_dict = dict(request.args.items())
+                request_dict = dict(list(request.args.items()))
 
         return next(response_dict=response_dict, request_dict=request_dict)
 
@@ -171,7 +173,7 @@ class UserMiddleware(Middleware):
         ret = next(user=user, user_dao=user_dao)
 
         return ret
-
+    
 
 class UserIPMiddleware(Middleware):
     provides = ('user_ip',)
@@ -289,7 +291,7 @@ class LoggingMiddleware(Middleware):
             with self.api_log.critical(act_name) as api_act:
                 # basic redacted url
                 api_act['path'] = request.path
-                api_act.data_map.update(request.args.items())
+                api_act.data_map.update(list(request.args.items()))
                 try:
                     ret = next(api_act=api_act, api_log=self.api_log)
                 except clastic.errors.BadRequest as br:
@@ -348,7 +350,7 @@ import socket
 class ReplayLogMiddleware(Middleware):
     def __init__(self, log_path):
         self.log_path = os.path.abspath(log_path)
-        self.log_file = open(self.log_path, 'ab')
+        self.log_file = open(self.log_path, 'a')
         self.start_timestamp = datetime.datetime.utcnow().isoformat()
         self.hostname = socket.gethostname()
 

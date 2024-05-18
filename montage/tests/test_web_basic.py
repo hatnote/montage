@@ -2,9 +2,10 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os
 import json
-import urllib
+import six.moves.urllib.parse, six.moves.urllib.error
 from pprint import pprint
 
 import pytest
@@ -17,6 +18,7 @@ from glom import glom, T
 from montage import utils
 from montage.log import script_log
 from montage.app import create_app, STATIC_PATH
+from montage.utils import unicode
 
 
 class ClasticTestClient(Client):
@@ -47,7 +49,7 @@ class MontageTestClient(object):
         # hyperlinkify url
         su_to = kw.get('su_to')
         if su_to:
-            url_su_to = urllib.quote_plus(su_to.encode('utf8'))
+            url_su_to = six.moves.urllib.parse.quote_plus(su_to.encode('utf8'))
             if '?' in url:
                 url += '&su_to=' + url_su_to
             else:
@@ -89,7 +91,7 @@ class MontageTestClient(object):
         log_level = kw.pop('log_level', INFO)
         error_code = kw.pop('error_code', None)
         if kw:
-            raise TypeError('unexpected kwargs: %r' % kw.keys())
+            raise TypeError('unexpected kwargs: %r' % list(kw.keys()))
 
         with script_log.action(log_level, 'fetch_url') as act:
             resp = self.fetch_url(url,
@@ -182,7 +184,6 @@ def test_home_client(base_client, api_client):
     resp = fetch('organizer: cancel most recent series',
                  '/admin/series/%s/edit' % most_recent_series,
                  {'status': 'cancelled'})
-
 
     resp = fetch('maintainer: add organizer',
                  '/admin/add_organizer',
@@ -293,8 +294,9 @@ def test_home_client(base_client, api_client):
     round_id = resp['data']['id']
 
     resp = fetch('coordinator: get round details',
-                 '/admin/round/%s' % round_id,
+                 '/admin/round/%s?profilesql=true' % round_id,
                  as_user='LilyOfTheWest')
+    assert resp['__sql_profile__'] and len(resp['__sql_profile__']) > 1000
 
     resp = fetch('coordinator: edit round details',
                  '/admin/round/%s/edit' % round_id,
@@ -574,7 +576,7 @@ def test_home_client(base_client, api_client):
     resp = api_client.fetch_url('/v1/admin/round/%s/results/download?su_to=LilyOfTheWest' % round_id)
     resp_data = resp.get_data()
     assert len(resp_data) > 100
-    assert resp_data.count(',') > 10
+    assert resp_data.count(b',') > 10
 
     resp = fetch('coordinator: activate new round',
                  '/admin/round/%s/activate' % rnd_2_id,
@@ -798,7 +800,11 @@ def test_home_client(base_client, api_client):
     resp = base_client.fetch('public: view docs', '/docs')
 
     resp = base_client.fetch('public: view report', '/campaign/1')
+
+    resp = base_client.fetch('meta: view base meta', '/meta/')
+
     #resp = base_client.fetch('public: logout', '/logout')
+
 
 def test_multiple_jurors(api_client):
     # This is copied from above. What's the best way to break up the tests into
@@ -864,7 +870,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
 
     for j_dict in j_dicts:
         j_username = j_dict['username']
-        for i in xrange(100):  # don't go on forever
+        for i in range(100):  # don't go on forever
             t_dicts = fetch('juror: fetch open tasks',
                             '/juror/round/%s/tasks?count=%s'
                             % (round_id, per_fetch), log_level=DEBUG,
