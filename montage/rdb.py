@@ -11,15 +11,9 @@ import datetime
 import itertools
 from collections import Counter, defaultdict
 from math import ceil
-try:
-    from itertools import izip_longest as zip_longest
-except ImportError:
-    from itertools import zip_longest  # py3
+from itertools import zip_longest
 
-try:
-    from pyvotecore.schulze_npr import SchulzeNPR
-except ImportError:
-    from py3votecore.schulze_npr import SchulzeNPR
+from py3votecore.schulze_npr import SchulzeNPR
 
 from sqlalchemy import (Text,
                         Column,

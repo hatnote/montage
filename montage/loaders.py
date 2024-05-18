@@ -1,11 +1,8 @@
 
 from __future__ import absolute_import
 import datetime
-try:
-    from StringIO import StringIO as BytesIO
-    from io import StringIO
-except ImportError:
-    from io import BytesIO, StringIO
+
+from io import BytesIO, StringIO
 import json
 import re
 

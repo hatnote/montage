@@ -1,6 +1,6 @@
 
+# NB 2024-05-17: Not currently using this for deploys, at least until this py3 stuff settles out -mh
 # NB: this file requires fabric 3
-from __future__ import print_function
 
 import sys
 import time
@@ -16,7 +16,9 @@ env.sudo_prefix = "sudo -ni -p '%(sudo_prompt)s' "
 DEFAULT_TOOL = 'montage-dev'
 DEFAULT_RELEASE_BRANCH = 'master'
 SHELL_POD_NAME = 'interactive'  # this'll only change if the webservce command does
-TOOL_IMAGE = 'python2'  # TODO: py3
+TOOL_IMAGE = 'python3.9' 
+# TOOL_IMAGE is used in the restart command, but the real restart command (as of 2024-05-17) is:
+# webservice --backend=kubernetes --cpu 1 --mem 4096Mi -r 2 python3.9 restart
 
 
 # if you hit ctrl-c while ssh'd in, it kills the session, and if you
