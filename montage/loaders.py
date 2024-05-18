@@ -253,7 +253,6 @@ def get_by_filename_remote(filenames, chunk_size=200):
         url = REMOTE_UTILS_URL + '/file'
         resp, no_infos = get_from_remote(url, params)
         if no_infos:
-            # print '!! info missing for %s' % no_infos
             warnings += no_infos
         file_infos += resp
     return file_infos, warnings

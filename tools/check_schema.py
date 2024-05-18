@@ -25,7 +25,6 @@ def main():
 
     db_url = args.db_url
     if not db_url:
-        # print '==  loading db_url from config'
         try:
             config = load_env_config()
         except Exception:
