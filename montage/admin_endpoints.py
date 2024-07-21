@@ -109,7 +109,7 @@ def download_round_entries_csv(user_dao, round_id):
     rnd = coord_dao.get_round(round_id)
     entries = coord_dao.get_round_entries(round_id)
     entry_infos = [e.to_export_dict() for e in entries]
-    output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True)
+    output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True).decode('ascii')
     output = io.BytesIO()
     csv_fieldnames = sorted(entry_infos[0].keys())
     csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
@@ -749,7 +749,7 @@ def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
     now = datetime.datetime.now().isoformat()
-    output_name = 'montage_results-%s-%s.csv' % (slugify(rnd.name, ascii=True), now)
+    output_name = 'montage_results-%s-%s.csv' % (slugify(rnd.name, ascii=True).decode('ascii'), now)
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
