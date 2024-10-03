@@ -122,6 +122,8 @@ def load_name_list(file_obj, source='local'):
 
     # clean up the filenames
     for i, filename in enumerate(rl):
+        if isinstance(filename, bytes):
+            filename = filename.decode('utf8')
         filename = filename.strip()
         if filename.startswith('File:'):
             filename = filename[5:]
