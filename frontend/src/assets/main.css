@@ -1,0 +1,24 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Lato', sans-serif;
+}
+
+.juror-campaign-accordion summary:focus {
+  border-color: white !important;
+  box-shadow: none !important;
+}
+
+.information-card .cdx-card__text {
+  width: 100%;
+}
+
+.info-accordion summary {
+  padding-left: 0 !important;
+}
+
+.date-time-inputs .cdx-label{
+  font-size: 14px !important;
+  color: gray !important;
+}

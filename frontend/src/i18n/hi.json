@@ -1,0 +1,33 @@
+{
+  "login-box-heading": "कृपया लॉगिन करें",
+  "login-description": "आपकी पहचान की पुष्टि करने के लिए आपको मेटा-विकी पर पुनः निर्देशित किया जाएगा। मोंटेज आपके खाते का उपयोग करके विकिमीडिया परियोजनाओं पर कुछ भी प्रकाशित नहीं करेगा।",
+  "account-instructions": "यदि आपके पास विकिमीडिया खाता नहीं है, तो आप <strong>\"मेटा विकी\"</strong> पर एक खाता बना सकते हैं।",
+  "login-button": "विकिमीडिया खाते का उपयोग करके लॉग इन करें",
+
+  "round.ranking": "रैंकिंग",
+  "round.rating": "रेटिंग",
+  "round.yesno": "हां/नहीं",
+
+  "round.all_mimes": "राउंड फ़ाइल प्रकार",
+  "round.percent_tasks_open": "खुले कार्यों का प्रतिशत",
+  "round.total_cancelled_tasks": "रद्द किए गए कार्य",
+  "round.total_disqualified_entries": "अयोग्य फ़ाइलें",
+  "round.total_open_tasks": "खुले कार्यों",
+  "round.total_round_entries": "फ़ाइलें",
+  "round.total_tasks": "कार्य",
+  "round.total_uploaders": "अपलोड करने वाले",
+
+  "allowed_filetypes": "स्वीकृत फ़ाइल प्रकार",
+  "dq_by_filetype": "फ़ाइल प्रकार के आधार पर अयोग्य ठहराएँ",
+  "dq_by_resolution": "रिज़ॉल्यूशन के आधार पर अयोग्य ठहराएँ",
+  "dq_by_upload_date": "अपलोड तिथि के आधार पर अयोग्य ठहराएँ",
+  "dq_by_uploader": "जूरी सदस्यों को अयोग्य ठहराएँ",
+  "dq_coords": "समन्वयकों को अयोग्य ठहराएँ",
+  "dq_maintainers": "मेंटेनर्स को अयोग्य ठहराएँ",
+  "dq_organizers": "आयोजकों को अयोग्य ठहराएँ",
+  "final_threshold": "अंतिम सीमा",
+  "min_resolution": "न्यूनतम रिज़ॉल्यूशन",
+  "show_filename": "फ़ाइल नाम दिखाएँ",
+  "show_link": "लिंक दिखाएँ",
+  "show_resolution": "रिज़ॉल्यूशन दिखाएँ"
+}
