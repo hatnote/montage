@@ -24,8 +24,7 @@ const dataService = {
     }
 
     try {
-      const results = await Promise.all(promises)
-      return results.map((response) => response.data)
+      return await Promise.all(promises)
     } catch (error) {
       console.error('Error fetching image info:', error)
       throw error

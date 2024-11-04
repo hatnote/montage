@@ -1,27 +1,12 @@
 <template>
   <div class="juror-campaign-round-card">
     <div class="round-header">
-      <thumbs-up-down
-        v-if="formData.vote_method === 'yesno'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
-      <star-outline
-        v-if="formData.vote_method === 'rating'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
-      <sort
-        v-if="formData.vote_method === 'ranking'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
+      <thumbs-up-down v-if="formData.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36"
+        fillColor="white" style="background-color: grey" />
+      <star-outline v-if="formData.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36"
+        fillColor="white" style="background-color: grey" />
+      <sort v-if="formData.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white"
+        style="background-color: grey" />
       <div class="round-info">
         <h2>{{ formData.name }}</h2>
         <p>
@@ -45,22 +30,14 @@
                   <template #label>Voting Deadline</template>
                 </cdx-field>
                 <cdx-field>
-                  <cdx-select
-                    v-model:selected="formData.vote_method"
-                    :menu-items="
-                      voteMethods.map((method) => ({ label: getVotingName(method), value: method }))
-                    "
-                  />
+                  <cdx-select v-model:selected="formData.vote_method" :menu-items="voteMethods.map((method) => ({ label: getVotingName(method), value: method }))
+                    " />
                   <template #label>Vote Method</template>
                 </cdx-field>
               </div>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio
-                  v-for="source in importSourceMethods"
-                  :key="'radio-' + source.value"
-                  v-model="selectedImportSource"
-                  :input-value="source.value"
-                >
+                <cdx-radio v-for="source in importSourceMethods" :key="'radio-' + source.value"
+                  v-model="selectedImportSource" :input-value="source.value">
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>Source</template>
@@ -78,12 +55,8 @@
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup
-                  v-model:selected="importSourceValue.category"
-                  :menu-items="categoryOptions"
-                  placeholder="Enter category"
-                  @input="searchCategory"
-                >
+                <cdx-lookup v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
+                  placeholder="Enter category" @input="searchCategory">
                   <template #label>Enter category</template>
                   <template #no-results>No categories found.</template>
                 </cdx-lookup>
@@ -101,12 +74,8 @@
                 <template #label>Directions</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio
-                  v-for="source in showStatsOptions"
-                  :key="'show_stats-' + source.value"
-                  v-model="formData.show_stats"
-                  :input-value="source.value"
-                >
+                <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value"
+                  v-model="formData.show_stats" :input-value="source.value">
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>Show own statistics (Beta)</template>
@@ -125,21 +94,15 @@
                 </template>
               </cdx-field>
               <cdx-field>
-                <UserList
-                  :users="formData.jurors"
-                  @update:selectedUsers="formData.jurors = $event"
-                />
+                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" />
                 <template #label>Jurors</template>
                 <template #help-text>
                   <p>Enter the username of the juror you want to add to this round.</p>
                 </template>
               </cdx-field>
               <cdx-field v-if="thresholds">
-                <cdx-select
-                  v-model:selected="formData.threshold"
-                  :menu-items="thresholdOptions"
-                  default-label="Choose an threshold"
-                />
+                <cdx-select v-model:selected="formData.threshold" :menu-items="thresholdOptions"
+                  default-label="Choose an threshold" />
                 <template #label>Threshold</template>
                 <template #description>
                   <p>Minimal average rating for photo</p>
@@ -149,11 +112,7 @@
             <div class="form-right" v-if="roundIndex === 0">
               <p>Round File Setting</p>
               <cdx-field>
-                <cdx-checkbox
-                  v-for="key in fileSettingsOptions"
-                  :key="key"
-                  v-model="formData.config[key]"
-                >
+                <cdx-checkbox v-for="key in fileSettingsOptions" :key="key" v-model="formData.config[key]">
                   {{ $t(key) }}
                 </cdx-checkbox>
               </cdx-field>
@@ -398,15 +357,15 @@ const importCategory = (id) => {
 
 watch(thresholds, (value) => {
   thresholdOptions.value = Object.entries(value).map(([key, value]) => ({
-    label: `${(key * 10).toFixed(2)} / 10 (${value } images total)`,
+    label: `${(key * 10).toFixed(2)} / 10 (${value} images total)`,
     value: key
   }))
 })
 
 onMounted(() => {
   if (prevRound) {
-   adminService.previewRound(prevRound.id).then((resp) => {
-    thresholds.value = resp.data.thresholds
+    adminService.previewRound(prevRound.id).then((resp) => {
+      thresholds.value = resp.data.thresholds
     })
   }
 })

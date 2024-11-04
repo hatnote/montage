@@ -19,7 +19,6 @@ import { CdxButton } from '@wikimedia/codex'
 import Account from 'vue-material-design-icons/Account.vue'
 
 const userStore = useUserStore()
-console.log(userStore.user)
 </script>
 
 <style scoped>

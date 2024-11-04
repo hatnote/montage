@@ -20,17 +20,13 @@
       <div style="margin-top: 24px">
         <h3>Jurors</h3>
         <div style="display: flex; flex-wrap: wrap">
-          <div
-            v-for="juror in round.jurors"
-            :key="juror.username"
-            style="
+          <div v-for="juror in round.jurors" :key="juror.username" style="
               width: 220px;
               display: flex;
               flex-direction: column;
               margin-top: 16px;
               margin-bottom: 16px;
-            "
-          >
+            ">
             <user-avatar-with-name :coordinators="[juror]" />
             <div style="display: flex; flex-direction: column; margin-top: 8px">
               <!-- <p style="font-size: 26px">
@@ -82,10 +78,7 @@
       </cdx-accordion>
     </div>
   </div>
-  <div
-    class="round__actions"
-    style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
-  >
+  <div class="round__actions" style="display: flex; justify-content: end; gap: 16px; margin-top: 16px">
     <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
       <play style="font-size: 6px" />Activate
     </cdx-button>
@@ -94,12 +87,7 @@
       <pause style="font-size: 6px" /> Pause
     </cdx-button>
 
-    <cdx-button
-      :disabled="round.status === 'active'"
-      @click="finalizeRound"
-      action="progressive"
-      weight="primary"
-    >
+    <cdx-button :disabled="round.status === 'active'" @click="finalizeRound" action="progressive" weight="primary">
       <check style="font-size: 6px" />Finalize
     </cdx-button>
 
@@ -147,7 +135,12 @@ const activateRound = () => {
   adminService
     .activateRound(props.round.id)
     .then((data) => {
-      console.log(data)
+      if (data.status === 'success') {
+        alertService.success('Round activated successfully.')
+      }
+
+      // Refresh the page
+      location.reload()
     })
     .catch(alertService.error)
 }
@@ -156,7 +149,12 @@ const pauseRound = () => {
   adminService
     .pauseRound(props.round.id)
     .then((data) => {
-      console.log(data);
+      if (data.status === 'success') {
+        alertService.success('Round paused successfully.')
+      }
+
+      // Refresh the page
+      location.reload()
     })
     .catch(alertService.error);
 }

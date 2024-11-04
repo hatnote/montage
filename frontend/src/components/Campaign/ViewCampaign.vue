@@ -13,11 +13,7 @@
           <cdx-button action="progressive" @click="unarchiveCampaign" v-else>
             <inbox-arrow-up class="icon-small" /> Unarchive
           </cdx-button>
-          <cdx-button
-            action="progressive"
-            @click="hangleEditCampaignBtnClick"
-            :disabled="campaign.is_archived"
-          >
+          <cdx-button action="progressive" @click="hangleEditCampaignBtnClick" :disabled="campaign.is_archived">
             <cog-icon class="icon-small" /> Edit Campaign
           </cdx-button>
         </div>
@@ -32,87 +28,52 @@
         <div class="campaign-rounds-list" v-if="!showAddRoundForm">
           <round-view v-for="round in campaign.rounds" :key="round.id" :round="round" />
         </div>
-        <cdx-button
-          v-if="!showAddRoundForm"
-          action="progressive"
-          @click="addRound"
-          :disabled="campaign.isArchived"
-          icon
-          class="add-round-button"
-        >
+        <cdx-button v-if="!showAddRoundForm" action="progressive" @click="addRound" :disabled="campaign.isArchived" icon
+          class="add-round-button">
           <plus class="icon-small" /> Add Round
         </cdx-button>
-        <round-new
-          :rounds="campaign.rounds"
-          v-if="showAddRoundForm"
-          v-model:showAddRoundForm="showAddRoundForm"
-          @reloadCampaignState="reloadState"
-        />
+        <round-new :rounds="campaign.rounds" v-if="showAddRoundForm" v-model:showAddRoundForm="showAddRoundForm"
+          @reloadCampaignState="reloadState" />
       </div>
     </div>
     <div v-else>
       <div class="campaign-header">
-        <cdx-field
-          class="campaign-name-field"
-          :status="errors.name ? 'error' : 'default'"
-          :messages="{ error: errors.name }"
-        >
+        <cdx-field class="campaign-name-field" :status="errors.name ? 'error' : 'default'"
+          :messages="{ error: errors.name }">
           <cdx-text-input class="campaign-name-input" v-model="campaignFormField.name" />
         </cdx-field>
         <div class="campaign-button-group">
           <cdx-button action="progressive" @click="saveEditCampaign" class="save-button">
             <check class="icon-small" /> Save
           </cdx-button>
-          <cdx-button
-            action="destructive"
-            @click="cancelEdit"
-            class="cancel-button"
-            v-if="!campaign.isArchived"
-          >
+          <cdx-button action="destructive" @click="cancelEdit" class="cancel-button" v-if="!campaign.isArchived">
             <close class="icon-small" /> Cancel
           </cdx-button>
         </div>
       </div>
       <div class="date-time-inputs">
-        <cdx-field
-          class="open-date-field"
-          :status="errors.openDate ? 'error' : 'default'"
-          :messages="{ error: errors.openDate }"
-        >
+        <cdx-field class="open-date-field" :status="errors.openDate ? 'error' : 'default'"
+          :messages="{ error: errors.openDate }">
           <template #label>Open Date (UTC):</template>
           <cdx-text-input input-type="date" v-model="campaignFormField.openDate" />
         </cdx-field>
-        <cdx-field
-          :status="errors.openTime ? 'error' : 'default'"
-          :messages="{ error: errors.openTime }"
-        >
+        <cdx-field :status="errors.openTime ? 'error' : 'default'" :messages="{ error: errors.openTime }">
           <template #label>Open Time (UTC):</template>
           <cdx-text-input input-type="time" v-model="campaignFormField.openTime" />
         </cdx-field>
-        <cdx-field
-          :status="errors.closeDate ? 'error' : 'default'"
-          :messages="{ error: errors.closeDate }"
-        >
+        <cdx-field :status="errors.closeDate ? 'error' : 'default'" :messages="{ error: errors.closeDate }">
           <template #label>Close Date (UTC):</template>
           <cdx-text-input input-type="date" v-model="campaignFormField.closeDate" />
         </cdx-field>
-        <cdx-field
-          :status="errors.closeTime ? 'error' : 'default'"
-          :messages="{ error: errors.closeTime }"
-        >
+        <cdx-field :status="errors.closeTime ? 'error' : 'default'" :messages="{ error: errors.closeTime }">
           <cdx-text-input input-type="time" v-model="campaignFormField.closeTime" />
           <template #label>Close Time (UTC)</template>
         </cdx-field>
       </div>
-      <cdx-field
-        :status="errors.coordinators ? 'error' : 'default'"
-        :messages="{ error: errors.coordinators }"
-      >
+      <cdx-field :status="errors.coordinators ? 'error' : 'default'" :messages="{ error: errors.coordinators }">
         <template #label>Campaign Coordinators</template>
-        <UserList
-          :users="campaignFormField.coordinators"
-          @update:selectedUsers="campaignFormField.coordinators = $event"
-        />
+        <UserList :users="campaignFormField.coordinators"
+          @update:selectedUsers="campaignFormField.coordinators = $event" />
       </cdx-field>
     </div>
   </div>

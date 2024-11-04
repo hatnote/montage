@@ -16,12 +16,8 @@
         <template #label>Directions</template>
       </cdx-field>
       <cdx-field>
-        <cdx-radio
-          v-for="source in showStatsOptions"
-          :key="'show_stats-' + source.value"
-          v-model="formData.show_stats"
-          :input-value="source.value"
-        >
+        <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value" v-model="formData.show_stats"
+          :input-value="source.value">
           {{ source.label }}
         </cdx-radio>
         <template #label>Show own statistics (Beta)</template>
@@ -66,16 +62,13 @@
       <delete style="font-size: 6px" /> Delete Round
     </cdx-button>
 
-    <cdx-button
-      @click="saveRound"
-      action="progressive"
-      weight="primary"
-      style="margin-left: auto; margin-right: 24px"
-    >
+    <cdx-button @click="saveRound" action="progressive" weight="primary" style="margin-left: auto; margin-right: 24px">
       <check style="font-size: 6px" /> Save
     </cdx-button>
 
-    <cdx-button @click="cancelRound"> <close style="font-size: 6px" /> Cancel </cdx-button>
+    <cdx-button @click="cancelRound">
+      <close style="font-size: 6px" /> Cancel
+    </cdx-button>
   </div>
 </template>
 
@@ -91,6 +84,7 @@ import Close from 'vue-material-design-icons/Close.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
+import dialogService from '@/services/dialogService'
 
 const props = defineProps({
   round: Object,
@@ -158,11 +152,30 @@ const saveRound = () => {
 }
 
 const deleteRound = () => {
-  adminService
-    .cancelRound(props.round.id)
-    .then(() => {
+
+  dialogService().show({
+    title: 'Delete Round',
+    content: 'Are you sure you want to delete this round?',
+    primaryAction: {
+      label: 'Delete Round',
+      actionType: 'destructive'
+    },
+    defaultAction: {
+      label: 'Cancel',
+    },
+    onPrimary: () => {
+      adminService
+        .cancelRound(props.round.id)
+        .then(() => {
+          emit('update:isRoundEditing', false)
+        })
+        .catch(alertService.error)
+    },
+    onDefault: () => {
       emit('update:isRoundEditing', false)
-    })
-    .catch(alertService.error)
+    }
+  })
+
+
 }
 </script>

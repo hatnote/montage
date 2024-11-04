@@ -1,59 +1,94 @@
 <template>
-  <cdx-message type="warning">
-    <p>This screen is under development.</p>
-  </cdx-message>
-  <div class="vote-yes-no-screen">
-    <div class="vote-image-container">
-      <img :src="imageSrc" class="vote-image" />
+  <div class="vote-container" v-if="round.status === 'active' && images?.length > 0">
+    <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
+      <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
+      <img :class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`" :src="getImageName(rating.current)"
+        @load="handleImageLoad" @error="handleImageLoad" />
+      <cdx-button @click="toggleSidebar" v-tooltip="tooltipText" weight="quiet" class="sidebar-hide-btn">
+        <template v-if="showSidebar">
+          <arrow-right-thick class="icon-small" />
+        </template>
+        <template v-else>
+          <arrow-left-thick class="icon-small" />
+        </template>
+      </cdx-button>
     </div>
-    <div class="vote-description-container">
-      <div class="vote-header">
-        <h2>{{ imageName }}</h2>
-        <p class="vote-remaining-images">{{ remainingImages }} images remaining</p>
-        <div class="vote-button-group">
-          <cdx-button :href="imageLink" weight="quiet">
+    <div class="vote-description-container" v-if="showSidebar">
+      <div class="vote-file-name">
+        <h1 v-if="!round.config.show_filename">Image #{{ rating.current.entry.id }}</h1>
+        <h1 v-else>{{ rating.current.name.split("_").join(" ") }}</h1>
+        <p class="greyed">{{ stats.total_open_tasks }} images remaining</p>
+      </div>
+      <div class="vote-file-links">
+        <a :href="rating.current.entry.url" target="_blank">
+          <cdx-button weight="quiet">
             <image-icon class="icon-small" /> Show full-size
           </cdx-button>
-          <cdx-button :href="commonsPage" weight="quiet" class="commons-button">
+        </a>
+        <a :href="'https://commons.wikimedia.org/wiki/File:' + rating.current.entry.name" target="_blank">
+          <cdx-button weight="quiet" class="vote-commons-button">
             <link-icon class="icon-small" /> Commons page
           </cdx-button>
-        </div>
+        </a>
       </div>
+      <h3 class="vote-section-title">Vote</h3>
       <div class="vote-controls">
-        <h3>Vote</h3>
-        <div class="vote-button-group">
-          <cdx-button action="progressive" weight="quiet">
+        <div class="vote-controls-button">
+          <cdx-button action="progressive" weight="quiet" @click="setRate(5)">
             <thumb-up class="icon-small" /> Accept
           </cdx-button>
-          <cdx-button action="destructive" weight="quiet">
+          <cdx-button action="destructive" weight="quiet" @click="setRate(1)">
             <thumb-down class="icon-small" /> Decline
           </cdx-button>
         </div>
-        <span class="vote-keyboard-instructions">
+        <span class="greyed vote-controls-instruction">
           You can also use keyboard to vote.<br />
           <span class="key">↑</span><span class="key">↓</span> – Accept / Decline<br />
           <span class="key">→</span> – Skip (vote later)
         </span>
       </div>
+
+      <h3 class="vote-section-title">Actions</h3>
       <div class="vote-actions">
-        <h3>Actions</h3>
-        <div class="vote-button-group">
-          <cdx-button weight="quiet">
-            <arrow-right class="icon-small" /> Skip (vote later)
-          </cdx-button>
-          <cdx-button weight="quiet">
-            <pencil class="icon-small" /> Edit previous votes
-          </cdx-button>
-        </div>
+        <cdx-button weight="quiet" @click="setRate()">
+          <arrow-right class="icon-small" /> Skip (vote later)
+        </cdx-button>
+        <cdx-button weight="quiet" @click="goPrevVoteEditing">
+          <pencil class="icon-small" /> Edit previous votes
+        </cdx-button>
       </div>
 
-      <div class="vote-description-section">
-        <h3>Description</h3>
-        <div class="vote-description-details">
-          <cloud-upload class="icon-small" />
-          <div class="vote-date-time">
-            <p>{{ date }}</p>
-            <p>{{ time }}</p>
+      <h3 class="vote-section-title">Description</h3>
+      <div class="vote-details">
+        <div class="vote-details-list">
+          <div class="vote-details-list-item vote-details-2-line">
+            <cloud-upload class="vote-details-icon" />
+            <div class="vote-details-list-item-text">
+              <h3>{{ formattedDateTime.date }}</h3>
+              <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
+            </div>
+          </div>
+          <div class="vote-details-list-item vote-details-2-line">
+            <div class="icon-container">
+              <image-album class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h3>{{ rating.current.entry.resolution / 1000000 }} Mpix</h3>
+              <p>{{ rating.current.entry.width + " x " + rating.current.entry.height }}</p>
+            </div>
+          </div>
+          <div class="vote-details-list-item vote-details-2-line">
+            <div class="icon-container">
+              <history class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h3>{{ rating.current.history.length }} version<span v-if="rating.current.history.length > 1">s</span>
+              </h3>
+              <p>last one at {{ formattedDate(rating.current.history[0].timestamp) }}</p>
+            </div>
+            <cdx-button weight="quiet" @click="goPrevVoteEditing">
+              <link-icon />
+            </cdx-button>
           </div>
         </div>
       </div>
@@ -62,11 +97,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, watch, computed } from 'vue'
 import jurorService from '@/services/jurorService'
+import { useRouter } from 'vue-router'
 
-import { CdxButton, CdxMessage } from '@wikimedia/codex'
+import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
 import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
 import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
@@ -75,119 +110,315 @@ import LinkIcon from 'vue-material-design-icons/Link.vue'
 import ArrowRight from 'vue-material-design-icons/ArrowRight.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import CloudUpload from 'vue-material-design-icons/CloudUpload.vue'
+import ImageAlbum from 'vue-material-design-icons/ImageAlbum.vue'
+import History from 'vue-material-design-icons/History.vue'
+import ArrowRightThick from 'vue-material-design-icons/ArrowRightThick.vue'
+import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 
-const route = useRoute()
 
-const imageName = ref('โง่ๆๆๆ.jpg')
-const remainingImages = ref(2463)
-const imageSrc = ref(
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Montreal_Zombie_Walk_2015_-_Doge_%2822033091143%29.jpg/640px-Montreal_Zombie_Walk_2015_-_Doge_%2822033091143%29.jpg'
-)
-const imageLink = ref(
-  'https://upload.wikimedia.org/wikipedia/commons/1/1f/Montreal_Zombie_Walk_2015_-_Doge_%2822033091143%29.jpg'
-)
-const commonsPage = ref(
-  'https://commons.wikimedia.org/wiki/File:Montreal_Zombie_Walk_2015_-_Doge_(22033091143).jpg'
-)
-const date = ref('18 Mar 2022')
-const time = ref('Friday, 6:15')
+const router = useRouter()
 
-onMounted(() => {
-  jurorService.getRoundTasks(route.params.id, 0).then((response) => {
-    console.log(response)
+const counter = ref(0);
+const readKeyDown = true;
+const skips = ref(0);
+const imageLoading = ref(true);
+const showSidebar = ref(true)
+
+const props = defineProps({
+  round: Object,
+  tasks: Object
+})
+
+const roundLink = [props.round.id, props.round.canonical_url_name].join('-');
+
+const images = ref(null)
+const stats = ref(null)
+
+const rating = ref({
+  current: null,
+  currentIndex: 0,
+  next: null,
+  rates: [1, 2, 3, 4, 5],
+});
+
+function toggleSidebar() {
+  showSidebar.value = !showSidebar.value
+}
+
+
+function goPrevVoteEditing() {
+  router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+function handleImageLoad() {
+  imageLoading.value = false
+}
+
+const formattedDate = (timestamp) => {
+  if (!timestamp) return ''
+
+  const dateObj = new Date(timestamp)
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).format(dateObj)
+}
+
+function getImageName(image) {
+  if (!image) return null
+
+  const entry = image.entry
+  const url = [
+    '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
+    encodeURIComponent(entry.name),
+    '&width=1280',
+  ].join('')
+
+  return url
+}
+
+function getNextImage() {
+  console.log("images.value", images.value)
+  rating.value.currentIndex = (rating.value.currentIndex + 1) % images.value?.length
+  rating.value.current = images.value[rating.value.currentIndex]
+  rating.value.next = images.value[(rating.value.currentIndex + 1) % images.value?.length]
+}
+
+function getTasks() {
+  return jurorService.getRoundTasks(props.round.id, skips.value).then((response) => {
+    images.value = response.data.tasks
+    rating.value.current = images.value?.[0]
+    rating.value.currentIndex = 0
+    rating.value.next = images.value?.[1] || null
   })
+}
+
+function setRate(rate) {
+  if (imageLoading.value) return
+
+  if (rate) {
+    const val = (rate - 1) / 4;
+    jurorService.setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] }).then(() => {
+      stats.value.total_open_tasks -= 1;
+
+      if (stats.value.total_open_tasks <= 10) {
+        skips.value = 0;
+      }
+
+      if (counter.value === 4 || !stats.value.total_open_tasks) {
+        counter.value = 0;
+        getTasks();
+      } else {
+        counter.value += 1;
+        getNextImage();
+      }
+    })
+  } else {
+    skips.value += 1
+    getNextImage();
+  }
+}
+
+
+const tooltipText = computed(() => (showSidebar.value ? 'Hide panel' : 'Show panel'))
+
+// Get the formatted date and time of current image
+const formattedDateTime = computed(() => {
+  const uploadDate = rating.value.current.entry.upload_date
+  if (!uploadDate) return { date: '', day: '', time: '' }
+
+  const dateObj = new Date(uploadDate)
+  return {
+    date: new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(dateObj),
+    day: new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj),
+    time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric' }).format(dateObj),
+  }
+})
+
+
+// Changing value on states change
+watch(() => rating.value.current, () => {
+  imageLoading.value = true
+})
+
+watch(() => props.tasks, (tasks) => {
+  console.log("tasks", tasks)
+  images.value = tasks.tasks
+  stats.value = tasks.stats
+})
+
+watch(images, (imgs) => {
+  rating.value.current = imgs?.[0]
+  rating.value.next = imgs?.[1] || null
 })
 </script>
 
 <style scoped>
-.vote-yes-no-screen {
+.vote-container {
   display: flex;
-  padding: 24px;
-  height: calc(100vh - 116.5px);
+  justify-content: center;
+  align-items: stretch;
+  height: calc(100vh - 156.5px);
 }
 
 .vote-image-container {
-  flex: 7;
-  background-color: #e6e6e5;
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
+  background: #e6e6e6;
 }
 
-.vote-image {
+.vote-image-progress-bar {
+  width: 100%;
+  margin: 20px;
+}
+
+.vote-image-hide {
+  display: none;
+}
+
+.with-sidebar {
+  width: calc(100vw - 450px);
+}
+
+.vote-image-container img {
   max-width: 100%;
-  height: auto;
+  max-height: 100%;
   object-fit: contain;
 }
 
-.vote-description-container {
-  flex: 3;
-  padding-left: 16px;
-  overflow-x: scroll;
+.sidebar-hide-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
 }
 
-.vote-header {
+.vote-description-container {
+  margin-left: 20px;
+  width: 350px;
+  overflow: auto;
+}
+
+.vote-file-name {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  justify-content: start;
+  align-items: stretch;
 }
 
-.vote-remaining-images {
-  margin-top: 16px;
-  color: gray;
+.vote-file-name h1 {
+  margin: 0;
+  height: 64px;
+  overflow: hidden;
+  font-size: 26px;
+  display: block;
+  margin-block-end: 0.67em;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+  font-weight: bold;
 }
 
-.vote-button-group {
-  margin-top: 24px;
+.vote-file-links {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.vote-commons-button {
+  color: rgb(51, 102, 204);
+}
+
+.vote-section-title {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  display: block;
+  margin-block-start: 1em;
+  margin-block-end: 1em;
+
+}
+
+.vote-controls {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.vote-controls-button {
   display: flex;
   justify-content: center;
-  width: 100%;
+  align-items: center;
 }
 
-.icon-small {
-  font-size: 6px;
-}
-
-.vote-keyboard-instructions {
-  color: gray;
+.vote-controls-instruction {
   margin-top: 16px;
-}
-
-.key {
-  display: inline-block;
-  margin: 0 0.1em;
-  width: 18px;
-  line-height: 18px;
-  height: 18px;
-  text-align: center;
-  color: darkgray;
-  background: white;
-  font-size: 11px;
-  border-radius: 3px;
-  text-shadow: 0 1px 0 white;
-  white-space: nowrap;
-  border: 1px solid gray;
-  box-shadow:
-    0 1px 0px rgba(0, 0, 0, 0.2),
-    0 0 0 2px #fff inset;
 }
 
 .vote-actions {
-  margin-top: 24px;
-}
-
-.vote-description-section {
-  margin-top: 24px;
-}
-
-.vote-description-details {
   display: flex;
-  align-items: center;
-  margin-left: 16px;
 }
 
-.vote-date-time {
-  margin-left: 40px;
-  color: gray;
+.vote-details-list {
+  display: block;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.vote-details-list-item {
+  display: flex;
+  position: relative;
+  padding: 0px 16px;
+}
+
+.vote-details-2-line {
+  align-items: flex-start;
+  min-height: 55px;
+  height: 55px;
+}
+
+
+.vote-details-list-item-text {
+  flex: 1 1 auto;
+  margin: auto;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.vote-details-list-item-text h3 {
+  color: rgba(0, 0, 0, 0.87);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.010em;
+  margin: 0 0 0px 0;
+  line-height: 1.2em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vote-details-list-item-text p {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.010em;
+  margin: 0 0 0 0;
+  line-height: 1.6em;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.vote-details-icon {
+  margin-right: 32px;
+  width: 24px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+  box-sizing: content-box;
+  cursor: default;
+  font-size: 24px;
+  height: 100%;
+  display: inline-block;
+  line-height: 1;
 }
 </style>
