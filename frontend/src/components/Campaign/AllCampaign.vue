@@ -71,7 +71,26 @@ onMounted(() => {
         'campaign.id'
       );
 
-      jurorCampaigns.value = _.values(roundsGroupedByCampaigns);
+      let campaignsJuror = _.values(roundsGroupedByCampaigns)
+
+      // Order campaigns by open date (more recent at the top)
+      campaignsJuror.sort((campaign1, campaign2) => {
+        const getOpenDate = (campaign) =>
+          campaign.length > 0 && campaign[0].campaign ? campaign[0].campaign.open_date : null
+
+        const campaign1OpenDate = getOpenDate(campaign1)
+        const campaign2OpenDate = getOpenDate(campaign2)
+
+        if (campaign1OpenDate === campaign2OpenDate) {
+          return 0
+        } else if (campaign1OpenDate < campaign2OpenDate) {
+          return 1
+        } else {
+          return -1
+        }
+      })
+
+      jurorCampaigns.value = campaignsJuror
     })
     .catch(alertService.error)
 })

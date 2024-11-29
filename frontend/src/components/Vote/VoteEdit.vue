@@ -1,8 +1,5 @@
 <template>
-  <cdx-message type="warning">
-    <p>This screen is under development.</p>
-  </cdx-message>
-  <div class="ranking-screen">
+  <div class="ranking-screen" v-if="round?.campaign.status === 'active' && votes.length">
     <div class="round-header">
       <div>
         <h2>{{ round.name }}</h2>
@@ -10,15 +7,15 @@
       </div>
       <div class="order-by">
         <p style="font-size: 16px; color: gray">Order by:</p>
-        <cdx-select v-model:selected="sortOrder.order_by" :menu-items="menuItems" />
+        <cdx-select v-model:selected="sort.order_by" :menu-items="menuItems" />
         <cdx-select
-          v-model:selected="sortOrder.sort"
+          v-model:selected="sort.sort"
           :menu-items="menuItemsSort"
           style="width: 100px !important"
         />
       </div>
       <div class="grid-size-controls" style="margin-left: 60px">
-        <p style="font-size: 16px; color: gray; margin-left: 11px">Gallary size</p>
+        <p style="font-size: 16px; color: gray; margin-left: 11px">Gallery size</p>
         <cdx-button
           :action="gridSize === 3 ? 'progressive' : ''"
           weight="quiet"
@@ -42,43 +39,65 @@
         </cdx-button>
       </div>
 
-      <cdx-button weight="quiet" action="progressive">
-        <content-save-outline style="font-size: 6px" /> Save Round
+      <cdx-button weight="quiet" action="progressive" @click="save">
+        <content-save-outline style="font-size: 6px" /> Save Changes
       </cdx-button>
     </div>
 
     <div class="image-grid" :class="'grid-size-' + gridSize">
       <div
-        v-for="vote in votes"
-        :key="vote.id"
+        v-for="image in votes"
+        :key="image.id"
         class="gallery__image link"
         :class="getImageSizeClass()"
       >
         <div class="gallery__image-container">
-          <img :src="vote.url" />
+          <img :src="getImageName(image)" />
         </div>
         <div style="font-size: 14px; color: gray">
           <p>voted in a day</p>
           <p>5 Sep 2023 at 8:11 UTC</p>
         </div>
         <div style="margin-bottom: 40px; display: flex; justify-content: center; margin-top: 8px">
-          <cdx-button :action="vote.value === true ? 'progressive' : ''" weight="quiet">
-            <thumb-up style="font-size: 6px" /> Accept
+          <cdx-button
+            :action="image.value === 5 ? 'progressive' : ''"
+            weight="quiet"
+            @click="setRate(image, 5)"
+          >
+            <thumb-up class="icon-small" /> Accept
           </cdx-button>
-          <cdx-button :action="vote.value === false ? 'progressive' : ''" weight="quiet">
-            <thumb-down style="font-size: 6px" /> Decline
+          <cdx-button
+            :action="image.value === 1 ? 'progressive' : ''"
+            weight="quiet"
+            @click="setRate(image, 1)"
+          >
+            <thumb-down class="icon-small" /> Decline
           </cdx-button>
         </div>
       </div>
     </div>
   </div>
+  <div v-if="round?.campaign.status === 'active' && !votes.length">
+    <div>
+      <h3>No votes yet!</h3>
+      <p class="greyed">You haven't voted on any image this round</p>
+    </div>
+  </div>
+  <div v-if="round?.campaign.status !== 'active'">
+    <h3>Round is not active</h3>
+    <p class="greyed">This round is not active. Please contact to organizer.</p>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
+import _ from 'lodash'
+import { useRouter, useRoute } from 'vue-router'
+import jurorService from '@/services/jurorService'
+import alertService from '@/services/alertService'
 
 // Components
-import { CdxButton, CdxSelect, CdxMessage } from '@wikimedia/codex'
+import { CdxButton, CdxSelect } from '@wikimedia/codex'
 
 // Icons
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
@@ -88,94 +107,160 @@ import ImageSizeSelectSmall from 'vue-material-design-icons/ImageSizeSelectSmall
 import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
 import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 
-const round = reactive({
-  name: 'Round 1',
-  campaign: { name: "Mahmoud and Jay's new Campaign" },
-  status: 'active',
-  config: {
-    show_filename: true
-  }
+// Hooks
+const router = useRouter()
+const route = useRoute()
+
+const voteId = route.params.id.split('-')[0]
+
+getRoundDetails(voteId)
+getPastVotes(voteId)
+
+const round = ref(null)
+const votes = ref(null)
+
+const edits = ref([])
+const showSidebar = ref(true)
+const size = ref(1)
+const sort = ref({
+  order_by: 'date',
+  sort: 'desc'
 })
 
-const votes = ref([
-  {
-    id: 1,
-    value: true,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Salzburg_Michaelskirche_Deckenfresko-4118.jpg/512px-Salzburg_Michaelskirche_Deckenfresko-4118.jpg'
-  },
-  {
-    id: 2,
-    value: false,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Ninove_Omloop_Het_Nieuwsblad_2024_02.jpg/640px-Ninove_Omloop_Het_Nieuwsblad_2024_02.jpg'
-  },
-  {
-    id: 3,
-    value: true,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Gesergiyo_sand_pinnacles%2C_Konso_%2825%29_%2829127485796%29.jpg/640px-Gesergiyo_sand_pinnacles%2C_Konso_%2825%29_%2829127485796%29.jpg'
-  },
-  {
-    id: 4,
-    value: true,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/5/50/Stavby_kyrka_-_KMB_-_16000200132457.jpg'
-  },
-  {
-    id: 5,
-    value: false,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Noord-Hollands_Archief%2C_Beeldcollectie_van_de_gemeente_Haarlem%2C_Inventarisnummer_NL-HlmNHA_1100_KNA006009247.JPG/637px-Noord-Hollands_Archief%2C_Beeldcollectie_van_de_gemeente_Haarlem%2C_Inventarisnummer_NL-HlmNHA_1100_KNA006009247.JPG'
-  },
-  {
-    id: 6,
-    value: false,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/2021-10-31_12-53-27_sf-connexion-Colmar.jpg/776px-2021-10-31_12-53-27_sf-connexion-Colmar.jpg'
-  },
-  {
-    id: 7,
-    value: true,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Aimard_-_Le_Grand_Chef_des_Aucas%2C_1889%2C_illust_30.png/632px-Aimard_-_Le_Grand_Chef_des_Aucas%2C_1889%2C_illust_30.png'
-  },
-  {
-    id: 8,
-    value: true,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/PanfilovkaPer_8.jpg/640px-PanfilovkaPer_8.jpg'
-  },
-  {
-    id: 9,
-    value: false,
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Lamb_of_God_Full_Force_2019_19.jpg/640px-Lamb_of_God_Full_Force_2019_19.jpg'
-  }
-])
-
 const gridSize = ref(1)
-const error = ref(null)
 
 const setGridSize = (size) => {
   gridSize.value = size
-}
-
-const getOrdinal = (n) => {
-  const ordinals = ['th', 'st', 'nd', 'rd']
-  const value = n % 100
-  return `${n}${ordinals[(value - 20) % 10] || ordinals[value] || ordinals[0]}`
 }
 
 const getImageSizeClass = () => {
   return `gallery__image--size-${gridSize.value}`
 }
 
-const sortOrder = reactive({
-  order_by: 'votedate',
-  sort: 'desc'
-})
-
 const menuItems = [
-  { label: 'Vote Date', value: 'votedate' },
-  { label: 'Sort by Filename', value: 'filename' }
+  { label: 'vote date', value: 'date' },
+  { label: 'score', value: 'value' }
 ]
 
 const menuItemsSort = [
   { label: 'accending', value: 'asc' },
   { label: 'descending', value: 'desc' }
 ]
+
+function getRoundDetails(id) {
+  jurorService
+    .getRound(id)
+    .then((response) => {
+      const r = response.data
+      round.value = r
+      round.value.link = [r.id, r.canonical_url_name].join('-')
+    })
+    .catch(alertService.error)
+}
+
+function getPastVotes(id) {
+  jurorService
+    .getPastVotes(id)
+    .then((response) => {
+      votes.value = response.data.map((vote) => ({
+        ...vote,
+        value: vote.value * 4 + 1
+      }))
+    })
+    .catch(alertService.error)
+}
+
+const getImageName = (image) => {
+  if (!image) {
+    return null
+  }
+  return [
+    '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
+    encodeURIComponent(image.entry.name),
+    '&width=1280'
+  ].join('')
+}
+
+const isVoting = (type) => {
+  return round.value && round.value.vote_method === type
+}
+
+const encodeName = (image) => {
+  return encodeURIComponent(image.entry.name)
+}
+
+const openURL = (url) => {
+  window.open(url, '_blank')
+}
+
+const loadMore = () => {
+  return jurorService
+    .getPastVotes(round.value.id, votes.value.length, sort.value.order_by, sort.value.sort)
+    .then((response) => {
+      const newVotes = response.data.map((vote) => ({
+        ...vote,
+        value: vote.value * 4 + 1
+      }))
+
+      if (newVotes.length) {
+        if (votes.value.length && newVotes[0].id === votes.value[0].id) {
+          return false
+        }
+        votes.value.push(...newVotes)
+      }
+
+      return true
+    })
+}
+
+const reorderList = () => {
+  votes.value = []
+  loadMore()
+}
+
+const save = () => {
+  saveRating()
+    .then(() => {
+      edits.value = []
+      votes.value.forEach((image) => {
+        delete image.edited
+      })
+      alertService.success('Rating saved')
+    })
+    .catch(alertService.error)
+}
+
+const saveRating = () => {
+  return jurorService.setRating(round.value.id, {
+    ratings: edits.value.map((element) => ({
+      vote_id: element.id,
+      value: (element.value - 1) / 4
+    }))
+  })
+}
+
+const saveRanking = () => {
+  const ratings = votes.value.map((image) => ({
+    task_id: image.id,
+    value: votes.value.indexOf(image),
+    review: image.review ? image.review : null
+  }))
+
+  jurorService
+    .setRating(round.value.id, { ratings })
+    .then(() => {
+      router.go()
+    })
+    .catch(alertService.error)
+}
+
+const setRate = (image, rate) => {
+  image.value = rate
+  image.edited = true
+
+  edits.value = _.reject(edits.value, { id: image.id })
+  edits.value.push(image)
+}
 </script>
 
 <style scoped>

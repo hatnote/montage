@@ -13,7 +13,7 @@ import VoteRating from '@/components/Vote/VoteRating.vue'
 import VoteRanking from '@/components/Vote/VoteRanking.vue'
 
 const route = useRoute()
-const voteId = route.params.id
+const voteId = route.params.id.split('-')[0]
 
 const round = ref(null)
 const tasks = ref(null)

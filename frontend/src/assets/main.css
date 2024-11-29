@@ -57,3 +57,7 @@
   font-size: 14px !important;
   color: gray !important;
 }
+
+.cdx-select-vue__handle {
+  min-width: 120px;
+}

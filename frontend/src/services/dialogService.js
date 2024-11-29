@@ -36,7 +36,7 @@ const dialogService = () => {
         onPrimary: onPrimaryAction,
         onDefault: onDefaultAction
       }, {
-        default: () => dialogConfig.value.content
+        default: () => h('div', { innerHTML: dialogConfig.value.content })
       });
     }
   });

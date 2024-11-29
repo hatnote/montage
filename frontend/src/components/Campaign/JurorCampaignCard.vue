@@ -21,14 +21,20 @@
               </div>
               <div class="progress-info">
                 <p>
-                  <strong>Your Progress:</strong> {{ (100 - round.percent_tasks_open).toFixed(1) }}% ({{ round.total_open_tasks ?? 0 }} out of
-                  {{ round.total_tasks ?? 0 }})
+                  <strong>Your Progress:</strong> {{ (100 - round.percent_tasks_open).toFixed(1) }}%
+                  ({{ round.total_open_tasks ?? 0 }} out of {{ round.total_tasks ?? 0 }})
                 </p>
                 <div class="actions">
-                  <cdx-button action="progressive" weight="primary" class="vote-button" @click="goRoundVoting(round, 'vote')"
+                  <cdx-button
+                    action="progressive"
+                    weight="primary"
+                    class="vote-button"
+                    @click="goRoundVoting(round, 'vote')"
                     >Vote</cdx-button
                   >
-                  <cdx-button action="progressive" @click="goRoundVoting(round, 'vote-edit')">Edit Previous Votes</cdx-button>
+                  <cdx-button action="progressive" @click="goRoundVoting(round, 'vote-edit')"
+                    >Edit Previous Votes</cdx-button
+                  >
                 </div>
               </div>
             </div>
@@ -40,8 +46,7 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router'
 import { getVotingName } from '@/utils'
 
 // Components
@@ -52,12 +57,12 @@ import ThumbsUpDown from 'vue-material-design-icons/ThumbsUpDown.vue'
 
 defineProps({
   campaign: Object
-});
+})
 
-const router = useRouter();
+const router = useRouter()
 
 const goRoundVoting = (round, type) => {
-  router.push({ name: type, params: { id: round.id } });
+  router.push({ name: type, params: { id: [round.id, round.canonical_url_name].join('-') } })
 }
 </script>
 

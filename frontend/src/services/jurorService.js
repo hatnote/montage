@@ -31,7 +31,7 @@ const jurorService = {
   setRating: (id, data) => apiBackend.post(`juror/round/${id}/tasks/submit`, data),
 
   getRoundTasks: (id, offset = 0) => {
-    return apiBackend.get(`juror/round/${id}/tasks?count=5&offset=${offset}`).then((data) => {
+    return apiBackend.get(`juror/round/${id}/tasks?count=10&offset=${offset}`).then((data) => {
       const tasks = data.data.tasks
       const files = tasks.map((task) => task.entry.name)
 

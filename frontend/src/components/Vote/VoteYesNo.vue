@@ -2,9 +2,18 @@
   <div class="vote-container" v-if="round.status === 'active' && images?.length > 0">
     <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
-      <img :class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`" :src="getImageName(rating.current)"
-        @load="handleImageLoad" @error="handleImageLoad" />
-      <cdx-button @click="toggleSidebar" v-tooltip="tooltipText" weight="quiet" class="sidebar-hide-btn">
+      <img
+        :class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
+        :src="getImageName(rating.current)"
+        @load="handleImageLoad"
+        @error="handleImageLoad"
+      />
+      <cdx-button
+        @click="toggleSidebar"
+        v-tooltip="tooltipText"
+        weight="quiet"
+        class="sidebar-hide-btn"
+      >
         <template v-if="showSidebar">
           <arrow-right-thick class="icon-small" />
         </template>
@@ -16,16 +25,17 @@
     <div class="vote-description-container" v-if="showSidebar">
       <div class="vote-file-name">
         <h1 v-if="!round.config.show_filename">Image #{{ rating.current.entry.id }}</h1>
-        <h1 v-else>{{ rating.current.name.split("_").join(" ") }}</h1>
+        <h1 v-else>{{ rating.current.name.split('_').join(' ') }}</h1>
         <p class="greyed">{{ stats.total_open_tasks }} images remaining</p>
       </div>
       <div class="vote-file-links">
         <a :href="rating.current.entry.url" target="_blank">
-          <cdx-button weight="quiet">
-            <image-icon class="icon-small" /> Show full-size
-          </cdx-button>
+          <cdx-button weight="quiet"> <image-icon class="icon-small" /> Show full-size </cdx-button>
         </a>
-        <a :href="'https://commons.wikimedia.org/wiki/File:' + rating.current.entry.name" target="_blank">
+        <a
+          :href="'https://commons.wikimedia.org/wiki/File:' + rating.current.entry.name"
+          target="_blank"
+        >
           <cdx-button weight="quiet" class="vote-commons-button">
             <link-icon class="icon-small" /> Commons page
           </cdx-button>
@@ -50,12 +60,20 @@
 
       <h3 class="vote-section-title">Actions</h3>
       <div class="vote-actions">
-        <cdx-button weight="quiet" @click="setRate()">
-          <arrow-right class="icon-small" /> Skip (vote later)
-        </cdx-button>
-        <cdx-button weight="quiet" @click="goPrevVoteEditing">
-          <pencil class="icon-small" /> Edit previous votes
-        </cdx-button>
+        <div>
+          <cdx-button weight="quiet" @click="handleFav()">
+            <heart class="icon-small" />
+            {{ rating.current.is_fave ? 'Remove from favorites' : 'Add to favorites' }}
+          </cdx-button>
+        </div>
+        <div>
+          <cdx-button weight="quiet" @click="setRate()">
+            <arrow-right class="icon-small" /> Skip (vote later)
+          </cdx-button>
+          <cdx-button weight="quiet" @click="goPrevVoteEditing">
+            <pencil class="icon-small" /> Edit previous votes
+          </cdx-button>
+        </div>
       </div>
 
       <h3 class="vote-section-title">Description</h3>
@@ -74,7 +92,7 @@
             </div>
             <div class="vote-details-list-item-text">
               <h3>{{ rating.current.entry.resolution / 1000000 }} Mpix</h3>
-              <p>{{ rating.current.entry.width + " x " + rating.current.entry.height }}</p>
+              <p>{{ rating.current.entry.width + ' x ' + rating.current.entry.height }}</p>
             </div>
           </div>
           <div class="vote-details-list-item vote-details-2-line">
@@ -82,7 +100,11 @@
               <history class="vote-details-icon" />
             </div>
             <div class="vote-details-list-item-text">
-              <h3>{{ rating.current.history.length }} version<span v-if="rating.current.history.length > 1">s</span>
+              <h3>
+                {{ rating.current.history.length }} version<span
+                  v-if="rating.current.history.length > 1"
+                  >s</span
+                >
               </h3>
               <p>last one at {{ formattedDate(rating.current.history[0].timestamp) }}</p>
             </div>
@@ -94,12 +116,30 @@
       </div>
     </div>
   </div>
+  <div class="voting-completed" v-if="round.status === 'active' && !images?.length">
+    <div>
+      <h3>All done!</h3>
+      <p class="greyed">
+        You voted on all images in this round. You can still edit your previous votes using the
+        button below.
+      </p>
+      <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
+        <pencil class="icon-small" />
+        Edit previous votes
+      </cdx-button>
+    </div>
+  </div>
+  <div v-if="round.status !== 'active'">
+    <h3>Round is not active</h3>
+    <p class="greyed">This round is not active. Please contact to organizer.</p>
+  </div>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
+import alertService from '@/services/alertService'
 
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
@@ -114,22 +154,25 @@ import ImageAlbum from 'vue-material-design-icons/ImageAlbum.vue'
 import History from 'vue-material-design-icons/History.vue'
 import ArrowRightThick from 'vue-material-design-icons/ArrowRightThick.vue'
 import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
 
-
+// Hooks
 const router = useRouter()
 
-const counter = ref(0);
-const readKeyDown = true;
-const skips = ref(0);
-const imageLoading = ref(true);
+// States variables
+const counter = ref(0)
+const readKeyDown = true
+const skips = ref(0)
+const imageLoading = ref(true)
 const showSidebar = ref(true)
+const imageCache = new Map()
 
 const props = defineProps({
   round: Object,
   tasks: Object
 })
 
-const roundLink = [props.round.id, props.round.canonical_url_name].join('-');
+const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
 const images = ref(null)
 const stats = ref(null)
@@ -138,13 +181,12 @@ const rating = ref({
   current: null,
   currentIndex: 0,
   next: null,
-  rates: [1, 2, 3, 4, 5],
-});
+  rates: [1, 2, 3, 4, 5]
+})
 
 function toggleSidebar() {
   showSidebar.value = !showSidebar.value
 }
-
 
 function goPrevVoteEditing() {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
@@ -172,14 +214,13 @@ function getImageName(image) {
   const url = [
     '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
     encodeURIComponent(entry.name),
-    '&width=1280',
+    '&width=1280'
   ].join('')
 
   return url
 }
 
 function getNextImage() {
-  console.log("images.value", images.value)
   rating.value.currentIndex = (rating.value.currentIndex + 1) % images.value?.length
   rating.value.current = images.value[rating.value.currentIndex]
   rating.value.next = images.value[(rating.value.currentIndex + 1) % images.value?.length]
@@ -191,6 +232,13 @@ function getTasks() {
     rating.value.current = images.value?.[0]
     rating.value.currentIndex = 0
     rating.value.next = images.value?.[1] || null
+
+    // Preload the next 10 images
+    for (let i = 0; i < 10 && i < images.value.length; i++) {
+      const img = new Image()
+      img.src = getImageName(images.value[i])
+      imageCache.set(images.value[i].entry.id, img)
+    }
   })
 }
 
@@ -198,28 +246,51 @@ function setRate(rate) {
   if (imageLoading.value) return
 
   if (rate) {
-    const val = (rate - 1) / 4;
-    jurorService.setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] }).then(() => {
-      stats.value.total_open_tasks -= 1;
+    const val = (rate - 1) / 4
+    jurorService
+      .setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] })
+      .then(() => {
+        stats.value.total_open_tasks -= 1
 
-      if (stats.value.total_open_tasks <= 10) {
-        skips.value = 0;
-      }
+        if (stats.value.total_open_tasks <= 10) {
+          skips.value = 0
+        }
 
-      if (counter.value === 4 || !stats.value.total_open_tasks) {
-        counter.value = 0;
-        getTasks();
-      } else {
-        counter.value += 1;
-        getNextImage();
-      }
-    })
+        if (counter.value === 4 || !stats.value.total_open_tasks) {
+          counter.value = 0
+          getTasks()
+        } else {
+          counter.value += 1
+          getNextImage()
+        }
+      })
   } else {
     skips.value += 1
-    getNextImage();
+    getNextImage()
   }
 }
 
+function handleFav() {
+  if (rating.value.current.is_fave) {
+    jurorService
+      .unfaveImage(props.round.id, rating.value.current.entry.id)
+      .then(() => {
+        alertService.success('Image removed from favorites', 500)
+
+        rating.value.current.is_fave = false
+      })
+      .catch(alertService.error)
+  } else {
+    jurorService
+    .faveImage(props.round.id, rating.value.current.entry.id)
+    .then(() => {
+      alertService.success('Image added to favorites', 500)
+
+      rating.value.current.is_fave = true
+    })
+    .catch(alertService.error)
+  }
+}
 
 const tooltipText = computed(() => (showSidebar.value ? 'Hide panel' : 'Show panel'))
 
@@ -230,23 +301,39 @@ const formattedDateTime = computed(() => {
 
   const dateObj = new Date(uploadDate)
   return {
-    date: new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(dateObj),
+    date: new Intl.DateTimeFormat('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).format(dateObj),
     day: new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj),
-    time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric' }).format(dateObj),
+    time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric' }).format(dateObj)
   }
 })
 
-
 // Changing value on states change
-watch(() => rating.value.current, () => {
-  imageLoading.value = true
-})
+watch(
+  () => rating.value.current,
+  () => {
+    imageLoading.value = true
+  }
+)
 
-watch(() => props.tasks, (tasks) => {
-  console.log("tasks", tasks)
-  images.value = tasks.tasks
-  stats.value = tasks.stats
-})
+watch(
+  () => props.tasks,
+  (tasks) => {
+    images.value = tasks.tasks
+    stats.value = tasks.stats
+
+    // Preload the images from tasks
+    for (let i = 0; i < images.value.length; i++) {
+      const index = (rating.value.currentIndex + i) % images.value.length
+      const img = new Image()
+      img.src = getImageName(images.value[index])
+      imageCache.set(images.value[index].entry.id, img)
+    }
+  }
+)
 
 watch(images, (imgs) => {
   rating.value.current = imgs?.[0]
@@ -338,7 +425,6 @@ watch(images, (imgs) => {
   display: block;
   margin-block-start: 1em;
   margin-block-end: 1em;
-
 }
 
 .vote-controls {
@@ -360,6 +446,11 @@ watch(images, (imgs) => {
 
 .vote-actions {
   display: flex;
+  flex-direction: column;
+}
+
+.vote-actions div {
+  display: flex;
 }
 
 .vote-details-list {
@@ -380,7 +471,6 @@ watch(images, (imgs) => {
   height: 55px;
 }
 
-
 .vote-details-list-item-text {
   flex: 1 1 auto;
   margin: auto;
@@ -392,7 +482,7 @@ watch(images, (imgs) => {
   color: rgba(0, 0, 0, 0.87);
   font-size: 16px;
   font-weight: 400;
-  letter-spacing: 0.010em;
+  letter-spacing: 0.01em;
   margin: 0 0 0px 0;
   line-height: 1.2em;
   overflow: hidden;
@@ -403,7 +493,7 @@ watch(images, (imgs) => {
 .vote-details-list-item-text p {
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.010em;
+  letter-spacing: 0.01em;
   margin: 0 0 0 0;
   line-height: 1.6em;
   color: rgba(0, 0, 0, 0.54);
@@ -420,5 +510,17 @@ watch(images, (imgs) => {
   height: 100%;
   display: inline-block;
   line-height: 1;
+}
+
+.voting-completed {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.edit-voting-btn {
+  margin-top: 24px;
+  width: 232px;
 }
 </style>

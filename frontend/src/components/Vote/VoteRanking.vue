@@ -1,8 +1,5 @@
 <template>
-  <cdx-message type="warning">
-    <p>This screen is under development.</p>
-  </cdx-message>
-  <div class="vote-ranking-screen">
+  <div class="vote-ranking-screen" v-if="round.status === 'active' && images?.length > 0">
     <div class="vote-round-header">
       <div>
         <h2>{{ round.name }}</h2>
@@ -33,7 +30,7 @@
         </cdx-button>
       </div>
 
-      <cdx-button weight="quiet" action="progressive">
+      <cdx-button weight="quiet" action="progressive" @click="saveRanking">
         <content-save-outline class="icon-small" /> Save Round
       </cdx-button>
     </div>
@@ -42,25 +39,25 @@
       <draggable class="vote-gallery" v-model="images">
         <div
           v-for="(image, index) in images"
-          :key="image.id"
+          :key="image.entry.id"
           class="vote-gallery-image link"
           :class="getImageSizeClass()"
         >
-          <div class="vote-gallery-drag-icon">
-            <drag-horizontal-variant />
+          <div class="vote-gallery-drag-icon" @click="openImage(image)">
+            <arrow-expand-all />
           </div>
           <div class="vote-gallery-image-container">
-            <img :src="image.url" />
+            <img :src="image.entry.url" />
           </div>
           <div class="vote-gallery-footer">
             <h3 class="vote-gallery-footer-name">
               <div class="vote-footer-content">
                 <strong>{{ getOrdinal(index + 1) }} place</strong>
-                <v-icon v-if="image.review">mdi-rate-review</v-icon>
+                <v-icon v-if="image.entry.review">mdi-rate-review</v-icon>
               </div>
-              <span v-if="!round.config.show_filename"> Image #{{ image.id }} </span>
+              <span v-if="!round.config.show_filename"> Image #{{ image.entry.id }} </span>
               <span v-else>
-                {{ image.name.split('_').join(' ') }}
+                {{ image.entry.name.split('_').join(' ') }}
               </span>
             </h3>
           </div>
@@ -68,81 +65,57 @@
       </draggable>
     </div>
   </div>
+  <div class="voting-completed" v-if="round.status === 'active' && !images?.length">
+    <div>
+      <h3>All done!</h3>
+      <p class="greyed">
+        You voted on all images in this round. You can still edit your previous votes using the
+        button below.
+      </p>
+      <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
+        <pencil class="icon-small" />
+        Edit previous votes
+      </cdx-button>
+    </div>
+  </div>
+  <div v-if="round.status !== 'active'">
+    <h3>Round is not active</h3>
+    <p class="greyed">This round is not active. Please contact to organizer.</p>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import jurorService from '@/services/jurorService'
+import alertService from '@/services/alertService'
+import dialogService from '@/services/dialogService'
 
 // Components
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
-import { CdxButton, CdxMessage } from '@wikimedia/codex'
+import { CdxButton } from '@wikimedia/codex'
 
 // Icon
-import DragHorizontalVariant from 'vue-material-design-icons/DragHorizontalVariant.vue'
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ImageSizeSelectActual from 'vue-material-design-icons/ImageSizeSelectActual.vue'
 import ImageSizeSelectLarge from 'vue-material-design-icons/ImageSizeSelectLarge.vue'
 import ImageSizeSelectSmall from 'vue-material-design-icons/ImageSizeSelectSmall.vue'
+import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
 
-const round = reactive({
-  name: 'Round 1',
-  campaign: { name: "Mahmoud and Jay's new Campaign" },
-  status: 'active',
-  config: {
-    show_filename: true
-  }
+// Hooks
+const router = useRouter()
+
+const props = defineProps({
+  round: Object,
+  tasks: Object
 })
 
-const images = ref([
-  {
-    id: 1,
-    name: 'Image1.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Salzburg_Michaelskirche_Deckenfresko-4118.jpg/512px-Salzburg_Michaelskirche_Deckenfresko-4118.jpg'
-  },
-  {
-    id: 2,
-    name: 'Image2.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Ninove_Omloop_Het_Nieuwsblad_2024_02.jpg/640px-Ninove_Omloop_Het_Nieuwsblad_2024_02.jpg'
-  },
-  {
-    id: 3,
-    name: 'Image1.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Gesergiyo_sand_pinnacles%2C_Konso_%2825%29_%2829127485796%29.jpg/640px-Gesergiyo_sand_pinnacles%2C_Konso_%2825%29_%2829127485796%29.jpg'
-  },
-  {
-    id: 4,
-    name: 'Image2.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/5/50/Stavby_kyrka_-_KMB_-_16000200132457.jpg'
-  },
-  {
-    id: 5,
-    name: 'Image1.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Noord-Hollands_Archief%2C_Beeldcollectie_van_de_gemeente_Haarlem%2C_Inventarisnummer_NL-HlmNHA_1100_KNA006009247.JPG/637px-Noord-Hollands_Archief%2C_Beeldcollectie_van_de_gemeente_Haarlem%2C_Inventarisnummer_NL-HlmNHA_1100_KNA006009247.JPG'
-  },
-  {
-    id: 6,
-    name: 'Image2.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/2021-10-31_12-53-27_sf-connexion-Colmar.jpg/776px-2021-10-31_12-53-27_sf-connexion-Colmar.jpg'
-  },
-  {
-    id: 7,
-    name: 'Image1.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Aimard_-_Le_Grand_Chef_des_Aucas%2C_1889%2C_illust_30.png/632px-Aimard_-_Le_Grand_Chef_des_Aucas%2C_1889%2C_illust_30.png'
-  },
-  {
-    id: 8,
-    name: 'Image2.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/PanfilovkaPer_8.jpg/640px-PanfilovkaPer_8.jpg'
-  },
-  {
-    id: 9,
-    name: 'Image1.jpg',
-    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Lamb_of_God_Full_Force_2019_19.jpg/640px-Lamb_of_God_Full_Force_2019_19.jpg'
-  }
-])
+const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
+// State variables
+const images = ref(null)
+const stats = ref(null)
 const gridSize = ref(1)
-const error = ref(null)
 
 const setGridSize = (size) => {
   gridSize.value = size
@@ -157,6 +130,41 @@ const getOrdinal = (n) => {
 const getImageSizeClass = () => {
   return `vote-gallery-image--size-${gridSize.value}`
 }
+
+const openImage = (image) => {
+  dialogService().show({
+    title: 'Image Review',
+    content: "<img src='" + image.entry.url + "' style='max-width: 100%; max-height: 100%;' />",
+  })
+} 
+
+const saveRanking = () => {
+  const ratings = images.value.map((image, index) => ({
+    task_id: image.id,
+    value: index,
+    review: image.review || null
+  }))
+
+  jurorService
+    .setRating(props.round.id, { ratings })
+    .then(() => {
+      router.go(0)
+    })
+    .catch(alertService.error)
+}
+
+const editPreviousVotes = () => {
+  router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+watch(
+  () => props.tasks,
+  (tasks) => {
+    console.log(tasks)
+    images.value = tasks.tasks
+    stats.value = tasks.stats
+  }
+)
 </script>
 
 <style scoped>
@@ -196,6 +204,7 @@ const getImageSizeClass = () => {
   height: 15vw;
   margin: 10px 10px 60px;
   vertical-align: top;
+  cursor: grab;
 }
 
 .vote-gallery-image--size-2 {
@@ -224,7 +233,7 @@ const getImageSizeClass = () => {
 }
 
 .vote-gallery-drag-icon {
-  cursor: move;
+  cursor: pointer;
   position: absolute;
   background: rgba(0, 0, 0, 0.18);
   top: 6px;
@@ -270,5 +279,17 @@ const getImageSizeClass = () => {
 
 .icon-small {
   font-size: 6px;
+}
+
+.voting-completed {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.edit-voting-btn {
+  margin-top: 24px;
+  width: 232px;
 }
 </style>
