@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "watch:build": "chokidar 'src/**/*' -c 'npm run build && cp -r dist/* ../montage/static' --initial",
+    "toolforge:build": "export SHELL=/bin/sh && npm run build && cp -r dist/* ../montage/static",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/"
   },
