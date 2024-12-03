@@ -338,7 +338,7 @@ const submitRound = () => {
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
-        alertService.success($t('montage-round-addded'))
+        alertService.success($t('montage-round-added'))
       })
       .catch(alertService.error)
       .finally(() => {

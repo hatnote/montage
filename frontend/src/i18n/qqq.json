@@ -165,7 +165,7 @@
     "montage-voted-time": "Template for displaying the time an image was voted on.",
     "montage-no-votes-yet": "Message displayed when no votes have been cast yet.",
     "montage-no-votes-this-round": "Message displayed when no votes have been cast in the current round.",
-    "montage-round-addded": "Message displayed when a round is successfully added.",
+    "montage-round-added": "Message displayed when a round is successfully added.",
     "montage-round-show-stats": "Label to indicate the option to show statistical information.",
     "montage-option-yes": "Label for a 'Yes' option in various UI contexts.",
     "montage-option-no": "Label for a 'No' option in various UI contexts."
