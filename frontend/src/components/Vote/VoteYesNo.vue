@@ -1,5 +1,11 @@
 <template>
-  <div class="vote-container" v-if="round.status === 'active' && images?.length > 0">
+  <div
+    class="vote-container"
+    v-if="round.status === 'active' && images?.length > 0"
+    @keydown="handleKeyDown"
+    tabindex="0"
+    ref="voteContainer"
+  >
     <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
       <img
@@ -153,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
@@ -180,9 +186,9 @@ const router = useRouter()
 
 // States variables
 const counter = ref(0)
-const readKeyDown = true
 const skips = ref(0)
 const imageLoading = ref(true)
+const voteContainer = ref(null);
 const showSidebar = ref(true)
 const imageCache = new Map()
 
@@ -202,16 +208,15 @@ const rating = ref({
   next: null,
   rates: [1, 2, 3, 4, 5]
 })
-
-function toggleSidebar() {
+const toggleSidebar = () => {
   showSidebar.value = !showSidebar.value
 }
 
-function goPrevVoteEditing() {
+const goPrevVoteEditing = () => {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
 }
 
-function handleImageLoad() {
+const handleImageLoad = () => {
   imageLoading.value = false
 }
 
@@ -226,7 +231,7 @@ const formattedDate = (timestamp) => {
   }).format(dateObj)
 }
 
-function getImageName(image) {
+const getImageName = (image) => {
   if (!image) return null
 
   const entry = image.entry
@@ -239,13 +244,13 @@ function getImageName(image) {
   return url
 }
 
-function getNextImage() {
+const getNextImage = () => {
   rating.value.currentIndex = (rating.value.currentIndex + 1) % images.value?.length
   rating.value.current = images.value[rating.value.currentIndex]
   rating.value.next = images.value[(rating.value.currentIndex + 1) % images.value?.length]
 }
 
-function getTasks() {
+const getTasks = () => {
   return jurorService.getRoundTasks(props.round.id, skips.value).then((response) => {
     images.value = response.data.tasks
     rating.value.current = images.value?.[0]
@@ -261,7 +266,7 @@ function getTasks() {
   })
 }
 
-function setRate(rate) {
+const setRate = (rate) => {
   if (imageLoading.value) return
 
   if (rate) {
@@ -289,7 +294,7 @@ function setRate(rate) {
   }
 }
 
-function handleFav() {
+const handleFav = () => {
   if (rating.value.current.is_fave) {
     jurorService
       .unfaveImage(props.round.id, rating.value.current.entry.id)
@@ -309,6 +314,20 @@ function handleFav() {
       })
       .catch(alertService.error)
   }
+}
+
+const handleKeyDown = (event) => {
+  if (props.round.vote_method === 'yesno') {
+      if (event.key === 'ArrowUp') {
+        setRate(5);
+        alertService.success('Voted: Accept', 500);
+      } else if (event.key === 'ArrowDown') {
+        setRate(1);
+        alertService.success('Voted: Decline', 500);
+      } else if (event.key === 'ArrowRight') {
+        setRate();
+      }
+    }
 }
 
 const tooltipText = computed(() =>
@@ -360,6 +379,11 @@ watch(images, (imgs) => {
   rating.value.current = imgs?.[0]
   rating.value.next = imgs?.[1] || null
 })
+onMounted(() => {
+  if (voteContainer.value) {
+    voteContainer.value.focus();
+  }
+});
 </script>
 
 <style scoped>
@@ -368,6 +392,10 @@ watch(images, (imgs) => {
   justify-content: center;
   align-items: stretch;
   height: calc(100vh - 156.5px);
+}
+
+.vote-container:focus {
+  outline: none;
 }
 
 .vote-image-container {

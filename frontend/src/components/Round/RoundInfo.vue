@@ -122,8 +122,6 @@ const props = defineProps({
   round: Object
 })
 
-console.log(props.round)
-
 const remainingDays = computed(() => {
   const deadline = new Date(props.round.deadline_date)
   const today = new Date()

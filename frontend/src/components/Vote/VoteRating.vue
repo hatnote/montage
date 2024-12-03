@@ -1,5 +1,11 @@
 <template>
-  <div class="vote-container" v-if="round.status === 'active' && images?.length > 0">
+  <div
+    class="vote-container"
+    v-if="round.status === 'active' && images?.length > 0"
+    @keydown="handleKeyDown"
+    tabindex="0"
+    ref="voteContainer"
+  >
     <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
       <img
@@ -56,8 +62,8 @@
         </div>
         <span class="greyed vote-controls-instruction">
           {{ $t('montage-vote-keyboard-instructions') }}<br />
-          <span class="key">1</span>-<span class="key">5</span>
-          – {{ $t('montage-vote-rating-instructions') }}<br />
+          <span class="key">1</span>-<span class="key">5</span> –
+          {{ $t('montage-vote-rating-instructions') }}<br />
           <span class="key">→</span> – {{ $t('montage-vote-skip') }}
         </span>
       </div>
@@ -103,11 +109,7 @@
             <div class="vote-details-list-item-text">
               <h3>{{ rating.current.entry.resolution / 1000000 }} Mpix</h3>
               <p>
-                {{
-                  rating.current.entry.width +
-                  ' x ' +
-                  rating.current.entry.height
-                }}
+                {{ rating.current.entry.width + ' x ' + rating.current.entry.height }}
               </p>
             </div>
           </div>
@@ -118,15 +120,13 @@
             <div class="vote-details-list-item-text">
               <h3>
                 {{ rating.current.history.length }}
-                {{ $t('montage-vote-version') }}<span
-                  v-if="rating.current.history.length > 1"
-                  >s</span
-                >
+                {{ $t('montage-vote-version')
+                }}<span v-if="rating.current.history.length > 1">s</span>
               </h3>
               <p>
                 {{
                   $t('montage-vote-last-version', [
-                    formattedDate(rating.current.history[0].timestamp),
+                    formattedDate(rating.current.history[0].timestamp)
                   ])
                 }}
               </p>
@@ -158,7 +158,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
@@ -184,9 +184,9 @@ const router = useRouter()
 
 // States variables
 const counter = ref(0)
-const readKeyDown = true
 const skips = ref(0)
 const imageLoading = ref(true)
+const voteContainer = ref(null);
 const showSidebar = ref(true)
 const imageCache = new Map()
 
@@ -305,13 +305,25 @@ function handleFav() {
       .catch(alertService.error)
   } else {
     jurorService
-    .faveImage(props.round.id, rating.value.current.entry.id)
-    .then(() => {
-      alertService.success($t('montage-vote-added-favorites'), 500)
+      .faveImage(props.round.id, rating.value.current.entry.id)
+      .then(() => {
+        alertService.success($t('montage-vote-added-favorites'), 500)
 
-      rating.value.current.is_fave = true
-    })
-    .catch(alertService.error)
+        rating.value.current.is_fave = true
+      })
+      .catch(alertService.error)
+  }
+}
+
+const handleKeyDown = (event) => {
+  if (props.round.vote_method === 'rating') {
+    const value = parseInt(event.key, 10)
+    if (rating.value.rates.includes(value)) {
+      setRate(value)
+      alertService.success(`Voted ${value}/5`, 250)
+    } else if (event.key === 'ArrowRight') {
+      setRate()
+    }
   }
 }
 
@@ -364,6 +376,12 @@ watch(images, (imgs) => {
   rating.value.current = imgs?.[0]
   rating.value.next = imgs?.[1] || null
 })
+
+onMounted(() => {
+  if (voteContainer.value) {
+    voteContainer.value.focus();
+  }
+});
 </script>
 
 <style scoped>
@@ -372,6 +390,10 @@ watch(images, (imgs) => {
   justify-content: center;
   align-items: stretch;
   height: calc(100vh - 156.5px);
+}
+
+.vote-container:focus {
+  outline: none;
 }
 
 .vote-image-container {
