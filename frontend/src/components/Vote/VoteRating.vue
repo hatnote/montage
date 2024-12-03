@@ -10,7 +10,7 @@
       />
       <cdx-button
         @click="toggleSidebar"
-        v-tooltip="tooltipText"
+        v-tooltip="$t(showSidebar ? 'montage-vote-hide-panel' : 'montage-vote-show-panel')"
         weight="quiet"
         class="sidebar-hide-btn"
       >
@@ -24,24 +24,28 @@
     </div>
     <div class="vote-description-container" v-if="showSidebar">
       <div class="vote-file-name">
-        <h1 v-if="!round.config.show_filename">Image #{{ rating.current.entry.id }}</h1>
+        <h1 v-if="!round.config.show_filename">
+          {{ $t('montage-vote-image') }} #{{ rating.current.entry.id }}
+        </h1>
         <h1 v-else>{{ rating.current.name.split('_').join(' ') }}</h1>
-        <p class="greyed">{{ stats.total_open_tasks }} images remaining</p>
+        <p class="greyed">{{ $t('montage-vote-image-remains', [stats.total_open_tasks]) }}</p>
       </div>
       <div class="vote-file-links">
         <a :href="rating.current.entry.url" target="_blank">
-          <cdx-button weight="quiet"> <image-icon class="icon-small" /> Show full-size </cdx-button>
+          <cdx-button weight="quiet">
+            <image-icon class="icon-small" /> {{ $t('montage-vote-show-full-size') }}
+          </cdx-button>
         </a>
         <a
           :href="'https://commons.wikimedia.org/wiki/File:' + rating.current.entry.name"
           target="_blank"
         >
           <cdx-button weight="quiet" class="vote-commons-button">
-            <link-icon class="icon-small" /> Commons page
+            <link-icon class="icon-small" /> {{ $t('montage-vote-commons-page') }}
           </cdx-button>
         </a>
       </div>
-      <h3 class="vote-section-title">Vote</h3>
+      <h3 class="vote-section-title">{{ $t('montage-vote') }}</h3>
       <div class="vote-controls">
         <div class="vote-controls-button">
           <span v-for="rate in [1, 2, 3, 4, 5]" :key="rate">
@@ -51,31 +55,38 @@
           </span>
         </div>
         <span class="greyed vote-controls-instruction">
-          You can also use keyboard to vote.<br />
-          <span class="key">1</span>-<span class="key">5</span> – One to Five Stars<br />
-          <span class="key">→</span> – Skip (vote later)
+          {{ $t('montage-vote-keyboard-instructions') }}<br />
+          <span class="key">1</span>-<span class="key">5</span>
+          – {{ $t('montage-vote-rating-instructions') }}<br />
+          <span class="key">→</span> – {{ $t('montage-vote-skip') }}
         </span>
       </div>
 
-      <h3 class="vote-section-title">Actions</h3>
+      <h3 class="vote-section-title">{{ $t('montage-vote-actions') }}</h3>
       <div class="vote-actions">
         <div>
           <cdx-button weight="quiet" @click="handleFav()">
             <heart class="icon-small" />
-            {{ rating.current.is_fave ? 'Remove from favorites' : 'Add to favorites' }}
+            {{
+              $t(
+                rating.current.is_fave
+                  ? 'montage-vote-remove-favorites'
+                  : 'montage-vote-add-favorites'
+              )
+            }}
           </cdx-button>
         </div>
         <div>
           <cdx-button weight="quiet" @click="setRate()">
-            <arrow-right class="icon-small" /> Skip (vote later)
+            <arrow-right class="icon-small" /> {{ $t('montage-vote-skip') }}
           </cdx-button>
           <cdx-button weight="quiet" @click="goPrevVoteEditing">
-            <pencil class="icon-small" /> Edit previous votes
+            <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
           </cdx-button>
         </div>
       </div>
 
-      <h3 class="vote-section-title">Description</h3>
+      <h3 class="vote-section-title">{{ $t('montage-vote-description') }}</h3>
       <div class="vote-details">
         <div class="vote-details-list">
           <div class="vote-details-list-item vote-details-2-line">
@@ -91,7 +102,13 @@
             </div>
             <div class="vote-details-list-item-text">
               <h3>{{ rating.current.entry.resolution / 1000000 }} Mpix</h3>
-              <p>{{ rating.current.entry.width + ' x ' + rating.current.entry.height }}</p>
+              <p>
+                {{
+                  rating.current.entry.width +
+                  ' x ' +
+                  rating.current.entry.height
+                }}
+              </p>
             </div>
           </div>
           <div class="vote-details-list-item vote-details-2-line">
@@ -100,12 +117,19 @@
             </div>
             <div class="vote-details-list-item-text">
               <h3>
-                {{ rating.current.history.length }} version<span
+                {{ rating.current.history.length }}
+                {{ $t('montage-vote-version') }}<span
                   v-if="rating.current.history.length > 1"
                   >s</span
                 >
               </h3>
-              <p>last one at {{ formattedDate(rating.current.history[0].timestamp) }}</p>
+              <p>
+                {{
+                  $t('montage-vote-last-version', [
+                    formattedDate(rating.current.history[0].timestamp),
+                  ])
+                }}
+              </p>
             </div>
             <cdx-button weight="quiet" @click="goPrevVoteEditing">
               <link-icon />
@@ -117,33 +141,31 @@
   </div>
   <div class="voting-completed" v-if="round.status === 'active' && !images?.length">
     <div>
-      <h3>All done!</h3>
+      <h3>{{ $t('montage-vote-all-done') }}</h3>
       <p class="greyed">
-        You voted on all images in this round. You can still edit your previous votes using the
-        button below.
+        {{ $t('montage-vote-no-images') }}
       </p>
       <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
         <pencil class="icon-small" />
-        Edit previous votes
+        {{ $t('montage-edit-previous-vote') }}
       </cdx-button>
     </div>
   </div>
   <div v-if="round.status !== 'active'">
-    <h3>Round is not active</h3>
-    <p class="greyed">This round is not active. Please contact to organizer.</p>
+    <h3>{{ $t('montage-vote-round-inactive') }}</h3>
+    <p class="greyed">{{ $t('montage-vote-contact-organizer') }}</p>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
-import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
-import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LinkIcon from 'vue-material-design-icons/Link.vue'
 import ArrowRight from 'vue-material-design-icons/ArrowRight.vue'
@@ -156,8 +178,8 @@ import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 
-
 // Hooks
+const { t: $t } = useI18n()
 const router = useRouter()
 
 // States variables
@@ -276,7 +298,7 @@ function handleFav() {
     jurorService
       .unfaveImage(props.round.id, rating.value.current.entry.id)
       .then(() => {
-        alertService.success('Image removed from favorites', 500)
+        alertService.success($t('montage-vote-removed-favorites'), 500)
 
         rating.value.current.is_fave = false
       })
@@ -285,7 +307,7 @@ function handleFav() {
     jurorService
     .faveImage(props.round.id, rating.value.current.entry.id)
     .then(() => {
-      alertService.success('Image added to favorites', 500)
+      alertService.success($t('montage-vote-added-favorites'), 500)
 
       rating.value.current.is_fave = true
     })
@@ -293,7 +315,9 @@ function handleFav() {
   }
 }
 
-const tooltipText = computed(() => (showSidebar.value ? 'Hide panel' : 'Show panel'))
+const tooltipText = computed(() =>
+  showSidebar.value ? $t('montage-vote-hide-panel') : $t('montage-vote-show-panel')
+)
 
 // Get the formatted date and time of current image
 const formattedDateTime = computed(() => {

@@ -3,10 +3,12 @@
     <div class="round-header">
       <div>
         <h2>{{ round.name }}</h2>
-        <p style="color: gray">Part of {{ round.campaign.name }}</p>
+        <p style="color: gray">
+          {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name]) }}
+        </p>
       </div>
       <div class="order-by">
-        <p style="font-size: 16px; color: gray">Order by:</p>
+        <p style="font-size: 16px; color: gray">{{ $t('montage-vote-order-by') }}</p>
         <cdx-select v-model:selected="sort.order_by" :menu-items="menuItems" />
         <cdx-select
           v-model:selected="sort.sort"
@@ -15,32 +17,34 @@
         />
       </div>
       <div class="grid-size-controls" style="margin-left: 60px">
-        <p style="font-size: 16px; color: gray; margin-left: 11px">Gallery size</p>
+        <p style="font-size: 16px; color: gray; margin-left: 11px">
+          {{ $t('montage-vote-gallery-size') }}
+        </p>
         <cdx-button
           :action="gridSize === 3 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(3)"
         >
-          <image-size-select-actual style="font-size: 6px" />
+          <image-size-select-actual style="font-size: 6px" /> {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
         <cdx-button
           :action="gridSize === 2 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(2)"
         >
-          <image-size-select-large style="font-size: 6px" />
+          <image-size-select-large style="font-size: 6px" /> {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
         <cdx-button
           :action="gridSize === 1 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(1)"
         >
-          <image-size-select-small style="font-size: 6px" />
+          <image-size-select-small style="font-size: 6px" /> {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
       </div>
 
       <cdx-button weight="quiet" action="progressive" @click="save">
-        <content-save-outline style="font-size: 6px" /> Save Changes
+        <content-save-outline style="font-size: 6px" /> {{ $t('montage-round-save') }}
       </cdx-button>
     </div>
 
@@ -55,8 +59,8 @@
           <img :src="getImageName(image)" />
         </div>
         <div style="font-size: 14px; color: gray">
-          <p>voted in a day</p>
-          <p>5 Sep 2023 at 8:11 UTC</p>
+          <p>{{ $t('montage-voted-time', ['a day']) }}</p>
+          <p>{{ image.timestamp }}</p>
         </div>
         <div style="margin-bottom: 40px; display: flex; justify-content: center; margin-top: 8px">
           <cdx-button
@@ -64,14 +68,14 @@
             weight="quiet"
             @click="setRate(image, 5)"
           >
-            <thumb-up class="icon-small" /> Accept
+            <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
           </cdx-button>
           <cdx-button
             :action="image.value === 1 ? 'progressive' : ''"
             weight="quiet"
             @click="setRate(image, 1)"
           >
-            <thumb-down class="icon-small" /> Decline
+            <thumb-down class="icon-small" /> {{ $t('montage-vote-decline') }}
           </cdx-button>
         </div>
       </div>
@@ -79,13 +83,13 @@
   </div>
   <div v-if="round?.campaign.status === 'active' && !votes.length">
     <div>
-      <h3>No votes yet!</h3>
-      <p class="greyed">You haven't voted on any image this round</p>
+      <h3>{{ $t('montage-no-votes-yet') }}</h3>
+      <p class="greyed">{{ $t('montage-no-votes-this-round') }}</p>
     </div>
   </div>
   <div v-if="round?.campaign.status !== 'active'">
-    <h3>Round is not active</h3>
-    <p class="greyed">This round is not active. Please contact to organizer.</p>
+    <h3>{{ $t('montage-vote-round-inactive') }}</h3>
+    <p class="greyed">{{ $t('montage-vote-contact-organizer') }}</p>
   </div>
 </template>
 

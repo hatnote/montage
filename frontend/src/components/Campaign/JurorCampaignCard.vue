@@ -7,8 +7,8 @@
       <div class="round-header">
         <ThumbsUpDown class="juror-campaign-round-icon" :size="36" fillColor="white" />
         <div class="round-info">
-          <p>{{ round.name }}</p>
-          <p>({{ getVotingName(round.vote_method) }} · {{ round.status }})</p>
+              <p :class="{ 'strikethrough': round.status === 'cancelled' }">{{ round.name }}</p>
+          <p>({{ $t( getVotingName(round.vote_method) )}} · {{ round.status }})</p>
         </div>
       </div>
       <div class="card-container">
@@ -16,13 +16,23 @@
           <template #supporting-text>
             <div class="supporting-info">
               <div class="directions">
-                <p><strong>Voting deadline:</strong> {{ round.deadline_date?.split('T')[0] }}</p>
-                <p><strong>Directions:</strong> {{ round.directions }}</p>
+                <p>
+                  <strong>{{ $t('montage-voting-deadline') }}:</strong>
+                  {{ round.deadline_date?.split('T')[0] }}
+                </p>
+                <p>
+                  <strong>{{ $t('montage-directions') }}:</strong> {{ round.directions }}
+                </p>
               </div>
               <div class="progress-info">
                 <p>
-                  <strong>Your Progress:</strong> {{ (100 - round.percent_tasks_open).toFixed(1) }}%
-                  ({{ round.total_open_tasks ?? 0 }} out of {{ round.total_tasks ?? 0 }})
+                  <strong>{{ $t('montage-your-progress') }}:</strong>
+                  {{ (100 - round.percent_tasks_open).toFixed(1) }}% ({{
+                    $t('montage-progress-status', [
+                      round.total_open_tasks ?? 0,
+                      round.total_tasks ?? 0
+                    ])
+                  }})
                 </p>
                 <div class="actions">
                   <cdx-button
@@ -30,11 +40,11 @@
                     weight="primary"
                     class="vote-button"
                     @click="goRoundVoting(round, 'vote')"
-                    >Vote</cdx-button
+                    >{{ $t('montage-vote') }}</cdx-button
                   >
-                  <cdx-button action="progressive" @click="goRoundVoting(round, 'vote-edit')"
-                    >Edit Previous Votes</cdx-button
-                  >
+                  <cdx-button action="progressive" @click="goRoundVoting(round, 'vote-edit')">{{
+                    $t('montage-edit-previous-vote')
+                  }}</cdx-button>
                 </div>
               </div>
             </div>
@@ -69,6 +79,7 @@ const goRoundVoting = (round, type) => {
 <style scoped>
 .juror-campaign-accordion {
   border-bottom: none;
+  margin-bottom: 32px;
 }
 
 .juror-campaign-round-card {
@@ -122,5 +133,9 @@ const goRoundVoting = (round, type) => {
 
 .vote-button {
   margin-right: 16px;
+}
+
+.strikethrough {
+  text-decoration: line-through;
 }
 </style>

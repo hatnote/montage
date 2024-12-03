@@ -3,7 +3,9 @@
     <div class="vote-round-header">
       <div>
         <h2>{{ round.name }}</h2>
-        <p class="vote-campaign-part">Part of {{ round.campaign.name }}</p>
+        <p class="vote-campaign-part">
+          {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name ]) }}
+        </p>
       </div>
 
       <div class="vote-grid-size-controls">
@@ -12,26 +14,30 @@
           weight="quiet"
           @click="setGridSize(3)"
         >
-          <image-size-select-actual class="icon-small" /> Large
+          <image-size-select-actual class="icon-small" />
+          {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
         <cdx-button
           :action="gridSize === 2 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(2)"
         >
-          <image-size-select-large class="icon-small" /> Medium
+          <image-size-select-large class="icon-small" />
+          {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
         <cdx-button
           :action="gridSize === 1 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(1)"
         >
-          <image-size-select-small class="icon-small" /> Small
+          <image-size-select-small class="icon-small" />
+          {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
       </div>
 
       <cdx-button weight="quiet" action="progressive" @click="saveRanking">
-        <content-save-outline class="icon-small" /> Save Round
+        <content-save-outline class="icon-small" />
+        {{ $t('montage-round-save') }}
       </cdx-button>
     </div>
 
@@ -52,10 +58,14 @@
           <div class="vote-gallery-footer">
             <h3 class="vote-gallery-footer-name">
               <div class="vote-footer-content">
-                <strong>{{ getOrdinal(index + 1) }} place</strong>
+                <strong>
+                  {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
+                </strong>
                 <v-icon v-if="image.entry.review">mdi-rate-review</v-icon>
               </div>
-              <span v-if="!round.config.show_filename"> Image #{{ image.entry.id }} </span>
+              <span v-if="!round.config.show_filename">
+                {{ $t('montage-vote-image') }} #{{ image.entry.id }}
+              </span>
               <span v-else>
                 {{ image.entry.name.split('_').join(' ') }}
               </span>
@@ -65,27 +75,27 @@
       </draggable>
     </div>
   </div>
+
   <div class="voting-completed" v-if="round.status === 'active' && !images?.length">
     <div>
-      <h3>All done!</h3>
-      <p class="greyed">
-        You voted on all images in this round. You can still edit your previous votes using the
-        button below.
-      </p>
+      <h3>{{ $t('montage-vote-all-done') }}</h3>
+      <p class="greyed">{{ $t('montage-vote-no-images') }}</p>
       <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
         <pencil class="icon-small" />
-        Edit previous votes
+        {{ $t('montage-edit-previous-vote') }}
       </cdx-button>
     </div>
   </div>
+
   <div v-if="round.status !== 'active'">
-    <h3>Round is not active</h3>
-    <p class="greyed">This round is not active. Please contact to organizer.</p>
+    <h3>{{ $t('montage-vote-round-inactive') }}</h3>
+    <p class="greyed">{{ $t('montage-vote-contact-organizer') }}</p>
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
@@ -102,7 +112,7 @@ import ImageSizeSelectLarge from 'vue-material-design-icons/ImageSizeSelectLarge
 import ImageSizeSelectSmall from 'vue-material-design-icons/ImageSizeSelectSmall.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
 
-// Hooks
+const { t: $t } = useI18n()
 const router = useRouter()
 
 const props = defineProps({
@@ -133,7 +143,7 @@ const getImageSizeClass = () => {
 
 const openImage = (image) => {
   dialogService().show({
-    title: 'Image Review',
+    title: $t('montage-vote-image-review'),
     content: "<img src='" + image.entry.url + "' style='max-width: 100%; max-height: 100%;' />",
   })
 } 

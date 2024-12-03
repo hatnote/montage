@@ -3,77 +3,77 @@
     <div style="flex: 6; margin-right: 120px">
       <cdx-field>
         <cdx-text-input v-model="formData.name" />
-        <template #label>Round Name</template>
+        <template #label>{{ $t('montage-round-name') }}</template>
       </cdx-field>
       <div style="display: flex">
         <cdx-field>
           <cdx-text-input input-type="date" v-model="formData.deadline_date" />
-          <template #label>Voting Deadline</template>
+          <template #label>{{ $t('montage-round-deadline') }}</template>
         </cdx-field>
       </div>
       <cdx-field>
         <cdx-text-area v-model="formData.directions" rows="3" />
-        <template #label>Directions</template>
+        <template #label>{{ $t('montage-directions') }}</template>
       </cdx-field>
       <cdx-field>
         <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value" v-model="formData.show_stats"
           :input-value="source.value">
           {{ source.label }}
         </cdx-radio>
-        <template #label>Show own statistics (Beta)</template>
+        <template #label>{{ $t('montage-label-round-stats') }}</template>
         <template #description>
           <p>
-            Whether to show own voting statistics (e.g. number of accepted or declined images) of
-            juror for the round.
+            {{ $t('montage-description-round-stats') }}
           </p>
         </template>
       </cdx-field>
       <cdx-field>
         <cdx-text-input v-model="formData.quorum" input-type="number" />
-        <template #label>Quorum</template>
+        <template #label>{{ $t('montage-label-round-quorum') }}</template>
         <template #description>
-          <p>The number of jurors that must vote on each image</p>
+          <p>{{ $t('montage-description-round-quorum') }}</p>
         </template>
       </cdx-field>
       <cdx-field>
         <UserList :users="formData.jurors" @update:selectedUsers="updateJurors" />
-        <template #label>Jurors</template>
+        <template #label>{{ $t('montage-label-round-jurors') }}</template>
         <template #help-text>
-          <p>Enter the username of the juror you want to add to this round.</p>
+          <p>{{ $t('montage-description-round-jurors') }}</p>
         </template>
       </cdx-field>
     </div>
     <div style="flex: 4">
-      <h4>Round File Setting</h4>
+      <h4>{{ $t('montage-round-file-setting')}}</h4>
       <cdx-field>
-        <p v-for="(value, key) in fileSettingsOptions" :key="key" style="display: flex">
-          <span>{{ value.label }}</span>
+        <p v-for="key in fileSettingsOptions" :key="key" style="display: flex">
+          <span>{{ $t('montage-round-' + key.replaceAll('_', '-')) }}</span>
           <span style="margin-left: auto">{{ formData.config[key] }}</span>
         </p>
       </cdx-field>
       <cdx-field v-if="round.config.dq_by_resolution">
         <cdx-text-input v-model="formData.config.min_resolution" input-type="number" disabled />
-        <template #label>Minimal resolution</template>
+        <template #label>{{ $t('montage-round-min-resolution') }}</template>
       </cdx-field>
     </div>
   </div>
   <div style="display: flex; margin-top: 16px">
     <cdx-button action="destructive" weight="primary" @click="deleteRound">
-      <delete style="font-size: 6px" /> Delete Round
+      <delete style="font-size: 6px" /> {{ $t('montage-round-delete') }}
     </cdx-button>
 
     <cdx-button @click="saveRound" action="progressive" weight="primary" style="margin-left: auto; margin-right: 24px">
-      <check style="font-size: 6px" /> Save
+      <check style="font-size: 6px" /> {{ $t('montage-btn-save') }}
     </cdx-button>
 
     <cdx-button @click="cancelRound">
-      <close style="font-size: 6px" /> Cancel
+      <close style="font-size: 6px" /> {{ $t('montage-btn-cancel') }}
     </cdx-button>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import UserList from '@/components/UserList.vue'
 
 import { CdxButton, CdxField, CdxTextInput, CdxRadio, CdxTextArea } from '@wikimedia/codex'
@@ -86,12 +86,13 @@ import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
 
+
+const { t: $t } = useI18n()
 const props = defineProps({
   round: Object,
   isRoundEditing: Boolean
 })
 
-console.log(props.round)
 const formData = ref({
   name: props.round.name,
   directions: props.round.directions,
@@ -103,23 +104,23 @@ const formData = ref({
 })
 
 const showStatsOptions = ref([
-  { label: 'Yes', value: true },
-  { label: 'No', value: false }
+  { label: $t('montage-option-yes'), value: true },
+  { label: $t('montage-option-no'), value: false }
 ])
 
-const fileSettingsOptions = ref({
-  allowed_filetypes: { label: 'Allowed filetypes' },
-  dq_by_filetype: { label: 'Disqualify by filetype' },
-  dq_by_resolution: { label: 'Disqualify by resolution' },
-  dq_by_upload_date: { label: 'Disqualify by upload date' },
-  dq_by_juror: { label: 'Disqualify jurors' },
-  dq_coords: { label: 'Disqualify coordinators' },
-  dq_maintainers: { label: 'Disqualify maintainers' },
-  dq_organizers: { label: 'Disqualify organizers' },
-  show_filename: { label: 'Show filename' },
-  show_link: { label: 'Show link' },
-  show_resolution: { label: 'Show resolution' }
-})
+const fileSettingsOptions = ref([
+  "allowed_filetypes",
+  "dq_by_filetype",
+  "dq_by_resolution",
+  "dq_by_upload_date",
+  "dq_by_uploader",
+  "dq_coords",
+  "dq_maintainers",
+  "dq_organizers",
+  "show_filename",
+  "show_link",
+  "show_resolution"
+])
 
 function updateJurors(selectedUsers) {
   formData.value.jurors = selectedUsers
@@ -154,14 +155,14 @@ const saveRound = () => {
 const deleteRound = () => {
 
   dialogService().show({
-    title: 'Delete Round',
-    content: 'Are you sure you want to delete this round?',
+    title: $t('montage-round-delete'),
+    content: $t('montage-round-delete-confirm'),
     primaryAction: {
-      label: 'Delete Round',
+      label: $t('montage-round-delete'),
       actionType: 'destructive'
     },
     defaultAction: {
-      label: 'Cancel',
+      label: $t('montage-btn-cancel'),
     },
     onPrimary: () => {
       adminService

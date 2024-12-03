@@ -2,16 +2,23 @@
   <div class="dashboard-container">
     <div class="dashboard-header">
       <div class="dashboard-header-heading">
-        <h1>All Campaigns</h1>
+        <h1>{{ $t('montage-all-campaigns') }}</h1>
       </div>
       <p class="dashboard-info">
-        View all campaigns, active and archived below, or
-        <RouterLink to="/">view only active campaigns and rounds.</RouterLink>
+        {{ $t('montage-manage-all') }}, {{ $t('montage-or') }}
+        <RouterLink to="/">{{ $t('montage-view-active') }}</RouterLink>
       </p>
     </div>
-
+    <section class="juror-campaigns" v-if="jurorCampaigns.length > 0">
+      <h2>{{ $t('montage-juror-campaigns') }}</h2>
+      <juror-campaign-card
+        v-for="(campaign, index) in jurorCampaigns"
+        :key="index"
+        :campaign="campaign"
+      />
+    </section>
     <section class="coordinator-campaigns">
-      <h2>Coordinator Campaigns</h2>
+      <h2>{{ $t('montage-coordinator-campaigns') }}</h2>
       <div class="coordinator-campaign-cards">
         <coordinator-campaign-card
           v-for="(campaign, index) in coordinatorCampaigns"
@@ -19,15 +26,6 @@
           :campaign="campaign"
         />
       </div>
-    </section>
-
-    <section class="juror-campaigns" v-if="jurorCampaigns.length > 0">
-      <h2>Juror Campaigns</h2>
-      <juror-campaign-card
-        v-for="(campaign, index) in jurorCampaigns"
-        :key="index"
-        :campaign="campaign"
-      />
     </section>
   </div>
 </template>

@@ -5,16 +5,16 @@
         <p class="campaign-title">{{ campaign.name }}</p>
         <div class="campaign-button-group">
           <cdx-button action="destructive" weight="primary" @click="closeCampaign">
-            <clipboard-check class="icon-small" /> Close Campaign
+            <clipboard-check class="icon-small" /> {{ $t('montage-close-campaign') }}
           </cdx-button>
           <cdx-button action="destructive" @click="archiveCampaign" v-if="!campaign.is_archived">
-            <package-down class="icon-small" /> Archive
+            <package-down class="icon-small" /> {{ $t('montage-archive') }}
           </cdx-button>
           <cdx-button action="progressive" @click="unarchiveCampaign" v-else>
-            <inbox-arrow-up class="icon-small" /> Unarchive
+            <inbox-arrow-up class="icon-small" /> {{ $t('montage-unarchive') }}
           </cdx-button>
           <cdx-button action="progressive" @click="hangleEditCampaignBtnClick" :disabled="campaign.is_archived">
-            <cog-icon class="icon-small" /> Edit Campaign
+            <cog-icon class="icon-small" /> {{ $t('montage-edit-campaign') }}
           </cdx-button>
         </div>
       </div>
@@ -30,7 +30,7 @@
         </div>
         <cdx-button v-if="!showAddRoundForm" action="progressive" @click="addRound" :disabled="campaign.isArchived" icon
           class="add-round-button">
-          <plus class="icon-small" /> Add Round
+          <plus class="icon-small" /> {{ $t('montage-round-add') }}
         </cdx-button>
         <round-new :rounds="campaign.rounds" v-if="showAddRoundForm" v-model:showAddRoundForm="showAddRoundForm"
           @reloadCampaignState="reloadState" />
@@ -44,34 +44,34 @@
         </cdx-field>
         <div class="campaign-button-group">
           <cdx-button action="progressive" @click="saveEditCampaign" class="save-button">
-            <check class="icon-small" /> Save
+            <check class="icon-small" /> {{ $t('montage-btn-save') }}
           </cdx-button>
           <cdx-button action="destructive" @click="cancelEdit" class="cancel-button" v-if="!campaign.isArchived">
-            <close class="icon-small" /> Cancel
+            <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
           </cdx-button>
         </div>
       </div>
       <div class="date-time-inputs">
         <cdx-field class="open-date-field" :status="errors.openDate ? 'error' : 'default'"
           :messages="{ error: errors.openDate }">
-          <template #label>Open Date (UTC):</template>
+          <template #label>{{ $t('montage-round-open-date') }}:</template>
           <cdx-text-input input-type="date" v-model="campaignFormField.openDate" />
         </cdx-field>
         <cdx-field :status="errors.openTime ? 'error' : 'default'" :messages="{ error: errors.openTime }">
-          <template #label>Open Time (UTC):</template>
+          <template #label>{{ $t('montage-round-open-time') }}:</template>
           <cdx-text-input input-type="time" v-model="campaignFormField.openTime" />
         </cdx-field>
         <cdx-field :status="errors.closeDate ? 'error' : 'default'" :messages="{ error: errors.closeDate }">
-          <template #label>Close Date (UTC):</template>
+          <template #label>{{ $t('montage-round-close-date') }}:</template>
           <cdx-text-input input-type="date" v-model="campaignFormField.closeDate" />
         </cdx-field>
         <cdx-field :status="errors.closeTime ? 'error' : 'default'" :messages="{ error: errors.closeTime }">
           <cdx-text-input input-type="time" v-model="campaignFormField.closeTime" />
-          <template #label>Close Time (UTC)</template>
+          <template #label>{{ $t('montage-round-close-time') }}</template>
         </cdx-field>
       </div>
       <cdx-field :status="errors.coordinators ? 'error' : 'default'" :messages="{ error: errors.coordinators }">
-        <template #label>Campaign Coordinators</template>
+        <template #label>{{ $t('montage-label-campaign-coordinators') }}</template>
         <UserList :users="campaignFormField.coordinators"
           @update:selectedUsers="campaignFormField.coordinators = $event" />
       </cdx-field>
@@ -82,6 +82,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/utils'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
@@ -105,6 +106,7 @@ import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 
 const route = useRoute()
+const { t: $t } = useI18n()
 const campaignId = route.params.id.split('-')[0]
 
 const campaignEditMode = ref(false)
@@ -131,16 +133,16 @@ const errors = ref({
 })
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  openDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Open date is required'),
+  name: z.string().min(1, $t('montage-required-campaign-name')),
+  openDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-open-date')),
   openTime: z
     .string()
-    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), 'Open time is required'),
-  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Close date is required'),
+    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-open-time')),
+  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)),  $t('montage-required-close-date')),
   closeTime: z
     .string()
-    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), 'Close time is required'),
-  coordinators: z.array(z.string()).min(1, 'At least one coordinator is required')
+    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
+  coordinators: z.array(z.string()).min(1, $t('montage-required-campaign-coordinators'))
 })
 
 const hangleEditCampaignBtnClick = () => {

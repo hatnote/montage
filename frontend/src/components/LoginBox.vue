@@ -1,11 +1,18 @@
 <template>
   <div class="login-container">
     <div class="login-box-container">
-      <h2 class="login-box-heading">{{ $t('login-box-heading') }}</h2>
-      <p class="login-description">{{ $t('login-description') }}</p>
-      <p class="account-instructions" v-html="$t('account-instructions')"></p>
+      <h2 class="login-box-heading">{{ $t('montage-login-heading') }}</h2>
+      <p class="login-description">{{ $t('montage-login-description') }}</p>
+      <p
+        class="account-instructions"
+        v-html="
+          $t('montage-login-account-instructions', [
+            `<a href='https://meta.wikimedia.org/wiki/Main_Page' target='_blank' rel='noopener noreferrer'>${$t('montage-login-metawiki')}</a>`
+          ])
+        "
+      ></p>
       <cdx-button class="login-button" action="progressive" icon="check" @click="redirectToLogin">
-        {{ $t('login-button') }}
+        {{ $t('montage-login-button') }}
       </cdx-button>
     </div>
   </div>

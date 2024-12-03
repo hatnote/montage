@@ -2,19 +2,26 @@
   <div class="dashboard-container">
     <div class="dashboard-header">
       <div class="dashboard-header-heading">
-        <h1>Active Campaigns</h1>
+        <h1>{{ $t('montage-active-campaigns') }}</h1>
         <RouterLink to="/campaign/new" v-if="userStore.user.is_organizer">
-          <cdx-button action="progressive" weight="primary">Create New Campaign</cdx-button>
+          <cdx-button action="progressive" weight="primary">{{ $t('montage-new-campaign') }}</cdx-button>
         </RouterLink>
       </div>
       <p class="dashboard-info">
-        Manage current campaigns below, or
-        <RouterLink to="/campaign/all">view all campaigns and rounds.</RouterLink>
+        {{ $t('montage-manage-current')}}, {{ $t('montage-or') }}
+        <RouterLink to="/campaign/all">{{ $t('montage-view-all') }}</RouterLink>
       </p>
     </div>
-
+    <section class="juror-campaigns" v-if="jurorCampaigns.length > 0">
+      <h2>{{ $t('montage-active-voting-round') }}</h2>
+      <juror-campaign-card
+        v-for="(campaign, index) in jurorCampaigns"
+        :key="index"
+        :campaign="campaign"
+      />
+    </section>
     <section class="coordinator-campaigns">
-      <h2>Coordinator Campaigns</h2>
+      <h2>{{ $t('montage-coordinator-campaigns') }}</h2>
       <div class="coordinator-campaign-cards">
         <coordinator-campaign-card
           v-for="(campaign, index) in coordinatorCampaigns"
@@ -22,15 +29,6 @@
           :campaign="campaign"
         />
       </div>
-    </section>
-
-    <section class="juror-campaigns" v-if="jurorCampaigns.length > 0">
-      <h2>Active Voting Rounds</h2>
-      <juror-campaign-card
-        v-for="(campaign, index) in jurorCampaigns"
-        :key="index"
-        :campaign="campaign"
-      />
     </section>
   </div>
 </template>

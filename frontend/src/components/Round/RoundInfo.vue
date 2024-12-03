@@ -2,23 +2,22 @@
   <div style="display: flex">
     <div style="flex: 6">
       <div>
-        <h3>Voting deadline</h3>
+        <h3>{{ $t('montage-round-deadline') }}</h3>
         <p>
-          <span style="color: black">{{ round.deadline_date.split('T')[0] }}</span> · in
-          <span>{{ remainingDays }}</span> days
+          <span style="color: black">{{ round.deadline_date.split('T')[0] }}</span> · {{ $t('montage-round-vote-ending', [remainingDays]) }}
         </p>
       </div>
       <div style="margin-top: 24px; min-height: 80px">
-        <h3>Directions</h3>
+        <h3>{{ $t('montage-directions') }}</h3>
         <p v-if="round.directions">{{ round.directions }}</p>
-        <p v-else>No directions provided.</p>
+        <p v-else>{{ $t('montage-round-no-direction-given') }}</p>
       </div>
       <!-- <div style="margin-top: 24px">
         <h3>Quorum</h3>
         <p>{{ round.quorum }} jurors per photo</p>
       </div> -->
       <div style="margin-top: 24px">
-        <h3>Jurors</h3>
+        <h3>{{  $t('montage-label-round-jurors') }}</h3>
         <div style="display: flex; flex-wrap: wrap">
           <div v-for="juror in round.jurors" :key="juror.username" style="
               width: 220px;
@@ -51,8 +50,8 @@
     </div>
     <div style="flex: 4">
       <div class="round__file-info">
-        <h4>Round File Information</h4>
-        <p><strong>File types:</strong> {{ round.config.allowed_filetypes.join(', ') }}</p>
+        <h4>{{ $t('montage-round-file-info') }}</h4>
+        <p><strong>{{ $t('montage-round-file-type') }}:</strong> {{ round.config.allowed_filetypes.join(', ') }}</p>
         <!-- <p>
           <strong>Percentage of opened tasks:</strong> {{ round.details.percentage_opened_tasks }}%
         </p>
@@ -65,44 +64,45 @@
       </div>
       <cdx-accordion class="info-accordion">
         <p v-for="(value, key) in round.config" :key="key" style="display: flex">
-          <span v-if="key !== 'allowed_filetypes'">{{ key }}</span>
+          <span v-if="key !== 'allowed_filetypes'">{{ $t( 'montage-round-' + key.replaceAll('_', '-')) }}</span>
           <span v-if="key !== 'allowed_filetypes'" style="margin-left: auto">
             {{ value }}
           </span>
         </p>
-        <template #title> Round File Settings </template>
+        <template #title> {{ $t('montage-round-file-setting') }} </template>
       </cdx-accordion>
       <cdx-accordion class="info-accordion">
         <p>TODO: Voting</p>
-        <template #title> Voting Details </template>
+        <template #title> {{ $t('montage-round-voting-details') }} </template>
       </cdx-accordion>
     </div>
   </div>
   <div class="round__actions" style="display: flex; justify-content: end; gap: 16px; margin-top: 16px">
     <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
-      <play style="font-size: 6px" />Activate
+      <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
     </cdx-button>
 
     <cdx-button v-if="round.status === 'active'" @click="pauseRound">
-      <pause style="font-size: 6px" /> Pause
+      <pause style="font-size: 6px" /> {{ $t('montage-round-paused') }}
     </cdx-button>
 
     <cdx-button :disabled="round.status === 'active'" @click="finalizeRound" action="progressive" weight="primary">
-      <check style="font-size: 6px" />Finalize
+      <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
     </cdx-button>
 
     <cdx-button @click="downloadResults">
-      <download style="font-size: 6px" /> Download Results
+      <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
     </cdx-button>
 
     <cdx-button @click="downloadEntries">
-      <image-multiple style="font-size: 6px" /> Download Entries
+      <image-multiple style="font-size: 6px" /> {{ $t('montage-round-download-entries') }}
     </cdx-button>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
 
@@ -117,6 +117,7 @@ import Check from 'vue-material-design-icons/Check.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import ImageMultiple from 'vue-material-design-icons/ImageMultiple.vue'
 
+const { t: $t } = useI18n()
 const props = defineProps({
   round: Object
 })
@@ -136,7 +137,7 @@ const activateRound = () => {
     .activateRound(props.round.id)
     .then((data) => {
       if (data.status === 'success') {
-        alertService.success('Round activated successfully.')
+        alertService.success( $t('montage-round-activated') )
       }
 
       // Refresh the page
@@ -150,7 +151,7 @@ const pauseRound = () => {
     .pauseRound(props.round.id)
     .then((data) => {
       if (data.status === 'success') {
-        alertService.success('Round paused successfully.')
+        alertService.success($t('montage-round-paused'))
       }
 
       // Refresh the page
@@ -160,7 +161,7 @@ const pauseRound = () => {
 }
 
 const finalizeRound = () => {
-  console.log('Finalize round')
+  console.log($t('montage-round-finalized'))
 }
 
 function downloadResults() {

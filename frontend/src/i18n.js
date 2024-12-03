@@ -11,7 +11,7 @@ async function loadMessages() {
     await Promise.all(
       Object.entries(modules).map(async ([path, importFn]) => {
         const lang = path.replace('./i18n/', '').replace('.json', '');
-        if (lang !== 'en') {
+        if (lang !== 'en' && lang !== 'qqq') {
           const module = await importFn();
           messages[lang] = module.default;
         }

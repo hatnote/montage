@@ -8,7 +8,7 @@
           <span>{{ userStore.user.username }}</span>
         </div>
         <cdx-button action="destructive" weight="quiet" @click="userStore.logout">
-          Logout
+          {{  $t('montage-login-logout') }}
         </cdx-button>
       </div>
       <cdx-select

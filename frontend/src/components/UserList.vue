@@ -6,7 +6,7 @@
       :menu-items="userOptions"
       @input="searchUser"
     >
-      <template #no-results> No results found. </template>
+      <template #no-results> {{  $t('montage-no-results') }} </template>
     </cdx-multiselect-lookup>
 </template>
 

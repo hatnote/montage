@@ -5,9 +5,9 @@ export function formatDate(dateString) {
 
 export function getVotingName(voting) {
   const types =  {
-    "yesno": "Yes/No",
-    "rating": "Rating",
-    "ranking": "Ranking",
+    "yesno": "montage-round-yesno", 
+    "rating": "montage-round-rating",
+    "ranking": "montage-round-ranking",
   }
 
   return types[voting]

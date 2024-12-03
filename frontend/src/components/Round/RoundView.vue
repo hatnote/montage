@@ -25,10 +25,10 @@
           <p>
             {{
               round.vote_method === 'yesno'
-                ? 'Yes/No'
+                ? $t('montage-round-yesno')
                 : round.vote_method === 'rating'
-                  ? 'Rating'
-                  : 'Ranking'
+                  ? $t('montage-round-rating')
+                  : $t('montage-round-ranking')
             }}
             . {{ round.status }}
           </p>
@@ -36,7 +36,8 @@
         <div style="margin-left: auto">
           <cdx-button @click="toggleEditing()">
             <cog style="font-size: 6px" v-if="!isRoundEditing" />
-            <close style="font-size: 6px" v-else /> {{ isRoundEditing ? 'Cancel' : 'Edit Round' }}
+            <close style="font-size: 6px" v-else />
+            {{ isRoundEditing ? $t('montage-btn-cancel') : $t('montage-round-edit') }}
           </cdx-button>
         </div>
       </div>

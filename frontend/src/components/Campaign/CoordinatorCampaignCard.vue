@@ -11,7 +11,7 @@
       </template>
       <template #supporting-text>
         <div class="coordinator-campaign-card-info">
-          <p class="coordinator-campaign-card-info-label">Latest Round:</p>
+          <p class="coordinator-campaign-card-info-label">{{ $t('montage-latest-round') }}</p>
           <p class="coordinator-campaign-card-latest-round">
             {{
               lastRound
@@ -20,7 +20,7 @@
             }}
           </p>
           <p class="coordinator-campaign-card-info-label">
-            Coordinators ({{ campaign.coordinators.length }})
+            {{ $t('montage-coordinators') }} ({{ campaign.coordinators.length }})
           </p>
           <div class="coordinators-initials-container">
             <div

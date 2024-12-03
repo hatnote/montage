@@ -1,15 +1,16 @@
 <template>
   <footer class="footer-container">
     <div class="footer-left">
-      <span>&copy; 2024 // by Montage team</span>
+      <span>&copy; {{ new Date().getFullYear() }} // {{ $t('montage-credit') }}</span>
       <a
         href="https://commons.wikimedia.org/wiki/Commons:Montage"
         class="footer-link"
         target="_blank"
-        >About Montage</a
+      >
+        {{ $t('montage-about') }}</a
       >
       <a href="https://github.com/hatnote/montage" class="footer-link" target="_blank">
-        Source code
+        {{  $t('montage-source-code') }}
       </a>
     </div>
     <div class="footer-right">

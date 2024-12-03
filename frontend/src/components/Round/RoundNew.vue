@@ -1,17 +1,30 @@
 <template>
   <div class="juror-campaign-round-card">
     <div class="round-header">
-      <thumbs-up-down v-if="formData.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36"
-        fillColor="white" style="background-color: grey" />
-      <star-outline v-if="formData.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36"
-        fillColor="white" style="background-color: grey" />
-      <sort v-if="formData.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white"
-        style="background-color: grey" />
+      <thumbs-up-down
+        v-if="formData.vote_method === 'yesno'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
+      <star-outline
+        v-if="formData.vote_method === 'rating'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
+      <sort
+        v-if="formData.vote_method === 'ranking'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
       <div class="round-info">
         <h2>{{ formData.name }}</h2>
-        <p>
-          {{ getVotingName(formData.vote_method) }}
-        </p>
+        <p>{{ $t(getVotingName(formData.vote_method)) }}</p>
       </div>
     </div>
 
@@ -22,112 +35,137 @@
             <div class="form-left">
               <cdx-field>
                 <cdx-text-input v-model="formData.name" />
-                <template #label>Round Name</template>
+                <template #label>{{ $t('montage-round-name') }}</template>
               </cdx-field>
               <div class="flex-row">
                 <cdx-field>
                   <cdx-text-input input-type="date" v-model="formData.deadline_date" />
-                  <template #label>Voting Deadline</template>
+                  <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
                 <cdx-field>
-                  <cdx-select v-model:selected="formData.vote_method" :menu-items="voteMethods.map((method) => ({ label: getVotingName(method), value: method }))
-                    " />
-                  <template #label>Vote Method</template>
+                  <cdx-select
+                    v-model:selected="formData.vote_method"
+                    :menu-items="
+                      voteMethods.map((method) => ({
+                        label: $t(getVotingName(method)) ,
+                        value: method
+                      }))
+                    "
+                  />
+                  <template #label>{{ $t('montage-round-vote-method') }}</template>
                 </cdx-field>
               </div>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio v-for="source in importSourceMethods" :key="'radio-' + source.value"
-                  v-model="selectedImportSource" :input-value="source.value">
+                <cdx-radio
+                  v-for="source in importSourceMethods"
+                  :key="'radio-' + source.value"
+                  v-model="selectedImportSource"
+                  :input-value="source.value"
+                >
                   {{ source.label }}
                 </cdx-radio>
-                <template #label>Source</template>
+                <template #label>{{ $t('montage-round-source') }}</template>
                 <template #help-text>
                   <p v-if="selectedImportSource === 'category'" class="help-text">
-                    Category on Wikimedia Commons that gathers all contest images. Example of such
-                    category may be e.g. "Images from Wiki Loves Monuments 2017 in Ghana".
+                    {{ $t('montage-round-source-category-help') }}
                   </p>
                   <p v-if="selectedImportSource === 'csv'" class="help-text">
-                    List of files saved as CSV and uploaded as a Google Sheet or Gist.
+                    {{ $t('montage-round-source-csv-help') }}
                   </p>
                   <p v-if="selectedImportSource === 'selected'" class="help-text">
-                    List of files, one each line without File: prefix
+                    {{ $t('montage-round-source-selected-help') }}
                   </p>
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
-                  placeholder="Enter category" @input="searchCategory">
-                  <template #label>Enter category</template>
-                  <template #no-results>No categories found.</template>
+                <cdx-lookup
+                  v-model:selected="importSourceValue.category"
+                  :menu-items="categoryOptions"
+                  :placeholder="$t('montage-round-category-placeholder')"
+                  @input="searchCategory"
+                >
+                  <template #label>{{ $t('montage-round-category-label') }}</template>
+                  <template #no-results>{{ $t('montage-round-no-category') }}</template>
                 </cdx-lookup>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'csv'">
                 <cdx-text-input input-type="url" v-model="importSourceValue.csv_url" />
-                <template #label>Enter File URL</template>
+                <template #label>{{ $t('montage-round-file-url') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'selected'">
                 <cdx-text-area v-model="importSourceValue.file_names" rows="5" />
-                <template #label>List (One file per line)</template>
+                <template #label>{{ $t('montage-round-file-list') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0">
                 <cdx-text-area v-model="formData.directions" rows="3" />
-                <template #label>Directions</template>
+                <template #label>{{ $t('montage-directions') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value"
-                  v-model="formData.show_stats" :input-value="source.value">
+                <cdx-radio
+                  v-for="source in showStatsOptions"
+                  :key="'show_stats-' + source.value"
+                  v-model="formData.show_stats"
+                  :input-value="source.value"
+                >
                   {{ source.label }}
                 </cdx-radio>
-                <template #label>Show own statistics (Beta)</template>
+                <template #label>{{ $t('montage-label-round-stats') }}</template>
                 <template #description>
-                  <p>
-                    Whether to show own voting statistics (e.g. number of accepted or declined
-                    images) of juror for the round.
-                  </p>
+                  <p>{{ $t('montage-description-round-stats') }}</p>
                 </template>
               </cdx-field>
               <cdx-field>
                 <cdx-text-input v-model="formData.quorum" input-type="number" />
-                <template #label>Quorum</template>
+                <template #label>{{ $t('montage-label-round-quorum') }}</template>
                 <template #description>
-                  <p>The number of jurors that must vote on each image</p>
+                  <p>{{ $t('montage-round-quorum-description') }}</p>
                 </template>
               </cdx-field>
               <cdx-field>
-                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" />
-                <template #label>Jurors</template>
+                <UserList
+                  :users="formData.jurors"
+                  @update:selectedUsers="formData.jurors = $event"
+                />
+                <template #label>{{ $t('montage-label-round-jurors') }}</template>
                 <template #help-text>
-                  <p>Enter the username of the juror you want to add to this round.</p>
+                  <p>{{ $t('montage-round-jurors-description') }}</p>
                 </template>
               </cdx-field>
               <cdx-field v-if="thresholds">
-                <cdx-select v-model:selected="formData.threshold" :menu-items="thresholdOptions"
-                  default-label="Choose an threshold" />
-                <template #label>Threshold</template>
+                <cdx-select
+                  v-model:selected="formData.threshold"
+                  :menu-items="thresholdOptions"
+                  :default-label="$t('montage-round-threshold-default')"
+                />
+                <template #label>{{ $t('montage-round-threshold') }}</template>
                 <template #description>
-                  <p>Minimal average rating for photo</p>
+                  <p>{{ $t('montage-round-threshold-description') }}</p>
                 </template>
               </cdx-field>
             </div>
             <div class="form-right" v-if="roundIndex === 0">
-              <p>Round File Setting</p>
+              <p>{{ $t('montage-round-file-setting') }}</p>
               <cdx-field>
-                <cdx-checkbox v-for="key in fileSettingsOptions" :key="key" v-model="formData.config[key]">
-                  {{ $t(key) }}
+                <cdx-checkbox
+                  v-for="key in fileSettingsOptions"
+                  :key="key"
+                  v-model="formData.config[key]"
+                >
+                  {{ $t('montage-round-' + key.replaceAll('_', '-')) }}
                 </cdx-checkbox>
               </cdx-field>
               <cdx-field v-if="formData.config.dq_by_resolution">
                 <cdx-text-input v-model="formData.config.min_resolution" input-type="number" />
-                <template #label>Minimal resolution</template>
+                <template #label>{{ $t('montage-round-min-resolution') }}</template>
               </cdx-field>
             </div>
           </div>
           <div class="button-group">
             <cdx-button action="progressive" weight="primary" @click="submitRound()">
-              <check class="icon-small" /> Add Round
+              <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()">
-              <close class="icon-small" /> Cancel
+              <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
         </template>
@@ -138,6 +176,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import alertService from '@/services/alertService'
 import dataService from '@/services/dataService'
 import adminService from '@/services/adminService'
@@ -167,6 +206,7 @@ import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
+const { t: $t } = useI18n()
 
 const props = defineProps({
   showAddRoundForm: Boolean,
@@ -190,13 +230,13 @@ const fileSettingsOptions = [
   'show_resolution'
 ]
 const showStatsOptions = [
-  { label: 'Yes', value: true },
-  { label: 'No', value: false }
+  { label: $t('montage-option-yes'), value: true },
+  { label: $t('montage-option-no'), value: false }
 ]
 const importSourceMethods = [
-  { label: 'Category on Wikimedia Commons', value: 'category' },
-  { label: 'File List URL', value: 'csv' },
-  { label: 'File List', value: 'selected' }
+  { label: $t('montage-round-source-category'), value: 'category' },
+  { label: $t('montage-round-source-csv'), value: 'csv' },
+  { label: $t('montage-round-source-filelist'), value: 'selected' }
 ]
 
 const roundIndex = props.rounds.length
@@ -267,7 +307,7 @@ const submitRound = () => {
     adminService
       .addRound(campaignId, payload)
       .then((resp) => {
-        alertService.success('Round added successfully')
+        alertService.success($t('montage-round-addded'))
 
         if (selectedImportSource.value === 'selected') {
           importSourceValue.value.file_names = importSourceValue.value.file_names
@@ -280,7 +320,7 @@ const submitRound = () => {
       .catch(alertService.error)
   } else {
     if (!prevRound.id) {
-      alertService.error('Something went wrong. Please try again.')
+      alertService.error($t('montage-something-went-wrong'))
       return
     }
 
@@ -292,13 +332,13 @@ const submitRound = () => {
         deadline_date: formData.value.deadline_date + 'T00:00:00',
         jurors: formData.value.jurors
       },
-      threshold: 0.5 //formData.value.threshold
+      threshold: formData.value.threshold
     }
 
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
-        alertService.success('Round added successfully')
+        alertService.success($t('montage-round-addded'))
       })
       .catch(alertService.error)
       .finally(() => {

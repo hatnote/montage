@@ -1,32 +1,32 @@
 <template>
   <div class="new-campaign">
-    <h2 class="new-campaig-heading">New Campaign</h2>
+    <h2 class="new-campaig-heading">{{  $t('montage-new-campaig-heading') }}</h2>
     <cdx-card class="new-campaign-card">
       <template #supporting-text>
         <cdx-field :status="errors.name ? 'error' : 'default'" :messages="{ error: errors.name }">
-          <cdx-text-input v-model="formField.name" :required="true" placeholder="Name" />
+          <template #description>
+            {{  $t('montage-description-campaign-name') }}:
+          </template>
+          <cdx-text-input v-model="formField.name" :required="true" :placeholder="$t('montage-placeholder-campaign-name')" />
         </cdx-field>
 
         <cdx-field :status="errors.url ? 'error' : 'default'" :messages="{ error: errors.url }">
-          <cdx-text-input v-model="formField.url" :required="true" placeholder="Campaign URL*" />
+          <cdx-text-input v-model="formField.url" :required="true" :placeholder="$t('montage-placeholder-campaign-url')" />
           <template #description>
-            Enter URL of campaign landing page, e.g., on Commons or local Wiki Loves.
+            {{  $t('montage-description-campaign-url') }}
           </template>
         </cdx-field>
         <cdx-field :is-fieldset="true">
-          <template #label>Date Range</template>
+          <template #label>{{ $t('montage-label-date-range') }}</template>
           <template #description>
-            Once the images are imported to the first round, changing date and time won't affect the
-            images your jury can view. However, changing these values before the import to round 1
-            will ensure that only photos uploaded before the end date and time are visible to your
-            jury.
+            {{ $t('montage-description-date-range') }}
           </template>
           <div class="open-date-fields">
             <cdx-field
               :status="errors.openDate ? 'error' : 'default'"
               :messages="{ error: errors.openDate }"
             >
-              <template #label>Open Date:</template>
+              <template #label>{{ $t('montage-label-open-date') }}:</template>
               <cdx-text-input input-type="date" v-model="formField.openDate" />
             </cdx-field>
 
@@ -34,7 +34,7 @@
               :status="errors.openTime ? 'error' : 'default'"
               :messages="{ error: errors.openTime }"
             >
-              <template #label>Open Time:</template>
+              <template #label>{{ $t('montage-label-open-time') }}:</template>
               <cdx-text-input input-type="time" v-model="formField.openTime" />
             </cdx-field>
           </div>
@@ -43,7 +43,7 @@
               :status="errors.closeDate ? 'error' : 'default'"
               :messages="{ error: errors.closeDate }"
             >
-              <template #label>Close Date:</template>
+              <template #label>{{ $t('montage-label-close-date') }}:</template>
               <cdx-text-input input-type="date" v-model="formField.closeDate" />
             </cdx-field>
 
@@ -51,7 +51,7 @@
               :status="errors.closeTime ? 'error' : 'default'"
               :messages="{ error: errors.closeTime }"
             >
-              <template #label>Close Time:</template>
+              <template #label>{{ $t('montage-label-close-time') }}:</template>
               <cdx-text-input input-type="time" v-model="formField.closeTime" />
             </cdx-field>
           </div>
@@ -60,10 +60,9 @@
           :status="errors.coordinators ? 'error' : 'default'"
           :messages="{ error: errors.coordinators }"
         >
-          <template #label>Campaign Coordinators</template>
+          <template #label>{{  $t('montage-label-campaign-coordinators') }}</template>
           <template #description>
-            Coordinators are people who have access to edit the campaign, rounds, and round
-            statistics.
+            {{ $t('montage-description-campaign-coordinators') }}
           </template>
           <UserList
             :users="formField.coordinators"
@@ -72,10 +71,10 @@
         </cdx-field>
 
         <cdx-button @click="submitForm" action="progressive" weight="primary" class="create-button">
-          Create Campaign
+          {{ $t('montage-btn-create-campaign') }}
         </cdx-button>
         <RouterLink to="/">
-          <cdx-button action="destructive">Cancel</cdx-button>
+          <cdx-button action="destructive">{{ $t('montage-btn-cancel') }}</cdx-button>
         </RouterLink>
       </template>
     </cdx-card>
@@ -84,6 +83,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 import adminService from '@/services/adminService'
@@ -92,6 +92,7 @@ import { CdxTextInput, CdxButton, CdxCard, CdxField } from '@wikimedia/codex'
 import UserList from '@/components/UserList.vue'
 
 const router = useRouter()
+const { t: $t } = useI18n()
 
 const formField = ref({
   name: '',
@@ -114,17 +115,17 @@ const errors = ref({
 })
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  url: z.string().url('Invalid URL').min(1, 'URL is required'),
-  openDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Open date is required'),
+  name: z.string().min(1, $t('montage-required-campaign-name')),
+  url: z.string().url($t('montage-invalid-campaign-url')).min(1, $t('montage-required-campaign-url')),
+  openDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-open-date')),
   openTime: z
     .string()
-    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), 'Open time is required'),
-  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Close date is required'),
+    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-open-time')),
+  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-close-date')),
   closeTime: z
     .string()
-    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), 'Close time is required'),
-  coordinators: z.array(z.string()).min(1, 'At least one coordinator is required')
+    .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
+  coordinators: z.array(z.string()).min(1, $t('montage-required-campaign-coordinators'))
 })
 
 const submitForm = () => {
@@ -153,7 +154,7 @@ const submitForm = () => {
     .then((res) => {
       console.log(res)
       if (res.status === 'success') {
-        alertService.success('Campaign added successfully')
+        alertService.success($t('montage-campaign-added-success'))
         router.push({
           name: 'campaign',
           params: {
@@ -161,7 +162,7 @@ const submitForm = () => {
           }
         })
       } else {
-        alertService.error('Something went wrong. Please try again.')
+        alertService.error($t('montage-something-went-wrong'))
       }
     })
     .catch(alertService.error)
