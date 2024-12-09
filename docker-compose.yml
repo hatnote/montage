@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5001:5000"
+      - "5001:5000"  # Airplay runs on port 5000 on mac. See https://forums.developer.apple.com/forums/thread/682332
     environment:
       - PYTHONPATH=/app
     volumes:
