@@ -47,14 +47,14 @@ npm install
 npm run watch:build
 ```
 
-⚠️ **Frontend does not run in dev mode**: This will:watch for changes by using `chokidar` command and automatically copied to the backend's `static` and `template` directories. So there will not be any hot reloading. Developers must refresh the browser to see updates.
+⚠️ **Frontend does not run in dev mode**: `npm run watch:build` above will watch for changes by using `chokidar` command and automatically copied to the backend's `static` and `template` directories. So there will not be any hot reloading. Developers must refresh the browser to see updates.
 
 Apart from `npm watch:build`, these are other commands:
 * `npm run lint`: Lint the code
 * `npm run format`: Format the code
 
 ### 3. Use the Makefile to start the backend
-* Open a new termial tab and change directory to root of repo
+* Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
 log in to the local app in your browser, and then copy the value from the

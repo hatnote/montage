@@ -5,7 +5,7 @@ These are instructions for deploying Montage on Toolforge.
 ## Deploying on Toolforge from scratch
 These instructions is only first time when setuping project on Toolforge
 
-##### 1. Get thee OAuth credentials.
+##### 1. Get the OAuth credentials.
 [Register your app](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) and save your consumer token and secret token for later.
 
 ##### 2. SSH to Toolforge and then inside tool
@@ -41,7 +41,7 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 * Make a copy of `config.default.yaml` for your environment
    * You may need to update `USER_ENV_MAP` in `montage/utils.py` if you need to add a new environment
 * Add the `oauth_consumer_token` and `oauth_secret_token` 
-* Add a `cookie_secret: <your randome secret>`
+* Add a `cookie_secret: <your random secret>`
 * Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
     * The format is: `mysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
 * Add `api_log_path: /data/project/<project>/logs/montage_api.log`
@@ -68,6 +68,7 @@ toolforge webservice python3.9 start
 
 ##### 9. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
+* In the top section, you should see that the service was restarted in the last few seconds/minutes.
 
 
 ---
@@ -81,6 +82,8 @@ If montage is already deployed then you just need following to deploy new change
 Login to the tool webapp. Make sure, you are maintainer on the webapp instance. Use the audit log endpoint to check that the instance isn't in active use. Example: https://montage-beta.toolforge.org/v1/logs/audit
 
 This will tell latest usage of instance by audit `create_date`. You can continue if instance is not being used.
+
+Sometimes, instance can in use, but there can be important bugfix and we can push anyways.
 
 ##### 2. SSH to Toolforge and then inside tool
 ```bash
@@ -120,3 +123,4 @@ toolforge webservice python3.9 restart
 
 ##### 9. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
+* In the top section, you should see that the service was restarted in the last few seconds/minutes.
