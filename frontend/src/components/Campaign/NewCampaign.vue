@@ -1,19 +1,25 @@
 <template>
   <div class="new-campaign">
-    <h2 class="new-campaig-heading">{{  $t('montage-new-campaig-heading') }}</h2>
+    <h2 class="new-campaig-heading">{{ $t('montage-new-campaig-heading') }}</h2>
     <cdx-card class="new-campaign-card">
       <template #supporting-text>
         <cdx-field :status="errors.name ? 'error' : 'default'" :messages="{ error: errors.name }">
-          <template #description>
-            {{  $t('montage-description-campaign-name') }}:
-          </template>
-          <cdx-text-input v-model="formField.name" :required="true" :placeholder="$t('montage-placeholder-campaign-name')" />
+          <template #description> {{ $t('montage-description-campaign-name') }}: </template>
+          <cdx-text-input
+            v-model="formField.name"
+            :required="true"
+            :placeholder="$t('montage-placeholder-campaign-name')"
+          />
         </cdx-field>
 
         <cdx-field :status="errors.url ? 'error' : 'default'" :messages="{ error: errors.url }">
-          <cdx-text-input v-model="formField.url" :required="true" :placeholder="$t('montage-placeholder-campaign-url')" />
+          <cdx-text-input
+            v-model="formField.url"
+            :required="true"
+            :placeholder="$t('montage-placeholder-campaign-url')"
+          />
           <template #description>
-            {{  $t('montage-description-campaign-url') }}
+            {{ $t('montage-description-campaign-url') }}
           </template>
         </cdx-field>
         <cdx-field :is-fieldset="true">
@@ -60,7 +66,7 @@
           :status="errors.coordinators ? 'error' : 'default'"
           :messages="{ error: errors.coordinators }"
         >
-          <template #label>{{  $t('montage-label-campaign-coordinators') }}</template>
+          <template #label>{{ $t('montage-label-campaign-coordinators') }}</template>
           <template #description>
             {{ $t('montage-description-campaign-coordinators') }}
           </template>
@@ -70,7 +76,13 @@
           />
         </cdx-field>
 
-        <cdx-button @click="submitForm" action="progressive" weight="primary" class="create-button">
+        <cdx-button
+          :disabled="isLoading"
+          @click="submitForm"
+          action="progressive"
+          weight="primary"
+          class="create-button"
+        >
           {{ $t('montage-btn-create-campaign') }}
         </cdx-button>
         <RouterLink to="/">
@@ -94,6 +106,8 @@ import UserList from '@/components/UserList.vue'
 const router = useRouter()
 const { t: $t } = useI18n()
 
+// State
+const isLoading = ref(false)
 const formField = ref({
   name: '',
   url: '',
@@ -116,7 +130,10 @@ const errors = ref({
 
 const schema = z.object({
   name: z.string().min(1, $t('montage-required-campaign-name')),
-  url: z.string().url($t('montage-invalid-campaign-url')).min(1, $t('montage-required-campaign-url')),
+  url: z
+    .string()
+    .url($t('montage-invalid-campaign-url'))
+    .min(1, $t('montage-required-campaign-url')),
   openDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-open-date')),
   openTime: z
     .string()
@@ -149,6 +166,7 @@ const submitForm = () => {
     coordinators: formField.value.coordinators
   }
 
+  isLoading.value = true
   adminService
     .addCampaign(payload)
     .then((res) => {
@@ -166,6 +184,9 @@ const submitForm = () => {
       }
     })
     .catch(alertService.error)
+    .finally(() => {
+      isLoading.value = false
+    })
 }
 </script>
 

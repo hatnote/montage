@@ -49,7 +49,7 @@
           class="vote-gallery-image link"
           :class="getImageSizeClass()"
         >
-          <div class="vote-gallery-drag-icon" @click="openImage(image)">
+          <div class="vote-gallery-expand-icon" @click="openImage(image)">
             <arrow-expand-all />
           </div>
           <div class="vote-gallery-image-container">
@@ -57,11 +57,10 @@
           </div>
           <div class="vote-gallery-footer">
             <h3 class="vote-gallery-footer-name">
-              <div class="vote-footer-content">
+              <div>
                 <strong>
                   {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
                 </strong>
-                <v-icon v-if="image.entry.review">mdi-rate-review</v-icon>
               </div>
               <span v-if="!round.config.show_filename">
                 {{ $t('montage-vote-image') }} #{{ image.entry.id }}
@@ -242,7 +241,7 @@ watch(
   object-fit: cover;
 }
 
-.vote-gallery-drag-icon {
+.vote-gallery-expand-icon {
   cursor: pointer;
   position: absolute;
   background: rgba(0, 0, 0, 0.18);

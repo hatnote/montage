@@ -1,4 +1,4 @@
-import { ref, defineComponent, h, render } from 'vue';
+import { ref, defineComponent, h, render, getCurrentInstance } from 'vue';
 import { CdxDialog } from '@wikimedia/codex';
 
 const dialogService = () => {
@@ -12,6 +12,8 @@ const dialogService = () => {
 
   const DialogComponent = defineComponent({
     setup() {
+      const { appContext } = getCurrentInstance();
+
       const onPrimaryAction = () => {
         open.value = false;
         if (dialogConfig.value.onPrimary) {
@@ -27,6 +29,7 @@ const dialogService = () => {
       };
 
       return () => h(CdxDialog, {
+        appContext: appContext,
         open: open.value,
         'onUpdate:open': (value) => open.value = value,
         title: dialogConfig.value.title,
@@ -36,7 +39,14 @@ const dialogService = () => {
         onPrimary: onPrimaryAction,
         onDefault: onDefaultAction
       }, {
-        default: () => h('div', { innerHTML: dialogConfig.value.content })
+        default: () => {
+          if (typeof dialogConfig.value.content === 'string') {
+            return h('div', { innerHTML: dialogConfig.value.content });
+          } else if (dialogConfig.value.content) {
+            return h(dialogConfig.value.content, dialogConfig.value.props || {});
+          }
+          return null;
+        }
       });
     }
   });

@@ -1,14 +1,26 @@
 <template>
-  <div class="dashboard-container">
+  <div v-if="!isLoading" class="dashboard-container">
     <div class="dashboard-header">
       <div class="dashboard-header-heading">
         <h1>{{ $t('montage-active-campaigns') }}</h1>
-        <RouterLink to="/campaign/new" v-if="userStore.user.is_organizer">
-          <cdx-button action="progressive" weight="primary">{{ $t('montage-new-campaign') }}</cdx-button>
-        </RouterLink>
+        <div>
+          <RouterLink to="/campaign/new" v-if="userStore.user.is_organizer">
+            <cdx-button action="progressive" weight="primary">
+              {{ $t('montage-new-campaign') }}
+            </cdx-button>
+          </RouterLink>
+          <cdx-button
+            v-if="userStore.user.is_maintainer"
+            style="margin-left: 16px"
+            action="progressive"
+            @click="addOrganizer"
+          >
+            {{ $t('montage-add-organizer') }}
+          </cdx-button>
+        </div>
       </div>
       <p class="dashboard-info">
-        {{ $t('montage-manage-current')}}, {{ $t('montage-or') }}
+        {{ $t('montage-manage-current') }}, {{ $t('montage-or') }}
         <RouterLink to="/campaign/all">{{ $t('montage-view-all') }}</RouterLink>
       </p>
     </div>
@@ -31,29 +43,52 @@
       </div>
     </section>
   </div>
+  <clip-loader v-else size="80px" style="padding-top: 120px" />
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import _ from 'lodash'
 
 import adminService from '@/services/adminService'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
+import dialogService from '@/services/dialogService'
 import { useUserStore } from '@/stores/user'
 
+// Components
 import { RouterLink } from 'vue-router'
 import { CdxButton } from '@wikimedia/codex'
 import CoordinatorCampaignCard from '@/components/Campaign/CoordinatorCampaignCard.vue'
 import JurorCampaignCard from '@/components/Campaign/JurorCampaignCard.vue'
+import AddOrganizer from '../AddOrganizer.vue'
 
+// Hooks
+const { t: $t } = useI18n()
 const userStore = useUserStore()
+
+// State
+const isLoading = ref(false)
 const coordinatorCampaigns = ref([])
 const jurorCampaigns = ref([])
 
+const addOrganizer = () => {
+  dialogService().show({
+    title: $t('montage-add-organizer'),
+    content: AddOrganizer,
+    props: {
+      addMsg: $t('montage-btn-add'),
+      addSuccessMsg: $t('montage-added-organizer')
+    }
+  })
+}
+
 onMounted(() => {
+  isLoading.value = true
+
   // Fetch all campaigns
-  adminService
+  const fetchCoordinatorCampaigns = adminService
     .get()
     .then((response) => {
       coordinatorCampaigns.value = response.data
@@ -61,7 +96,7 @@ onMounted(() => {
     .catch(alertService.error)
 
   // Fetch all juror campaigns
-  jurorService
+  const fetchJurorCampaigns = jurorService
     .get()
     .then((response) => {
       if (!response.data.length) {
@@ -96,6 +131,10 @@ onMounted(() => {
       jurorCampaigns.value = campaignsJuror
     })
     .catch(alertService.error)
+
+  Promise.all([fetchCoordinatorCampaigns, fetchJurorCampaigns]).finally(() => {
+    isLoading.value = false
+  })
 })
 </script>
 

@@ -15,7 +15,7 @@
           <p class="coordinator-campaign-card-latest-round">
             {{
               lastRound
-                ? getVotingName(lastRound.round.vote_method) + ' - ' + lastRound.round.status
+                ? $t(getVotingName(lastRound.round.vote_method)) + ' - ' + lastRound.round.status
                 : '-'
             }}
           </p>

@@ -4,7 +4,8 @@
       <div>
         <h3>{{ $t('montage-round-deadline') }}</h3>
         <p>
-          <span style="color: black">{{ round.deadline_date.split('T')[0] }}</span> · {{ $t('montage-round-vote-ending', [remainingDays]) }}
+          <span style="color: black">{{ round.deadline_date.split('T')[0] }}</span> ·
+          {{ $t('montage-round-vote-ending', [remainingDays]) }}
         </p>
       </div>
       <div style="margin-top: 24px; min-height: 80px">
@@ -12,59 +13,89 @@
         <p v-if="round.directions">{{ round.directions }}</p>
         <p v-else>{{ $t('montage-round-no-direction-given') }}</p>
       </div>
-      <!-- <div style="margin-top: 24px">
-        <h3>Quorum</h3>
-        <p>{{ round.quorum }} jurors per photo</p>
-      </div> -->
+      <div style="margin-top: 24px" v-if="roundDetails?.quorum">
+        <h3>{{ $t('montage-label-round-quorum') }}</h3>
+        <p>{{ $t('montage-round-quorum-per-photo', [roundDetails.quorum]) }}</p>
+      </div>
       <div style="margin-top: 24px">
-        <h3>{{  $t('montage-label-round-jurors') }}</h3>
+        <h3>{{ $t('montage-label-round-jurors') }}</h3>
         <div style="display: flex; flex-wrap: wrap">
-          <div v-for="juror in round.jurors" :key="juror.username" style="
+          <div
+            v-for="juror in roundDetails?.jurors"
+            :key="juror.username"
+            style="
               width: 220px;
               display: flex;
               flex-direction: column;
               margin-top: 16px;
               margin-bottom: 16px;
-            ">
+            "
+          >
             <user-avatar-with-name :coordinators="[juror]" />
             <div style="display: flex; flex-direction: column; margin-top: 8px">
-              <!-- <p style="font-size: 26px">
+              <p style="font-size: 26px" v-if="juror?.stats?.total_tasks">
                 {{
-                  (
-                    ((juror.stats.total_tasks - juror.stats.total_open_tasks) /
-                      juror.stats.total_tasks) *
-                    100
-                  ).toFixed(0)
+                   (100 - juror.stats.percent_tasks_open).toFixed(1)
                 }}
                 %
-              </p> -->
-              <!-- <p style="color: black">
-                {{ juror.stats.total_tasks - juror.stats.total_open_tasks }} out of
-                {{ juror.stats.total_tasks }}
               </p>
-              <p>{{ juror.stats.total_open_tasks }} remaining</p> -->
+              <p style="font-size: 26px" v-else>N/A</p>
+              <p style="color: black">
+                {{
+                  $t('montage-progress-status', [
+                    juror.stats.total_tasks - juror.stats.total_open_tasks,
+                    juror.stats.total_tasks
+                  ])
+                }}
+              </p>
+              <p class="greyed">
+                {{ $t('montage-vote-image-remains', [juror?.stats.total_open_tasks]) }}
+              </p>
             </div>
           </div>
         </div>
       </div>
     </div>
     <div style="flex: 4">
-      <div class="round__file-info">
+      <div class="round-file-info">
         <h4>{{ $t('montage-round-file-info') }}</h4>
-        <p><strong>{{ $t('montage-round-file-type') }}:</strong> {{ round.config.allowed_filetypes.join(', ') }}</p>
-        <!-- <p>
-          <strong>Percentage of opened tasks:</strong> {{ round.details.percentage_opened_tasks }}%
+        <p>
+          <strong>{{ $t('montage-round-file-type') }}:</strong>
+          {{ roundResults?.counts.all_mimes.join(', ') }}
         </p>
-        <p><strong>Cancelled tasks:</strong> {{ round.details.cancelled_tasks }}</p>
-        <p><strong>Disqualified files:</strong> {{ round.details.disqualified_files }}</p>
-        <p><strong>Open tasks:</strong> {{ round.details.open_tasks }}</p>
-        <p><strong>Files:</strong> {{ round.details.files }}</p>
-        <p><strong>Tasks:</strong> {{ round.details.tasks }}</p>
-        <p><strong>Uploaders:</strong> {{ round.details.uploaders }}</p> -->
+        <p>
+          <strong>{{ $t('montage-round-open-task-percentage') }}:</strong>
+          {{ roundResults?.counts.percent_tasks_open }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-cancelled-tasks') }}:</strong>
+          {{ rroundResults?.counts.total_cancelled_tasks }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-disqualified-files') }}:</strong>
+          {{ roundResults?.counts.total_disqualified_entries }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-open-tasks') }}:</strong>
+          {{ roundResults?.counts.total_open_tasks }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-files') }}:</strong>
+          {{ roundResults?.counts.total_round_entries }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-tasks') }}:</strong> {{ roundResults?.counts.total_tasks }}
+        </p>
+        <p>
+          <strong>{{ $t('montage-round-uploaders') }}:</strong>
+          {{ roundResults?.counts.total_uploaders }}
+        </p>
       </div>
       <cdx-accordion class="info-accordion">
         <p v-for="(value, key) in round.config" :key="key" style="display: flex">
-          <span v-if="key !== 'allowed_filetypes'">{{ $t( 'montage-round-' + key.replaceAll('_', '-')) }}</span>
+          <span v-if="key !== 'allowed_filetypes'">{{
+            $t('montage-round-' + key.replaceAll('_', '-'))
+          }}</span>
           <span v-if="key !== 'allowed_filetypes'" style="margin-left: auto">
             {{ value }}
           </span>
@@ -72,21 +103,28 @@
         <template #title> {{ $t('montage-round-file-setting') }} </template>
       </cdx-accordion>
       <cdx-accordion class="info-accordion">
-        <p>TODO: Voting</p>
         <template #title> {{ $t('montage-round-voting-details') }} </template>
       </cdx-accordion>
     </div>
   </div>
-  <div class="round__actions" style="display: flex; justify-content: end; gap: 16px; margin-top: 16px">
+  <div
+    class="round__actions"
+    style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
+  >
     <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
       <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
     </cdx-button>
 
     <cdx-button v-if="round.status === 'active'" @click="pauseRound">
-      <pause style="font-size: 6px" /> {{ $t('montage-round-paused') }}
+      <pause style="font-size: 6px" /> {{ $t('montage-round-pause') }}
     </cdx-button>
 
-    <cdx-button :disabled="round.status === 'active'" @click="finalizeRound" action="progressive" weight="primary">
+    <cdx-button
+      :disabled="!roundDetails?.is_closable"
+      @click="finalizeRound"
+      action="progressive"
+      weight="primary"
+    >
       <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
     </cdx-button>
 
@@ -101,7 +139,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
@@ -122,6 +160,9 @@ const props = defineProps({
   round: Object
 })
 
+const roundDetails = ref(null)
+const roundResults = ref(null)
+
 const remainingDays = computed(() => {
   const deadline = new Date(props.round.deadline_date)
   const today = new Date()
@@ -135,7 +176,7 @@ const activateRound = () => {
     .activateRound(props.round.id)
     .then((data) => {
       if (data.status === 'success') {
-        alertService.success( $t('montage-round-activated') )
+        alertService.success($t('montage-round-activated'))
       }
 
       // Refresh the page
@@ -155,7 +196,7 @@ const pauseRound = () => {
       // Refresh the page
       location.reload()
     })
-    .catch(alertService.error);
+    .catch(alertService.error)
 }
 
 const finalizeRound = () => {
@@ -176,6 +217,29 @@ function downloadReviews() {
   const url = adminService.downloadReviews(props.round.id)
   window.open(url)
 }
+
+function getRoundDetails(round) {
+  adminService
+    .getRound(round.id)
+    .then((data) => {
+      roundDetails.value = data.data
+    })
+    .catch(alertService.error)
+}
+
+function getRoundResults(round) {
+  adminService
+    .previewRound(round.id)
+    .then((data) => {
+      roundResults.value = data.data
+    })
+    .catch(alertService.error)
+}
+
+onMounted(() => {
+  getRoundDetails(props.round)
+  getRoundResults(props.round)
+})
 </script>
 
 <style scoped>
@@ -197,5 +261,9 @@ function downloadReviews() {
 
 .info-accordion {
   margin-top: 16px;
+}
+
+.round-file-info p {
+  font-size: 14px;
 }
 </style>

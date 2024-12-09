@@ -53,7 +53,8 @@
       </div>
       <h3 class="vote-section-title">{{ $t('montage-vote') }}</h3>
       <div class="vote-controls">
-        <div class="vote-controls-button">
+        <clip-loader v-if="isLoading" color="#36D7B7" size="20px" />
+        <div v-else class="vote-controls-button">
           <cdx-button action="progressive" weight="quiet" @click="setRate(5)">
             <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
           </cdx-button>
@@ -199,6 +200,7 @@ const props = defineProps({
 
 const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
+const isLoading = ref(false)
 const images = ref(null)
 const stats = ref(null)
 
@@ -268,9 +270,11 @@ const getTasks = () => {
 
 const setRate = (rate) => {
   if (imageLoading.value) return
+  if (isLoading.value) return
 
   if (rate) {
     const val = (rate - 1) / 4
+    isLoading.value = true
     jurorService
       .setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] })
       .then(() => {
@@ -287,6 +291,9 @@ const setRate = (rate) => {
           counter.value += 1
           getNextImage()
         }
+      }).catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
       })
   } else {
     skips.value += 1
@@ -296,6 +303,7 @@ const setRate = (rate) => {
 
 const handleFav = () => {
   if (rating.value.current.is_fave) {
+    isLoading.value = true
     jurorService
       .unfaveImage(props.round.id, rating.value.current.entry.id)
       .then(() => {
@@ -304,7 +312,11 @@ const handleFav = () => {
         rating.value.current.is_fave = false
       })
       .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   } else {
+    isLoading.value = true
     jurorService
       .faveImage(props.round.id, rating.value.current.entry.id)
       .then(() => {
@@ -313,10 +325,15 @@ const handleFav = () => {
         rating.value.current.is_fave = true
       })
       .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   }
 }
 
 const handleKeyDown = (event) => {
+  if( isLoading.value ) return;
+
   if (props.round.vote_method === 'yesno') {
       if (event.key === 'ArrowUp') {
         setRate(5);

@@ -161,7 +161,7 @@
             </div>
           </div>
           <div class="button-group">
-            <cdx-button action="progressive" weight="primary" @click="submitRound()">
+            <cdx-button :disabled="isLoading" action="progressive" weight="primary" @click="submitRound()">
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()">
@@ -243,6 +243,7 @@ const roundIndex = props.rounds.length
 const prevRound = roundIndex ? props.rounds[roundIndex - 1] : null
 const thresholds = ref(null)
 const thresholdOptions = ref(null)
+const isLoading = ref(false)
 
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
@@ -304,10 +305,11 @@ const submitRound = () => {
       config: formData.value.config
     }
 
+    isLoading.value = true
     adminService
       .addRound(campaignId, payload)
       .then((resp) => {
-        alertService.success($t('montage-round-addded'))
+        alertService.success($t('montage-round-added'))
 
         if (selectedImportSource.value === 'selected') {
           importSourceValue.value.file_names = importSourceValue.value.file_names
@@ -318,6 +320,9 @@ const submitRound = () => {
         importCategory(resp.data.id)
       })
       .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   } else {
     if (!prevRound.id) {
       alertService.error($t('montage-something-went-wrong'))
@@ -361,6 +366,7 @@ const importCategory = (id) => {
     payload.file_names = importSourceValue.value.file_names
   }
 
+  isLoading.value = true
   adminService
     .populateRound(id, payload)
     .then((response) => {
@@ -393,6 +399,9 @@ const importCategory = (id) => {
       }
     })
     .catch(alertService.error)
+    .finally(() => {
+      isLoading.value = false
+    })
 }
 
 watch(thresholds, (value) => {

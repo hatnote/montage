@@ -8,6 +8,7 @@ import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
 import { CdxTooltip } from '@wikimedia/codex'
+import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
 
 (async () => {
   // Wait for i18n initialization
@@ -21,6 +22,7 @@ import { CdxTooltip } from '@wikimedia/codex'
 
   // Global directive
   app.directive('tooltip', CdxTooltip)
+  app.component('clip-loader', ClipLoader)
 
   app.mount('#app')
 })()

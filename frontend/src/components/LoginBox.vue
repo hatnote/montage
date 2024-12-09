@@ -14,16 +14,23 @@
       <cdx-button class="login-button" action="progressive" icon="check" @click="redirectToLogin">
         {{ $t('montage-login-button') }}
       </cdx-button>
+      <clip-loader v-if="isLoading" />
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { CdxButton } from '@wikimedia/codex'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+
+// State
+const isLoading = ref(false)
+
 const redirectToLogin = () => {
+  isLoading.value = true
   userStore.login(null)
 }
 </script>

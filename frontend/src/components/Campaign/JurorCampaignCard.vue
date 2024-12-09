@@ -85,6 +85,7 @@ const goRoundVoting = (round, type) => {
 .juror-campaign-round-card {
   display: flex;
   flex-direction: column;
+  margin-bottom: 24px;
 }
 
 .round-header {

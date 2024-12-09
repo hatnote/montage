@@ -168,5 +168,19 @@
     "montage-round-added": "Message displayed when a round is successfully added.",
     "montage-round-show-stats": "Label to indicate the option to show statistical information.",
     "montage-option-yes": "Label for a 'Yes' option in various UI contexts.",
-    "montage-option-no": "Label for a 'No' option in various UI contexts."
+    "montage-option-no": "Label for a 'No' option in various UI contexts.",
+    "montage-vote-edit-for": "Used in the heading to indicate that votes are being edited for a specific round. {0} is the placeholder for the round name.",
+    "montage-add-organizer": "Label for a button or dialog title to add a new campaign organizer.",
+    "montage-btn-add": "Text for a button to add an item or user.",
+    "montage-added-organizer": "Notification message shown when an organizer is successfully added.",
+    "montage-at-least-one-user": "Error message prompting the user to add at least one user.",
+    "montage-only-one-user": "Error message indicating that only one user can be added.",
+    "montage-round-quorum-per-photo": "Text indicating the number of jurors required per photo in a round. {0} is a placeholder for the number of jurors.",
+    "montage-round-open-task-percentage": "Label for the percentage of open tasks in a round.",
+    "montage-round-cancelled-tasks": "Label for the number of tasks canceled in a round.",
+    "montage-round-disqualified-files": "Label for the number of files disqualified in a round.",
+    "montage-round-open-tasks": "Label for the number of tasks currently open in a round.",
+    "montage-round-files": "Label for the number of files in a round.",
+    "montage-round-tasks": "Label for the number of tasks in a round.",
+    "montage-round-uploaders": "Label for the number of uploaders contributing files to a round."
   }

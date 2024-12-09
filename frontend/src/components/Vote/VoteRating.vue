@@ -53,7 +53,8 @@
       </div>
       <h3 class="vote-section-title">{{ $t('montage-vote') }}</h3>
       <div class="vote-controls">
-        <div class="vote-controls-button">
+        <clip-loader v-if="isLoading" color="#36D7B7" size="20px" />
+        <div v-else class="vote-controls-button">
           <span v-for="rate in [1, 2, 3, 4, 5]" :key="rate">
             <cdx-button weight="quiet" @click="setRate(rate)">
               <star />
@@ -189,6 +190,7 @@ const imageLoading = ref(true)
 const voteContainer = ref(null);
 const showSidebar = ref(true)
 const imageCache = new Map()
+const isLoading = ref(false)
 
 const props = defineProps({
   round: Object,
@@ -267,9 +269,11 @@ function getTasks() {
 
 function setRate(rate) {
   if (imageLoading.value) return
+  if (isLoading.value) return
 
   if (rate) {
     const val = (rate - 1) / 4
+    isLoading.value = true
     jurorService
       .setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] })
       .then(() => {
@@ -287,6 +291,10 @@ function setRate(rate) {
           getNextImage()
         }
       })
+      .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   } else {
     skips.value += 1
     getNextImage()
@@ -295,6 +303,7 @@ function setRate(rate) {
 
 function handleFav() {
   if (rating.value.current.is_fave) {
+    isLoading.value = true
     jurorService
       .unfaveImage(props.round.id, rating.value.current.entry.id)
       .then(() => {
@@ -303,7 +312,11 @@ function handleFav() {
         rating.value.current.is_fave = false
       })
       .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   } else {
+    isLoading.value = true
     jurorService
       .faveImage(props.round.id, rating.value.current.entry.id)
       .then(() => {
@@ -312,10 +325,15 @@ function handleFav() {
         rating.value.current.is_fave = true
       })
       .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   }
 }
 
 const handleKeyDown = (event) => {
+  if ( isLoading.value ) return
+
   if (props.round.vote_method === 'rating') {
     const value = parseInt(event.key, 10)
     if (rating.value.rates.includes(value)) {

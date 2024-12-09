@@ -3,10 +3,13 @@ import { useToast } from 'vue-toastification'
 const toast = useToast()
 
 const AlertService = {
-  success(text, time) {
+  success(text, time, callback) {
     toast.success(text, {
       timeout: time || 2000,
-      position: 'top-right'
+      position: 'top-right',
+      onClose: () => {
+        callback && callback()
+      }
     })
   },
   error(error, time) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-container">
+  <div v-if="!isLoading" class="dashboard-container">
     <div class="dashboard-header">
       <div class="dashboard-header-heading">
         <h1>{{ $t('montage-all-campaigns') }}</h1>
@@ -28,6 +28,7 @@
       </div>
     </section>
   </div>
+  <clip-loader v-else size="80px" style="padding-top: 120px;" />
 </template>
 
 <script setup>
@@ -38,17 +39,22 @@ import adminService from '@/services/adminService'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService';
 
+// Components
 import { RouterLink } from 'vue-router'
 import CoordinatorCampaignCard from '@/components/Campaign/CoordinatorCampaignCard.vue'
 import JurorCampaignCard from '@/components/Campaign/JurorCampaignCard.vue'
 
 
+// State
+const isLoading = ref(false)
 const coordinatorCampaigns = ref([])
 const jurorCampaigns = ref([])
 
 onMounted(() => {
+  isLoading.value = true
+
   // Fetch all campaigns
-  adminService
+  const fetchCoordinatorCampaigns =  adminService
     .allCampaigns()
     .then((response) => {
       coordinatorCampaigns.value = response.data
@@ -56,7 +62,7 @@ onMounted(() => {
     .catch(alertService.error)
 
   // Fetch all juror campaigns
-  jurorService
+  const fetchJurorCampaigns = jurorService
     .allCampaigns()
     .then((response) => {
       if (!response.data.length) {
@@ -91,6 +97,10 @@ onMounted(() => {
       jurorCampaigns.value = campaignsJuror
     })
     .catch(alertService.error)
+
+    Promise.all([fetchCoordinatorCampaigns, fetchJurorCampaigns]).finally(() => {
+    isLoading.value = false
+  })
 })
 </script>
 
