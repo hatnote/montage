@@ -396,7 +396,8 @@ watch(images, (imgs) => {
   rating.value.current = imgs?.[0]
   rating.value.next = imgs?.[1] || null
 })
-onMounted(() => {
+
+watch( voteContainer, () => {
   if (voteContainer.value) {
     voteContainer.value.focus();
   }
