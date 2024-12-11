@@ -86,6 +86,9 @@
         class="gallery-image link"
         :class="getImageSizeClass()"
       >
+        <div class="gallery-image-fav" v-if="image.is_fave">
+          <heart />
+        </div>
         <div class="gallery-image-container">
           <img :src="getImageName(image)" />
         </div>
@@ -144,7 +147,7 @@
               </div>
             </h3>
           </div>
-          <div style="font-size: 14px; color: gray; margin-top: 8px;">
+          <div style="font-size: 14px; color: gray; margin-top: 8px">
             <p>{{ $t('montage-voted-time', [dayjs(image.date).fromNow()]) }}</p>
             <p>{{ dayjs(image.date).utc().format('D MMM YYYY [at] H:mm [UTC]') }}</p>
           </div>
@@ -191,6 +194,7 @@ import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
 import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
 
 // Hooks
 const { t: $t } = useI18n()
@@ -384,6 +388,18 @@ const handleScroll = _.throttle(() => {
   }
 }, 500)
 
+const handleResize = () => {
+  const width = window.innerWidth
+
+  if (width < 800) {
+    setGridSize(3)
+  } else if (width >= 800 && width <= 1150) {
+    setGridSize(2)
+  } else {
+    setGridSize(1)
+  }
+}
+
 watch(locale, (newLocale) => {
   dayjs.locale(newLocale)
 })
@@ -395,12 +411,17 @@ onMounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.addEventListener('scroll', handleScroll)
   }
+
+  handleResize()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.removeEventListener('scroll', handleScroll)
   }
+
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -443,6 +464,11 @@ onUnmounted(() => {
   vertical-align: top;
 }
 
+.gallery-image-fav {
+  position: absolute;
+  right: 0;
+  color: red;
+}
 .gallery-image-ranking {
   cursor: grab;
 }
