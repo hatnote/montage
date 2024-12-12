@@ -119,14 +119,14 @@
       <pause style="font-size: 6px" /> {{ $t('montage-round-pause') }}
     </cdx-button>
 
-    <cdx-button
+    <!-- <cdx-button
       :disabled="!roundDetails?.is_closable"
       @click="finalizeRound"
       action="progressive"
       weight="primary"
     >
       <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
-    </cdx-button>
+    </cdx-button> -->
 
     <cdx-button @click="downloadResults">
       <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
@@ -199,9 +199,9 @@ const pauseRound = () => {
     .catch(alertService.error)
 }
 
-const finalizeRound = () => {
-  console.log($t('montage-round-finalized'))
-}
+// const finalizeRound = () => {
+//   console.log($t('montage-round-finalized'))
+// }
 
 function downloadResults() {
   const url = adminService.downloadRound(props.round.id)

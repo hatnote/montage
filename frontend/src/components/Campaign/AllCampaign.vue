@@ -58,6 +58,17 @@ onMounted(() => {
     .allCampaigns()
     .then((response) => {
       coordinatorCampaigns.value = response.data
+
+      // Order campaigns by open date (more recent at the top)
+      coordinatorCampaigns.value.sort((campaign1, campaign2) => {
+        if (campaign1.open_date === campaign2.open_date) {
+          return 0
+        } else if (campaign1.open_date < campaign2.open_date) {
+          return 1
+        } else {
+          return -1
+        }
+      })
     })
     .catch(alertService.error)
 
