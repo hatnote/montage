@@ -26,13 +26,13 @@
       </div>
       <div class="campaign-rounds">
         <div class="campaign-rounds-list" v-if="!showAddRoundForm">
-          <round-view v-for="round in campaign.rounds" :key="round.id" :round="round" />
+          <round-view v-for="round in campaignRounds" :key="round.id" :round="round" />
         </div>
         <cdx-button v-if="!showAddRoundForm" action="progressive" @click="addRound" :disabled="campaign.isArchived" icon
           class="add-round-button">
           <plus class="icon-small" /> {{ $t('montage-round-add') }}
         </cdx-button>
-        <round-new :rounds="campaign.rounds" v-if="showAddRoundForm" v-model:showAddRoundForm="showAddRoundForm"
+        <round-new :rounds="campaignRounds" v-if="showAddRoundForm" v-model:showAddRoundForm="showAddRoundForm"
           @reloadCampaignState="reloadState" />
       </div>
     </div>
@@ -114,6 +114,7 @@ const showAddRoundForm = ref(false)
 const canCloseCampaign = ref(false)
 
 const campaign = ref({})
+const campaignRounds = ref([])
 const campaignFormField = ref({
   name: null,
   openDate: null,
@@ -245,6 +246,7 @@ const addRound = () => {
 const reloadState = () => {
   adminService.getCampaign(campaignId).then((response) => {
     campaign.value = response.data
+    campaignRounds.value = response.data?.rounds.filter((round) => round.status !== "cancelled")
     canCloseCampaign.value = response.data.status === 'active'
   })
 }

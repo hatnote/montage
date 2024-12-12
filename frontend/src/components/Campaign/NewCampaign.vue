@@ -41,7 +41,7 @@
               :messages="{ error: errors.openTime }"
             >
               <template #label>{{ $t('montage-label-open-time') }}:</template>
-              <cdx-text-input input-type="time" v-model="formField.openTime" />
+                <cdx-text-input input-type="time" v-model="formField.openTime" />
             </cdx-field>
           </div>
           <div class="close-date-fields">

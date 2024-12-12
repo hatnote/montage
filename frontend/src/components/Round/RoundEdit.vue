@@ -85,8 +85,9 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
+import { useRouter } from 'vue-router'
 
-
+const router = useRouter()
 const { t: $t } = useI18n()
 const props = defineProps({
   round: Object,
@@ -169,12 +170,10 @@ const deleteRound = () => {
         .cancelRound(props.round.id)
         .then(() => {
           emit('update:isRoundEditing', false)
+          router.reload()
         })
         .catch(alertService.error)
     },
-    onDefault: () => {
-      emit('update:isRoundEditing', false)
-    }
   })
 
 
