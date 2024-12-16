@@ -41,6 +41,7 @@ def get_admin_routes():
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/users', get_users),
+           GET('/admin/user', get_user),
            GET('/admin/campaigns/', get_campaigns),
            GET('/admin/campaigns/all', get_all_campaigns),
            GET('/admin/campaign/<campaign_id:int>', get_campaign),
@@ -661,6 +662,13 @@ def get_index(user_dao, only_active=True):
         data.append(campaign.to_details_dict())
 
     return {'data': data}
+
+
+def get_user(user_dao, only_active=True):
+    """
+    Summary: Get current login user details.
+    """
+    return {'data': []}
 
 
 def get_all_campaigns(user_dao):

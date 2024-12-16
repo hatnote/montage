@@ -5,6 +5,7 @@ import adminService from '@/services/adminService'
 export const useUserStore = defineStore('user-store', () => {
   const user = ref(null)
   const isAuthenticated = ref(false)
+  const authChecked = ref(false)
 
   function login(userObj) {
     if (!userObj) {
@@ -18,16 +19,18 @@ export const useUserStore = defineStore('user-store', () => {
     window.location = window.location.origin + '/logout'
     user.value = null
     isAuthenticated.value = false
+    authChecked.value = true
   }
 
   async function checkAuth() {
-    if (!isAuthenticated.value) {
-      const res = await adminService.get()
+    if (!authChecked.value) {
+      const res = await adminService.getUser()
       if (res.status === 'success' && res.user) {
         login(res.user)
       }
+      authChecked.value = true
     }
   }
 
-  return { user, login, logout, checkAuth }
+  return { user, login, logout, checkAuth, isAuthenticated,authChecked }
 })

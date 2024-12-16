@@ -4,7 +4,6 @@ import { useLoadingStore } from '@/stores/loading'
 // Create Axios instance for Backend API
 const apiBackend = axios.create({
   baseURL: '/v1/',
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json'
@@ -14,7 +13,6 @@ const apiBackend = axios.create({
 // Create Axios instance for Commons API
 const apiCommons = axios.create({
   baseURL: 'https://commons.wikimedia.org/w/api.php',
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json'
