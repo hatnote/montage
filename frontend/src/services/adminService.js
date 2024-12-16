@@ -3,6 +3,8 @@ import { apiBackend } from './api'
 const adminService = {
   get: () => apiBackend.get('admin'),
 
+  getUser: () => apiBackend.get('admin/user'),
+
   allCampaigns: () => apiBackend.get('admin/campaigns/all'),
 
   getCampaign: (id) => apiBackend.get(`admin/campaign/${id}`),
