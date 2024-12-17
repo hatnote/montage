@@ -182,5 +182,9 @@
 	"montage-round-open-tasks": "Label for the number of tasks currently open in a round.",
 	"montage-round-files": "Label for the number of files in a round.",
 	"montage-round-tasks": "Label for the number of tasks in a round.",
-	"montage-round-uploaders": "Label for the number of uploaders contributing files to a round."
+	"montage-round-uploaders": "Label for the number of uploaders contributing files to a round.",
+	"permission-denied-title": "The title displayed on the Permission Denied page when the user is not authorized to access the requested page.",
+	"permission-denied-message": "A message explaining that the user does not have the required permissions to access the page.",
+	"permission-denied-login": "Text for the button that redirects the user to the login page if they are not authenticated.",
+	"permission-denied-home": "Text for the button that redirects the user to the home page if they are already authenticated."
 }

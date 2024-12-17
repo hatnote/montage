@@ -81,7 +81,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/utils'
 import adminService from '@/services/adminService'
@@ -107,6 +107,7 @@ import Close from 'vue-material-design-icons/Close.vue'
 
 const route = useRoute()
 const { t: $t } = useI18n()
+const router = useRouter()
 const campaignId = route.params.id.split('-')[0]
 
 const campaignEditMode = ref(false)
@@ -248,7 +249,13 @@ const reloadState = () => {
     campaign.value = response.data
     campaignRounds.value = response.data?.rounds.filter((round) => round.status !== "cancelled")
     canCloseCampaign.value = response.data.status === 'active'
-  })
+  }).catch((error) => {
+      if (error.response && error.response.status === 403) {
+        router.push({ name: 'permission-denied' })
+        return;
+      }
+      alertService.error(error)
+    })
 }
 
 onMounted(() => {
