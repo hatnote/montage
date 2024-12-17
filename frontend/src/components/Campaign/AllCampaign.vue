@@ -70,7 +70,10 @@ onMounted(() => {
         }
       })
     })
-    .catch(alertService.error)
+    .catch((error) => {
+      if (error.response && error.response.status === 403) return;
+      alertService.error(error)
+    })
 
   // Fetch all juror campaigns
   const fetchJurorCampaigns = jurorService

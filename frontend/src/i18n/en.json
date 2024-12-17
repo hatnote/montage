@@ -182,5 +182,8 @@
   "montage-round-open-tasks": "Open tasks",
   "montage-round-files": "Files",
   "montage-round-tasks": "Tasks",
-  "montage-round-uploaders": "Uploaders"
+  "montage-round-uploaders": "Uploaders",
+  "permission-denied-title": "Permission Denied",
+  "permission-denied-message": "You do not have the required permissions to access this page.",
+  "permission-denied-home": "Go to Home"
 }

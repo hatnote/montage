@@ -10,6 +10,7 @@ import CampaignView from '@/views/CampaignView.vue'
 import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
+import PermissionDenied from '@/views/PermissionDenied.vue'
 
 const routes = [
   {
@@ -46,6 +47,11 @@ const routes = [
     name: 'vote-edit',
     component: VoteEditView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/permission-denied',
+    name: 'permission-denied',
+    component: PermissionDenied,
   }
 ]
 
