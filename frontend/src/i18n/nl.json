@@ -1,9 +1,11 @@
 {
 	"@metadata": {
 		"authors": [
-			"Akoopal"
+			"Akoopal",
+			"McDutchie"
 		]
 	},
+	"montage-title": "Montage",
 	"montage-about": "Over",
 	"montage-credit": "door het Montage-team",
 	"montage-source-code": "Broncode",
@@ -181,5 +183,8 @@
 	"montage-round-open-tasks": "Openstaande taken",
 	"montage-round-files": "Bestanden",
 	"montage-round-tasks": "Taken",
-	"montage-round-uploaders": "Uploaders"
+	"montage-round-uploaders": "Uploaders",
+	"permission-denied-title": "Toegang geweigerd",
+	"permission-denied-message": "U beschikt niet over de vereiste rechten om deze pagina te openen.",
+	"permission-denied-home": "Naar de startpagina"
 }
