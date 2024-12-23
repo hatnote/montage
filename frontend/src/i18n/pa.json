@@ -53,5 +53,7 @@
 	"montage-round-open-task-percentage": "ਖੁੱਲ੍ਹੇ ਕੰਮਾਂ ਦੀ ਪ੍ਰਤੀਸ਼ਤਤਾ",
 	"montage-round-open-tasks": "ਖੁਲ੍ਹੇ ਕਾਰਜ",
 	"montage-round-files": "ਫ਼ਾਈਲਾਂ",
-	"montage-round-tasks": "ਕਾਰਜ"
+	"montage-round-tasks": "ਕਾਰਜ",
+	"permission-denied-title": "ਪ੍ਰਵਾਨਗੀ ਨਹੀਂ ਮਿਲੀ",
+	"permission-denied-home": "ਘਰ 'ਤੇ ਜਾਓ"
 }
