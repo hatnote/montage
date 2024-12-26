@@ -181,5 +181,8 @@
 	"montage-round-open-tasks": "Отворени задачи",
 	"montage-round-files": "Податотеки",
 	"montage-round-tasks": "Задачи",
-	"montage-round-uploaders": "Подигачи"
+	"montage-round-uploaders": "Подигачи",
+	"permission-denied-title": "Дозволата е одбиена",
+	"permission-denied-message": "Ги немате потребните дозволи за да пристапите до страницава.",
+	"permission-denied-home": "Оди на Почетна"
 }
