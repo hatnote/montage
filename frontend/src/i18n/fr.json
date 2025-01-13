@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Mahabarata",
-			"Rigoluce"
+			"Rigoluce",
+			"VIGNERON"
 		]
 	},
 	"montage-about": "À propos",
@@ -115,7 +116,7 @@
 	"montage-round-download-results": "Télécharger les résultats",
 	"montage-round-download-entries": "Télécharger les entrées",
 	"montage-round-source": "Source",
-	"montage-round-source-category": "Catégorie sur Wikimédia Commons",
+	"montage-round-source-category": "Catégorie sur Wikimedia Commons",
 	"montage-round-source-csv": "URL de la liste des fichiers",
 	"montage-round-source-filelist": "Liste des fichiers",
 	"montage-round-source-category-help": "Catégorie sur Wikimédia Commons qui regroupe toutes les images du concours. Exemple : Images from Wiki Loves Monuments 2017 in Ghana.",

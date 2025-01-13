@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Whatback11",
 			"Ykhwong"
 		]
 	},
@@ -10,7 +11,7 @@
 	"montage-login-metawiki": "메타위키",
 	"montage-login-logout": "로그아웃",
 	"montage-all-campaigns": "모든 캠페인",
-	"montage-coordinators": "코디네이터",
+	"montage-coordinators": "관리자",
 	"montage-new-campaig-heading": "새로운 캠페인",
 	"montage-placeholder-campaign-name": "캠페인 이름",
 	"montage-required-campaign-name": "캠페인 이름은 필수입니다",
