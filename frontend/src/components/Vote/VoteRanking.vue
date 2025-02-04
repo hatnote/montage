@@ -4,32 +4,20 @@
       <div>
         <h2>{{ round.name }}</h2>
         <p class="vote-campaign-part">
-          {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name ]) }}
+          {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name]) }}
         </p>
       </div>
 
       <div class="vote-grid-size-controls">
-        <cdx-button
-          :action="gridSize === 3 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(3)"
-        >
+        <cdx-button :action="gridSize === 3 ? 'progressive' : ''" weight="quiet" @click="setGridSize(3)">
           <image-size-select-actual class="icon-small" />
           {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
-        <cdx-button
-          :action="gridSize === 2 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(2)"
-        >
+        <cdx-button :action="gridSize === 2 ? 'progressive' : ''" weight="quiet" @click="setGridSize(2)">
           <image-size-select-large class="icon-small" />
           {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
-        <cdx-button
-          :action="gridSize === 1 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(1)"
-        >
+        <cdx-button :action="gridSize === 1 ? 'progressive' : ''" weight="quiet" @click="setGridSize(1)">
           <image-size-select-small class="icon-small" />
           {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
@@ -43,12 +31,8 @@
 
     <div class="vote-image-grid" :class="'grid-size-' + gridSize">
       <draggable class="vote-gallery" v-model="images">
-        <div
-          v-for="(image, index) in images"
-          :key="image.entry.id"
-          class="vote-gallery-image link"
-          :class="getImageSizeClass()"
-        >
+        <div v-for="(image, index) in images" :key="image.entry.id" class="vote-gallery-image link"
+          :class="getImageSizeClass()">
           <div class="vote-gallery-expand-icon" @click="openImage(image)">
             <arrow-expand-all />
           </div>
@@ -110,6 +94,7 @@ import ImageSizeSelectActual from 'vue-material-design-icons/ImageSizeSelectActu
 import ImageSizeSelectLarge from 'vue-material-design-icons/ImageSizeSelectLarge.vue'
 import ImageSizeSelectSmall from 'vue-material-design-icons/ImageSizeSelectSmall.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
+import ImageReviewDialog from './ImageReviewDialog.vue'
 
 const { t: $t } = useI18n()
 const router = useRouter()
@@ -142,10 +127,23 @@ const getImageSizeClass = () => {
 
 const openImage = (image) => {
   dialogService().show({
-    title: $t('montage-vote-image-review'),
-    content: "<img src='" + image.entry.url + "' style='max-width: 100%; max-height: 100%;' />",
+    title: $t('montage-vote-image-review', [image.entry.id]),
+    props: {
+      image: image,
+      onSave: (newValue) => image.review = newValue,
+    },
+    content: ImageReviewDialog,
+    primaryAction: {
+      label: 'Save',
+      actionType: 'progressive'
+    },
+    defaultAction: {
+      label: 'Cancel',
+    },
+    onDefault: () => console.log('Canceled'),
+    maxWidth: "56rem"
   })
-} 
+}
 
 const saveRanking = () => {
   const ratings = images.value.map((image, index) => ({
@@ -173,6 +171,11 @@ watch(
     images.value = tasks.tasks
     stats.value = tasks.stats
   }
+)
+
+watch(images, (img) => {
+  console.log(img)
+}
 )
 </script>
 
