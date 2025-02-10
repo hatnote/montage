@@ -54,7 +54,7 @@
 	"montage-vote-hide-panel": "패널 숨기기",
 	"montage-vote-show-panel": "패널 표시",
 	"montage-vote-image": "이미지",
-	"montage-vote-image-review": "이미지 리뷰",
+	"montage-vote-image-review": "이미지 리뷰 #{0}",
 	"montage-vote-order-by": "정렬 기준:",
 	"montage-vote-gallery-size": "갤러리 크기",
 	"montage-option-yes": "예",
