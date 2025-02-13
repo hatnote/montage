@@ -2,6 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Mahabarata",
+			"Pyb",
 			"Rigoluce",
 			"VIGNERON"
 		]
@@ -32,7 +33,7 @@
 	"montage-directions": "Instructions",
 	"montage-your-progress": "Vos progrès",
 	"montage-vote": "Voter",
-	"montage-edit-previous-vote": "Modifier les votes précédents",
+	"montage-edit-previous-vote": "Modifier votes précédents",
 	"montage-progress-status": "{0} sur {1}",
 	"montage-new-campaig-heading": "Nouvelle campagne",
 	"montage-placeholder-campaign-name": "Nom de la campagne",
@@ -136,17 +137,17 @@
 	"montage-no-results": "Aucun résultat trouvé",
 	"montage-vote-round-inactive": "Le tour n'est pas actif",
 	"montage-vote-contact-organizer": "Ce tour n'est pas actif. Veuillez contacter l'organisateur.",
-	"montage-vote-show-full-size": "Afficher en taille réelle",
-	"montage-vote-commons-page": "Page sur Commons",
+	"montage-vote-show-full-size": "Taille réelle",
+	"montage-vote-commons-page": "Lien Commons",
 	"montage-vote-accept": "Accepter",
 	"montage-vote-decline": "Refuser",
-	"montage-vote-keyboard-instructions": "Vous pouvez également utiliser le clavier pour voter.",
+	"montage-vote-keyboard-instructions": "Raccourcis clavier :",
 	"montage-vote-actions": "Actions",
 	"montage-vote-add-favorites": "Ajouter aux favoris",
 	"montage-vote-added-favorites": "Image ajoutée aux favoris",
 	"montage-vote-remove-favorites": "Supprimer des favoris",
 	"montage-vote-removed-favorites": "Image supprimée des favoris",
-	"montage-vote-skip": "Sauter (je voterai plus tard)",
+	"montage-vote-skip": "Sauter (voter plus tard)",
 	"montage-vote-description": "Description",
 	"montage-vote-version": "Version",
 	"montage-vote-last-version": "Dernière version du {0}",
