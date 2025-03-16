@@ -55,18 +55,22 @@
         <cdx-field class="open-date-field" :status="errors.openDate ? 'error' : 'default'"
           :messages="{ error: errors.openDate }">
           <template #label>{{ $t('montage-round-open-date') }}:</template>
-          <cdx-text-input input-type="date" v-model="campaignFormField.openDate" />
+          <date-picker v-model:value="campaignFormField.openDate" type="date" format="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD" value-type="format"></date-picker>
         </cdx-field>
         <cdx-field :status="errors.openTime ? 'error' : 'default'" :messages="{ error: errors.openTime }">
           <template #label>{{ $t('montage-round-open-time') }}:</template>
-          <cdx-text-input input-type="time" v-model="campaignFormField.openTime" />
+          <date-picker v-model:value="campaignFormField.openTime" type="time" :use12h="false" format="HH:mm"
+            placeholder="HH:mm" value-type="format"></date-picker>
         </cdx-field>
         <cdx-field :status="errors.closeDate ? 'error' : 'default'" :messages="{ error: errors.closeDate }">
           <template #label>{{ $t('montage-round-close-date') }}:</template>
-          <cdx-text-input input-type="date" v-model="campaignFormField.closeDate" />
+          <date-picker v-model:value="campaignFormField.closeDate" type="date" format="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD" value-type="format"></date-picker>
         </cdx-field>
         <cdx-field :status="errors.closeTime ? 'error' : 'default'" :messages="{ error: errors.closeTime }">
-          <cdx-text-input input-type="time" v-model="campaignFormField.closeTime" />
+          <date-picker v-model:value="campaignFormField.closeTime" type="time" :use12h="false" format="HH:mm"
+            placeholder="HH:mm" value-type="format"></date-picker>
           <template #label>{{ $t('montage-round-close-time') }}</template>
         </cdx-field>
       </div>
@@ -140,7 +144,7 @@ const schema = z.object({
   openTime: z
     .string()
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-open-time')),
-  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)),  $t('montage-required-close-date')),
+  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-close-date')),
   closeTime: z
     .string()
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
@@ -250,12 +254,12 @@ const reloadState = () => {
     campaignRounds.value = response.data?.rounds.filter((round) => round.status !== "cancelled")
     canCloseCampaign.value = response.data.status === 'active'
   }).catch((error) => {
-      if (error.response && error.response.status === 403) {
-        router.push({ name: 'permission-denied' })
-        return;
-      }
-      alertService.error(error)
-    })
+    if (error.response && error.response.status === 403) {
+      router.push({ name: 'permission-denied' })
+      return;
+    }
+    alertService.error(error)
+  })
 }
 
 onMounted(() => {

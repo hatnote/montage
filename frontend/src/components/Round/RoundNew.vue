@@ -1,27 +1,12 @@
 <template>
   <div class="juror-campaign-round-card">
     <div class="round-header">
-      <thumbs-up-down
-        v-if="formData.vote_method === 'yesno'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
-      <star-outline
-        v-if="formData.vote_method === 'rating'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
-      <sort
-        v-if="formData.vote_method === 'ranking'"
-        class="juror-campaign-round-icon"
-        :size="36"
-        fillColor="white"
-        style="background-color: grey"
-      />
+      <thumbs-up-down v-if="formData.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36"
+        fillColor="white" style="background-color: grey" />
+      <star-outline v-if="formData.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36"
+        fillColor="white" style="background-color: grey" />
+      <sort v-if="formData.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white"
+        style="background-color: grey" />
       <div class="round-info">
         <h2>{{ formData.name }}</h2>
         <p>{{ $t(getVotingName(formData.vote_method)) }}</p>
@@ -39,29 +24,22 @@
               </cdx-field>
               <div class="flex-row">
                 <cdx-field>
-                  <cdx-text-input input-type="date" v-model="formData.deadline_date" />
+                  <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD"
+                    placeholder="YYYY-MM-DD" value-type="format"></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
                 <cdx-field>
-                  <cdx-select
-                    v-model:selected="formData.vote_method"
-                    :menu-items="
-                      voteMethods.map((method) => ({
-                        label: $t(getVotingName(method)) ,
-                        value: method
-                      }))
-                    "
-                  />
+                  <cdx-select v-model:selected="formData.vote_method" :menu-items="voteMethods.map((method) => ({
+                    label: $t(getVotingName(method)),
+                    value: method
+                  }))
+                    " />
                   <template #label>{{ $t('montage-round-vote-method') }}</template>
                 </cdx-field>
               </div>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio
-                  v-for="source in importSourceMethods"
-                  :key="'radio-' + source.value"
-                  v-model="selectedImportSource"
-                  :input-value="source.value"
-                >
+                <cdx-radio v-for="source in importSourceMethods" :key="'radio-' + source.value"
+                  v-model="selectedImportSource" :input-value="source.value">
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>{{ $t('montage-round-source') }}</template>
@@ -78,12 +56,8 @@
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup
-                  v-model:selected="importSourceValue.category"
-                  :menu-items="categoryOptions"
-                  :placeholder="$t('montage-round-category-placeholder')"
-                  @input="searchCategory"
-                >
+                <cdx-lookup v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
+                  :placeholder="$t('montage-round-category-placeholder')" @input="searchCategory">
                   <template #label>{{ $t('montage-round-category-label') }}</template>
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
                 </cdx-lookup>
@@ -101,12 +75,8 @@
                 <template #label>{{ $t('montage-directions') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio
-                  v-for="source in showStatsOptions"
-                  :key="'show_stats-' + source.value"
-                  v-model="formData.show_stats"
-                  :input-value="source.value"
-                >
+                <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value"
+                  v-model="formData.show_stats" :input-value="source.value">
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>{{ $t('montage-label-round-stats') }}</template>
@@ -122,21 +92,15 @@
                 </template>
               </cdx-field>
               <cdx-field>
-                <UserList
-                  :users="formData.jurors"
-                  @update:selectedUsers="formData.jurors = $event"
-                />
+                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" />
                 <template #label>{{ $t('montage-label-round-jurors') }}</template>
                 <template #help-text>
                   <p>{{ $t('montage-round-jurors-description') }}</p>
                 </template>
               </cdx-field>
               <cdx-field v-if="thresholds">
-                <cdx-select
-                  v-model:selected="formData.threshold"
-                  :menu-items="thresholdOptions"
-                  :default-label="$t('montage-round-threshold-default')"
-                />
+                <cdx-select v-model:selected="formData.threshold" :menu-items="thresholdOptions"
+                  :default-label="$t('montage-round-threshold-default')" />
                 <template #label>{{ $t('montage-round-threshold') }}</template>
                 <template #description>
                   <p>{{ $t('montage-round-threshold-description') }}</p>
@@ -146,11 +110,7 @@
             <div class="form-right" v-if="roundIndex === 0">
               <p>{{ $t('montage-round-file-setting') }}</p>
               <cdx-field>
-                <cdx-checkbox
-                  v-for="key in fileSettingsOptions"
-                  :key="key"
-                  v-model="formData.config[key]"
-                >
+                <cdx-checkbox v-for="key in fileSettingsOptions" :key="key" v-model="formData.config[key]">
                   {{ $t('montage-round-' + key.replaceAll('_', '-')) }}
                 </cdx-checkbox>
               </cdx-field>
