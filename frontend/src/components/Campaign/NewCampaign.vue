@@ -5,19 +5,13 @@
       <template #supporting-text>
         <cdx-field :status="errors.name ? 'error' : 'default'" :messages="{ error: errors.name }">
           <template #description> {{ $t('montage-description-campaign-name') }}: </template>
-          <cdx-text-input
-            v-model="formField.name"
-            :required="true"
-            :placeholder="$t('montage-placeholder-campaign-name')"
-          />
+          <cdx-text-input v-model="formField.name" :required="true"
+            :placeholder="$t('montage-placeholder-campaign-name')" />
         </cdx-field>
 
         <cdx-field :status="errors.url ? 'error' : 'default'" :messages="{ error: errors.url }">
-          <cdx-text-input
-            v-model="formField.url"
-            :required="true"
-            :placeholder="$t('montage-placeholder-campaign-url')"
-          />
+          <cdx-text-input v-model="formField.url" :required="true"
+            :placeholder="$t('montage-placeholder-campaign-url')" />
           <template #description>
             {{ $t('montage-description-campaign-url') }}
           </template>
@@ -28,61 +22,42 @@
             {{ $t('montage-description-date-range') }}
           </template>
           <div class="open-date-fields">
-            <cdx-field
-              :status="errors.openDate ? 'error' : 'default'"
-              :messages="{ error: errors.openDate }"
-            >
+            <cdx-field :status="errors.openDate ? 'error' : 'default'" :messages="{ error: errors.openDate }">
               <template #label>{{ $t('montage-label-open-date') }}:</template>
-              <cdx-text-input input-type="date" v-model="formField.openDate" />
+              <date-picker v-model:value="formField.openDate" type="date" format="YYYY-MM-DD" placeholder="YYYY-MM-DD"
+                value-type="format"></date-picker>
             </cdx-field>
 
-            <cdx-field
-              :status="errors.openTime ? 'error' : 'default'"
-              :messages="{ error: errors.openTime }"
-            >
+            <cdx-field :status="errors.openTime ? 'error' : 'default'" :messages="{ error: errors.openTime }">
               <template #label>{{ $t('montage-label-open-time') }}:</template>
-                <cdx-text-input input-type="time" v-model="formField.openTime" />
+              <date-picker v-model:value="formField.openTime" type="time" :use12h="false" format="HH:mm"
+                placeholder="HH:mm" value-type="format"></date-picker>
             </cdx-field>
           </div>
           <div class="close-date-fields">
-            <cdx-field
-              :status="errors.closeDate ? 'error' : 'default'"
-              :messages="{ error: errors.closeDate }"
-            >
+            <cdx-field :status="errors.closeDate ? 'error' : 'default'" :messages="{ error: errors.closeDate }">
               <template #label>{{ $t('montage-label-close-date') }}:</template>
-              <cdx-text-input input-type="date" v-model="formField.closeDate" />
+              <date-picker v-model:value="formField.closeDate" type="date" format="YYYY-MM-DD" placeholder="YYYY-MM-DD"
+                value-type="format"></date-picker>
             </cdx-field>
 
-            <cdx-field
-              :status="errors.closeTime ? 'error' : 'default'"
-              :messages="{ error: errors.closeTime }"
-            >
+            <cdx-field :status="errors.closeTime ? 'error' : 'default'" :messages="{ error: errors.closeTime }">
               <template #label>{{ $t('montage-label-close-time') }}:</template>
-              <cdx-text-input input-type="time" v-model="formField.closeTime" />
+              <date-picker v-model:value="formField.closeTime" type="time" :use12h="false" format="HH:mm"
+                placeholder="HH:mm" value-type="format"></date-picker>
             </cdx-field>
           </div>
         </cdx-field>
-        <cdx-field
-          :status="errors.coordinators ? 'error' : 'default'"
-          :messages="{ error: errors.coordinators }"
-        >
+        <cdx-field :status="errors.coordinators ? 'error' : 'default'" :messages="{ error: errors.coordinators }">
           <template #label>{{ $t('montage-label-campaign-coordinators') }}</template>
           <template #description>
             {{ $t('montage-description-campaign-coordinators') }}
           </template>
-          <UserList
-            :users="formField.coordinators"
-            @update:selectedUsers="formField.coordinators = $event"
-          />
+          <UserList :users="formField.coordinators" @update:selectedUsers="formField.coordinators = $event" />
         </cdx-field>
 
-        <cdx-button
-          :disabled="isLoading"
-          @click="submitForm"
-          action="progressive"
-          weight="primary"
-          class="create-button"
-        >
+        <cdx-button :disabled="isLoading" @click="submitForm" action="progressive" weight="primary"
+          class="create-button">
           {{ $t('montage-btn-create-campaign') }}
         </cdx-button>
         <RouterLink to="/">
@@ -170,7 +145,6 @@ const submitForm = () => {
   adminService
     .addCampaign(payload)
     .then((res) => {
-      console.log(res)
       if (res.status === 'success') {
         alertService.success($t('montage-campaign-added-success'))
         router.push({
@@ -209,8 +183,8 @@ const submitForm = () => {
   gap: 24px;
 }
 
-.open-date-fields > .cdx-field,
-.close-date-fields > .cdx-field {
+.open-date-fields>.cdx-field,
+.close-date-fields>.cdx-field {
   margin-top: 16px;
 }
 
