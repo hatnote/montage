@@ -207,7 +207,7 @@ const isLoading = ref(false)
 
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
-  vote_method: roundIndex !== 0 ? voteMethods[roundIndex] : 'yesno',
+  vote_method: roundIndex !== 0 && roundIndex < 3 ? voteMethods[roundIndex] : 'yesno',
   deadline_date: null,
   show_stats: false,
   quorum: 1,
