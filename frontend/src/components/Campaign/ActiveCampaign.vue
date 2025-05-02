@@ -95,9 +95,9 @@ onMounted(() => {
 
       // Order campaigns by open date (more recent at the top)
       coordinatorCampaigns.value.sort((campaign1, campaign2) => {
-        if (campaign1.open_date === campaign2.open_date) {
+        if (campaign1.create_date === campaign2.create_date) {
           return 0
-        } else if (campaign1.open_date < campaign2.open_date) {
+        } else if (campaign1.create_date < campaign2.create_date) {
           return 1
         } else {
           return -1
@@ -128,7 +128,7 @@ onMounted(() => {
       // Order campaigns by open date (more recent at the top)
       campaignsJuror.sort((campaign1, campaign2) => {
         const getOpenDate = (campaign) =>
-          campaign.length > 0 && campaign[0].campaign ? campaign[0].campaign.open_date : null
+          campaign.length > 0 && campaign[0].campaign ? campaign[0].campaign.create_date : null
 
         const campaign1OpenDate = getOpenDate(campaign1)
         const campaign2OpenDate = getOpenDate(campaign2)
