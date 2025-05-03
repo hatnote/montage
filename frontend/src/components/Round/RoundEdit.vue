@@ -7,7 +7,8 @@
       </cdx-field>
       <div style="display: flex">
         <cdx-field>
-          <cdx-text-input input-type="date" v-model="formData.deadline_date" />
+          <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD" placeholder="YYYY-MM-DD"
+            value-type="format"></date-picker>
           <template #label>{{ $t('montage-round-deadline') }}</template>
         </cdx-field>
       </div>
@@ -43,7 +44,7 @@
       </cdx-field>
     </div>
     <div style="flex: 4">
-      <h4>{{ $t('montage-round-file-setting')}}</h4>
+      <h4>{{ $t('montage-round-file-setting') }}</h4>
       <cdx-field>
         <p v-for="key in fileSettingsOptions" :key="key" style="display: flex">
           <span>{{ $t('montage-round-' + key.replaceAll('_', '-')) }}</span>
@@ -85,8 +86,9 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
+import { useRouter } from 'vue-router'
 
-
+const router = useRouter()
 const { t: $t } = useI18n()
 const props = defineProps({
   round: Object,
@@ -134,6 +136,13 @@ const cancelRound = () => {
 }
 
 const saveRound = () => {
+  if (!formData.value.deadline_date) {
+    alertService.error({
+      message: $t('montage-required-voting-deadline')
+    });
+    return;
+  }
+
   const round = {
     id: props.round.id,
     name: formData.value.name,
@@ -169,12 +178,10 @@ const deleteRound = () => {
         .cancelRound(props.round.id)
         .then(() => {
           emit('update:isRoundEditing', false)
+          router.reload()
         })
         .catch(alertService.error)
     },
-    onDefault: () => {
-      emit('update:isRoundEditing', false)
-    }
   })
 
 

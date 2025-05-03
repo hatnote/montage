@@ -50,7 +50,12 @@ const props = defineProps({
   }
 })
 
-const link = 'campaign/' + [props.campaign.id, props.campaign.url_name].join('-')
+const link = {
+  name: 'campaign',
+  params: {
+    id: [props.campaign.id, props.campaign.url_name].join('-')
+  }
+}
 
 let lastRound = null
 if (props.campaign.rounds && props.campaign.rounds.length) {

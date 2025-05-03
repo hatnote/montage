@@ -1,91 +1,53 @@
 <template>
-  <div
-    class="edit-vote-screen"
-    v-if="round?.campaign.status === 'active' && votes?.length"
-    @scroll="handleScroll"
-    ref="editVoteContainer"
-  >
+  <div class="edit-vote-screen" v-if="round?.campaign.status === 'active' && votes?.length" @scroll="handleScroll"
+    ref="editVoteContainer">
     <div class="round-header">
       <div>
-        <h2
-          v-html="$t('montage-vote-edit-for', [`<a href='#/vote/${round.link}'>${round.name}</a>`])"
-        ></h2>
+        <h2 v-html="$t('montage-vote-edit-for', [`<a href='#/vote/${round.link}'>${round.name}</a>`])"></h2>
         <p style="color: gray">
           {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name]) }}
         </p>
       </div>
       <div class="order-by" v-if="!isVoting('ranking')">
         <p style="font-size: 16px; color: gray">{{ $t('montage-vote-order-by') }}</p>
-        <cdx-select
-          v-model:selected="sort.order_by"
-          :menu-items="menuItemsOrder"
-          @update:selected="reorderList"
-        />
-        <cdx-select
-          v-model:selected="sort.sort"
-          :menu-items="menuItemsSort"
-          @update:selected="reorderList"
-          style="width: 100px !important"
-        />
+        <cdx-select v-model:selected="sort.order_by" :menu-items="menuItemsOrder" @update:selected="reorderList" />
+        <cdx-select v-model:selected="sort.sort" :menu-items="menuItemsSort" @update:selected="reorderList"
+          style="width: 100px !important" />
       </div>
       <div class="grid-size-controls" style="margin-left: 60px">
         <p style="font-size: 16px; color: gray; margin-left: 11px">
           {{ $t('montage-vote-gallery-size') }}
         </p>
-        <cdx-button
-          :action="gridSize === 3 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(3)"
-        >
+        <cdx-button :action="gridSize === 3 ? 'progressive' : ''" weight="quiet" @click="setGridSize(3)">
           <image-size-select-actual style="font-size: 6px" />
           {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
-        <cdx-button
-          :action="gridSize === 2 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(2)"
-        >
+        <cdx-button :action="gridSize === 2 ? 'progressive' : ''" weight="quiet" @click="setGridSize(2)">
           <image-size-select-large style="font-size: 6px" />
           {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
-        <cdx-button
-          :action="gridSize === 1 ? 'progressive' : ''"
-          weight="quiet"
-          @click="setGridSize(1)"
-        >
+        <cdx-button :action="gridSize === 1 ? 'progressive' : ''" weight="quiet" @click="setGridSize(1)">
           <image-size-select-small style="font-size: 6px" />
           {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
       </div>
 
-      <cdx-button
-        weight="quiet"
-        action="progressive"
-        v-if="!isVoting('ranking')"
-        :disabled="!edits.length"
-        @click="save"
-      >
+      <cdx-button weight="quiet" action="progressive" v-if="!isVoting('ranking')" :disabled="!edits.length"
+        @click="save">
         <content-save-outline style="font-size: 6px" /> {{ $t('montage-round-save') }} ({{
           edits.length
         }})
       </cdx-button>
 
-      <cdx-button
-        weight="quiet"
-        action="progressive"
-        v-if="isVoting('ranking')"
-        @click="saveRanking"
-      >
+      <cdx-button weight="quiet" action="progressive" v-if="isVoting('ranking')" @click="saveRanking">
         <content-save-outline style="font-size: 6px" /> {{ $t('montage-round-save') }}
       </cdx-button>
     </div>
     <div class="image-grid" :class="'grid-size-' + gridSize" v-if="!isVoting('ranking')">
-      <div
-        v-for="image in votes"
-        :key="image.id"
-        class="gallery-image link"
-        :class="getImageSizeClass()"
-      >
+      <div v-for="image in votes" :key="image.id" class="gallery-image link" :class="getImageSizeClass()">
+        <div class="gallery-image-fav" v-if="image.is_fave">
+          <heart />
+        </div>
         <div class="gallery-image-container">
           <img :src="getImageName(image)" />
         </div>
@@ -95,18 +57,10 @@
         </div>
         <!-- Yes/No voting edit -->
         <div class="image-grid-vote-action" v-if="isVoting('yesno')">
-          <cdx-button
-            :action="image.value === 5 ? 'progressive' : ''"
-            weight="quiet"
-            @click="setRate(image, 5)"
-          >
+          <cdx-button :action="image.value === 5 ? 'progressive' : ''" weight="quiet" @click="setRate(image, 5)">
             <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
           </cdx-button>
-          <cdx-button
-            :action="image.value === 1 ? 'progressive' : ''"
-            weight="quiet"
-            @click="setRate(image, 1)"
-          >
+          <cdx-button :action="image.value === 1 ? 'progressive' : ''" weight="quiet" @click="setRate(image, 1)">
             <thumb-down class="icon-small" /> {{ $t('montage-vote-decline') }}
           </cdx-button>
         </div>
@@ -123,12 +77,8 @@
     <!-- Ranking vote editing -->
     <div class="image-grid" :class="'grid-size-' + gridSize" v-if="isVoting('ranking')">
       <draggable class="gallery" v-model="votes">
-        <div
-          v-for="(image, index) in votes"
-          :key="image.id"
-          class="gallery-image link gallery-image-ranking"
-          :class="getImageSizeClass()"
-        >
+        <div v-for="(image, index) in votes" :key="image.id" class="gallery-image link gallery-image-ranking"
+          :class="getImageSizeClass()">
           <div class="vote-gallery-expand-icon" @click="openImage(image)">
             <arrow-expand-all />
           </div>
@@ -144,7 +94,7 @@
               </div>
             </h3>
           </div>
-          <div style="font-size: 14px; color: gray; margin-top: 8px;">
+          <div style="font-size: 14px; color: gray; margin-top: 8px">
             <p>{{ $t('montage-voted-time', [dayjs(image.date).fromNow()]) }}</p>
             <p>{{ dayjs(image.date).utc().format('D MMM YYYY [at] H:mm [UTC]') }}</p>
           </div>
@@ -181,6 +131,7 @@ import dialogService from '@/services/dialogService'
 // Components
 import { CdxButton, CdxSelect } from '@wikimedia/codex'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
+import ImageReviewDialog from './ImageReviewDialog.vue'
 
 // Icons
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
@@ -191,6 +142,7 @@ import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
 import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
 
 // Hooks
 const { t: $t } = useI18n()
@@ -232,8 +184,21 @@ const getOrdinal = (n) => {
 
 const openImage = (image) => {
   dialogService().show({
-    title: $t('montage-vote-image-review'),
-    content: "<img src='" + image.entry.url + "' style='max-width: 100%; max-height: 100%;' />"
+    title: $t('montage-vote-image-review', [image.entry.id]),
+    props: {
+      image: image,
+      onSave: (newValue) => image.review = newValue,
+    },
+    content: ImageReviewDialog,
+    primaryAction: {
+      label: 'Save',
+      actionType: 'progressive'
+    },
+    defaultAction: {
+      label: 'Cancel',
+    },
+    onDefault: () => console.log('Canceled'),
+    maxWidth: "56rem"
   })
 }
 
@@ -384,6 +349,18 @@ const handleScroll = _.throttle(() => {
   }
 }, 500)
 
+const handleResize = () => {
+  const width = window.innerWidth
+
+  if (width < 800) {
+    setGridSize(3)
+  } else if (width >= 800 && width <= 1150) {
+    setGridSize(2)
+  } else {
+    setGridSize(1)
+  }
+}
+
 watch(locale, (newLocale) => {
   dayjs.locale(newLocale)
 })
@@ -395,12 +372,17 @@ onMounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.addEventListener('scroll', handleScroll)
   }
+
+  handleResize()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.removeEventListener('scroll', handleScroll)
   }
+
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -441,6 +423,12 @@ onUnmounted(() => {
   height: 15vw;
   margin: 10px 10px 100px;
   vertical-align: top;
+}
+
+.gallery-image-fav {
+  position: absolute;
+  right: 0;
+  color: red;
 }
 
 .gallery-image-ranking {
