@@ -14,7 +14,7 @@ from .mw import public
 from .rdb import User, PublicDAO
 from .labs import get_files, get_file_info
 
-from .utils import load_env_config, DoesNotExist, InvalidAction
+from .utils import get_env_name, DoesNotExist, InvalidAction
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +28,7 @@ MD_EXTENSIONS = ['markdown.extensions.def_list',
                  'markdown.extensions.tables',
                  CodeHiliteExtension(pygments_style='emacs')]
 
+env_name = get_env_name()
 
 def get_public_routes():
     ui = [('/', home),
@@ -142,8 +143,10 @@ def logout(request, cookie, root_path):
     cookie.pop('userid', None)
     cookie.pop('username', None)
 
-    return_to_url = request.args.get('next', root_path)
+    if env_name == 'dev':
+        return redirect('http://localhost:5173')
 
+    return_to_url = request.args.get('next', root_path)
     return redirect(return_to_url)
 
 
@@ -204,6 +207,10 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
         del cookie['return_to_url']
     else:
         return_to_url = '/'
+
+    if env_name == 'dev':
+        return_to_url = 'http://localhost:5173'
+
     return redirect(return_to_url)
 
 
