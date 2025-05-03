@@ -12,7 +12,7 @@ sqltap
 
 # look at:
 python-graph-core==1.8.2
--e git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3_vote_core ; python_version >= '3.0'
+git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3-vote-core ; python_version >= '3.0'
 SQLAlchemy==1.2.19
 unicodecsv==0.14.1
 pymysql==1.1.1

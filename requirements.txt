@@ -4,7 +4,7 @@
 #
 #    pip-compile --annotation-style=line requirements.in
 #
--e git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3_vote_core
+git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3-vote-core
     # via -r requirements.in
 ashes==24.0.0
     # via
