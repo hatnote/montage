@@ -112,7 +112,7 @@ sqltap==0.3.11
     # via -r requirements.in
 unicodecsv==0.14.1
     # via -r requirements.in
-urllib3==2.2.1
+urllib3==2.2.2
     # via
     #   requests
     #   sentry-sdk
