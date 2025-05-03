@@ -13,7 +13,11 @@
           <cdx-button action="progressive" @click="unarchiveCampaign" v-else>
             <inbox-arrow-up class="icon-small" /> {{ $t('montage-unarchive') }}
           </cdx-button>
-          <cdx-button action="progressive" @click="hangleEditCampaignBtnClick" :disabled="campaign.is_archived">
+          <cdx-button
+            action="progressive"
+            @click="hangleEditCampaignBtnClick"
+            :disabled="campaign.is_archived"
+          >
             <cog-icon class="icon-small" /> {{ $t('montage-edit-campaign') }}
           </cdx-button>
         </div>
@@ -28,52 +32,113 @@
         <div class="campaign-rounds-list" v-if="!showAddRoundForm">
           <round-view v-for="round in campaignRounds" :key="round.id" :round="round" />
         </div>
-        <cdx-button v-if="!showAddRoundForm" action="progressive" @click="addRound" :disabled="campaign.isArchived" icon
-          class="add-round-button">
+        <cdx-button
+          v-if="!showAddRoundForm"
+          action="progressive"
+          @click="addRound"
+          :disabled="campaign.isArchived"
+          icon
+          class="add-round-button"
+        >
           <plus class="icon-small" /> {{ $t('montage-round-add') }}
         </cdx-button>
-        <round-new :rounds="campaignRounds" v-if="showAddRoundForm" v-model:showAddRoundForm="showAddRoundForm"
-          @reloadCampaignState="reloadState" />
+        <round-new
+          :rounds="campaignRounds"
+          v-if="showAddRoundForm"
+          v-model:showAddRoundForm="showAddRoundForm"
+          @reloadCampaignState="reloadState"
+        />
       </div>
     </div>
     <div v-else>
       <div class="campaign-header">
-        <cdx-field class="campaign-name-field" :status="errors.name ? 'error' : 'default'"
-          :messages="{ error: errors.name }">
+        <cdx-field
+          class="campaign-name-field"
+          :status="errors.name ? 'error' : 'default'"
+          :messages="{ error: errors.name }"
+        >
           <cdx-text-input class="campaign-name-input" v-model="campaignFormField.name" />
         </cdx-field>
         <div class="campaign-button-group">
           <cdx-button action="progressive" @click="saveEditCampaign" class="save-button">
             <check class="icon-small" /> {{ $t('montage-btn-save') }}
           </cdx-button>
-          <cdx-button action="destructive" @click="cancelEdit" class="cancel-button" v-if="!campaign.isArchived">
+          <cdx-button
+            action="destructive"
+            @click="cancelEdit"
+            class="cancel-button"
+            v-if="!campaign.isArchived"
+          >
             <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
           </cdx-button>
         </div>
       </div>
       <div class="date-time-inputs">
-        <cdx-field class="open-date-field" :status="errors.openDate ? 'error' : 'default'"
-          :messages="{ error: errors.openDate }">
+        <cdx-field
+          class="open-date-field"
+          :status="errors.openDate ? 'error' : 'default'"
+          :messages="{ error: errors.openDate }"
+        >
           <template #label>{{ $t('montage-round-open-date') }}:</template>
-          <cdx-text-input input-type="date" v-model="campaignFormField.openDate" />
+          <date-picker
+            v-model:value="campaignFormField.openDate"
+            type="date"
+            format="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD"
+            value-type="format"
+          ></date-picker>
         </cdx-field>
-        <cdx-field :status="errors.openTime ? 'error' : 'default'" :messages="{ error: errors.openTime }">
+        <cdx-field
+          :status="errors.openTime ? 'error' : 'default'"
+          :messages="{ error: errors.openTime }"
+        >
           <template #label>{{ $t('montage-round-open-time') }}:</template>
-          <cdx-text-input input-type="time" v-model="campaignFormField.openTime" />
+          <date-picker
+            v-model:value="campaignFormField.openTime"
+            type="time"
+            :use12h="false"
+            format="HH:mm"
+            placeholder="HH:mm"
+            value-type="format"
+          ></date-picker>
         </cdx-field>
-        <cdx-field :status="errors.closeDate ? 'error' : 'default'" :messages="{ error: errors.closeDate }">
+        <cdx-field
+          :status="errors.closeDate ? 'error' : 'default'"
+          :messages="{ error: errors.closeDate }"
+        >
           <template #label>{{ $t('montage-round-close-date') }}:</template>
-          <cdx-text-input input-type="date" v-model="campaignFormField.closeDate" />
+          <date-picker
+            v-model:value="campaignFormField.closeDate"
+            type="date"
+            format="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD"
+            value-type="format"
+          ></date-picker>
         </cdx-field>
-        <cdx-field :status="errors.closeTime ? 'error' : 'default'" :messages="{ error: errors.closeTime }">
-          <cdx-text-input input-type="time" v-model="campaignFormField.closeTime" />
+        <cdx-field
+          :status="errors.closeTime ? 'error' : 'default'"
+          :messages="{ error: errors.closeTime }"
+        >
+          <date-picker
+            v-model:value="campaignFormField.closeTime"
+            type="time"
+            :use12h="false"
+            format="HH:mm"
+            placeholder="HH:mm"
+            value-type="format"
+          ></date-picker>
           <template #label>{{ $t('montage-round-close-time') }}</template>
         </cdx-field>
       </div>
-      <cdx-field :status="errors.coordinators ? 'error' : 'default'" :messages="{ error: errors.coordinators }">
+      <cdx-field
+        :status="errors.coordinators ? 'error' : 'default'"
+        :messages="{ error: errors.coordinators }"
+      >
         <template #label>{{ $t('montage-label-campaign-coordinators') }}</template>
-        <UserList :users="campaignFormField.coordinators"
-          @update:selectedUsers="campaignFormField.coordinators = $event" />
+        <UserList
+          :users="campaignFormField.coordinators"
+          @update:selectedUsers="campaignFormField.coordinators = $event"
+        />
       </cdx-field>
     </div>
   </div>
@@ -140,7 +205,7 @@ const schema = z.object({
   openTime: z
     .string()
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-open-time')),
-  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)),  $t('montage-required-close-date')),
+  closeDate: z.string().refine((val) => !isNaN(Date.parse(val)), $t('montage-required-close-date')),
   closeTime: z
     .string()
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
@@ -187,9 +252,17 @@ const saveEditCampaign = () => {
     coordinators: campaignFormField.value.coordinators
   }
 
+  const oldCords = campaign.value.coordinators.map((u) => u.username)
+  const newCords = campaignFormField.value.coordinators
+
+  const added = newCords.filter((x) => oldCords.indexOf(x) < 0).map((name) => [adminService.addCoordinator, name])
+  const removed = oldCords.filter((x) => newCords.indexOf(x) < 0).map((name) => [adminService.removeCoordinator, name])
+
   adminService
     .editCampaign(campaignId, payload)
     .then((resp) => {
+      Promise.all([...added, ...removed].map(([func, param]) => func(campaignId, param)))
+
       if (resp.status === 'success') {
         reloadState()
       }
@@ -245,14 +318,17 @@ const addRound = () => {
 }
 
 const reloadState = () => {
-  adminService.getCampaign(campaignId).then((response) => {
-    campaign.value = response.data
-    campaignRounds.value = response.data?.rounds.filter((round) => round.status !== "cancelled")
-    canCloseCampaign.value = response.data.status === 'active'
-  }).catch((error) => {
+  adminService
+    .getCampaign(campaignId)
+    .then((response) => {
+      campaign.value = response.data
+      campaignRounds.value = response.data?.rounds.filter((round) => round.status !== 'cancelled')
+      canCloseCampaign.value = response.data.status === 'active'
+    })
+    .catch((error) => {
       if (error.response && error.response.status === 403) {
         router.push({ name: 'permission-denied' })
-        return;
+        return
       }
       alertService.error(error)
     })
