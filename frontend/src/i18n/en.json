@@ -184,5 +184,5 @@
   "permission-denied-title": "Permission Denied",
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
-  "montage-required-voting-deadline": "Voting deadline is required"
+  "montage-required-voting-deadline": "Choose a valid voting deadline"
 }
