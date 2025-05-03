@@ -1,11 +1,17 @@
 import { createI18n } from 'vue-i18n';
 import en from '@/i18n/en.json';
 
-// Initialize with default English messages in case of error
-const messages = { en }; 
+const messages = { en };
 
-// Dynamically load all other messages
-async function loadMessages() {
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  fallbackLocale: 'en',
+  messages
+});
+
+// Dynamically load additional messages after initialization
+const loadMessages = async () => {
   try {
     const modules = import.meta.glob('./i18n/*.json');
     await Promise.all(
@@ -13,28 +19,15 @@ async function loadMessages() {
         const lang = path.replace('./i18n/', '').replace('.json', '');
         if (lang !== 'en' && lang !== 'qqq') {
           const module = await importFn();
-          messages[lang] = module.default;
+          i18n.global.setLocaleMessage(lang, module.default);
         }
       })
     );
+    return i18n;
   } catch (error) {
     console.error('Error loading i18n messages:', error);
+    return i18n;
   }
-}
+};
 
-// Initialize i18n instance
-async function initializeI18n() {
-  try {
-    await loadMessages();
-  } catch (error) {
-    console.error('Error initializing i18n:', error);
-  }
-
-  return createI18n({
-    locale: 'en',
-    fallbackLocale: 'en',
-    messages
-  });
-}
-
-export default initializeI18n;
+export { i18n, loadMessages };

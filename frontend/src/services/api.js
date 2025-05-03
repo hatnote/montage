@@ -3,11 +3,12 @@ import { useLoadingStore } from '@/stores/loading'
 
 // Create Axios instance for Backend API
 const apiBackend = axios.create({
-  baseURL: '/v1/',
+  baseURL: import.meta.env.VITE_API_ENDPOINT + '/v1/',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json'
-  }
+  },
+  withCredentials: true
 })
 
 // Create Axios instance for Commons API

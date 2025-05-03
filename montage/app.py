@@ -36,6 +36,7 @@ from .public_endpoints import PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES
 import sentry_sdk
 
 from .clastic_sentry import SentryMiddleware
+from .cors import CORSMiddleware
 
 
 DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
@@ -163,6 +164,19 @@ def create_app(env_name='prod', config=None):
     static_app = StaticApplication(STATIC_PATH)
 
     root_mws = [HTTPCacheMiddleware(use_etags=True)]
+
+    if env_name == 'dev':
+        root_mws.append(
+            CORSMiddleware(
+                allow_origins=[
+                    'http://localhost:5173',
+                ],
+                allow_methods=['GET', 'POST', 'OPTIONS'],
+                allow_headers=['Content-Type'],
+                allow_credentials=True,
+                max_age=3600
+            )
+        )
     if not debug_errors:
         # don't need sentry if you've got pdb, etc.
         sentry_sdk.init(environment=config['__env__'],
