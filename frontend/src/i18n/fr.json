@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Gomoko",
 			"Mahabarata",
 			"Pyb",
 			"Rigoluce",
@@ -162,7 +163,7 @@
 	"montage-vote-grid-size-large": "Grand",
 	"montage-vote-grid-size-medium": "Moyen",
 	"montage-vote-grid-size-small": "Petit",
-	"montage-vote-image-review": "Évaluation des images",
+	"montage-vote-image-review": "Évaluation de l’image #{0}",
 	"montage-vote-ordinal-place": "{0} place",
 	"montage-vote-order-by": "Trier par :",
 	"montage-vote-gallery-size": "Taille de la galerie",

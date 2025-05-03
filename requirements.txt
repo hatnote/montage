@@ -96,13 +96,13 @@ requests-oauthlib==2.0.0
     # via mwoauth
 secure-cookie==0.1.0
     # via clastic
-sentry-sdk==2.0.0
+sentry-sdk==2.8.0
     # via -r requirements.in
 six==1.16.0
     # via
     #   html5lib
     #   python-dateutil
-sqlalchemy==1.0.14
+sqlalchemy==1.2.19
     # via
     #   -r requirements.in
     #   sqltap
