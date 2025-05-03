@@ -136,6 +136,13 @@ const cancelRound = () => {
 }
 
 const saveRound = () => {
+  if (!formData.value.deadline_date) {
+    alertService.error({
+      message: $t('montage-required-voting-deadline')
+    });
+    return;
+  }
+
   const round = {
     id: props.round.id,
     name: formData.value.name,

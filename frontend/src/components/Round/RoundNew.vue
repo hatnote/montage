@@ -252,6 +252,13 @@ const cancelRound = () => {
 }
 
 const submitRound = () => {
+  if (!formData.value.deadline_date) {
+    alertService.error({
+      message: $t('montage-required-voting-deadline')
+    });
+    return;
+  }
+
   // Check if the round is the first round
   if (roundIndex === 0) {
     const payload = {
