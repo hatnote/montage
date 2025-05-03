@@ -17,7 +17,7 @@ The **Montage Project** is a web application with two main components:
    - Built with **Clastic**, a Python framework.
    - Uses various Python libraries such as:
      - **SQLAlchemy**: Database interactions.
-     - **mwoauth**: Used for authentication with MediaWiki’s OAuth.
+     - **mwoauth**: Used for authentication with MediaWiki's OAuth.
      - **pymysql**: MySQL driver.
    - Serves the frontend and exposes API endpoints for application functionality.
 
@@ -40,20 +40,32 @@ git clone git@github.com:hatnote/montage.git
 cd montage
 ```
 
-### 2. Start the Frontend Build Watcher
+### 2. Set up the Frontend
 ```bash
 cd frontend
 npm install
-npm run watch:build
 ```
 
-⚠️ **Frontend does not run in dev mode**: `npm run watch:build` above will watch for changes by using `chokidar` command and automatically copied to the backend's `static` and `template` directories. So there will not be any hot reloading. Developers must refresh the browser to see updates.
+### 3. Configure Environment Variables
+```bash
+cp .env.default .env
+```
 
-Apart from `npm watch:build`, these are other commands:
+Edit the `.env` file to match your development environment. By default, it's configured to connect to a locally running backend at `http://localhost:5001`.
+
+### 4. Run the Frontend in Development Mode
+```bash
+npm run dev
+```
+
+This will start the Vite development server with hot module replacement.
+
+Other frontend development commands:
+* `npm run build`: Build for production
 * `npm run lint`: Lint the code
 * `npm run format`: Format the code
 
-### 3. Use the Makefile to start the backend
+### 5. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
@@ -76,15 +88,16 @@ This will build the docker image for the montage backend and start the container
 * `make logs` : Stream the backend container logs in real-time.
 * `make restart` : Restart the backend container
 
-### 4. Access the Application
-* Open http://localhost:5001 in your browser.
+### 6. Access the Application
+* With development server: Open http://localhost:5173 in your browser (frontend)
+* With backend serving frontend: Open http://localhost:5001 in your browser
 
 The application server runs on localhost port 5001, visit [http://localhost:5001/meta](http://localhost:5001/meta) to see a list
 of valid URL patterns and other details.
 
 Almost all endpoints from backend (except for OAuth and `/static/`) return JSON as long as the proper Accept header is set (done by most libraries) or `format=json` is passed in the query string.
 
-## Project struture (v2 only)
+## Project structure
 ```bash
 ├── DEV.md
 ├── Dockerfile
@@ -105,6 +118,8 @@ Almost all endpoints from backend (except for OAuth and `/static/`) return JSON 
 │   ├── jsconfig.json
 │   ├── package-lock.json
 │   ├── package.json
+│   ├── .env.default
+│   ├── .env
 │   ├── public
 │   ├── src
 │   └── vite.config.js
@@ -184,6 +199,8 @@ These provides a detailed explanation of the main components in the **Montage Pr
 - **`src/`**: Source code, including components, routes, and utilities.
 - **`public/`**: Static assets, such as images and global styles.
 - **`vite.config.js`**: Configuration for the Vite build tool.
+- **`.env.default`**: Template for environment configuration.
+- **`.env`**: Local environment configuration.
 
 
 #### Directory: `tools`

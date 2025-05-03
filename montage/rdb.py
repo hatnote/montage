@@ -582,7 +582,8 @@ class Entry(Base):
         return ret
 
     def to_export_dict(self):
-        ret = {'img_name': self.name,
+        ret = {'img_id': self.id,
+               'img_name': self.name,
                'img_major_mime': self.mime_major,
                'img_minor_mime': self.mime_minor,
                'img_width': self.width,
