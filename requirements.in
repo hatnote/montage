@@ -15,5 +15,5 @@ python-graph-core==1.8.2
 -e git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3_vote_core ; python_version >= '3.0'
 SQLAlchemy==1.2.19
 unicodecsv==0.14.1
-pymysql==0.9.3
+pymysql==1.1.1
 cryptography==40.0.2  # 2024-04-23: higher versions of cryptography breaks with uwsgi due to PyO3's lack of subinterpreter support: https://github.com/PyO3/pyo3/issues/3451 . see also: https://github.com/pyca/cryptography/issues/9016 (says it's fixed, but isn't, at least not on py39)
