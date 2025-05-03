@@ -5,7 +5,9 @@
     </template>
     <div v-for="(round, index) in campaign" :key="index" class="juror-campaign-round-card">
       <div class="round-header">
-        <ThumbsUpDown class="juror-campaign-round-icon" :size="36" fillColor="white" />
+        <thumbs-up-down v-if="round.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
+        <star-outline v-if="round.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
+        <sort v-if="round.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
         <div class="round-info">
               <p :class="{ 'strikethrough': round.status === 'cancelled' }">{{ round.name }}</p>
           <p>({{ $t( getVotingName(round.vote_method) )}} · {{ round.status }})</p>
@@ -64,6 +66,8 @@ import { CdxCard, CdxAccordion, CdxButton } from '@wikimedia/codex'
 
 // Icons
 import ThumbsUpDown from 'vue-material-design-icons/ThumbsUpDown.vue'
+import StarOutline from 'vue-material-design-icons/StarOutline.vue'
+import Sort from 'vue-material-design-icons/Sort.vue'
 
 defineProps({
   campaign: Object
