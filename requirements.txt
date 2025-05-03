@@ -76,7 +76,7 @@ pycparser==2.22
     # via cffi
 pyjwt==2.8.0
     # via mwoauth
-pymysql==0.9.3
+pymysql==1.1.1
     # via -r requirements.in
 pyopenssl==23.2.0
     # via -r requirements.in
