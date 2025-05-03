@@ -1,9 +1,7 @@
 {
   "@metadata": {
-		"authors": [
-			"Jayprakash12345"
-		]
-	},
+    "authors": ["Jayprakash12345"]
+  },
   "montage-title": "Montage",
   "montage-about": "About",
   "montage-credit": "by Montage team",
@@ -160,7 +158,7 @@
   "montage-vote-grid-size-large": "Large",
   "montage-vote-grid-size-medium": "Medium",
   "montage-vote-grid-size-small": "Small",
-  "montage-vote-image-review": "Image review",
+  "montage-vote-image-review": "Image review #{0}",
   "montage-vote-ordinal-place": "{0} place",
   "montage-vote-order-by": "Order by:",
   "montage-vote-gallery-size": "Gallery size",
@@ -182,5 +180,9 @@
   "montage-round-open-tasks": "Open tasks",
   "montage-round-files": "Files",
   "montage-round-tasks": "Tasks",
-  "montage-round-uploaders": "Uploaders"
+  "montage-round-uploaders": "Uploaders",
+  "permission-denied-title": "Permission Denied",
+  "permission-denied-message": "You do not have the required permissions to access this page.",
+  "permission-denied-home": "Go to Home",
+  "montage-required-voting-deadline": "Choose a valid voting deadline"
 }

@@ -1,80 +1,126 @@
-# Montage deployment instructions
+# Montage Deployment
 
-These are basic instructions to deploy montage on Toolforge.
+These are instructions for deploying Montage on Toolforge.
 
-## 1. Set up the Toolforge project
+## Deploying on Toolforge from scratch
+These instructions is only first time when setuping project on Toolforge
 
- - Visit [toolsadmin](https://toolsadmin.wikimedia.org/tools/)
+##### 1. Get the OAuth credentials.
+[Register your app](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) and save your consumer token and secret token for later.
 
-## 2. Set up the OAuth credentials.
- 
- - [Register your app](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose)
- - Save your consumer token and secret token for later -- you will need these for the config (step 5).
+##### 2. SSH to Toolforge and then inside tool
+```bash
+ssh <shell-username>@login.toolforge.org
+become montage-beta
+```
+Here, we are using `montage-beta` instance but it can be `montage` or `montage-dev` as well.
 
-## 3. In the Toolforge project, clone the montage repo
+##### 3. Clone the repo as src directory
+```bash
+mkdir -p $HOME/www/python
+cd $HOME/www/python
+git clone https://github.com/hatnote/montage.git src
+```
 
-## 4. Create your database
+##### 4. Make the frontend build
+```bash
+toolforge webservice node18 shell -m 2G
+cd $HOME/www/python/src/frontend
+npm install
+npm run toolforge:build
+exit
+```
+This will build the vue prod bundle and put in backend's `template` and `static` directory.
 
- - Open up MariaDB with `sql local` (or `mysql --defaults-file=~/replica.my.cnf`)
- - Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) (`create database <user>__<db name>;`), and remember the name for the config (step 5)
+##### 5. Create your database
+* Get the user name of database (`cat ~/replica.my.cnf`)
+* Open up MariaDB with `sql local`
+* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) (`create database <user>__<db name>;`), and remember the name for the config
 
-## 5. Set up montage config
- 
- - Make a copy of `config.default.yaml` for your environment
-   * You may need to update `USER_ENV_MAP` in `montage/utils.py` if you need to detect a new environment
- - Add the `oauth_consumer_token` and `oauth_secret_token` from step 2
- - Add a `cookie_secret: <your secret>`
- - Add the `db_url` with your user database name from step 4, and the password from `~/.replica.my.cnf`
+##### 6. Set up the montage config
+* Make a copy of `config.default.yaml` for your environment
+   * You may need to update `USER_ENV_MAP` in `montage/utils.py` if you need to add a new environment
+* Add the `oauth_consumer_token` and `oauth_secret_token` 
+* Add a `cookie_secret: <your random secret>`
+* Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
     * The format is: `mysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
- - Add `api_log_path: /data/project/<project>/logs/montage_api.log`
- - Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
- - Add `labs_db: True`
- - Add `db_echo: False`
- - Add `root_path: '/<project>/'`
-
-## 6. Setting up Toolforge:
-
-The project will look like this:
-
-```
-/data/projects/<project>/<montage repo, with app.py>
-/data/projects/<project>/www/python/uwsgi.ini
-/data/projects/<project>/www/python/src -> <montage repo, with app.py>
-/data/projects/<project>/www/python/venv
-```
-
- - Create `~/logs`
- - Create `~/www/python`
- - Enter the kubernetes (k8s) python2 shell with `webservice --backend=kubernetes python2 shell`. While in the k8s shell:
-   * In `~/www/python`, create a virtualenv with `virtualenv venv`
-   * In the virtualenv, install the Python requirements with `pip install -r ~/montage/requirements.txt`
-   * Run `python montage/tools/create_schema.py` (you're done with the k8s shell for now)
- - Link `~/www/python/src` to the montage repo
-   * Create `~/www/python/src/app.py`
- - Create `~/www/python/uwsgi.ini`
- - Add the venv to `.bash_profile` for ease of use -- `source ~/www/python/venv/bin/activate`
-
-## 7. Build the front end
-
-(it's probably easier to do this locally, and then move to labs)
-
-In `montage/client`...
-
- - Install node dependencies with `npm install` 
- - Set your environment with `export NODE_ENV=<local,dev,beta,etc>` -- if you're creating a new env, create `montage/client/src/index_<env>.ejs`
- - Build the client with `npm run build`
- - Copy `montage/montage/static/dist` and `montage/montage/static/index.html` to your Toolforge project
-
-## 8. Start the webservice 
-
- - Run `webservice --backend=kubernetes python2 start`
- - Investigate `~/uwsgi.log` for errors
-
-## Testing
+* Add `api_log_path: /data/project/<project>/logs/montage_api.log`
+* Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
+* Add `labs_db: True`
+* Add `db_echo: False`
+* Add `root_path: '/'`
  
- - Visit /meta to see the API
- - **Full test**
-   * Make sure your username is set as `superuser` in the remote version config
-   * Log into the remote version of montage, open your cookies, and copy the value from your `clastic_cookie`
-   * In the config for a local version of montage, add your `clastic_cookie` value to `dev_remote_cookie_value`
-   * Run `python run_server_test.py --remote <url>`
+
+##### 7. Creating a virtual environment
+```bash
+toolforge webservice python3.9 shell
+python3 -m venv $HOME/www/python/venv
+source $HOME/www/python/venv/bin/activate
+pip install --upgrade pip wheel
+pip install -r $HOME/www/python/src/requirements.txt
+exit
+```
+
+##### 8. Start the backend service
+```bash
+toolforge webservice python3.9 start
+```
+
+##### 9. Testing of deployment
+* Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
+* In the top section, you should see that the service was restarted in the last few seconds/minutes.
+
+
+---
+
+
+## Deploying new changes
+
+If montage is already deployed then you just need following to deploy new changes.
+
+##### 1. Check the instance usage
+Login to the tool webapp. Make sure, you are maintainer on the webapp instance. Use the audit log endpoint to check that the instance isn't in active use. Example: https://montage-beta.toolforge.org/v1/logs/audit
+
+This will tell latest usage of instance by audit `create_date`. You can continue if instance is not being used.
+
+Sometimes, instance can in use, but there can be important bugfix and we can push anyways.
+
+##### 2. SSH to Toolforge and then inside tool
+```bash
+ssh <shell-username>@login.toolforge.org
+become montage-beta
+```
+Here, we are using `montage-beta` instance but it can be `montage` or `montage-dev` as well.
+
+##### 3. Get new changes from remote
+```bash
+cd $HOME/www/python/src
+git pull
+```
+
+##### 4. Make the frontend build
+```bash
+toolforge webservice node18 shell -m 2G
+cd $HOME/www/python/src/frontend
+npm install
+npm run toolforge:build
+exit
+```
+
+##### 5. (Optional) Install python packages
+If you added new python packages in changes then you have to install them in pod.
+```bash
+toolforge webservice python3.9 shell
+source $HOME/www/python/venv/bin/activate
+pip install -r $HOME/www/python/src/requirements.txt
+exit
+```
+
+##### 8. Restart the backend service
+```bash
+toolforge webservice python3.9 restart
+```
+
+##### 9. Testing of deployment
+* Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
+* In the top section, you should see that the service was restarted in the last few seconds/minutes.
