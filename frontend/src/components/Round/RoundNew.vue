@@ -180,6 +180,7 @@ const campaignId = route.params.id.split('-')[0]
 
 const voteMethods = ['yesno', 'rating', 'ranking']
 const fileSettingsOptions = [
+  'dq_by_uploader',
   'dq_by_resolution',
   'dq_by_upload_date',
   'dq_coords',
@@ -217,6 +218,7 @@ const formData = ref({
   config: {
     dq_by_resolution: false,
     min_resolution: 2000000,
+    dq_by_uploader: true,
     dq_by_upload_date: false,
     dq_coords: false,
     dq_maintainers: false,
