@@ -812,7 +812,13 @@ def autodisqualify(user_dao, round_id, request_dict):
         dq_resolution = coord_dao.autodisqualify_by_resolution(round_id)
         round_entries += dq_resolution
 
-    if rnd.config.get('dq_by_uploader') or dq_by_uploader:
+    if (
+        rnd.config.get('dq_by_uploader') or
+        dq_by_uploader or
+        rnd.config.get('dq_coords') or
+        rnd.config.get('dq_organizers') or
+        rnd.config.get('dq_maintainers')
+    ):
         dq_uploader = coord_dao.autodisqualify_by_uploader(round_id)
         round_entries += dq_uploader
 
