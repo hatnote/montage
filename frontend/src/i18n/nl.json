@@ -3,7 +3,8 @@
 		"authors": [
 			"Akoopal",
 			"Ciell",
-			"McDutchie"
+			"McDutchie",
+			"Siebrand"
 		]
 	},
 	"montage-title": "Montage",
@@ -162,7 +163,7 @@
 	"montage-vote-grid-size-large": "Groot",
 	"montage-vote-grid-size-medium": "Gemiddeld",
 	"montage-vote-grid-size-small": "Klein",
-	"montage-vote-image-review": "Afbeeldingsbeoordeling",
+	"montage-vote-image-review": "Afbeeldingsbeoordeling #{0}",
 	"montage-vote-ordinal-place": "{0} plaats",
 	"montage-vote-order-by": "Sorteer op:",
 	"montage-vote-gallery-size": "Galerijgrootte",

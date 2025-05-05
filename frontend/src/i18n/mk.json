@@ -159,7 +159,7 @@
 	"montage-vote-grid-size-large": "Големо",
 	"montage-vote-grid-size-medium": "Средно",
 	"montage-vote-grid-size-small": "Мало",
-	"montage-vote-image-review": "Оценка на слика",
+	"montage-vote-image-review": "Оценка на слика #{0}",
 	"montage-vote-ordinal-place": "{0}. место",
 	"montage-vote-order-by": "Подреди по:",
 	"montage-vote-gallery-size": "Големина на галеријата",
@@ -184,5 +184,6 @@
 	"montage-round-uploaders": "Подигачи",
 	"permission-denied-title": "Дозволата е одбиена",
 	"permission-denied-message": "Ги немате потребните дозволи за да пристапите до страницава.",
-	"permission-denied-home": "Оди на Почетна"
+	"permission-denied-home": "Оди на Почетна",
+	"montage-required-voting-deadline": "Изберете важечки рок за гласање"
 }

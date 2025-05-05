@@ -184,5 +184,6 @@
 	"montage-round-uploaders": "上傳者",
 	"permission-denied-title": "權限不足",
 	"permission-denied-message": "您沒有適當的權限來存取此頁面。",
-	"permission-denied-home": "返回首頁"
+	"permission-denied-home": "返回首頁",
+	"montage-required-voting-deadline": "選擇有效的投票截止期限"
 }
