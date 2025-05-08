@@ -188,5 +188,6 @@
 	"montage-round-uploaders": "Uploaders",
 	"permission-denied-title": "Toegang geweigerd",
 	"permission-denied-message": "U beschikt niet over de vereiste rechten om deze pagina te openen.",
-	"permission-denied-home": "Naar de startpagina"
+	"permission-denied-home": "Naar de startpagina",
+	"montage-required-voting-deadline": "Kies een geldige stemdeadline"
 }
