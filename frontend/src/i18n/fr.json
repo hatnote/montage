@@ -188,5 +188,6 @@
 	"montage-round-uploaders": "Nombre de téléverseurs",
 	"permission-denied-title": "Accès refusé",
 	"permission-denied-message": "Vous n'avez pas les autorisations nécessaires pour accéder à cette page.",
-	"permission-denied-home": "Aller à l'accueil"
+	"permission-denied-home": "Aller à l'accueil",
+	"montage-required-voting-deadline": "Choisir une date limite de vote valide"
 }
