@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Alchimista"
+			"Alchimista",
+			"O andras"
 		]
 	},
 	"montage-about": "Sobre",
@@ -11,7 +12,7 @@
 	"montage-login-description": "Você será redirecionado para o Meta-Wiki para confirmar a sua identidade. O Montage não publicará nada nos projetos Wikimedia usando a sua conta.",
 	"montage-login-account-instructions": "Se não tem uma conta da Wikimedia, pode criar uma em {0}.",
 	"montage-login-metawiki": "Meta-Wiki",
-	"montage-login-button": "Faça login usando a conta da Wikimedia",
+	"montage-login-button": "Faça login usando a conta Wikimedia",
 	"montage-login-logout": "Terminar sessão",
 	"montage-active-campaigns": "Campanhas ativas",
 	"montage-all-campaigns": "Todas as campanhas",
@@ -44,8 +45,12 @@
 	"montage-description-date-range": "Uma vez que as imagens forem importadas para a primeira rodada, mudar a data e hora não afetará as imagens que o júri pode ver. No entanto, alterar estes valores antes da importação para a primeira rodada garantirá que apenas as fotos carregadas antes da data e hora de encerramento sejam visíveis para o seu júri.",
 	"montage-label-open-date": "Data de abertura",
 	"montage-required-open-date": "É necessária a data de abertura",
+	"montage-label-open-time": "Hora de início",
+	"montage-required-open-time": "A hora de início é obrigatória",
 	"montage-label-close-date": "Data de conclusão",
 	"montage-required-close-date": "É necessária uma data de conclusão",
+	"montage-label-close-time": "Hora de fim",
+	"montage-required-close-time": "A hora de fim é obrigatória",
 	"montage-label-campaign-coordinators": "Coordenadores de campanha",
 	"montage-description-campaign-coordinators": "Coordenadores são pessoas que têm acesso a editar a campanha, rondas e estatísticas de rondas.",
 	"montage-required-campaign-coordinators": "É necessário pelo menos um coordenador",
@@ -66,11 +71,13 @@
 	"montage-round-name": "Nome da ronda",
 	"montage-round-deadline": "Prazo final para votação",
 	"montage-label-round-stats": "Mostre estatísticas próprias (Beta)",
+	"montage-description-round-stats": "Se deve ou não mostrar as estatísticas de votação (e.g. número de imagens aceites ou rejeitadas) do juri nesta ronda.",
 	"montage-label-round-quorum": "Quórum",
 	"montage-description-round-quorum": "O número de jurados que devem votar em cada imagem",
 	"montage-label-round-jurors": "Jurados",
 	"montage-description-round-jurors": "Digite o nome do jurado que deseja adicionar a esta ronda.",
 	"montage-round-stats": "Mostrar estatísticas próprias (Beta)",
+	"montage-round-stats-description": "Se deve ou não mostrar as estatísticas de votação (e.g., número de imagens aceites ou rejeitadas) do juri nesta ronda.",
 	"montage-round-file-setting": "Configurações dos ficheiros da ronda",
 	"montage-round-delete": "Apagar ronda",
 	"montage-round-edit": "Editar ronda",
@@ -153,7 +160,7 @@
 	"montage-vote-grid-size-large": "Grande",
 	"montage-vote-grid-size-medium": "Médio",
 	"montage-vote-grid-size-small": "Pequeno",
-	"montage-vote-image-review": "Revisão da imagem",
+	"montage-vote-image-review": "Revisão #{0} de imagem",
 	"montage-vote-ordinal-place": "{0} lugar",
 	"montage-vote-order-by": "Ordenar por:",
 	"montage-vote-gallery-size": "Tamanho da galeria",
@@ -175,5 +182,9 @@
 	"montage-round-open-tasks": "Tarefas abertas",
 	"montage-round-files": "Ficheiros",
 	"montage-round-tasks": "Tarefas",
-	"montage-round-uploaders": "Carregadores"
+	"montage-round-uploaders": "Carregadores",
+	"permission-denied-title": "Permissão Negada",
+	"permission-denied-message": "Não tem as permissões necessárias para aceder a esta página.",
+	"permission-denied-home": "Ir para a Página Inicial",
+	"montage-required-voting-deadline": "Escolha um prazo de votação válido"
 }
