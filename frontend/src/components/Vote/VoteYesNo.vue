@@ -99,7 +99,7 @@
         <div class="vote-details-list">
           <div class="vote-details-list-item vote-details-2-line">
             <cloud-upload class="vote-details-icon" />
-            <div class="vote-details-list-item-text">
+            <div class="vote-details-list-item-text" v-if="rating.current && 'history' in rating.current">
               <h3>{{ formattedDateTime.date }}</h3>
               <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
             </div>
