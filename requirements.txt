@@ -4,8 +4,6 @@
 #
 #    pip-compile --annotation-style=line requirements.in
 #
-git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb#egg=python3-vote-core
-    # via -r requirements.in
 ashes==24.0.0
     # via
     #   -r requirements.in
@@ -86,6 +84,8 @@ python-graph-core==1.8.2
     # via
     #   -r requirements.in
     #   python3-vote-core
+python3-vote-core @ git+https://github.com/the-maldridge/python-vote-core.git@f0b01e7e24f80673c4c237ee9e6118e8986cf0bb ; python_version >= "3.0"
+    # via -r requirements.in
 pyyaml==6.0.1
     # via chert
 requests==2.32.2
@@ -112,7 +112,7 @@ sqltap==0.3.11
     # via -r requirements.in
 unicodecsv==0.14.1
     # via -r requirements.in
-urllib3==2.2.2
+urllib3==2.5.0
     # via
     #   requests
     #   sentry-sdk
