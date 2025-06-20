@@ -188,6 +188,7 @@ def make_admin_round_details(rnd, rnd_stats):
            'vote_method': rnd.vote_method,
            'open_date': format_date(rnd.open_date),
            'close_date': format_date(rnd.close_date),
+           'create_date': format_date(rnd.create_date),
            'config': rnd.config,
            'deadline_date': format_date(rnd.deadline_date),
            'status': rnd.status,

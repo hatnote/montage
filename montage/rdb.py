@@ -237,6 +237,7 @@ class Campaign(Base):
                'url_name': slugify(self.name, '-'),
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
+               'create_date': format_date(self.create_date),
                'status': self.status,
                'is_archived': self.is_archived or False,
         }
@@ -429,6 +430,7 @@ class Round(Base):
                'vote_method': self.vote_method,
                'open_date': format_date(self.open_date),
                'close_date': format_date(self.close_date),
+               'create_date': format_date(self.create_date),
                'deadline_date': format_date(self.deadline_date),
                'jurors': [rj.to_info_dict() for rj in self.round_jurors],
                'status': self.status,
