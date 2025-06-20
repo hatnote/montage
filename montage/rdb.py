@@ -116,7 +116,10 @@ with a dict, brand new flags-having objects will have None for the
 flags attribute.
 """
 
-MAINTAINERS = ['MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest', 'Jayprakash12345']
+MAINTAINERS = [
+    'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
+    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+]
 
 """
 class RDBSession(sessionmaker()):
