@@ -52,8 +52,8 @@
           <img :src="getImageName(image)" />
         </div>
         <div style="font-size: 14px; color: gray">
-          <p>{{ $t('montage-voted-time', [dayjs(image.date).fromNow()]) }}</p>
-          <p>{{ dayjs(image.date).utc().format('D MMM YYYY [at] H:mm [UTC]') }}</p>
+          <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
+          <p>{{ dayjs.utc(image.date).format('D MMM YYYY [at] H:mm [UTC]') }}</p>
         </div>
         <!-- Yes/No voting edit -->
         <div class="image-grid-vote-action" v-if="isVoting('yesno')">
@@ -95,8 +95,8 @@
             </h3>
           </div>
           <div style="font-size: 14px; color: gray; margin-top: 8px">
-            <p>{{ $t('montage-voted-time', [dayjs(image.date).fromNow()]) }}</p>
-            <p>{{ dayjs(image.date).utc().format('D MMM YYYY [at] H:mm [UTC]') }}</p>
+            <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
+            <p>{{ dayjs.utc(image.date).format('D MMM YYYY [at] H:mm [UTC]') }}</p>
           </div>
         </div>
       </draggable>
