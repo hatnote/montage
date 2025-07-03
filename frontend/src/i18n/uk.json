@@ -159,7 +159,7 @@
 	"montage-vote-grid-size-large": "Великі",
 	"montage-vote-grid-size-medium": "Середні",
 	"montage-vote-grid-size-small": "Малі",
-	"montage-vote-image-review": "Огляд зображення",
+	"montage-vote-image-review": "Огляд зображення {0}",
 	"montage-vote-ordinal-place": "{0} місце",
 	"montage-vote-order-by": "Сортувати за:",
 	"montage-vote-gallery-size": "Розмір галереї",
@@ -184,5 +184,6 @@
 	"montage-round-uploaders": "Завантажувачі",
 	"permission-denied-title": "Доступ заборонено",
 	"permission-denied-message": "У вас недостатньо прав для доступу до цієї сторінки.",
-	"permission-denied-home": "Перейти на головну сторінку"
+	"permission-denied-home": "Перейти на головну сторінку",
+	"montage-required-voting-deadline": "Виберіть дійсний дедлайн для голосування"
 }
