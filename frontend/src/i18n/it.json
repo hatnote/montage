@@ -2,6 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Beta16",
+			"Emabarto01",
 			"Wheelygay"
 		]
 	},
@@ -61,6 +62,10 @@
 	"montage-round-source-category": "Categoria su Wikimedia Commons",
 	"montage-round-source-csv": "URL dell'elenco dei file",
 	"montage-round-source-filelist": "Elenco dei file",
+	"montage-round-file-url": "Inserisci URL del file",
+	"montage-round-file-list": "Elenco (un file per riga)",
+	"montage-round-threshold": "Soglia",
+	"montage-round-vote-method": "Metodo di voto",
 	"montage-no-results": "Nessun risultato trovato",
 	"montage-vote-accept": "Accetta",
 	"montage-vote-decline": "Rifiuta",
