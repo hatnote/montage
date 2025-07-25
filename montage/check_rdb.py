@@ -3,7 +3,7 @@ from sqlalchemy import exc
 from sqlalchemy import event
 from sqlalchemy import select
 from sqlalchemy import inspect
-from sqlalchemy.ext.declarative.clsregistry import _ModuleMarker
+from sqlalchemy.orm.clsregistry import _ModuleMarker
 from sqlalchemy.orm import RelationshipProperty
 
 

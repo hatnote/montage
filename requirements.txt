@@ -102,7 +102,7 @@ six==1.16.0
     # via
     #   html5lib
     #   python-dateutil
-sqlalchemy==1.2.19
+sqlalchemy==2.0.30
     # via
     #   -r requirements.in
     #   sqltap
@@ -125,3 +125,5 @@ werkzeug==1.0.1
     #   sqltap
 zipp==3.19.1
     # via importlib-metadata
+
+alembic==1.13.1

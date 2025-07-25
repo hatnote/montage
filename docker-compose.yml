@@ -4,10 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5001:5000"  # Airplay runs on port 5000 on mac. See https://forums.developer.apple.com/forums/thread/682332
+      - "5001:5000"
     environment:
       - PYTHONPATH=/app
     volumes:
       - .:/app
     command: >
-      bash -c "python tools/create_schema.py && python -m montage"
+      bash -c "
+        chmod 777 tmp_montage.db &&
+        alembic revision --autogenerate -m 'Initial migration' || true &&
+        alembic upgrade head &&
+        python tools/create_schema.py &&
+        python -m montage
+      "
