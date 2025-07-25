@@ -52,7 +52,24 @@ const jurorService = {
         return data
       })
     })
+  },
+
+  sendNotification: (roundId, campaignId, title, description) => {
+    // const title = document.getElementById('title').value
+    // const description = document.getElementById('description').value
+
+    if (!title || !description) {
+      alertService.error('Please fill in both title and description.')
+      return
+    }
+
+    return apiBackend.post(`juror/campaign/${campaignId}/round/${roundId}/notify`, {
+      title,
+      description
+    })
   }
 }
+
+
 
 export default jurorService
