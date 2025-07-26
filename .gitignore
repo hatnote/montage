@@ -1,4 +1,4 @@
-
+.vscode/
 *.db
 config*yaml
 .DS_Store
