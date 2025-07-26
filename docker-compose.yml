@@ -11,14 +11,9 @@ services:
       - .:/app
     command: >
       bash -c "
-      if [ ! -d alembic ]; then
-        echo 'Initializing Alembic...';
-        alembic init alembic;
-      fi &&
-      chmod 777 tmp_montage.db &&
-      alembic revision --autogenerate -m 'Initial migration' || true &&
-      alembic upgrade head &&
-      python tools/create_schema.py &&
-      python -m montage
+        chmod 777 tmp_montage.db &&
+        alembic revision --autogenerate -m 'Initial migration' || true &&
+        alembic upgrade head &&
+        python tools/create_schema.py &&
+        python -m montage
       "
-      
