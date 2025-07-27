@@ -193,5 +193,7 @@
   "montage-notify-description-placeholder": "Enter notification description",
   "montage-send-notification": "Send Notification",
   "montage-notify-error": "Please fill in both title and description.",
-  "montage-notify-success": "Notification sent successfully."
+  "montage-notify-success": "Notification sent successfully.",
+  "montage-campaign-name": "Campaign",
+  "montage-jurors-list": "Jurors"
 }
