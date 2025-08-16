@@ -1745,6 +1745,40 @@ class CoordinatorDAO(UserDAO):
         self.log_action('finalize_round', round=rnd, message=msg)
         return advance_group
 
+    def unfinalize_rating_round(self, round_id):
+        """Unfinalize a rating round, allowing voting to continue.
+        
+        Prerequisites:
+        - Round must be in FINALIZED_STATUS
+        - No active or paused rounds should exist after this round
+        - Round must be a rating round (not ranking)
+        """
+        rnd = self.get_round(round_id)
+        
+        if rnd.status != FINALIZED_STATUS:
+            raise InvalidAction('can only unfinalize finalized rounds, not %r' % rnd.status)
+        
+        if rnd.vote_method != 'rating':
+            raise InvalidAction('can only unfinalize rating rounds, not %r' % rnd.vote_method)
+        
+        # Check that no active/paused rounds exist after this one
+        later_rounds = [r for r in self.campaign.rounds if r.campaign_seq > rnd.campaign_seq]
+        active_later_rounds = [r for r in later_rounds if r.status in (ACTIVE_STATUS, PAUSED_STATUS)]
+        if active_later_rounds:
+            raise InvalidAction('cannot unfinalize round %s: active/paused rounds exist after it (%s). Delete them and try again.' 
+                              % (rnd.id, [r.id for r in active_later_rounds]))
+        
+        rnd.status = ACTIVE_STATUS
+        rnd.close_date = None
+        
+        if rnd.config and 'final_threshold' in rnd.config:
+            del rnd.config['final_threshold']
+        msg = ('%s unfinalized rating round "%s" (#%s), allowing voting to continue'
+               % (self.user.username, rnd.name, rnd.id))
+        self.log_action('unfinalize_rating_round', round=rnd, message=msg)
+        
+        return rnd
+
     def finalize_ranking_round(self, round_id):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'

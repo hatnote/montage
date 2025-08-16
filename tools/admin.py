@@ -101,6 +101,7 @@ def main():
     rnd_cmd.add(retask_duplicate_ratings, name='retask-dupes')
     rnd_cmd.add(shuffle_round_assignments, name='shuffle-tasks')
     rnd_cmd.add(cancel_round, name='cancel')
+    rnd_cmd.add(unfinalize_rating_round, name='unfinalize-rating-round')
 
     cmd.add(rnd_cmd)
 
@@ -542,6 +543,18 @@ def cancel_round(user_dao, round_id, force):
            % (round_id, rnd.name, stats['total_cancelled_tasks'])))
     return
 
+
+def unfinalize_rating_round(user_dao, round_id, force):
+    """Unfinalize a rating round to allow voting to continue."""
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    msg = 'this will unfinalize round %s and allow voting to continue' % (round_id,)
+
+    warn(msg, force)
+
+    rnd = coord_dao.unfinalize_rating_round(round_id)
+    print(('++ unfinalized round %s (%s), voting can now continue'
+           % (round_id, rnd.name)))
+    return rnd
 
 def list_campaigns(user_dao):
     "list details about all campaigns"
