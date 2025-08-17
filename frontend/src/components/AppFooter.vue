@@ -14,10 +14,14 @@
       </a>
     </div>
     <div class="footer-right">
-      <span class="env-label">DEV</span>
+      <span class="env-label">{{ envName }}</span>
     </div>
   </footer>
 </template>
+
+<script setup>
+const envName = import.meta.env.DEV ? 'DEV' : 'PROD'
+</script>
 
 <style scoped>
 .footer-container {
