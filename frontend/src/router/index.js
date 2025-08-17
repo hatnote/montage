@@ -11,6 +11,8 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
+import RoundInfo from '@/components/Round/RoundInfo.vue'
+import NotifyForm from '@/components/Round/NotifyForm.vue'
 
 const routes = [
   {
@@ -52,6 +54,17 @@ const routes = [
     path: '/permission-denied',
     name: 'permission-denied',
     component: PermissionDenied,
+  },
+  {
+    path: '/round-info',
+    name: 'RoundInfo',
+    component: RoundInfo
+  },
+  {
+    path: '/notify-form/:campaignId/:roundId',
+    name: 'NotifyForm',
+    component: NotifyForm,
+    props: true
   }
 ]
 
