@@ -15,6 +15,7 @@
           </cdx-button>
           <cdx-button
             action="progressive"
+            datatest="editbutton"
             @click="hangleEditCampaignBtnClick"
             :disabled="campaign.is_archived"
           >
