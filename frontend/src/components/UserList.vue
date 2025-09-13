@@ -13,7 +13,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import dataService from '@/services/dataService'
-
 import { CdxMultiselectLookup } from '@wikimedia/codex'
 
 const props = defineProps({
