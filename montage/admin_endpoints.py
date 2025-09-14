@@ -465,11 +465,11 @@ def _prepare_round_params(coord_dao, request_dict):
         if not val and column in req_columns:
             raise InvalidAction('%s is required to create a round (got %r)'
                                 % (column, val))
-        if column is 'vote_method' and val not in valid_vote_methods:
+        if column == 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
-        if column is 'deadline_date':
+        if column == 'deadline_date':
             val = js_isoparse(val)
-        if column is 'jurors':
+        if column == 'jurors':
             juror_names = val
         rnd_dict[column] = val
 
