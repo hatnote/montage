@@ -69,7 +69,7 @@
         </p>
         <p>
           <strong>{{ $t('montage-round-cancelled-tasks') }}:</strong>
-          {{ rroundResults?.counts.total_cancelled_tasks }}
+          {{ roundResults?.counts.total_cancelled_tasks }}
         </p>
         <p>
           <strong>{{ $t('montage-round-disqualified-files') }}:</strong>
@@ -109,32 +109,32 @@
   </div>
   <div
     class="round__actions"
-    style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
+    style="display: flex; justify-content: space-between; gap: 16px; margin-top: 16px"
   >
-    <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
-      <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
-    </cdx-button>
-
-    <cdx-button v-if="round.status === 'active'" @click="pauseRound">
-      <pause style="font-size: 6px" /> {{ $t('montage-round-pause') }}
-    </cdx-button>
-
-    <!-- <cdx-button
-      :disabled="!roundDetails?.is_closable"
-      @click="finalizeRound"
+    <cdx-button
+      @click="navigateToNotifyForm"
       action="progressive"
-      weight="primary"
     >
-      <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
-    </cdx-button> -->
-
-    <cdx-button @click="downloadResults">
-      <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
+      <bell style="font-size: 6px" /> {{ $t('Notify jurors') }}
     </cdx-button>
 
-    <cdx-button @click="downloadEntries">
-      <image-multiple style="font-size: 6px" /> {{ $t('montage-round-download-entries') }}
-    </cdx-button>
+    <div style="display: flex; gap: 16px">
+      <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
+        <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
+      </cdx-button>
+
+      <cdx-button v-if="round.status === 'active'" @click="pauseRound">
+        <pause style="font-size: 6px" /> {{ $t('montage-round-pause') }}
+      </cdx-button>
+
+      <cdx-button @click="downloadResults">
+        <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
+      </cdx-button>
+
+      <cdx-button @click="downloadEntries">
+        <image-multiple style="font-size: 6px" /> {{ $t('montage-round-download-entries') }}
+      </cdx-button>
+    </div>
   </div>
 </template>
 
@@ -143,6 +143,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
+import { useRoute,useRouter } from 'vue-router'
 
 // Components
 import { CdxButton, CdxAccordion } from '@wikimedia/codex'
@@ -154,6 +155,9 @@ import Pause from 'vue-material-design-icons/Pause.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import ImageMultiple from 'vue-material-design-icons/ImageMultiple.vue'
+
+const router = useRouter()
+const route = useRoute()
 
 const { t: $t } = useI18n()
 const props = defineProps({
@@ -236,6 +240,25 @@ function getRoundResults(round) {
     .catch(alertService.error)
 }
 
+// Flag to toggle the notification form
+const showNotifyForm = ref(false)
+
+// Reactive variables for notification form inputs
+const notificationTitle = ref('')
+const notificationDescription = ref('')
+
+
+
+function navigateToNotifyForm() {
+  router.push({
+    name: 'NotifyForm',
+    params: {
+      campaignId: route.params.id.split('-')[0],
+      roundId: props.round.id
+    }
+  })
+}
+
 onMounted(() => {
   getRoundDetails(props.round)
   getRoundResults(props.round)
@@ -265,5 +288,14 @@ onMounted(() => {
 
 .round-file-info p {
   font-size: 14px;
+}
+
+.notify-users-form {
+  background: #fff;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-width: 400px;
+  margin: 16px auto;
 }
 </style>
