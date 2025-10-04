@@ -106,3 +106,14 @@ ENV/
 
 # PyCharm stuff:
 .idea/
+
+# Ignore Cypress example tests
+cypress/e2e/1-getting-started/
+cypress/e2e/2-advanced-examples/
+
+# Ignore default fixtures unless used
+cypress/fixtures/example.json
+
+# Ignore screenshots & videos from Cypress runs
+cypress/screenshots/
+cypress/videos/
