@@ -36,6 +36,21 @@ USER_ENV_MAP = {'tools.montage-dev': 'devlabs',
                 'tools.montage': 'prod',
                 'tools.montage-beta': 'beta'}
 DEFAULT_ENV_NAME = 'dev'
+USER_AGENT = 'montage/25.0 (https://github.com/hatnote/montage; mahmoud@hatnote.com)'
+
+
+def requests_get(url, **kwargs):
+    """Wrapper for requests.get that adds User-Agent header"""
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', USER_AGENT)
+    return requests.get(url, headers=headers, **kwargs)
+
+
+def requests_post(url, **kwargs):
+    """Wrapper for requests.post that adds User-Agent header"""
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', USER_AGENT)
+    return requests.post(url, headers=headers, **kwargs)
 
 
 class MontageError(Exception):
@@ -94,7 +109,7 @@ def get_mw_userid(username):
               'agufrom': username,
               'format': 'json'}
     full_url = api_url + urlencode(list(encode_dict_to_bytes(params)))
-    resp = requests.get(full_url)
+    resp = requests_get(full_url)
     data = resp.json()
     user = data['query']['globalallusers'][0]
     if user['name'] == username:

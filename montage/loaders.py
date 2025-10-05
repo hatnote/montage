@@ -8,11 +8,10 @@ import re
 
 from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
-import requests
 
 import montage.rdb  # TODO: circular import
 from .labs import get_files, get_file_info
-from .utils import unicode
+from .utils import unicode, requests_get, requests_post
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
 
@@ -159,7 +158,7 @@ def get_entries_from_gist(raw_url, source='local'):
     if 'githubusercontent' not in raw_url:
         raw_url = raw_url.replace('gist.github.com',
                                   'gist.githubusercontent.com') + '/raw'
-    resp = requests.get(raw_url)
+    resp = requests_get(raw_url)
 
     try:
         ret, warnings = load_full_csv(BytesIO(resp.content))
@@ -174,7 +173,7 @@ def get_entries_from_gsheet(raw_url, source='local'):
     #TODO: add support for sheet tabs
     doc_id = parse_doc_id(raw_url)
     url = GSHEET_URL % doc_id
-    resp = requests.get(url)
+    resp = requests_get(url)
 
     if not 'text/csv' in resp.headers['content-type']:
         raise ValueError('cannot load Google Sheet "%s" (is link sharing on?)' % raw_url)
@@ -237,7 +236,7 @@ def get_from_category_remote(category_name):
 def get_from_remote(url, params):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     data = json.dumps(params)
-    response = requests.post(url, data=data, headers=headers)
+    response = requests_post(url, data=data, headers=headers)
     resp_json = response.json()
     file_infos = resp_json['file_infos']
     no_infos = resp_json.get('no_info')
