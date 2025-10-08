@@ -151,6 +151,7 @@
 	"montage-vote-last-version": "Template for displaying the last version of an image with a timestamp.",
 	"montage-vote-all-done": "Message displayed when the user has finished voting on all images.",
 	"montage-vote-no-images": "Message displayed when there are no images left to vote on.",
+	"montage-vote-no-images-warning": "Warning message indicating that there might be a delay in loading the next tasks due to browser loading times. (temporary)",
 	"montage-vote-hide-panel": "Label for the action to hide the voting panel.",
 	"montage-vote-show-panel": "Label for the action to show the voting panel.",
 	"montage-vote-image": "Label for the image field during voting.",
