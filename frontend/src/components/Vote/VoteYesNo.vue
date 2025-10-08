@@ -147,6 +147,9 @@
       <p class="greyed">
         {{ $t('montage-vote-no-images') }}
       </p>
+      <p class="greyed">
+        {{ $t('montage-vote-no-images-warning') }}
+      </p>
       <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
         <pencil class="icon-small" />
         {{ $t('montage-edit-previous-vote') }}
