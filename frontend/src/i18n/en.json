@@ -149,7 +149,7 @@
   "montage-vote-last-version": "Last version at {0}",
   "montage-vote-all-done": "All done!",
   "montage-vote-no-images": "You voted on all images in this round. You can still edit your previous votes using the button below.",
-  "montage-vote-no-images-warning": "WARNING - there is a chance that your browser is still loading the next tasks.",
+  "montage-vote-no-images-warning": "WARNING - there is a chance that your browser is still loading the next tasks. Please check the main page of Montage to verify if 'your progress' is indeed 100%.",
   "montage-vote-hide-panel": "Hide panel",
   "montage-vote-show-panel": "Show panel",
   "montage-vote-image": "Image",
