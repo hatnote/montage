@@ -185,5 +185,16 @@
   "permission-denied-title": "Permission Denied",
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
-  "montage-required-voting-deadline": "Choose a valid voting deadline"
+  "montage-required-voting-deadline": "Choose a valid voting deadline",
+  "montage-notify-users": "Notify Users",
+  "montage-notify-jurors": "Notify Jurors",
+  "montage-notify-title": "Title",
+  "montage-notify-title-placeholder": "Enter notification title",
+  "montage-notify-description": "Description",
+  "montage-notify-description-placeholder": "Enter notification description",
+  "montage-send-notification": "Send Notification",
+  "montage-notify-error": "Please fill in both title and description.",
+  "montage-notify-success": "Notification sent successfully.",
+  "montage-campaign-name": "Campaign",
+  "montage-jurors-list": "Jurors"
 }
