@@ -36,7 +36,7 @@
         <cdx-button
           v-if="!showAddRoundForm"
           action="progressive"
-          @click="addRound"
+          @click="campaignRounds.some(r => r.status == 'active' || r.status=='paused') ? (ActiveGoalAlert = true) : addRound()"
           :disabled="campaign.isArchived"
           icon
           class="add-round-button"
@@ -142,11 +142,23 @@
         />
       </cdx-field>
     </div>
+
   </div>
+  <cdx-dialog
+    v-model:open="ActiveGoalAlert"
+    title="Round already active" 
+    :primary-action="primaryAction"
+    @primary="ActiveGoalAlert=false"
+  >
+    <p>
+      You already have an active round in this campaign. Please complete or close the current round before starting a new one.
+    </p>
+  </cdx-dialog>
+
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/utils'
@@ -159,7 +171,7 @@ import { z } from 'zod'
 import RoundView from '@/components/Round/RoundView.vue'
 import RoundNew from '@/components/Round/RoundNew.vue'
 import UserList from '@/components/UserList.vue'
-import { CdxButton, CdxTextInput, CdxField } from '@wikimedia/codex'
+import { CdxButton, CdxTextInput, CdxField, CdxDialog } from '@wikimedia/codex'
 
 // Icons
 import CogIcon from 'vue-material-design-icons/Cog.vue'
@@ -179,6 +191,7 @@ const campaignId = route.params.id.split('-')[0]
 const campaignEditMode = ref(false)
 const showAddRoundForm = ref(false)
 const canCloseCampaign = ref(false)
+const ActiveGoalAlert = ref(false)
 
 const campaign = ref({})
 const campaignRounds = ref([])
@@ -199,6 +212,11 @@ const errors = ref({
   closeTime: '',
   coordinators: ''
 })
+
+const primaryAction = {
+	label: 'Okay',
+	actionType: 'progressive'
+};
 
 const schema = z.object({
   name: z.string().min(1, $t('montage-required-campaign-name')),
