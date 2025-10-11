@@ -9,6 +9,8 @@ from boltons.strutils import slugify
 from .rdb import JurorDAO
 from .utils import format_date, PermissionDenied, InvalidAction
 import six
+import html
+
 
 MAX_RATINGS_SUBMIT = 100
 VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
@@ -261,7 +263,7 @@ def submit_ratings(user_dao, request_dict):
             if len(review_stripped) > 8192:
                 raise ValueError('review must be less than 8192 '
                                  'chars, not %r' % len(review_stripped))
-            review_map[task_id] = review_stripped
+            review_map[task_id] = html.escape(review_stripped, quote=True)
 
     try:
         id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
