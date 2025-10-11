@@ -56,7 +56,7 @@
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
+                <cdx-lookup data-testid="montage-round-category" v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
                   :placeholder="$t('montage-round-category-placeholder')" @input="searchCategory">
                   <template #label>{{ $t('montage-round-category-label') }}</template>
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
@@ -92,7 +92,7 @@
                 </template>
               </cdx-field>
               <cdx-field>
-                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" />
+                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" data-testid="userlist-search" />
                 <template #label>{{ $t('montage-label-round-jurors') }}</template>
                 <template #help-text>
                   <p>{{ $t('montage-round-jurors-description') }}</p>
@@ -124,7 +124,7 @@
             <cdx-button :disabled="isLoading" action="progressive" weight="primary" @click="submitRound()">
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
-            <cdx-button action="destructive" @click="cancelRound()">
+            <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
@@ -313,6 +313,7 @@ const submitRound = () => {
       .advanceRound(prevRound.id, payload)
       .then(() => {
         alertService.success($t('montage-round-added'))
+        console.log('Round created successfully')
       })
       .catch(alertService.error)
       .finally(() => {
