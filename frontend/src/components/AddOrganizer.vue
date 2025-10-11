@@ -21,7 +21,6 @@ import alertService from '@/services/alertService'
 
 // Components
 import { CdxButton } from '@wikimedia/codex'
-import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
 import UserList from './UserList.vue'
 
 // Props

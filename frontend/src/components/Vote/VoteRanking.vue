@@ -168,15 +168,13 @@ const editPreviousVotes = () => {
 watch(
   () => props.tasks,
   (tasks) => {
+    if (!tasks) return;
+
     console.log(tasks)
     images.value = tasks.tasks
     stats.value = tasks.stats
-  }
-)
-
-watch(images, (img) => {
-  console.log(img)
-}
+  },
+  { immediate: true }
 )
 </script>
 
