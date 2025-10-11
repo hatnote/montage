@@ -380,8 +380,15 @@ watch(
 watch(
   () => props.tasks,
   (tasks) => {
+    if (!tasks) return;
+
     images.value = tasks.tasks
     stats.value = tasks.stats
+
+    // Set current and next rating immediately
+    rating.value.current = images.value?.[0]
+    rating.value.currentIndex = 0
+    rating.value.next = images.value?.[1] || null
 
     // Preload the images from tasks
     for (let i = 0; i < images.value.length; i++) {
@@ -390,12 +397,15 @@ watch(
       img.src = getImageName(images.value[index])
       imageCache.set(images.value[index].entry.id, img)
     }
-  }
+  },
+  { immediate: true }
 )
 
 watch(images, (imgs) => {
-  rating.value.current = imgs?.[0]
-  rating.value.next = imgs?.[1] || null
+  if (imgs && imgs.length > 0 && !rating.value.current) {
+    rating.value.current = imgs?.[0]
+    rating.value.next = imgs?.[1] || null
+  }
 })
 
 watch( voteContainer, () => {

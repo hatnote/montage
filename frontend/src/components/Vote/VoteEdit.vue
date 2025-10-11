@@ -1,5 +1,11 @@
 <template>
-  <div class="edit-vote-screen" v-if="round?.campaign.status === 'active' && votes?.length" @scroll="handleScroll"
+  <!-- Loading state -->
+  <div v-if="!round || !votes" class="loading-container">
+    <clip-loader class="loading-bar" size="85px" />
+  </div>
+
+  <!-- Main edit screen -->
+  <div v-else-if="round.campaign.status === 'active' && votes.length" class="edit-vote-screen" @scroll="handleScroll"
     ref="editVoteContainer">
     <div class="round-header">
       <div>
@@ -102,13 +108,17 @@
       </draggable>
     </div>
   </div>
-  <div v-if="round?.campaign.status === 'active' && !votes?.length">
+
+  <!-- No votes yet -->
+  <div v-else-if="round.campaign.status === 'active' && !votes.length">
     <div>
       <h3>{{ $t('montage-no-votes-yet') }}</h3>
       <p class="greyed">{{ $t('montage-no-votes-this-round') }}</p>
     </div>
   </div>
-  <div v-if="round?.campaign.status !== 'active'">
+
+  <!-- Round not active -->
+  <div v-else>
     <h3>{{ $t('montage-vote-round-inactive') }}</h3>
     <p class="greyed">{{ $t('montage-vote-contact-organizer') }}</p>
   </div>
@@ -387,6 +397,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 156.5px);
+  width: 100%;
+}
+
 .edit-vote-screen {
   padding: 20px;
   overflow-y: auto;
