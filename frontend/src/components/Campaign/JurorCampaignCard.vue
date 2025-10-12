@@ -31,7 +31,7 @@
                   <strong>{{ $t('montage-your-progress') }}:</strong>
                   {{ (100 - round.percent_tasks_open).toFixed(1) }}% ({{
                     $t('montage-progress-status', [
-                      round.total_open_tasks ?? 0,
+                      (round.total_tasks - round.total_open_tasks) ?? 0,
                       round.total_tasks ?? 0
                     ])
                   }})
