@@ -148,3 +148,5 @@ cypress/fixtures/example.json
 # Ignore screenshots & videos from Cypress runs
 cypress/screenshots/
 cypress/videos/
+
+.vscode/
