@@ -25,9 +25,7 @@ app.directive('tooltip', CdxTooltip)
 app.component('clip-loader', ClipLoader)
 app.component('date-picker', DatePicker)
 
-app.mount('#app')
-
 // Load additional language messages dynamically
 loadMessages().then(() => {
-  console.log('All language messages loaded');
+  app.mount('#app')
 });
