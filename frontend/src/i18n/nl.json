@@ -154,6 +154,7 @@
 	"montage-vote-last-version": "Laatste versie op {0}",
 	"montage-vote-all-done": "Alles is klaar!",
 	"montage-vote-no-images": "U heeft op alle afbeeldingen in deze ronde gestemd. U kunt de stemmen nog bewerken met de onderstaande knop.",
+	"montage-vote-no-images-warning": "WAARSCHUWING: het is mogelijk dat uw browser de volgende taken nog aan het laden is. Controleer op de hoofdpagina van Montage of ‘uw voortgang’ inderdaad 100% is.",
 	"montage-vote-hide-panel": "Verberg paneel",
 	"montage-vote-show-panel": "Geef paneel weer",
 	"montage-vote-image": "Afbeelding",

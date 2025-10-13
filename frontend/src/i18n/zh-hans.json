@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Chimes",
-			"Key0121"
+			"Key0121",
+			"TFX202X"
 		]
 	},
 	"montage-about": "关于",
@@ -151,6 +152,7 @@
 	"montage-vote-last-version": "最新版本为 {0}",
 	"montage-vote-all-done": "全部完成！",
 	"montage-vote-no-images": "您在本轮对所有图片进行了投票。您仍可以使用下面的按钮编辑之前的投票。",
+	"montage-vote-no-images-warning": "警告 - 您的浏览器可能仍在加载下一项任务。请检查Montage的主页，以确认\"您的进度\"是否确实达到100%。",
 	"montage-vote-hide-panel": "隐藏面板",
 	"montage-vote-show-panel": "显示面板",
 	"montage-vote-image": "图像",

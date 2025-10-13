@@ -150,6 +150,7 @@
 	"montage-vote-last-version": "最新版本為 {0}",
 	"montage-vote-all-done": "全部完成！",
 	"montage-vote-no-images": "您已對此回合的所有圖片做出了投票。您可以使用下面的按鈕來編輯您先前的投票。",
+	"montage-vote-no-images-warning": "警告 - 您的瀏覽器可能仍在載入後續任務。請檢查 Montage 主頁來確認「您的進度」是否確實為 100%。",
 	"montage-vote-hide-panel": "隱藏面板",
 	"montage-vote-show-panel": "顯示面板",
 	"montage-vote-image": "圖片",
