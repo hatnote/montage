@@ -1,13 +1,18 @@
-
 from __future__ import absolute_import
 from itertools import groupby
+import os
+import requests
+from mwoauth import ConsumerToken, Handshaker, initiate, complete, Handshaker
+from requests_oauthlib import OAuth1Session
+
 
 from clastic import GET, POST
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
+import json
 
 from .rdb import JurorDAO
-from .utils import format_date, PermissionDenied, InvalidAction
+from .utils import format_date, PermissionDenied, InvalidAction, get_env_name, load_env_config
 import six
 import html
 
@@ -15,6 +20,8 @@ import html
 MAX_RATINGS_SUBMIT = 100
 VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
 VALID_YESNO = (0.0, 1.0)
+
+WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
 
 # these are set at the bottom of the module
@@ -50,7 +57,8 @@ def get_juror_routes():
            POST('/juror/round/<round_id:int>/<entry_id:int>/unfave',
                 remove_fave),
            POST('/juror/round/<round_id:int>/<entry_id:int>/flag', submit_flag),
-           GET('/juror/faves', get_faves)]
+           GET('/juror/faves', get_faves),
+           POST('/juror/notify', send_notification)]
     ui = []
     return api, ui
 
@@ -373,6 +381,74 @@ def submit_flag(user_dao, round_id, entry_id, request_dict):
     reason = request_dict.get('reason')
     juror_dao.flag(round_id, entry_id, reason)
 
+
+def send_notification(user_dao, request_dict, cookie):
+    notification_title = request_dict.get('title')
+    notification_description = request_dict.get('description')
+    jurorsList = request_dict.get('jurorsList')
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "montage/1.0 (keerthanthulasi@gmail.com)",
+    }
+
+    if not notification_title or not notification_description or not jurorsList:
+        print("Missing required parameters.")
+        return {'status': 'failure', 'message': 'Missing required parameters.'}
+
+    url = "https://test.wikipedia.org/w/api.php"
+    if len(jurorsList) == 0:
+        print("No jurors to notify.")
+        return {'status': 'failure', 'message': 'No jurors to notify.'}
+    else:
+        session = authenticated_session(cookie)
+
+        token_url = "https://www.mediawiki.org/w/api.php"
+
+        PARAMS = {
+            "action": "query",
+            "meta": "tokens",
+            "type": "csrf",
+            "format": "json"
+        }
+
+        R = session.get(url=token_url, params=PARAMS)
+        DATA = R.json()
+        CSRF_TOKEN = DATA['query']['tokens']['csrftoken']
+
+        for juror in jurorsList:
+            try:
+                data = {
+                    "action": "edit",
+                    "format": "json",
+                    "title": f"User talk:{juror}",
+                    "section": "new",
+                    "sectiontitle": notification_title,
+                    "text": notification_description,
+                    "formatversion": "2",
+                    "token": CSRF_TOKEN,
+                }
+                response = requests.post(url, data=data, headers=headers, auth=session.auth)
+            except Exception as e:
+                print(f"Error notifying {juror}: {e}")
+    return {'status': 'success', 'message': 'Notifications sent successfully.'}
+
+
+def authenticated_session(cookie):
+    env_name = get_env_name()
+    config = load_env_config(env_name=env_name)
+    consumer = ConsumerToken(config['oauth_consumer_token'], config['oauth_secret_token'])
+    handshaker = Handshaker(WIKI_OAUTH_URL, consumer)
+    access_token = cookie.get('access_token')
+    session = OAuth1Session(
+        client_key=consumer.key,
+        client_secret=consumer.secret,
+        resource_owner_key=access_token[0],
+        resource_owner_secret=access_token[1]
+    )
+    return session
+
+    
 
 
 JUROR_API_ROUTES, JUROR_UI_ROUTES = get_juror_routes()

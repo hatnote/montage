@@ -198,6 +198,7 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
 
     cookie['userid'] = identity['sub']
     cookie['username'] = identity['username']
+    cookie['access_token'] = access_token
 
     return_to_url = cookie.get('return_to_url')
     # TODO: Clean up

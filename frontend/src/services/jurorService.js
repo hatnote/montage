@@ -52,7 +52,12 @@ const jurorService = {
         return data
       })
     })
-  }
+  },
+
+  sendNotification: (payload) => apiBackend.post(`/juror/notify`, payload)
+  
 }
+
+
 
 export default jurorService

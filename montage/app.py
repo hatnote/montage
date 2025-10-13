@@ -148,15 +148,20 @@ def create_app(env_name='prod', config=None):
     consumer_token = ConsumerToken(config['oauth_consumer_token'],
                                    config['oauth_secret_token'])
 
+
+
     resources = {'config': config,
                  'consumer_token': consumer_token,
                  'root_path': root_path,
-                 'ashes_renderer': renderer}
+                 'ashes_renderer': renderer,
+                }
 
     debug_errors = bool(os.getenv('MONTAGE_PDB', False)) or config['__env__'] == 'devtest'
     api_app = Application(api_routes, resources,
                           middlewares=[MessageMiddleware(debug_errors=debug_errors)] + middlewares,
                           render_factory=render_basic)
+    
+
     ui_app = Application(ui_routes, resources,
                          middlewares=[MessageMiddleware(debug_errors=debug_errors, use_ashes=True)] + middlewares,
                          render_factory=renderer)
