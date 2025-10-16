@@ -6,6 +6,14 @@ db_url: "sqlite:///tmp_montage.db"
 cookie_secret: ReplaceThisWithSomethingSomewhatSecret
 superuser: Slaporte
 
+database:
+  type: mysql
+  host: "localhost"
+  name: "enwiki_p"
+  username: "db_username"
+  password: "db_password"
+  read_default_file: "~/replica.my.cnf"
+
 dev_local_cookie_value: "contact maintainers for details"
 dev_remote_cookie_value: "contact maintainers for details"
 oauth_secret_token: "see note below"
