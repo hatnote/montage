@@ -61,3 +61,15 @@ function hexToRgba(hex, alpha) {
 function cutHex(h) {
   return h.startsWith('#') ? h.substring(1, 7) : h
 }
+
+export function getCommonsImageUrl(image, width = 1280) {
+  if (!image) return null
+  
+  const imageName = image.entry?.name || image
+  const baseUrl = '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/'
+  const encodedName = encodeURIComponent(imageName)
+  
+  return width 
+    ? `${baseUrl}${encodedName}&width=${width}`
+    : `${baseUrl}${encodedName}`
+}

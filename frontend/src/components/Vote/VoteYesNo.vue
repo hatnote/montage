@@ -10,7 +10,7 @@
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
       <img
         :class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
-        :src="getImageName(rating.current)"
+        :src="getCommonsImageUrl(rating.current)"
         @load="handleImageLoad"
         @error="handleImageLoad"
       />
@@ -37,7 +37,7 @@
         <p class="greyed">{{ $t('montage-vote-image-remains', [stats.total_open_tasks]) }}</p>
       </div>
       <div class="vote-file-links">
-        <a :href="rating.current.entry.url" target="_blank">
+        <a :href="getCommonsImageUrl(rating.current, null)" target="_blank">
           <cdx-button weight="quiet">
             <image-icon class="icon-small" /> {{ $t('montage-vote-show-full-size') }}
           </cdx-button>
@@ -168,6 +168,7 @@ import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
+import { getCommonsImageUrl } from '@/utils'
 
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
@@ -237,19 +238,6 @@ const formattedDate = (timestamp) => {
   }).format(dateObj)
 }
 
-const getImageName = (image) => {
-  if (!image) return null
-
-  const entry = image.entry
-  const url = [
-    '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
-    encodeURIComponent(entry.name),
-    '&width=1280'
-  ].join('')
-
-  return url
-}
-
 const getNextImage = () => {
   rating.value.currentIndex = (rating.value.currentIndex + 1) % images.value?.length
   rating.value.current = images.value[rating.value.currentIndex]
@@ -266,7 +254,7 @@ const getTasks = () => {
     // Preload the next 10 images
     for (let i = 0; i < 10 && i < images.value.length; i++) {
       const img = new Image()
-      img.src = getImageName(images.value[i])
+      img.src = getCommonsImageUrl(images.value[i])
       imageCache.set(images.value[i].entry.id, img)
     }
   })
@@ -351,10 +339,6 @@ const handleKeyDown = (event) => {
     }
 }
 
-const tooltipText = computed(() =>
-  showSidebar.value ? $t('montage-vote-hide-panel') : $t('montage-vote-show-panel')
-)
-
 // Get the formatted date and time of current image
 const formattedDateTime = computed(() => {
   const uploadDate = rating.value.current.entry.upload_date
@@ -397,7 +381,7 @@ watch(
     for (let i = 0; i < images.value.length; i++) {
       const index = (rating.value.currentIndex + i) % images.value.length
       const img = new Image()
-      img.src = getImageName(images.value[index])
+      img.src = getCommonsImageUrl(images.value[index])
       imageCache.set(images.value[index].entry.id, img)
     }
   },

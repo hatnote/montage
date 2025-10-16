@@ -55,7 +55,7 @@
           <heart />
         </div>
         <div class="gallery-image-container">
-          <img :src="getImageName(image)" />
+          <img :src="getCommonsImageUrl(image)" />
         </div>
         <div style="font-size: 14px; color: gray">
           <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
@@ -89,7 +89,7 @@
             <arrow-expand-all />
           </div>
           <div class="gallery-image-ranking-container">
-            <img :src="getImageName(image)" />
+            <img :src="getCommonsImageUrl(image)" />
           </div>
           <div class="gallery-footer">
             <h3 class="gallery-footer-name">
@@ -137,6 +137,7 @@ import utc from 'dayjs/plugin/utc'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
+import { getCommonsImageUrl } from '@/utils'
 
 // Components
 import { CdxButton, CdxSelect } from '@wikimedia/codex'
@@ -245,27 +246,8 @@ function getPastVotes(id) {
     .catch(alertService.error)
 }
 
-const getImageName = (image) => {
-  if (!image) {
-    return null
-  }
-  return [
-    '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/',
-    encodeURIComponent(image.entry.name),
-    '&width=1280'
-  ].join('')
-}
-
 const isVoting = (type) => {
   return round.value && round.value.vote_method === type
-}
-
-const encodeName = (image) => {
-  return encodeURIComponent(image.entry.name)
-}
-
-const openURL = (url) => {
-  window.open(url, '_blank')
 }
 
 const loadMore = () => {

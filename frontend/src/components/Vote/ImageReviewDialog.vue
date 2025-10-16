@@ -1,12 +1,12 @@
 <template>
     <div class="vote-image-review-dialog">
         <div class="vote-image-review-dialog-image-container">
-            <img :src="image.entry.url" class="vote-image-review-dialog-image" />
+            <img :src="getCommonsImageUrl(image)" class="vote-image-review-dialog-image" />
         </div>
         <div class="vote-image-review-dialog-review-section">
             <h3>{{ image.name.split('_').join(' ') }}</h3>
             <div class="vote-file-links">
-                <a :href="image.entry.url" target="_blank">
+                <a :href="getCommonsImageUrl(image, null)" target="_blank">
                     <cdx-button>
                         <image-icon class="icon-small" /> Show full-size
                     </cdx-button>
@@ -55,6 +55,7 @@
 import { defineProps, defineExpose, ref, computed } from 'vue';
 // import { useI18n } from 'vue-i18n';
 import { CdxTextArea, CdxButton } from '@wikimedia/codex';
+import { getCommonsImageUrl } from '@/utils';
 
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LinkIcon from 'vue-material-design-icons/Link.vue'
