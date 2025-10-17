@@ -16,33 +16,33 @@ BASE = u'https://upload.wikimedia.org/wikipedia/commons'
 
 
 def make_mw_img_url(title, size=None):
-    "returns a unicode object URL"
+    """Returns a unicode object URL using Special:Redirect/file/ endpoint.
+    
+    This endpoint handles file moves/renames on Wikimedia Commons automatically.
+    """
     if isinstance(title, unicode):
-        thash = hashlib.md5(title.encode('utf8')).hexdigest()
         url_title = six.moves.urllib.parse.quote(title.encode('utf8'))
     elif isinstance(title, bytes):
-        thash = hashlib.md5(title).hexdigest()
         url_title = six.moves.urllib.parse.quote(title)
     else:
         raise TypeError('image title must be bytes or unicode')
 
+    base_url = u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/'
+    
     if size is None:
-        size = 'orig'
+        # No size parameter = full size
+        return base_url + url_title
     elif isinstance(size, int):
-        size = '%spx' % size
+        width = size
     elif str(size).lower().startswith('sm'):
-        size = '240px'
+        width = 240
     elif str(size).lower().startswith('med'):
-        size = '480px'
-
-    if size != 'orig' and not str(size).endswith('px'):
+        width = 480
+    elif str(size).lower() == 'orig':
+        # 'orig' means full size
+        return base_url + url_title
+    else:
         raise ValueError('size expected one of "sm", "med", "orig",'
                          ' or an integer pixel value, not %r' % size)
-
-    if size == 'orig':
-        parts = [BASE, thash[:1], thash[:2], url_title]
-    else:
-        parts = [BASE, 'thumb', thash[:1], thash[:2],
-                 url_title, '%s-%s' % (size, url_title)]
-
-    return u'/'.join(parts)
+    
+    return u'%s%s&width=%d' % (base_url, url_title, width)
