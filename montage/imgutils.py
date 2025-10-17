@@ -16,9 +16,10 @@ BASE = u'https://upload.wikimedia.org/wikipedia/commons'
 
 
 def make_mw_img_url(title, size=None):
-    """Returns a unicode object URL using Special:Redirect/file/ endpoint.
+    """Returns a unicode object URL that handles file moves/renames on Wikimedia Commons.
     
-    This endpoint handles file moves/renames on Wikimedia Commons automatically.
+    Uses thumb.php for sized images (better redirect handling for moved files)
+    and Special:Redirect for full-size images.
     """
     if isinstance(title, unicode):
         url_title = six.moves.urllib.parse.quote(title.encode('utf8'))
@@ -26,12 +27,10 @@ def make_mw_img_url(title, size=None):
         url_title = six.moves.urllib.parse.quote(title)
     else:
         raise TypeError('image title must be bytes or unicode')
-
-    base_url = u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/'
     
     if size is None:
-        # No size parameter = full size
-        return base_url + url_title
+        # No size parameter = full size, use Special:Redirect
+        return u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/%s' % url_title
     elif isinstance(size, int):
         width = size
     elif str(size).lower().startswith('sm'):
@@ -39,10 +38,11 @@ def make_mw_img_url(title, size=None):
     elif str(size).lower().startswith('med'):
         width = 480
     elif str(size).lower() == 'orig':
-        # 'orig' means full size
-        return base_url + url_title
+        # 'orig' means full size, use Special:Redirect
+        return u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/%s' % url_title
     else:
         raise ValueError('size expected one of "sm", "med", "orig",'
                          ' or an integer pixel value, not %r' % size)
     
-    return u'%s%s&width=%d' % (base_url, url_title, width)
+    # Use thumb.php for thumbnails - handles moved files better
+    return u'https://commons.wikimedia.org/w/thumb.php?f=%s&w=%d' % (url_title, width)

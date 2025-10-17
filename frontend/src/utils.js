@@ -65,11 +65,18 @@ function cutHex(h) {
 export function getCommonsImageUrl(image, width = 1280) {
   if (!image) return null
   
-  const imageName = image.entry?.name || image
-  const baseUrl = '//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/'
+  // Handle different data structures:
+  // - image.entry.name (task/vote object with nested entry)
+  // - image.name (direct entry object or task with top-level name)
+  // - image (string filename)
+  const imageName = image.entry?.name || image.name || image
   const encodedName = encodeURIComponent(imageName)
   
-  return width 
-    ? `${baseUrl}${encodedName}&width=${width}`
-    : `${baseUrl}${encodedName}`
+  // Use thumb.php for sized images (handles moves/redirects better)
+  // Use Special:Redirect for full-size images
+  if (width) {
+    return `//commons.wikimedia.org/w/thumb.php?f=${encodedName}&w=${width}`
+  } else {
+    return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}`
+  }
 }
