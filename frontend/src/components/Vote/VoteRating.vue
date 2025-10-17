@@ -114,7 +114,7 @@
               </p>
             </div>
           </div>
-          <div class="vote-details-list-item vote-details-2-line">
+          <div class="vote-details-list-item vote-details-2-line" v-if="rating.current.history && rating.current.history.length > 0">
             <div class="icon-container">
               <history class="vote-details-icon" />
             </div>
@@ -375,11 +375,13 @@ watch(
     rating.value.next = images.value?.[1] || null
 
     // Preload the images from tasks
-    for (let i = 0; i < images.value.length; i++) {
-      const index = (rating.value.currentIndex + i) % images.value.length
-      const img = new Image()
-      img.src = getCommonsImageUrl(images.value[index])
-      imageCache.set(images.value[index].entry.id, img)
+    if (images.value && images.value.length > 0) {
+      for (let i = 0; i < images.value.length; i++) {
+        const index = (rating.value.currentIndex + i) % images.value.length
+        const img = new Image()
+        img.src = getCommonsImageUrl(images.value[index])
+        imageCache.set(images.value[index].entry.id, img)
+      }
     }
   },
   { immediate: true }

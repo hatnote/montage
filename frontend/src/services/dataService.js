@@ -14,6 +14,7 @@ const dataService = {
             action: 'query',
             prop: 'imageinfo',
             titles: part.map((image) => 'File:' + image).join('|'),
+            redirects: '1',
             format: 'json',
             iiprop: 'timestamp|user|userid|size|dimensions|url',
             iilimit: '10',
