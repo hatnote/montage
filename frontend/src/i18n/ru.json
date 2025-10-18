@@ -1,9 +1,9 @@
 {
-	"@metadata": {
-		"authors": [
-			"ajvol"
-		]
-	},
+  "@metadata": {
+    "authors": [
+      "ajvol"
+    ]
+  },
   "montage-title": "Montage",
   "montage-about": "Описание",
   "montage-credit": "от команды Montage",
