@@ -72,10 +72,10 @@ export function getCommonsImageUrl(image, width = 1280) {
   const imageName = image.entry?.name || image.name || image
   const encodedName = encodeURIComponent(imageName)
   
-  // Use thumb.php for sized images (handles moves/redirects better)
-  // Use Special:Redirect for full-size images
+  // Use Special:Redirect which works universally for all file types including TIFF
+  // It handles redirects for moved files and performs automatic format conversion
   if (width) {
-    return `//commons.wikimedia.org/w/thumb.php?f=${encodedName}&w=${width}`
+    return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}&width=${width}`
   } else {
     return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}`
   }

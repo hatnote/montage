@@ -55,7 +55,7 @@
           <heart />
         </div>
         <div class="gallery-image-container">
-          <img :src="getCommonsImageUrl(image)" />
+          <CommonsImage :image="image" :width="640" />
         </div>
         <div style="font-size: 14px; color: gray">
           <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
@@ -89,7 +89,7 @@
             <arrow-expand-all />
           </div>
           <div class="gallery-image-ranking-container">
-            <img :src="getCommonsImageUrl(image)" />
+            <CommonsImage :image="image" :width="640" />
           </div>
           <div class="gallery-footer">
             <h3 class="gallery-footer-name">
@@ -138,6 +138,7 @@ import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
 import { getCommonsImageUrl } from '@/utils'
+import CommonsImage from '@/components/CommonsImage.vue'
 
 // Components
 import { CdxButton, CdxSelect } from '@wikimedia/codex'

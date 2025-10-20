@@ -8,9 +8,10 @@
   >
     <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
-      <img
-        :class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
-        :src="getCommonsImageUrl(rating.current)"
+      <CommonsImage
+        :image="rating.current"
+        :width="1280"
+        :image-class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
         @load="handleImageLoad"
         @error="handleImageLoad"
       />
@@ -169,6 +170,7 @@ import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 import { getCommonsImageUrl } from '@/utils'
 
+import CommonsImage from '@/components/CommonsImage.vue'
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
 import ImageIcon from 'vue-material-design-icons/Image.vue'

@@ -18,8 +18,8 @@ BASE = u'https://upload.wikimedia.org/wikipedia/commons'
 def make_mw_img_url(title, size=None):
     """Returns a unicode object URL that handles file moves/renames on Wikimedia Commons.
     
-    Uses thumb.php for sized images (better redirect handling for moved files)
-    and Special:Redirect for full-size images.
+    Uses Special:Redirect which works for all file types including TIFF,
+    handles redirects for moved files, and performs automatic format conversion.
     """
     if isinstance(title, unicode):
         url_title = six.moves.urllib.parse.quote(title.encode('utf8'))
@@ -28,8 +28,8 @@ def make_mw_img_url(title, size=None):
     else:
         raise TypeError('image title must be bytes or unicode')
     
-    if size is None:
-        # No size parameter = full size, use Special:Redirect
+    if size is None or str(size).lower() == 'orig':
+        # No size parameter = full size, use Special:Redirect without width
         return u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/%s' % url_title
     elif isinstance(size, int):
         width = size
@@ -37,12 +37,9 @@ def make_mw_img_url(title, size=None):
         width = 240
     elif str(size).lower().startswith('med'):
         width = 480
-    elif str(size).lower() == 'orig':
-        # 'orig' means full size, use Special:Redirect
-        return u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/%s' % url_title
     else:
         raise ValueError('size expected one of "sm", "med", "orig",'
                          ' or an integer pixel value, not %r' % size)
     
-    # Use thumb.php for thumbnails - handles moved files better
-    return u'https://commons.wikimedia.org/w/thumb.php?f=%s&w=%d' % (url_title, width)
+    # Use Special:Redirect with width parameter - works universally for all formats
+    return u'https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/%s&width=%d' % (url_title, width)

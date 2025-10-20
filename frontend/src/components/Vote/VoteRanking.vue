@@ -37,7 +37,7 @@
             <arrow-expand-all />
           </div>
           <div class="vote-gallery-image-container">
-            <img :src="getCommonsImageUrl(image)" />
+            <CommonsImage :image="image" :width="640" />
           </div>
           <div class="vote-gallery-footer">
             <h3 class="vote-gallery-footer-name">
@@ -85,6 +85,7 @@ import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
 import { getCommonsImageUrl } from '@/utils'
+import CommonsImage from '@/components/CommonsImage.vue'
 
 // Components
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
