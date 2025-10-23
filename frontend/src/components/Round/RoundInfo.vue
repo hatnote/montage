@@ -208,7 +208,7 @@ const finalizeRound = () => {
       .finalizeRound(props.round.id)
       .then((data) => {
         if (data.status === 'success') {
-          alertService.success("Round is successfully finalized.")
+          alertService.success($t('montage-round-finalized'))
         }
         // Refresh the page
         location.reload()
