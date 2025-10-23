@@ -49,6 +49,8 @@ const adminService = {
 
   advanceRound: (id, data) => apiBackend.post(`admin/round/${id}/advance`, data),
 
+  finalizeRound: (id) => apiBackend.post(`/admin/round/${id}/finalize`),
+
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,

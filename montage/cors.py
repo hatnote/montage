@@ -79,16 +79,21 @@ class CORSMiddleware(Middleware):
         return resp
     
     def _add_cors_headers(self, response, origin):
-        if origin:
-            if self.allow_all_origins or origin in self.allow_origins:
-                response.headers['Access-Control-Allow-Origin'] = origin
-                response.vary.add('Origin')
-            
-        if self.allow_credentials:
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            
-        if self.expose_headers:
-            response.headers['Access-Control-Expose-Headers'] = ', '.join(self.expose_headers)
+        try:
+            if origin:
+                if self.allow_all_origins or origin in self.allow_origins:
+                    response.headers['Access-Control-Allow-Origin'] = origin
+                    if hasattr(response, 'vary'):
+                        response.vary.add('Origin')
+
+            if self.allow_credentials:
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+            if self.expose_headers:
+                response.headers['Access-Control-Expose-Headers'] = ', '.join(self.expose_headers)
+        except (AttributeError, TypeError):
+            # Response object doesn't support CORS headers (e.g., exceptions)
+            pass
             
     def __repr__(self):
         cn = self.__class__.__name__

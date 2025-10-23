@@ -119,14 +119,9 @@
       <pause style="font-size: 6px" /> {{ $t('montage-round-pause') }}
     </cdx-button>
 
-    <!-- <cdx-button
-      :disabled="!roundDetails?.is_closable"
-      @click="finalizeRound"
-      action="progressive"
-      weight="primary"
-    >
+    <cdx-button v-if="round.status !== 'finalized'" @click="finalizeRound" action="progressive">
       <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
-    </cdx-button> -->
+    </cdx-button>
 
     <cdx-button @click="downloadResults">
       <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
@@ -199,9 +194,28 @@ const pauseRound = () => {
     .catch(alertService.error)
 }
 
-// const finalizeRound = () => {
-//   console.log($t('montage-round-finalized'))
-// }
+const finalizeRound = () => {
+  const completionPercentage = Math.round(roundDetails.value?.is_closable || 0)
+
+  const confirmText = completionPercentage === 100
+    ? "All votes are done. Click OK to confirm finalize round."
+    : `Only ${completionPercentage}% of votes are complete. Click OK to finalize anyway.`
+
+  const shouldFinalize = confirm(confirmText)
+
+  if (shouldFinalize) {
+    adminService
+      .finalizeRound(props.round.id)
+      .then((data) => {
+        if (data.status === 'success') {
+          alertService.success("Round is successfully finalized.")
+        }
+        // Refresh the page
+        location.reload()
+      })
+      .catch(alertService.error)
+  }
+}
 
 function downloadResults() {
   const url = adminService.downloadRound(props.round.id)
