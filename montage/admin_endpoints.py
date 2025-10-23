@@ -3,21 +3,19 @@ import unicodecsv
 import io
 import datetime
 
-from collections import defaultdict
 
 from clastic import GET, POST, Response
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
-from boltons.timeutils import isoparse
 
 from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
-                   DoesNotExist,
                    NotImplementedResponse,
                    js_isoparse)
 
-from .rdb import (CoordinatorDAO,
+from .rdb import (FINALIZED_STATUS,
+                 CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
@@ -61,6 +59,7 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
+           POST('/admin/round/<round_id:int>/finalize', finalize_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
            POST('/admin/round/<round_id:int>/cancel', cancel_round),
@@ -416,6 +415,12 @@ def pause_round(user_dao, round_id, request_dict):
     coord_dao.pause_round(round_id)
     return {'data': 'paused'}
 
+def finalize_round(user_dao, round_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    rnd.status = FINALIZED_STATUS
+
+    return {'status': 'success'}
 
 def edit_campaign(user_dao, campaign_id, request_dict):
     """

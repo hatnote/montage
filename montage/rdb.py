@@ -6,7 +6,6 @@ from __future__ import print_function
 import json
 import time
 import random
-import string
 import datetime
 import itertools
 from collections import Counter, defaultdict
@@ -25,7 +24,7 @@ from sqlalchemy import (Text,
                         TIMESTAMP,
                         ForeignKey,
                         inspect)
-from sqlalchemy.sql import func, asc, distinct
+from sqlalchemy.sql import func, asc
 from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
@@ -325,9 +324,14 @@ class Round(Base):
     def check_closability(self):
         task_count = self._get_task_count()
         open_task_count = self._get_open_task_count()
-        if open_task_count == 0 and task_count:
-            return True
-        return False
+
+        if task_count == 0:
+            return 100
+
+        completed_tasks = task_count - open_task_count
+        completion_percentage = round((completed_tasks / task_count) * 100, 2)
+
+        return completion_percentage
 
     def _get_rdb_session(self):
         rdb_session = inspect(self).session
@@ -1589,7 +1593,7 @@ class CoordinatorDAO(UserDAO):
         try:
             entries, warnings = loaders.get_entries_from_csv(csv_url,
                                                              source=source)
-        except ValueError as e:
+        except ValueError:
             raise InvalidAction('unable to load csv "%s"' % csv_url)
 
         entries, new_entry_count = self.add_entries(rnd, entries)
