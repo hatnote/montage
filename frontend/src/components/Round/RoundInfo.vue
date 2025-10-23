@@ -127,6 +127,10 @@
     >
       <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
     </cdx-button> -->
+    <cdx-button v-if="userStore.user?.is_maintainer" @click="goToEntryQuery">
+      <database-search style="font-size: 6px" />
+      {{ $t('montage-query-entries') }}
+    </cdx-button>
 
     <cdx-button @click="downloadResults">
       <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
@@ -141,6 +145,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
 
@@ -154,6 +160,10 @@ import Pause from 'vue-material-design-icons/Pause.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import ImageMultiple from 'vue-material-design-icons/ImageMultiple.vue'
+import DatabaseSearch from 'vue-material-design-icons/DatabaseSearch.vue'
+
+const router = useRouter()
+const userStore = useUserStore()
 
 const { t: $t } = useI18n()
 const props = defineProps({
@@ -234,6 +244,13 @@ function getRoundResults(round) {
       roundResults.value = data.data
     })
     .catch(alertService.error)
+}
+
+const goToEntryQuery = () => {
+  router.push({
+    name: 'entry-query',
+    query: { roundId: props.round.id }
+  })
 }
 
 onMounted(() => {

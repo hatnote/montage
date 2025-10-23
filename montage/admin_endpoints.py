@@ -3,23 +3,25 @@ import unicodecsv
 import io
 import datetime
 
-from collections import defaultdict
-
 from clastic import GET, POST, Response
-from clastic.errors import Forbidden
+from clastic.errors import Forbidden, NotFound
 from boltons.strutils import slugify
-from boltons.timeutils import isoparse
+from sqlalchemy.orm import joinedload
 
 from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
-                   DoesNotExist,
                    NotImplementedResponse,
                    js_isoparse)
 
 from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
-                 OrganizerDAO)
+                 OrganizerDAO,
+                 Entry,
+                 Round,
+                 RoundEntry,
+                 CANCELLED_STATUS)
+
 
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
@@ -39,6 +41,8 @@ def get_admin_routes():
            POST('/admin/series/<series_id:int>/edit', edit_series),
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/remove_organizer', remove_organizer),
+           GET('/admin/maintainer/round/<round_id:int>/entries/search', search_round_entries),
+           POST('/admin/maintainer/round/<round_id:int>/entry/<entry_id:int>/remove', remove_entry),
            POST('/admin/add_campaign', create_campaign),
            GET('/admin/users', get_users),
            GET('/admin/user', get_user),
@@ -952,6 +956,88 @@ def remove_organizer(user_dao, request_dict):
             'last_active_date': format_date(old_organizer.last_active_date)}
     return {'data': data}
 
+
+def search_round_entries(user_dao, round_id, request_dict):
+    """Search entries in a round (maintainer access)"""
+    maint_dao = MaintainerDAO(user_dao)
+
+    search = request_dict.get('search', '').strip()
+    limit = min(int(request_dict.get('limit', 100)), 500)
+    offset = int(request_dict.get('offset', 0))
+
+    query = (
+        maint_dao.query(RoundEntry)
+            .filter_by(round_id=round_id)
+            .join(Entry)
+            .options(joinedload('entry'))
+            .options(joinedload('votes'))
+    )
+
+    # Always filter out disqualified entries
+    query = query.filter(RoundEntry.dq_reason.is_(None))
+
+    if search:
+        query = query.filter(Entry.name.like(f'%{search}%'))
+
+    total = query.count()
+    results = query.order_by(Entry.name).limit(limit).offset(offset).all()
+
+    entries = []
+    for re in results:
+        entry_dict = re.entry.to_details_dict(with_uploader=True)
+        entry_dict['is_disqualified'] = re.dq_reason is not None
+        entry_dict['dq_reason'] = re.dq_reason
+        entry_dict['active_votes'] = len([v for v in re.votes if v.status == 'active'])
+        entry_dict['completed_votes'] = len([v for v in re.votes if v.status == 'complete'])
+        entries.append(entry_dict)
+
+    return {'data': {'entries': entries, 'total': total, 'limit': limit, 'offset': offset}}
+
+
+def remove_entry(user_dao, round_id, entry_id, request_dict):
+    """Remove entry from round (maintainer access)"""
+    
+    maint_dao = MaintainerDAO(user_dao)
+    
+    rnd = maint_dao.query(Round).filter_by(id=round_id).first()
+    if not rnd:
+        print("rount not found")
+        raise NotFound('round not found')
+
+    entry = maint_dao.query(Entry).get(entry_id)
+    if not entry:
+        raise NotFound('entry not found')
+    
+    round_entry = (maint_dao.query(RoundEntry)
+                  .filter_by(round_id=round_id)
+                  .join(Entry)
+                  .filter(Entry.id == entry_id)
+                  .first())
+    
+    if not round_entry:
+        raise NotFound('entry not in this round')
+    
+    reason = request_dict.get('reason', '').strip() or 'removed by maintainer'
+    cancel_date = datetime.datetime.utcnow()
+    cancelled_votes = 0
+    
+    for vote in round_entry.votes:
+        if vote.status != CANCELLED_STATUS:
+            vote.status = CANCELLED_STATUS
+            vote.modified_date = cancel_date
+            cancelled_votes += 1
+    
+    round_entry.dq_reason = f'MAINTAINER: {reason}'
+    round_entry.dq_user_id = maint_dao.user.id
+    
+    msg = f'{maint_dao.user.username} removed "{entry.name}" from round {rnd.name}. Reason: {reason}'
+    maint_dao.log_action('remove_entry', round=rnd, message=msg)
+    
+    return {'data': {
+        'entry_id': entry_id,
+        'entry_name': entry.name,
+        'cancelled_votes': cancelled_votes
+    }}
 
 # Endpoints restricted to organizers
 

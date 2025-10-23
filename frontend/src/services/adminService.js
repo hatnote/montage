@@ -49,6 +49,24 @@ const adminService = {
 
   advanceRound: (id, data) => apiBackend.post(`admin/round/${id}/advance`, data),
 
+  searchRoundEntries: (roundId, params) => {
+    const queryParams = new URLSearchParams()
+    if (params.search) queryParams.append('search', params.search)
+    if (params.limit) queryParams.append('limit', params.limit)
+    if (params.offset) queryParams.append('offset', params.offset)
+
+    return apiBackend.get(
+      `admin/maintainer/round/${roundId}/entries/search?${queryParams.toString()}`
+    )
+  },
+
+  removeEntry: (roundId, entryId, data) => {
+    return apiBackend.post(
+      `admin/maintainer/round/${roundId}/entry/${entryId}/remove`,
+      data
+    )
+  },
+
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,
