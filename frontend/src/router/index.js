@@ -11,6 +11,7 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
+import EntryQuery from '@/components/Maintainer/EntryQuery.vue'
 
 const routes = [
   {
@@ -46,6 +47,12 @@ const routes = [
     path: '/vote/:id/edit',
     name: 'vote-edit',
     component: VoteEditView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/entry-query',
+    name: 'entry-query',
+    component: EntryQuery,
     meta: { requiresAuth: true }
   },
   {
