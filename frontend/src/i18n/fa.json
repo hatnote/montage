@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Arian Ar"
+			"Arian Ar",
+			"Darafsh"
 		]
 	},
 	"montage-title": "مونتاژ",
@@ -42,6 +43,7 @@
 	"montage-required-campaign-url": "URL کمپین الزامی است",
 	"montage-invalid-campaign-url": "URL نامعتبر",
 	"montage-label-date-range": "بازه تاریخ (UTC)",
+	"montage-description-date-range": "وقتی تصاویر به مرحلهٔ نخست وارد شوند، تغییر تاریخ و زمان دیگر روی تصاویری که هیئت داوران می‌توانند ببینند تأثیری نخواهد داشت. بااین‌حال، اگر این مقادیر را پیش از وارد کردن به مرحلهٔ نخست تغییر دهید، فقط عکس‌هایی که پیش از زمان و تاریخ پایان بارگذاری شده‌اند برای هیئت داوران قابل مشاهده خواهند بود.",
 	"montage-label-open-date": "تاریخ بازشدن",
 	"montage-required-open-date": "تاریخ بازشدن الزامی است",
 	"montage-label-open-time": "زمان بازشدن",
@@ -109,7 +111,7 @@
 	"montage-round-pause": "مکث",
 	"montage-round-paused": "مرحله با موفقیت متوقف شد.",
 	"montage-round-added": "مرحله با موفقیت اضافه شد.",
-	"montage-round-finalize": "نهایی‌سازی",
+	"montage-round-finalize": "دور نهایی",
 	"montage-round-finalized": "دور با موفقیت نهایی شد.",
 	"montage-round-download-results": "بارگیری نتایج",
 	"montage-round-download-entries": "بارگیری ورودی‌ها",
@@ -118,6 +120,7 @@
 	"montage-round-source-csv": "URL فهرست پرونده‌ها",
 	"montage-round-source-filelist": "فهرست پرونده‌ها",
 	"montage-round-source-category-help": "دسته‌ای در ویکی‌انبار که تمام تصاویر مسابقه را جمع‌آوری می‌کند. مثال: mages from Wiki Loves Monuments 2017 in Ghana.",
+	"montage-round-source-csv-help": "فهرستی از پرونده‌ها که به‌صورت CSV ذخیره و سپس به‌عنوان Google Sheet یا Gist بارگذاری شده‌اند.",
 	"montage-round-source-selected-help": "فهرست پرونده‌ها، هر پرونده در یک خط بدون پیشوند File:.",
 	"montage-round-category-placeholder": "درج رده",
 	"montage-round-category-label": "درج رده",
@@ -163,6 +166,7 @@
 	"montage-vote-ordinal-place": "رتبه {0}",
 	"montage-vote-order-by": "ترتیب بر اساس:",
 	"montage-vote-gallery-size": "اندازه گالری",
+	"montage-voted-time": "{0} رأی داد",
 	"montage-no-votes-yet": "هنوز رأیی داده نشده!",
 	"montage-no-votes-this-round": "شما در این مرحله به هیچ تصویری رأی نداده‌اید.",
 	"montage-option-yes": "بله",
