@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Cabal"
+			"Cabal",
+			"Kuldeepburjbhalaike"
 		]
 	},
 	"montage-about": "ਬਾਬਤ",
@@ -35,7 +36,7 @@
 	"montage-round-pause": "ਰੋਕੋ",
 	"montage-round-source": "ਸਰੋਤ",
 	"montage-round-threshold": "ਹੱਦ",
-	"montage-vote-commons-page": "ਸ਼ਾਮਲਾਟ ਸਫ਼ਾ",
+	"montage-vote-commons-page": "ਕਾਮਨਜ਼ ਸਫ਼ਾ",
 	"montage-vote-accept": "ਸਵੀਕਾਰ ਕਰੋ",
 	"montage-vote-decline": "ਮਨਜ਼ੂਰ ਨਹੀਂ",
 	"montage-vote-actions": "ਕਾਰਵਾਈਆਂ",
