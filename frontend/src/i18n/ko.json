@@ -66,5 +66,6 @@
 	"montage-round-uploaders": "업로더",
 	"permission-denied-title": "권한이 없습니다",
 	"permission-denied-message": "이 문서에 접근하는 데 필요한 권한이 없습니다.",
-	"permission-denied-home": "홈으로 이동"
+	"permission-denied-home": "홈으로 이동",
+	"montage-required-fill-inputs" : "모든 상자를 채워주세요"
 }

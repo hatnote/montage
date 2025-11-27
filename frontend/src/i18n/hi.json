@@ -186,5 +186,6 @@
 	"permission-denied-title": "अनुमति नहीं मिली",
 	"permission-denied-message": "आपके पास इस पृष्ठ तक पहुंचने के लिए आवश्यक अनुमतियाँ नहीं हैं।",
 	"permission-denied-home": "होम पर जाएँ",
-	"montage-required-voting-deadline": "वैध मतदान के लिए समय सीमा चुनें"
+	"montage-required-voting-deadline": "वैध मतदान के लिए समय सीमा चुनें",
+	"montage-required-fill-inputs" : "कृपया सभी बॉक्स भरें"
 }

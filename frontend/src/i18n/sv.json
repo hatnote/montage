@@ -181,5 +181,6 @@
 	"montage-round-open-tasks": "Öppna uppgifter",
 	"montage-round-files": "Filer",
 	"montage-round-tasks": "Uppgifter",
-	"montage-round-uploaders": "Uppladdare"
+	"montage-round-uploaders": "Uppladdare",
+	"montage-required-fill-inputs" : "Vänligen fyll i alla rutor"
 }

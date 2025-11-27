@@ -261,6 +261,16 @@ const submitRound = () => {
     return;
   }
 
+  if (
+  !formData.value.name ||
+  (formData.value.quorum > 0 && formData.value.jurors.length === 0)
+) {
+    alertService.error({
+      message: $t('montage-required-fill-inputs')
+    });
+    return;
+  }
+
   // Check if the round is the first round
   if (roundIndex === 0) {
     const payload = {

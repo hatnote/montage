@@ -185,5 +185,6 @@
 	"permission-denied-title": "Дозволата е одбиена",
 	"permission-denied-message": "Ги немате потребните дозволи за да пристапите до страницава.",
 	"permission-denied-home": "Оди на Почетна",
-	"montage-required-voting-deadline": "Изберете важечки рок за гласање"
+	"montage-required-voting-deadline": "Изберете важечки рок за гласање",
+	"montage-required-fill-inputs" : "Ve molime popolnete gi site polinja"
 }
