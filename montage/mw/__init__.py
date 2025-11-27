@@ -58,7 +58,8 @@ class MessageMiddleware(Middleware):
         return next(response_dict=response_dict, request_dict=request_dict)
 
     def endpoint(self, next, response_dict, request, _route):
-        # TODO: autoswitch resp status code
+        # TODO: autoswitch resp status code based on response_dict['status']
+        status_code = None
         try:
             ret = next()
         except Exception as e:
@@ -73,6 +74,7 @@ class MessageMiddleware(Middleware):
             response_dict['errors'].append(err)
             response_dict['status'] = 'exception'
         else:
+            status_code = response_dict.pop('_status_code', None)
             if response_dict.get('errors'):
                 response_dict['status'] = 'failure'
 
@@ -85,13 +87,17 @@ class MessageMiddleware(Middleware):
         elif isinstance(ret, dict) and (ret.get('use_ashes') or self.use_ashes):
             return ret
         elif isinstance(ret, dict):
+            status_code = ret.pop('_status_code', status_code)
             response_dict.update(ret)
         else:
             response_dict.update({'data': ret})
 
-        return render_basic(context=response_dict,
+        ret = render_basic(context=response_dict,
                             request=request,
                             _route=_route)
+        if status_code is not None and isinstance(ret, BaseResponse):
+            ret.status_code = status_code
+        return ret
 
 
 class UserMiddleware(Middleware):

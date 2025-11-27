@@ -108,10 +108,12 @@ class MontageTestClient(object):
             return resp
         data = resp.get_data()
         data_dict = json.loads(data)
+        
+        expected_status = 'failure' if error_code else 'success'
         try:
-            assert data_dict['status'] == 'success'
+            assert data_dict['status'] == expected_status
         except AssertionError:
-            print('!! did not successfully load %s' % url)
+            print('!! did not get expected status %r for %s' % (expected_status, url))
             print('  got: ', data_dict)
             import pdb;pdb.set_trace()
             raise
@@ -615,6 +617,13 @@ def test_home_client(base_client, api_client):
                  {'next_round': rnd_data, 'threshold': cur_thresh},
                  as_user='LilyOfTheWest')
     rnd_3_id = resp['data']['id']
+
+    resp = fetch('coordinator: preview empty ranking round (should fail gracefully)',
+                 '/admin/round/%s/preview_results' % rnd_3_id,
+                 as_user='LilyOfTheWest', error_code=400)
+    assert resp['status'] == 'failure'
+    assert resp['data'] is None
+    assert 'cannot preview results' in resp['errors']
 
     resp = fetch('coordinator: activate round 3 to make assignments',
                  '/admin/round/%s/activate' % rnd_3_id,

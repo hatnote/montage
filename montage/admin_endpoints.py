@@ -547,21 +547,20 @@ def get_round_results_preview(user_dao, round_id):
             # import pdb;pdb.post_mortem()
             raise
     elif rnd.vote_method == 'ranking':
-        if not is_closeable:
+        completed_votes_count = round_counts.get('total_tasks', 0) - round_counts.get('total_open_tasks', 0)
+        if not is_closeable or not completed_votes_count:
             # TODO: What should this return for ranking rounds? The ranking
             # round is sorta an all-or-nothing deal, unlike the rating rounds
             # where you can take a peek at in-progress results
             # import pdb;pdb.set_trace()
             return {'status': 'failure',
+                    '_status_code': 400,
                     'errors': ('cannot preview results of a ranking '
                                'round until all ballots are '
                                'submitted'),
-                    'data': None}
-
+                    'data': None} 
         rankings = coord_dao.get_round_ranking_list(round_id)
-
         data['rankings'] = [r.to_dict() for r in rankings]
-
     else:
         raise NotImplementedResponse()
 
