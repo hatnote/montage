@@ -62,5 +62,6 @@
 	"montage-round-source-csv-help": "CSV кепехь ларйина а, Google Sheet йа Gist кепехь чуйаьхна а файлийн могӀам.",
 	"montage-vote-no-images": "Ахь кхаж тесна массо а суьрташна кху раундехь. ХӀинца а хьайн хьалха дина кхаьжнаш хийца йиш йу хьан, лахахь йолчу нуьйдица.",
 	"permission-denied-message": "ХӀокху агӀонна тӀекхача оьшу бакъонаш йац хьан.",
-	"montage-required-voting-deadline": "Кхаж таса нийса хан харжа"
+	"montage-required-voting-deadline": "Кхаж таса нийса хан харжа",
+	"montage-required-fill-inputs": "Dexar du masso a yäşkanaş yüza"
 }

@@ -186,5 +186,6 @@
 	"permission-denied-title": "Доступ заборонено",
 	"permission-denied-message": "У вас недостатньо прав для доступу до цієї сторінки.",
 	"permission-denied-home": "Перейти на головну сторінку",
-	"montage-required-voting-deadline": "Виберіть дійсний дедлайн для голосування"
+	"montage-required-voting-deadline": "Виберіть дійсний дедлайн для голосування",
+	"montage-required-fill-inputs" : "Будь ласка, заповніть усі поля"
 }

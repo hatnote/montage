@@ -79,5 +79,6 @@
 	"montage-round-tasks": "Tarefas",
 	"permission-denied-title": "Permissão Negada",
 	"permission-denied-message": "Você não tem as permissões necessárias para acessar esta página.",
-	"permission-denied-home": "Ir para Página Inicial"
+	"permission-denied-home": "Ir para Página Inicial",
+	"montage-required-fill-inputs" : "Por favor, preencha todos os campos."
 }

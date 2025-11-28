@@ -188,5 +188,6 @@
 	"permission-denied-title": "没有权限",
 	"permission-denied-message": "您没有访问此页面所需的权限。",
 	"permission-denied-home": "回到主页",
-	"montage-required-voting-deadline": "选择有效的投票截止日期"
+	"montage-required-voting-deadline": "选择有效的投票截止日期",
+	"montage-required-fill-inputs" : "请填写所有方框"
 }

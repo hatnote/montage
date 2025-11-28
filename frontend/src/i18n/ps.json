@@ -77,5 +77,6 @@
 	"montage-round-allowed-filetypes": "د دوتنې پرښول شوي ډولونه",
 	"montage-round-dq-by-filetype": "دوتنې‌ډول له مخې ويستل شوي",
 	"montage-round-dq-by-resolution": "پرېکړې له مخې ويستل شوي",
-	"montage-round-dq-by-upload-date": "د راپورته کولو نېټې له مخې ويستل شوي"
+	"montage-round-dq-by-upload-date": "د راپورته کولو نېټې له مخې ويستل شوي",
+	"montage-required-fill-inputs" : "مهرباني وکړئ ټول بکسونه ډک کړئ"
 }

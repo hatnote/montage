@@ -184,5 +184,6 @@
 	"montage-round-uploaders": "Įkėlėjai",
 	"permission-denied-title": "Leidimas atmestas",
 	"permission-denied-message": "Jūs neturite reikiamų leidimų atidaryti šį puslapį.",
-	"permission-denied-home": "Eiti į pagrindinį puslapį"
+	"permission-denied-home": "Eiti į pagrindinį puslapį",
+	"montage-required-fill-inputs" : "Prašome užpildyti visus langelius"
 }
