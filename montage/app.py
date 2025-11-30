@@ -25,7 +25,7 @@ from .mw import (UserMiddleware,
                 MessageMiddleware,
                 SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
-from .utils import get_env_name, load_env_config
+from .utils import DEFAULT_DB_URL, get_env_name, load_env_config
 from .check_rdb import get_schema_errors, ping_connection
 
 from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
@@ -39,7 +39,7 @@ from .clastic_sentry import SentryMiddleware
 from .cors import CORSMiddleware
 
 
-DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
+
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
@@ -119,8 +119,7 @@ def create_app(env_name='prod', config=None):
         engine.echo = config.get('db_echo', False)
         if not config.get('db_disable_ping'):
             event.listen(engine, 'engine_connect', ping_connection)
-
-        if 'mysql' in db_url:
+        if config.get('database', {}).get('type') == 'mysql':
             event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
 
         return engine

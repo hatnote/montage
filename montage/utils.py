@@ -2,13 +2,14 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
+import configparser
 import sys
 import bisect
 import random
 import getpass
 import os.path
 import datetime
-from six.moves.urllib.parse import urlencode
+from urllib.parse import urlencode
 
 
 import yaml
@@ -20,6 +21,8 @@ from boltons.timeutils import isoparse
 
 from .check_rdb import get_schema_errors
 import six
+
+DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 
 try:
     unicode = unicode
@@ -170,6 +173,74 @@ def load_env_config(env_name=None):
 
     config['__env__'] = env_name
     config['__file__'] = config_file_path
+
+    
+    db_config = config.get('database')
+    if db_config and db_config.get('type') == 'mysql':
+        mysql_host = db_config.get('host', 'localhost')
+        db_name = db_config.get('name')
+
+        if not db_name:
+            raise ValueError("MySQL database name is required in config.")
+
+        username_to_use = None
+        password_to_use = None
+        
+
+        default_file_path_from_config = db_config.get('read_default_file')
+        
+        
+        use_config_creds_as_fallback = True 
+
+        if default_file_path_from_config:
+            expanded_path = os.path.expanduser(default_file_path_from_config)
+            
+            if os.path.exists(expanded_path):
+                parser = configparser.ConfigParser()
+                try:
+                    parser.read(expanded_path)
+                    
+                    if 'client' in parser:
+                        username_to_use = parser['client'].get('user')
+                        password_to_use = parser['client'].get('password')
+                    
+                    
+                    if username_to_use or password_to_use:
+                        use_config_creds_as_fallback = False 
+                        print(f"++ Using MySQL credentials from default file: {expanded_path}", file=sys.stderr)
+                    else:
+                        print(f"!! Warning: No user/password found in {expanded_path}. Falling back to config.dev.yaml credentials.", file=sys.stderr)
+                except configparser.Error as e:
+                    print(f"!! Error parsing MySQL default file {expanded_path}: {e}. Falling back to config.dev.yaml credentials.", file=sys.stderr)
+            else:
+                print(f"!! Warning: MySQL default file not found at {expanded_path}. Falling back to config.dev.yaml credentials.", file=sys.stderr)
+        else:
+            print("++ No MySQL default file specified. Using username/password from config.dev.yaml.", file=sys.stderr)
+
+        
+        if use_config_creds_as_fallback:
+            username_to_use = db_config.get('username')
+            password_to_use = db_config.get('password')
+
+        config['mysql_connect_params'] = {
+            'host': mysql_host,
+            'database': db_name,
+
+        }
+
+        # Construct the db_url
+        credentials_part = ""
+        if username_to_use:
+            credentials_part = username_to_use
+            if password_to_use:
+                credentials_part += f":{password_to_use}"
+            credentials_part += "@"
+
+        config['db_url'] = f"mysql+pymysql://{credentials_part}{mysql_host}/{db_name}"
+
+    else:
+        config['db_url'] = config.get('db_url', DEFAULT_DB_URL)
+    
     return config
 
 
