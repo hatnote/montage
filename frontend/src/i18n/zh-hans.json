@@ -2,6 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Chimes",
+			"GuoPC",
 			"Key0121",
 			"TFX202X"
 		]
@@ -111,7 +112,7 @@
 	"montage-round-pause": "暂停",
 	"montage-round-paused": "轮次成功暂停。",
 	"montage-round-added": "轮次添加成功。",
-	"montage-round-finalize": "定稿",
+	"montage-round-finalize": "最终轮",
 	"montage-round-finalized": "轮次顺利结束。",
 	"montage-round-download-results": "下载结果",
 	"montage-round-download-entries": "下载条目",
@@ -189,5 +190,5 @@
 	"permission-denied-message": "您没有访问此页面所需的权限。",
 	"permission-denied-home": "回到主页",
 	"montage-required-voting-deadline": "选择有效的投票截止日期",
-	"montage-required-fill-inputs" : "请填写所有方框"
+	"montage-required-fill-inputs": "请填写所有方框"
 }

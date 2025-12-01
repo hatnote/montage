@@ -29,7 +29,6 @@
 	"montage-latest-round": "آخرین دور",
 	"montage-coordinators": "هماهنگ کننده‌ها",
 	"montage-voting-deadline": "مهلت رای‌دادن",
-	"montage-required-fill-inputs" : "لطفا تمام کادرها را پر کنید",
 	"montage-directions": "راهنما",
 	"montage-your-progress": "جریان کار",
 	"montage-vote": "رای",
@@ -189,5 +188,6 @@
 	"permission-denied-title": "اجازه داده نشد",
 	"permission-denied-message": "شما مجوزهای لازم برای دسترسی به این صفحه را ندارید.",
 	"permission-denied-home": "برو به خانه",
-	"montage-required-voting-deadline": "یک مهلت رأی‌گیری معتبر انتخاب کنید"
+	"montage-required-voting-deadline": "یک مهلت رأی‌گیری معتبر انتخاب کنید",
+	"montage-required-fill-inputs": "لطفا تمام کادرها را پر کنید"
 }

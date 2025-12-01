@@ -109,7 +109,7 @@
 	"montage-round-pause": "暫停",
 	"montage-round-paused": "暫停回合成功。",
 	"montage-round-added": "新增回合成功。",
-	"montage-round-finalize": "結束",
+	"montage-round-finalize": "最終回合",
 	"montage-round-finalized": "結束回合成功。",
 	"montage-round-download-results": "下載結果",
 	"montage-round-download-entries": "下載項目",
@@ -187,5 +187,5 @@
 	"permission-denied-message": "您沒有適當的權限來存取此頁面。",
 	"permission-denied-home": "返回首頁",
 	"montage-required-voting-deadline": "選擇有效的投票截止期限",
-	"montage-required-fill-inputs" : "請填寫所有方框"
+	"montage-required-fill-inputs": "請填寫所有方框"
 }

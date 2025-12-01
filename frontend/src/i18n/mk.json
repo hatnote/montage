@@ -109,8 +109,8 @@
 	"montage-round-pause": "Паузирај",
 	"montage-round-paused": "Кругот е успешно паузиран.",
 	"montage-round-added": "Кругот е успешно додаден.",
-	"montage-round-finalize": "Окончај",
-	"montage-round-finalized": "Кругот е успешно окончан.",
+	"montage-round-finalize": "Заврши круг",
+	"montage-round-finalized": "Кругот е успешно завршен.",
 	"montage-round-download-results": "Преземи исход",
 	"montage-round-download-entries": "Преземи ставки",
 	"montage-round-source": "Извор",
@@ -187,5 +187,5 @@
 	"permission-denied-message": "Ги немате потребните дозволи за да пристапите до страницава.",
 	"permission-denied-home": "Оди на Почетна",
 	"montage-required-voting-deadline": "Изберете важечки рок за гласање",
-	"montage-required-fill-inputs" : "Ve molime popolnete gi site polinja"
+	"montage-required-fill-inputs": "Ve molime popolnete gi site polinja"
 }
