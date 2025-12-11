@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Albertoleoncio",
 			"Alchimista",
 			"Mansil alfalb",
 			"O andras"
@@ -11,9 +12,9 @@
 	"montage-source-code": "Código fonte",
 	"montage-login-heading": "Por favor, inicie a sessão",
 	"montage-login-description": "Será redirecionado para a Meta-Wiki para confirmar a sua identidade. O Montage não publicará nada nos projetos da Wikimédia utilizando a sua conta.",
-	"montage-login-account-instructions": "Se não tem uma conta da Wikimédia, pode criar uma em {0}.",
+	"montage-login-account-instructions": "Se não tem uma conta da Wikimedia, pode criar uma em {0}.",
 	"montage-login-metawiki": "Meta-Wiki",
-	"montage-login-button": "Inicie a sessão utilizando a conta da Wikimédia",
+	"montage-login-button": "Inicie a sessão utilizando a conta da Wikimedia",
 	"montage-login-logout": "Terminar sessão",
 	"montage-active-campaigns": "Campanhas ativas",
 	"montage-all-campaigns": "Todas as campanhas",
@@ -116,7 +117,7 @@
 	"montage-round-download-results": "Transferir resultados",
 	"montage-round-download-entries": "Transferir entradas",
 	"montage-round-source": "Fonte",
-	"montage-round-source-category": "Categoria na Wikimédia Commons",
+	"montage-round-source-category": "Categoria na Wikimedia Commons",
 	"montage-round-source-csv": "URL da Lista de Ficheiros",
 	"montage-round-source-filelist": "Lista de Ficheiros",
 	"montage-round-source-category-help": "Categoria na Wikimédia Commons que reúne todas as imagens do concurso. Exemplo: Imagens da Wiki Loves Monuments 2017 no Gana.",
