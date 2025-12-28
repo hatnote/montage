@@ -29,6 +29,7 @@ from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm.attributes import flag_modified
 
 from boltons.strutils import slugify
 from boltons.iterutils import chunked, first, unique_iter, bucketize
@@ -117,7 +118,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders', 'Abhinavmohandas'
 ]
 
 """
@@ -2559,33 +2560,24 @@ class JurorDAO(object):
         return ret
 
     def get_tasks_from_round(self, round_id, num=1, offset=0):
-        # TODO: remove offset once it's removed from the client
-        task_query = (self.query(Vote)
-                        .filter_by(user=self.user,
-                                   status=ACTIVE_STATUS)
-                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
-                        .filter(RoundEntry.round_id == round_id)
-                        .order_by(Vote.id))
-
-        # Check if this round_juror has skipped any tasks
+        task_query = (
+            self.query(Vote)
+            .filter_by(user=self.user, status=ACTIVE_STATUS)
+            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+            .filter(RoundEntry.round_id == round_id)
+            .order_by(Vote.id)
+        )
+        
         round_juror = self._get_round_juror(round_id)
-        skip = round_juror.skip
-
+        
+        skip = None
+        if round_juror and round_juror.flags:
+            skip = round_juror.flags.get('skip')
+        
         if skip:
-            tasks = (task_query.filter(Vote.id > skip)
-                               .limit(num)
-                               .offset(offset)
-                               .all())
-            if len(tasks) == num:
-                return tasks
-        else:
-            tasks = []
-
-        new_num = int(num) - len(tasks)
-        tasks += task_query.limit(new_num).offset(offset).all()
-        tasks = list(set(tasks))
-
-        return tasks
+            return task_query.filter(Vote.id > skip).limit(num).all()
+        
+        return task_query.limit(num).all()
 
     def get_faves(self, sort='desc', limit=10, offset=0):
         faves_query = (self.query(Favorite)
@@ -2824,19 +2816,35 @@ class JurorDAO(object):
         return rating
 
     def skip_voting(self, vote_id, round_id=None):
-        vote = (self.query(Vote)
-                    .filter_by(id=vote_id,
-                               user=self.user)
-                    .one_or_none())
+        vote = (
+            self.query(Vote)
+            .filter_by(id=vote_id, user=self.user)
+            .one_or_none()
+        )
+        
         if not vote:
             return InvalidAction('vote %s does not exist for this user' % vote_id)
+        
         if not round_id:
             round_id = vote.round_entry.round_id
-
+        
         round_juror = self._get_round_juror(round_id)
-
-        round_juror.flags['skip'] = vote_id
-        self.rdb_session.add(round_juror)
+        
+        if not round_juror:
+            return InvalidAction('round_juror not found')
+        
+        if round_juror.flags is None:
+            round_juror.flags = {}
+        
+        current_skip = round_juror.flags.get('skip')
+        if current_skip is None or vote_id > current_skip:
+            round_juror.flags['skip'] = vote_id
+            
+            flag_modified(round_juror, 'flags')
+            
+            self.rdb_session.add(round_juror)
+            self.rdb_session.commit()
+        
         return
 
     def apply_ranking(self, ballot):

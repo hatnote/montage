@@ -343,19 +343,20 @@ def submit_ratings(user_dao, request_dict):
 
     return {}  # TODO?
 
-
 def skip_rating(user_dao, round_id, request, request_dict):
     juror_dao = JurorDAO(user_dao)
-
+    
     try:
         vote_id = request_dict['vote_id']
-    except Exception as e:
-        raise InvalidAction('must provide skip id')
-
-    juror_dao.skip_voting(vote_id)
-    next_tasks = get_tasks_from_round(user_dao, round_id, request)
-
-    return next_tasks
+    except KeyError:
+        raise InvalidAction('must provide vote_id')
+    
+    result = juror_dao.skip_voting(vote_id, round_id)
+    
+    if isinstance(result, InvalidAction):
+        return {'error': str(result)}, 400
+    
+    return {'data': {'success': True}}
 
 
 def submit_fave(user_dao, round_id, entry_id):
