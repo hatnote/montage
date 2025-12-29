@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Johnarupire",
-			"Ovruni"
+			"Ovruni",
+			"Tecbs"
 		]
 	},
 	"montage-about": "Acerca de",
@@ -110,7 +111,7 @@
 	"montage-round-pause": "Pausar",
 	"montage-round-paused": "La ronda se pausó exitosamente.",
 	"montage-round-added": "Ronda agregada exitosamente.",
-	"montage-round-finalize": "Finalizar",
+	"montage-round-finalize": "Finalizar ronda",
 	"montage-round-finalized": "Ronda finalizada exitosamente.",
 	"montage-round-download-results": "Descargar resultados",
 	"montage-round-download-entries": "Descargar entradas",
@@ -151,6 +152,7 @@
 	"montage-vote-last-version": "Última versión en {0}",
 	"montage-vote-all-done": "¡Todo listo!",
 	"montage-vote-no-images": "Votaste por todas las imágenes en esta ronda. Puedes editar tus votos anteriores usando el botón de abajo.",
+	"montage-vote-no-images-warning": "ADVERTENCIA: existe la posibilidad de que tu navegador aún esté cargando las siguientes tareas. Por favor, comprueba la página principal de Montage para verificar que “tu progreso” esté realmente al 100 %.",
 	"montage-vote-hide-panel": "Ocultar panel",
 	"montage-vote-show-panel": "Mostrar panel",
 	"montage-vote-image": "Imagen",
@@ -182,6 +184,7 @@
 	"montage-round-open-tasks": "Tareas abiertas",
 	"montage-round-files": "Archivos",
 	"montage-round-tasks": "Tareas",
+	"montage-round-uploaders": "Uploaders",
 	"permission-denied-title": "Permiso denegado",
 	"permission-denied-message": "No tienes los permisos necesarios para acceder a esta página.",
 	"permission-denied-home": "Ir a Inicio",
