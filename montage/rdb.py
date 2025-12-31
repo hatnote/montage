@@ -118,7 +118,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders','Abhinavmohandas'
 ]
 
 """
@@ -2843,7 +2843,6 @@ class JurorDAO(object):
             flag_modified(round_juror, 'flags')
             
             self.rdb_session.add(round_juror)
-            self.rdb_session.commit()
         
         return
 

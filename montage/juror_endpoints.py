@@ -351,11 +351,7 @@ def skip_rating(user_dao, round_id, request, request_dict):
     except KeyError:
         raise InvalidAction('must provide vote_id')
     
-    result = juror_dao.skip_voting(vote_id, round_id)
-    
-    if isinstance(result, InvalidAction):
-        return {'error': str(result)}, 400
-    
+    juror_dao.skip_voting(vote_id, round_id)    
     return {'data': {'success': True}}
 
 
