@@ -262,22 +262,22 @@ const getTasks = () => {
   })
 }
 
-const setRate = (rate) => {
+function setRate(rate) {
   if (imageLoading.value) return
   if (isLoading.value) return
-
+  
   if (rate) {
     const val = (rate - 1) / 4
     isLoading.value = true
     jurorService
-      .setRating(props.round.id, { ratings: [{ task_id: rating.value.current.id, value: val }] })
+      .setRating(props.round.id, { 
+        ratings: [{ task_id: rating.value.current.id, value: val }] 
+      })
       .then(() => {
         stats.value.total_open_tasks -= 1
-
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
         }
-
         if (counter.value === 4 || !stats.value.total_open_tasks) {
           counter.value = 0
           getTasks()
@@ -285,13 +285,28 @@ const setRate = (rate) => {
           counter.value += 1
           getNextImage()
         }
-      }).catch(alertService.error)
+      })
+      .catch(alertService.error)
       .finally(() => {
         isLoading.value = false
       })
+      
   } else {
-    skips.value += 1
-    getNextImage()
+    isLoading.value = true
+    
+    jurorService
+      .skipTask(props.round.id, rating.value.current.id)
+      .then(() => {
+        if (rating.value.currentIndex < images.value.length - 1) {
+          getNextImage()
+        } else {
+          getTasks()
+        }
+      })
+      .catch(alertService.error)
+      .finally(() => {
+        isLoading.value = false
+      })
   }
 }
 
