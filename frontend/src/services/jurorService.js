@@ -30,6 +30,12 @@ const jurorService = {
 
   setRating: (id, data) => apiBackend.post(`juror/round/${id}/tasks/submit`, data),
 
+  skipTask: (roundId, voteId) => {
+    return apiBackend.post(`juror/round/${roundId}/tasks/skip`, { 
+      vote_id: voteId 
+    })
+  },
+
   getRoundTasks: (id, offset = 0) => {
     return apiBackend.get(`juror/round/${id}/tasks?count=10&offset=${offset}`).then((data) => {
       const tasks = data.data.tasks
