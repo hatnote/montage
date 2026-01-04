@@ -442,6 +442,15 @@ def test_home_client(base_client, api_client):
                  '/juror/round/%s/tasks/skip' % round_id,
                  {'vote_id': skip_vote_id},
                  as_user='Jimbo Wales')
+    
+    resp = fetch(
+                'juror: gets task after skip',
+                '/juror/round/%s/tasks'%round_id,
+                as_user='Jimbo Wales')
+    
+    task_after_skip = resp['data']['tasks']
+    returned_vote_id = [task['id'] for task in task_after_skip]
+    assert skip_vote_id not in returned_vote_id
 
     entry_id = tasks[-1]['entry']['id']
     resp = fetch('juror: mark an entry as favorite',
