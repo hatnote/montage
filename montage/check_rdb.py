@@ -1,4 +1,3 @@
-
 from sqlalchemy import exc
 from sqlalchemy import event
 from sqlalchemy import select
