@@ -20,6 +20,8 @@ const jurorService = {
 
   getRoundVotesStats: (id) => apiBackend.get(`juror/round/${id}/votes-stats`),
 
+  getCampaignFaves: (campaignId) => apiBackend.get(`juror/campaign/${campaignId}/favorites`),
+
   faveImage: (roundId, entryId) => apiBackend.post(`juror/round/${roundId}/${entryId}/fave`, {}),
 
   unfaveImage: (roundId, entryId) =>
