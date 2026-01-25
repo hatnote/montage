@@ -36,6 +36,9 @@
           <div class="vote-gallery-expand-icon" @click="openImage(image)">
             <arrow-expand-all />
           </div>
+          <div class="vote-gallery-fav-icon" @click.stop="toggleFav(image)">
+            <heart :class="{ 'is-fave': image.is_fave }"/>
+          </div>
           <div class="vote-gallery-image-container">
             <CommonsImage :image="image" :width="640" />
           </div>
@@ -90,6 +93,7 @@ import CommonsImage from '@/components/CommonsImage.vue'
 // Components
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { CdxButton } from '@wikimedia/codex'
+import Heart from 'vue-material-design-icons/Heart.vue'
 
 // Icon
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
@@ -167,6 +171,14 @@ const editPreviousVotes = () => {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
 }
 
+const toggleFav = (image) => {
+  const action = image.is_fave? jurorService.unfaveImage(props.round.id,image.entry.id):jurorService.faveImage(props.round.id,image.entry.id)
+  action.then(()=> {
+    image.is_fave = !image.is_fave
+    alertService.success(image.is_fave? $t('montage-vote-added-favorites'): $t('montage-vote-removed-favorites'),500)
+  }).catch(alertService.error)
+}
+
 watch(
   () => props.tasks,
   (tasks) => {
@@ -202,6 +214,29 @@ watch(
 
 .vote-image-grid {
   margin-top: 8px;
+}
+
+.vote-gallery-fav-icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.vote-gallery-fav-icon:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.vote-gallery-fav-icon .is-fave {
+  color: #e53935;
 }
 
 .vote-gallery {
