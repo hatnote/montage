@@ -681,6 +681,9 @@ onMounted(() => {
 .vote-stats-star-icon {
   width: 16px;
   height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .vote-stats-value {
