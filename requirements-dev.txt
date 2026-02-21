@@ -1,6 +1,11 @@
+#To install backend packages, run this command in CLI
+# > python3 -m venv venv
+# > source venv/bin/activate
+# > pip install -r requirements-dev.txt 
 -r requirements.txt
 
-tox<3.15.0
+tox<3.15.0  #tox version: 3.15.0 supports pluggy < 1, else we may face version conflict
+pluggy<1
 Fabric3
 coverage==5.0.2
 pytest==4.6.9
