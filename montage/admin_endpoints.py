@@ -604,10 +604,10 @@ def advance_round(user_dao, round_id, request_dict):
     # TODO: inherit round config from previous round?
     adv_group = coord_dao.finalize_rating_round(round_id, threshold=threshold)
 
-    if len(adv_group) > 100:
+    if len(adv_group) > 20:
         raise InvalidAction(
             'There are too many entries advancing (%s). Adjust your threshold to '
-            'bring the number of advancing entries to 100 or fewer.'
+            'bring the number of advancing entries to 20 or fewer.'
             % len(adv_group)
         )
 
