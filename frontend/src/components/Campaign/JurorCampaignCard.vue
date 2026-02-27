@@ -54,12 +54,20 @@
         </cdx-card>
       </div>
     </div>
+    <div class="faves-button-row">
+      <cdx-button action="progressive" @click="goFaves()" style="font-size: 14px;">
+        <span class="faves-button-content">
+        {{ $t('montage-my-campaign-faves') }}<heart style=" font-size: 4px" />
+        </span>
+      </cdx-button>
+    </div>
   </cdx-accordion>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
 import { getVotingName } from '@/utils'
+import Heart from 'vue-material-design-icons/Heart.vue'
 
 // Components
 import { CdxCard, CdxAccordion, CdxButton } from '@wikimedia/codex'
@@ -69,7 +77,7 @@ import ThumbsUpDown from 'vue-material-design-icons/ThumbsUpDown.vue'
 import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 
-defineProps({
+const props = defineProps({
   campaign: Object
 })
 
@@ -77,6 +85,11 @@ const router = useRouter()
 
 const goRoundVoting = (round, type) => {
   router.push({ name: type, params: { id: [round.id, round.canonical_url_name].join('-') } })
+}
+
+const goFaves = () => {
+  const round = props.campaign[0]
+  router.push({ name: 'faves', params: { id: [round.id, round.canonical_url_name].join('-') } })
 }
 </script>
 
@@ -90,6 +103,18 @@ const goRoundVoting = (round, type) => {
   display: flex;
   flex-direction: column;
   margin-bottom: 24px;
+}
+
+.faves-button-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.faves-button-content {
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .round-header {

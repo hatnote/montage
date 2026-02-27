@@ -224,12 +224,12 @@ def get_rankings_from_round(user_dao, round_id, request):
 
 def get_faves(user_dao, request_dict):
     request_dict = request_dict or dict()
-
     juror_dao = JurorDAO(user_dao)
     limit = request_dict.get('limit', 10)
     offset = request_dict.get('offset', 0)
     sort = request_dict.get('sort', 'desc')
-    faves = juror_dao.get_faves(sort, limit, offset)
+    campaign_id = request_dict.get('campaign_id')
+    faves = juror_dao.get_faves(campaign_id=campaign_id, sort=sort, limit=limit, offset=offset)
     return {'data': [f.to_details_dict() for f in faves]}
 
 
