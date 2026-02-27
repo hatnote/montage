@@ -307,6 +307,12 @@ const submitRound = () => {
       alertService.error($t('montage-something-went-wrong'))
       return
     }
+    if (thresholds.value && !formData.value.threshold) {
+      alertService.error({
+        message: $t('montage-required-threshold')
+      })
+      return
+    }
 
     const payload = {
       next_round: {
