@@ -32,8 +32,7 @@
                   <cdx-select v-model:selected="formData.vote_method" :menu-items="voteMethods.map((method) => ({
                     label: $t(getVotingName(method)),
                     value: method
-                  }))
-                    " />
+                  }))" />
                   <template #label>{{ $t('montage-round-vote-method') }}</template>
                 </cdx-field>
               </div>
@@ -56,11 +55,17 @@
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup data-testid="montage-round-category" v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
-                  :placeholder="$t('montage-round-category-placeholder')" @input="searchCategory">
-                  <template #label>{{ $t('montage-round-category-label') }}</template>
+                <cdx-multiselect-lookup
+                  data-testid="montage-round-category"
+                  v-model:input-chips="categoryChips"
+                  v-model:selected="selectedCategories"
+                  v-model:input-value="categoryInputValue"
+                  :menu-items="categoryOptions"
+                  @input="searchCategory"
+                >
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
-                </cdx-lookup>
+                </cdx-multiselect-lookup>
+                <template #label>{{ $t('montage-round-category-label') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'csv'">
                 <cdx-text-input input-type="url" v-model="importSourceValue.csv_url" />
@@ -154,7 +159,7 @@ import {
   CdxRadio,
   CdxTextArea,
   CdxCheckbox,
-  CdxLookup
+  CdxMultiselectLookup
 } from '@wikimedia/codex'
 
 // Components
@@ -166,6 +171,7 @@ import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
+
 const { t: $t } = useI18n()
 
 const props = defineProps({
@@ -232,17 +238,20 @@ const formData = ref({
 // States for import source
 const selectedImportSource = ref('category')
 const importSourceValue = ref({
-  category: '',
   csv_url: '',
   file_names: ''
 })
 
+const categoryChips = ref([])
+const categoryInputValue = ref('')
+const selectedCategories = ref([])
 const categoryOptions = ref([])
+
 function searchCategory(name) {
-  if (name.length < 2) {
+  if (!name || name.length < 2) {
+    categoryOptions.value = []
     return
   }
-
   dataService.searchCategory(name).then((response) => {
     const cats = response[1]?.map((element) => element.substring(9))
     categoryOptions.value = cats.map((cat) => ({ label: cat, value: cat }))
@@ -257,21 +266,20 @@ const submitRound = () => {
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
-    });
-    return;
+    })
+    return
   }
 
   if (
-  !formData.value.name ||
-  (formData.value.quorum > 0 && formData.value.jurors.length === 0)
-) {
+    !formData.value.name ||
+    (formData.value.quorum > 0 && formData.value.jurors.length === 0)
+  ) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
-    });
-    return;
+    })
+    return
   }
 
-  // Check if the round is the first round
   if (roundIndex === 0) {
     const payload = {
       name: formData.value.name,
@@ -339,7 +347,7 @@ const importCategory = (id) => {
   }
 
   if (selectedImportSource.value === 'category') {
-    payload.category = importSourceValue.value.category
+    payload.category = selectedCategories.value
   } else if (selectedImportSource.value === 'csv') {
     payload.csv_url = importSourceValue.value.csv_url
   } else if (selectedImportSource.value === 'selected') {
