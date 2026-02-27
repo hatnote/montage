@@ -263,7 +263,8 @@ const submitRound = () => {
 
   if (
   !formData.value.name ||
-  (formData.value.quorum > 0 && formData.value.jurors.length === 0)
+  (formData.value.quorum > 0 && formData.value.jurors.length === 0) ||
+  (roundIndex !== 0 && thresholds.value && formData.value.threshold === null)
 ) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
