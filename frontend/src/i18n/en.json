@@ -138,6 +138,7 @@
   "montage-vote-accept": "Accept",
   "montage-vote-decline": "Decline",
   "montage-vote-keyboard-instructions": "You can also use the keyboard to vote.",
+  "montage-required-threshold": "Please select a threshold before continuing.",
   "montage-vote-actions": "Actions",
   "montage-vote-add-favorites": "Add to favorites",
   "montage-vote-added-favorites": "Image added to favorites",
