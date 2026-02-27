@@ -350,9 +350,13 @@ def import_entries(user_dao, round_id, request_dict):
             msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
             import_warnings.append(msg)
     elif import_method == CATEGORY_METHOD:
-        cat_name = request_dict['category']
-        entries = coord_dao.add_entries_from_cat(round_id, cat_name)
-        params = {'category': cat_name}
+        categories = request_dict['category']
+        if isinstance(categories, str):
+            categories = [categories]
+        entries = []
+        for cat_name in categories:
+            entries += coord_dao.add_entries_from_cat(round_id, cat_name)
+        params = {'category': categories}
     elif import_method == ROUND_METHOD:
         threshold = request_dict['threshold']
         prev_round_id = request_dict['previous_round_id']
