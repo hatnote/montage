@@ -51,6 +51,9 @@
     </div>
     <div class="image-grid" :class="'grid-size-' + gridSize" v-if="!isVoting('ranking')">
       <div v-for="image in votes" :key="image.id" class="gallery-image link" :class="getImageSizeClass()">
+          <div class="vote-gallery-expand-icon" @click="openImage(image)">
+           <arrow-expand-all />
+          </div>
         <div class="gallery-image-fav" v-if="image.is_fave">
           <heart />
         </div>
