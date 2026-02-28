@@ -146,10 +146,7 @@ def get_tasks_from_round(user_dao, round_id, request):
     return {'data': data}
 
 
-# Larger default for edit-votes; count=0 means return up to VOTES_FETCH_ALL_LIMIT per request
-VOTES_PAGE_DEFAULT = 50
-VOTES_PAGE_MAX = 100
-VOTES_FETCH_ALL_LIMIT = 10000
+
 
 
 def get_votes_from_round(user_dao, round_id, request, rnd=None):
@@ -157,10 +154,10 @@ def get_votes_from_round(user_dao, round_id, request, rnd=None):
     try:
         count = int(raw_count)
     except (TypeError, ValueError):
-        count = VOTES_PAGE_DEFAULT
+        count = 50
     if count == 0 or (isinstance(raw_count, str) and raw_count.strip().lower() == 'all'):
-        count = VOTES_FETCH_ALL_LIMIT
-    count = min(max(count, 1), VOTES_FETCH_ALL_LIMIT)
+        count = 10000
+    count = min(max(count, 1), 10000)
     try:
         offset = int(request.values.get('offset', 0))
     except (TypeError, ValueError):
