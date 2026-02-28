@@ -88,9 +88,11 @@
           <cdx-button weight="quiet" @click="setRate()">
             <arrow-right class="icon-small" /> {{ $t('montage-vote-skip') }}
           </cdx-button>
-          <cdx-button weight="quiet" @click="goPrevVoteEditing">
-            <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
-          </cdx-button>
+          <a :href="getEditHref(round)">
+            <cdx-button weight="quiet" @click="goPrevVoteEditing">
+              <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
+            </cdx-button>
+          </a>
         </div>
       </div>
 
@@ -225,6 +227,14 @@ function goPrevVoteEditing() {
 
 function handleImageLoad() {
   imageLoading.value = false
+}
+
+const getEditHref = (round) => {
+  const resolved = router.resolve({ 
+    name: 'vote-edit', 
+    params: { id: [round.id, round.canonical_url_name].join('-') } 
+  })
+  return resolved.href
 }
 
 const formattedDate = (timestamp) => {
