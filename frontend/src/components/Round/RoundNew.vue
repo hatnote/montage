@@ -125,7 +125,7 @@
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
-              <close class="icon-small" /> Cancel </cdx-button>
+              <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
         </template>
@@ -327,7 +327,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       })
   }
@@ -369,12 +369,12 @@ const importCategory = (id) => {
             actionType: 'progressive'
           },
           onPrimary: () => {
-            emit('reload-campaign-state')
+            emit('reloadCampaignState')
             emit('update:showAddRoundForm', false)
           }
         })
       } else {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       }
     })
