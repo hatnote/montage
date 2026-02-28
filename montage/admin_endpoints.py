@@ -379,17 +379,17 @@ def import_entries(user_dao, round_id, request_dict):
 
     if not entries:
         new_entry_stats['warnings'].append({'empty import':
-                                            'no entries imported'})
+                                            'No entries were imported. Please fix your import source and try again, or click "Cancel" to delete the empty round.'})
     elif not new_entry_stats.get('new_entry_count'):
         new_entry_stats['warnings'].append({'duplicate import':
-                                            'no new entries imported'})
+                                            'No new entries were imported.'})
 
-    # automatically disqualify entries based on round config
+
     auto_dq = autodisqualify(user_dao, round_id, request_dict={})
     new_entry_stats['disqualified'] = auto_dq['data']
     if len(new_entry_stats['disqualified']) >= len(entries):
         new_entry_stats['warnings'].append({'all disqualified':
-                  'all entries disqualified by round settings'})
+                    'All entries were disqualified by round settings.'})
 
     return {'data': new_entry_stats}
 

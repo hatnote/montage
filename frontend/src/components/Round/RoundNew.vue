@@ -122,7 +122,7 @@
           </div>
           <div class="button-group">
             <cdx-button :disabled="isLoading" action="progressive" weight="primary" @click="submitRound()">
-              <check class="icon-small" /> {{ $t('montage-round-add') }}
+              <check class="icon-small" /> {{ createdRoundId ? $t('montage-round-retry-import') || 'Retry Import' : $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
@@ -206,6 +206,8 @@ const thresholds = ref(null)
 const thresholdOptions = ref(null)
 const isLoading = ref(false)
 
+const createdRoundId = ref(null)
+
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
   vote_method: roundIndex !== 0 && roundIndex < 3 ? voteMethods[roundIndex] : 'yesno',
@@ -250,7 +252,18 @@ function searchCategory(name) {
 }
 
 const cancelRound = () => {
-  emit('update:showAddRoundForm', false)
+  if (createdRoundId.value) {
+    adminService.cancelRound(createdRoundId.value)
+      .then(() => {
+        emit('reload-campaign-state')
+        emit('update:showAddRoundForm', false)
+      })
+      .catch(() => {
+        emit('update:showAddRoundForm', false)
+      })
+  } else {
+    emit('update:showAddRoundForm', false)
+  }
 }
 
 const submitRound = () => {
@@ -262,9 +275,9 @@ const submitRound = () => {
   }
 
   if (
-  !formData.value.name ||
-  (formData.value.quorum > 0 && formData.value.jurors.length === 0)
-) {
+    !formData.value.name ||
+    (formData.value.quorum > 0 && formData.value.jurors.length === 0)
+  ) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     });
@@ -273,6 +286,17 @@ const submitRound = () => {
 
   // Check if the round is the first round
   if (roundIndex === 0) {
+    if (selectedImportSource.value === 'selected') {
+      importSourceValue.value.file_names = importSourceValue.value.file_names
+        .split('\n')
+        .filter((elem) => elem)
+    }
+
+    if (createdRoundId.value) {
+      importCategory(createdRoundId.value)
+      return
+    }
+
     const payload = {
       name: formData.value.name,
       vote_method: formData.value.vote_method,
@@ -289,13 +313,6 @@ const submitRound = () => {
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
-
-        if (selectedImportSource.value === 'selected') {
-          importSourceValue.value.file_names = importSourceValue.value.file_names
-            .split('\n')
-            .filter((elem) => elem)
-        }
-
         importCategory(resp.data.id)
       })
       .catch(alertService.error)
@@ -361,19 +378,20 @@ const importCategory = (id) => {
 
         const text = `${warningsList.join('\n\n')}\n\n${filesList}`
 
+        createdRoundId.value = id
+
         dialogService().show({
           title: 'Import Warning',
           content: text,
           primaryAction: {
-            label: 'OK',
+            label: 'Fix Import',
             actionType: 'progressive'
           },
           onPrimary: () => {
-            emit('reload-campaign-state')
-            emit('update:showAddRoundForm', false)
           }
         })
       } else {
+        createdRoundId.value = null
         emit('reload-campaign-state')
         emit('update:showAddRoundForm', false)
       }
