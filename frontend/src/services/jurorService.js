@@ -9,8 +9,8 @@ const jurorService = {
 
   allCampaigns: () => apiBackend.get('juror/campaigns/all'),
 
-  getPastVotes: (id, offset = 0, orderBy = 'date', sort = 'desc') =>
-    apiBackend.get(`juror/round/${id}/votes?offset=${offset}&order_by=${orderBy}&sort=${sort}`),
+  getPastVotes: (id, offset = 0, orderBy = 'date', sort = 'desc', count = 50) =>
+    apiBackend.get(`juror/round/${id}/votes?offset=${offset}&order_by=${orderBy}&sort=${sort}&count=${count}`),
 
   getPastRanking: (id) => apiBackend.get(`juror/round/${id}/rankings`),
 

@@ -146,9 +146,26 @@ def get_tasks_from_round(user_dao, round_id, request):
     return {'data': data}
 
 
+# Larger default for edit-votes; count=0 means return up to VOTES_FETCH_ALL_LIMIT per request
+VOTES_PAGE_DEFAULT = 50
+VOTES_PAGE_MAX = 100
+VOTES_FETCH_ALL_LIMIT = 10000
+
+
 def get_votes_from_round(user_dao, round_id, request, rnd=None):
-    count = request.values.get('count', 15)
-    offset = request.values.get('offset', 0)
+    raw_count = request.values.get('count', VOTES_PAGE_DEFAULT)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = VOTES_PAGE_DEFAULT
+    if count == 0 or (isinstance(raw_count, str) and raw_count.strip().lower() == 'all'):
+        count = VOTES_FETCH_ALL_LIMIT
+    count = min(max(count, 1), VOTES_FETCH_ALL_LIMIT)
+    try:
+        offset = int(request.values.get('offset', 0))
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(offset, 0)
     order_by = request.values.get('order_by', 'date')
     sort = request.values.get('sort', 'asc')
     juror_dao = JurorDAO(user_dao)
