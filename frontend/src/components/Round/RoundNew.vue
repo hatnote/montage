@@ -125,7 +125,7 @@
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
-              <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
+              <close class="icon-small" /> Cancel </cdx-button>
             </cdx-button>
           </div>
         </template>
