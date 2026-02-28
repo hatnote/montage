@@ -291,16 +291,20 @@ const validateForm = () => {
   const quorum = Number(formData.value.quorum)
   const jurorCount = formData.value.jurors.length
 
+  if (touched.value.jurors) {
+    if (jurorCount === 0) {
+      errors.value.jurors = $t('At least one juror is required')
+    } else if (quorum > jurorCount) {
+      errors.value.jurors = $t('Quorum cannot be greater than the number of jurors')
+    } else {
+      errors.value.jurors = ''
+    }
+  }
+
   if (touched.value.quorum && quorum <= 0) {
     errors.value.quorum = $t('Quorum must be greater than zero')
   } else {
     errors.value.quorum = ''
-  }
-
-  if (touched.value.jurors && jurorCount !== quorum) {
-    errors.value.jurors = $t('Jurors must equal quorum')
-  } else {
-    errors.value.jurors = ''
   }
 
   if (touched.value.category && roundIndex === 0 && !importSourceValue.value.category) {
