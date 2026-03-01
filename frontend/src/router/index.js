@@ -11,6 +11,7 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
+import RoundDisqualifyView from '@/views/RoundDisqualifyView.vue'
 
 const routes = [
   {
@@ -51,7 +52,13 @@ const routes = [
   {
     path: '/permission-denied',
     name: 'permission-denied',
-    component: PermissionDenied
+    component: PermissionDenied,
+  },
+  {
+    path: '/round/:roundId/disqualify',
+    name: 'round-disqualify',
+    component: RoundDisqualifyView,
+    meta: { requiresAuth: true }
   }
 ]
 

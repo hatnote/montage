@@ -54,7 +54,14 @@ const adminService = {
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,
-  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`
+  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`,
+
+  // Disqualification management
+  getRoundEntries: (id) => apiBackend.get(`admin/round/${id}/entries`),
+  getDisqualified: (id) => apiBackend.get(`admin/round/${id}/disqualified`),
+  disqualifyEntry: (roundId, entryId, reason) => apiBackend.post(`admin/round/${roundId}/${entryId}/disqualify`, {reason}),
+  requalifyEntry: (roundId, entryId) => apiBackend.post(`admin/round/${roundId}/${entryId}/requalify`)
+
 }
 
 export default adminService
