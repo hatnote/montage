@@ -34,10 +34,6 @@
           </p>
         </div>
         <div style="margin-left: auto">
-          <cdx-button @click="manageDisqualifications()">
-            <account-cancel style="font-size: 6px" />
-            {{ $t('montage-disqualify-manage') }}
-          </cdx-button>
           <cdx-button @click="toggleEditing()">
             <cog style="font-size: 6px" v-if="!isRoundEditing" />
             <close style="font-size: 6px" v-else />
@@ -59,7 +55,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 // Components
 import { CdxCard, CdxButton } from '@wikimedia/codex'
@@ -73,22 +68,17 @@ import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import Close from 'vue-material-design-icons/Close.vue'
-import AccountCancel from 'vue-material-design-icons/AccountCancel.vue'
 
 const props = defineProps({
   round: Object
 })
 
-const router = useRouter()
 const isRoundEditing = ref(false)
 
 const toggleEditing = () => {
   isRoundEditing.value = !isRoundEditing.value
 }
 
-const manageDisqualifications = () => {
-  router.push({name: 'round-disqualify',params: {roundId: props.round.id}})
-}
 </script>
 
 <style scoped>
