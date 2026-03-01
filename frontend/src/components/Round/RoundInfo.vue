@@ -130,12 +130,18 @@
     <cdx-button @click="downloadEntries">
       <image-multiple style="font-size: 6px" /> {{ $t('montage-round-download-entries') }}
     </cdx-button>
+
+    <cdx-button @click="manageDisqualifications">
+      <account-cancel style="font-size: 6px" />
+      {{ $t('montage-disqualify-manage') }}
+    </cdx-button>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
 
@@ -149,8 +155,10 @@ import Pause from 'vue-material-design-icons/Pause.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import ImageMultiple from 'vue-material-design-icons/ImageMultiple.vue'
+import AccountCancel from 'vue-material-design-icons/AccountCancel.vue'
 
 const { t: $t } = useI18n()
+const router = useRouter()
 const props = defineProps({
   round: Object
 })
@@ -230,6 +238,10 @@ function downloadEntries() {
 function downloadReviews() {
   const url = adminService.downloadReviews(props.round.id)
   window.open(url)
+}
+
+function manageDisqualifications() {
+  router.push({name: 'round-disqualify',params: {roundId: props.round.id}})
 }
 
 function getRoundDetails(round) {
