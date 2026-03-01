@@ -90,15 +90,15 @@
           </div>
           <div class="gallery-image-ranking-container">
             <CommonsImage :image="image" :width="640" />
-          </div>
-          <div class="gallery-footer">
-            <h3 class="gallery-footer-name">
-              <div>
-                <strong>
-                  {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
-                </strong>
+              <div class="gallery-footer">
+                <h3 class="gallery-footer-name">
+                  <div>
+                    <strong>
+                      {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
+                    </strong>
+                  </div>
+                </h3>
               </div>
-            </h3>
           </div>
           <div style="font-size: 14px; color: gray; margin-top: 8px">
             <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
@@ -402,6 +402,8 @@ onUnmounted(() => {
 
 .image-grid {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .gallery {
@@ -410,26 +412,49 @@ onUnmounted(() => {
 }
 
 .image-grid-vote-action {
-  margin-bottom: 40px;
   display: flex;
-  justify-content: center;
+  justify-content: space-around;
   margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .gallery-image {
-  display: inline-block;
+  display: inline-flex;
+  flex-direction: column;
   position: relative;
-  background: #ccc;
   width: calc((100% - 100px) / 5);
-  height: 15vw;
-  margin: 10px 10px 100px;
+  margin: 10px;
   vertical-align: top;
+  background: none;
 }
 
 .gallery-image-fav {
   position: absolute;
   right: 0;
   color: red;
+  z-index: 1;
+}
+
+.gallery-image-container {
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: #000;
+}
+
+.gallery-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-image--size-2 {
+  width: calc((100% - 60px) / 3);
+}
+
+.gallery-image--size-3 {
+  width: calc((100% - 40px) / 2);
 }
 
 .gallery-image-ranking {
@@ -450,46 +475,22 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1;
 }
 
 .gallery-image-ranking-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4/3;
   overflow: hidden;
+  position: relative;
+  background: #000;
 }
 
 .gallery-image-ranking-container img {
   width: 100%;
-  height: auto;
-  object-fit: cover;
-}
-
-.gallery-image--size-2 {
-  width: calc((100% - 100px) / 3);
-  height: 28vw;
-}
-
-.gallery-image--size-3 {
-  width: calc((100% - 100px) / 2);
-  height: 43vw;
-}
-
-.gallery-image-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
   height: 100%;
-  overflow: hidden;
-}
-
-.gallery-image-container img {
-  width: 100%;
-  height: auto;
   object-fit: cover;
+  display: block;
 }
 
 .gallery-footer {
