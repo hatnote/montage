@@ -186,5 +186,14 @@
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
-  "montage-required-fill-inputs" : "Please fill all the boxes"
+  "montage-required-fill-inputs" : "Please fill all the boxes",
+  "montage-label-research-opt-in": "Share anonymized voting data for research",
+  "montage-description-research-opt-in": "By checking this, you assert that all jurors have been informed that anonymized voting data may be used for research.",
+  "montage-research-opt-in-badge": "Research Data Sharing",
+  "montage-datasets-title": "Research Datasets",
+  "montage-datasets-description": "Download anonymized voting data from campaigns that have opted in to research data sharing. The data includes only filenames and vote values - no juror information is included.",
+  "montage-datasets-no-data": "No research datasets are currently available.",
+  "montage-datasets-download": "Download CSV",
+  "montage-datasets-campaign-name": "Campaign",
+  "montage-datasets-status": "Status"
 }

@@ -29,6 +29,9 @@
       <div class="campaign-coordinators">
         <UserAvatarWithName :coordinators="campaign.coordinators" />
       </div>
+      <div class="campaign-research-opt-in" v-if="campaign.research_opt_in">
+        <span class="research-badge">{{ $t('montage-research-opt-in-badge') }}</span>
+      </div>
       <div class="campaign-rounds">
         <div class="campaign-rounds-list" v-if="!showAddRoundForm">
           <round-view v-for="round in campaignRounds" :key="round.id" :round="round" />
@@ -141,6 +144,14 @@
           @update:selectedUsers="campaignFormField.coordinators = $event"
         />
       </cdx-field>
+      <cdx-field class="research-opt-in-field">
+        <cdx-checkbox v-model="campaignFormField.researchOptIn">
+          {{ $t('montage-label-research-opt-in') }}
+        </cdx-checkbox>
+        <template #description>
+          {{ $t('montage-description-research-opt-in') }}
+        </template>
+      </cdx-field>
     </div>
 
   </div>
@@ -171,7 +182,7 @@ import { z } from 'zod'
 import RoundView from '@/components/Round/RoundView.vue'
 import RoundNew from '@/components/Round/RoundNew.vue'
 import UserList from '@/components/UserList.vue'
-import { CdxButton, CdxTextInput, CdxField, CdxDialog } from '@wikimedia/codex'
+import { CdxButton, CdxTextInput, CdxField, CdxDialog, CdxCheckbox } from '@wikimedia/codex'
 
 // Icons
 import CogIcon from 'vue-material-design-icons/Cog.vue'
@@ -201,7 +212,8 @@ const campaignFormField = ref({
   openTime: null,
   closeDate: null,
   closeTime: null,
-  coordinators: []
+  coordinators: [],
+  researchOptIn: false
 })
 
 const errors = ref({
@@ -240,7 +252,8 @@ const hangleEditCampaignBtnClick = () => {
     openTime: campaign.value.open_date?.split('T')[1].substring(0, 5),
     closeDate: campaign.value.close_date?.split('T')[0],
     closeTime: campaign.value.close_date?.split('T')[1].substring(0, 5),
-    coordinators: campaign.value.coordinators.map((u) => u.username)
+    coordinators: campaign.value.coordinators.map((u) => u.username),
+    researchOptIn: campaign.value.research_opt_in || false
   }
 }
 
@@ -268,7 +281,8 @@ const saveEditCampaign = () => {
     name: campaignFormField.value.name,
     open_date: `${campaignFormField.value.openDate}T${campaignFormField.value.openTime}`,
     close_date: `${campaignFormField.value.closeDate}T${campaignFormField.value.closeTime}`,
-    coordinators: campaignFormField.value.coordinators
+    coordinators: campaignFormField.value.coordinators,
+    research_opt_in: campaignFormField.value.researchOptIn
   }
 
   const oldCords = campaign.value.coordinators.map((u) => u.username)
@@ -421,5 +435,21 @@ onMounted(() => {
 
 .add-round-button {
   margin-top: 24px;
+}
+
+.campaign-research-opt-in {
+  margin-top: 12px;
+}
+
+.research-badge {
+  background-color: #36c;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.research-opt-in-field {
+  margin-top: 16px;
 }
 </style>
