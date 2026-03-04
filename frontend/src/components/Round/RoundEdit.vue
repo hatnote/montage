@@ -8,7 +8,7 @@
       <div style="display: flex">
         <cdx-field>
           <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD" placeholder="YYYY-MM-DD"
-            value-type="format"></date-picker>
+            value-type="format" :default-value="new Data()"></date-picker>
           <template #label>{{ $t('montage-round-deadline') }}</template>
         </cdx-field>
       </div>

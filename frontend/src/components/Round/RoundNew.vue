@@ -25,7 +25,7 @@
               <div class="flex-row">
                 <cdx-field>
                   <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD"
-                    placeholder="YYYY-MM-DD" value-type="format"></date-picker>
+                    placeholder="YYYY-MM-DD" value-type="format" :default-value="new Date()"></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
                 <cdx-field>
