@@ -121,7 +121,7 @@
             </div>
           </div>
           <div class="button-group">
-            <cdx-button :disabled="isLoading" action="progressive" weight="primary" @click="submitRound()">
+            <cdx-button :disabled="isLoading || (roundIndex !== 0 && !thresholds)" action="progressive" weight="primary" @click="submitRound()">
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
@@ -269,6 +269,13 @@ const submitRound = () => {
       message: $t('montage-required-fill-inputs')
     });
     return;
+  } else {
+    if (formData.value.threshold === null || formData.value.threshold === undefined) {
+      alertService.error({
+        message: $t('montage-round-threshold-required')
+      })
+      return
+    }
   }
 
   // Check if the round is the first round
@@ -317,6 +324,13 @@ const submitRound = () => {
         jurors: formData.value.jurors
       },
       threshold: formData.value.threshold
+    }
+
+    if (!thresholds.value) {
+      alertService.error({
+        message: $t('montage-round-cannot-advance-no-votes')
+      })
+      return
     }
 
     adminService
@@ -392,10 +406,15 @@ watch(thresholds, (value) => {
 })
 
 onMounted(() => {
-  if (prevRound) {
-    adminService.previewRound(prevRound.id).then((resp) => {
-      thresholds.value = resp.data.thresholds
-    })
+  if (prevRound && prevRound.vote_method !== 'ranking') {
+    adminService
+  .previewRound(prevRound.id)
+  .then((resp) => {
+    thresholds.value = resp.data.thresholds
+  })
+  .catch(() => {
+    thresholds.value = null
+  })
   }
 })
 </script>
