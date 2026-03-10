@@ -69,7 +69,7 @@ import Sort from 'vue-material-design-icons/Sort.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 
-const props = defineProps({
+defineProps({
   round: Object
 })
 
