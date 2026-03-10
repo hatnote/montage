@@ -70,6 +70,19 @@
         </span>
       </div>
 
+      <div v-if="round && round.show_stats && voteStats" class="vote-statistics">
+        <h3 class="vote-section-title">{{ $t('montage-round-stats') }}</h3>
+        <div class="vote-stats-content">
+          <div v-for="star in [1, 2, 3, 4, 5]" :key="star" class="vote-stats-item">
+            <span class="vote-stats-label">
+              <star class="vote-stats-star-icon" />
+              {{ star }}:
+            </span>
+            <span class="vote-stats-value">{{ voteStats.stats?.[star] || 0 }}</span>
+          </div>
+        </div>
+      </div>
+
       <h3 class="vote-section-title">{{ $t('montage-vote-actions') }}</h3>
       <div class="vote-actions">
         <div>
@@ -166,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
@@ -210,6 +223,7 @@ const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
 const images = ref(null)
 const stats = ref(null)
+const voteStats = ref(null)
 
 const rating = ref({
   current: null,
@@ -224,6 +238,21 @@ function toggleSidebar() {
 
 function goPrevVoteEditing() {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+function fetchVoteStats() {
+  if (props.round?.show_stats) {
+    jurorService
+      .getRoundVotesStats(props.round.id)
+      .then((response) => {
+        // API interceptor already returns response.data, so response is the data itself
+        voteStats.value = response
+      })
+      .catch(() => {
+        // Silently fail if stats can't be loaded
+        voteStats.value = null
+      })
+  }
 }
 
 function handleImageLoad() {
@@ -278,6 +307,10 @@ function setRate(rate) {
         stats.value.total_open_tasks -= 1
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
+        }
+        // Refresh statistics after voting
+        if (props.round?.show_stats) {
+          fetchVoteStats()
         }
         if (counter.value === 4 || !stats.value.total_open_tasks) {
           counter.value = 0
@@ -415,6 +448,24 @@ watch(images, (imgs) => {
 watch(voteContainer, () => {
   if (voteContainer.value) {
     voteContainer.value.focus()
+  }
+})
+
+watch(
+  () => props.round,
+  (round) => {
+    if (round?.show_stats) {
+      fetchVoteStats()
+    } else {
+      voteStats.value = null
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  if (props.round?.show_stats) {
+    fetchVoteStats()
   }
 })
 </script>
@@ -604,5 +655,43 @@ watch(voteContainer, () => {
 .edit-voting-btn {
   margin-top: 24px;
   width: 232px;
+}
+
+.vote-statistics {
+  margin-top: 16px;
+}
+
+.vote-stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vote-stats-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vote-stats-label {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.87);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vote-stats-star-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vote-stats-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.87);
 }
 </style>
