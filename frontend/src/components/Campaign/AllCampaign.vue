@@ -28,22 +28,21 @@
       </div>
     </section>
   </div>
-  <clip-loader v-else size="80px" style="padding-top: 120px;" />
+  <clip-loader v-else size="80px" style="padding-top: 120px" />
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import _ from 'lodash';
+import _ from 'lodash'
 
 import adminService from '@/services/adminService'
 import jurorService from '@/services/jurorService'
-import alertService from '@/services/alertService';
+import alertService from '@/services/alertService'
 
 // Components
 import { RouterLink } from 'vue-router'
 import CoordinatorCampaignCard from '@/components/Campaign/CoordinatorCampaignCard.vue'
 import JurorCampaignCard from '@/components/Campaign/JurorCampaignCard.vue'
-
 
 // State
 const isLoading = ref(false)
@@ -54,7 +53,7 @@ onMounted(() => {
   isLoading.value = true
 
   // Fetch all campaigns
-  const fetchCoordinatorCampaigns =  adminService
+  const fetchCoordinatorCampaigns = adminService
     .allCampaigns()
     .then((response) => {
       coordinatorCampaigns.value = response.data
@@ -71,7 +70,7 @@ onMounted(() => {
       })
     })
     .catch((error) => {
-      if (error.response && error.response.status === 403) return;
+      if (error.response && error.response.status === 403) return
       alertService.error(error)
     })
 
@@ -80,14 +79,14 @@ onMounted(() => {
     .allCampaigns()
     .then((response) => {
       if (!response.data.length) {
-        jurorCampaigns.value = [];
-        return;
+        jurorCampaigns.value = []
+        return
       }
 
       const roundsGroupedByCampaigns = _.groupBy(
         response.data.filter((round) => round.status !== 'cancelled'),
         'campaign.id'
-      );
+      )
 
       let campaignsJuror = _.values(roundsGroupedByCampaigns)
 
@@ -112,7 +111,7 @@ onMounted(() => {
     })
     .catch(alertService.error)
 
-    Promise.all([fetchCoordinatorCampaigns, fetchJurorCampaigns]).finally(() => {
+  Promise.all([fetchCoordinatorCampaigns, fetchJurorCampaigns]).finally(() => {
     isLoading.value = false
   })
 })

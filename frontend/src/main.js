@@ -28,4 +28,4 @@ app.component('date-picker', DatePicker)
 // Load additional language messages dynamically
 loadMessages().then(() => {
   app.mount('#app')
-});
+})
