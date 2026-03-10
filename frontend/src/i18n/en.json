@@ -186,8 +186,5 @@
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
-  "montage-required-fill-inputs" : "Please fill all the boxes",
-  "montage-pagination-previous": "Previous",
-  "montage-pagination-next": "Next",
-  "montage-pagination-page": "Page {0}"
+  "montage-required-fill-inputs": "Please fill all the boxes"
 }
