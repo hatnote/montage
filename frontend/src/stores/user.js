@@ -9,7 +9,7 @@ export const useUserStore = defineStore('user-store', () => {
 
   function login(userObj) {
     if (!userObj) {
-      window.location =  import.meta.env.VITE_API_ENDPOINT + '/login'
+      window.location = import.meta.env.VITE_API_ENDPOINT + '/login'
     }
     user.value = userObj
     isAuthenticated.value = true
@@ -32,5 +32,5 @@ export const useUserStore = defineStore('user-store', () => {
     }
   }
 
-  return { user, login, logout, checkAuth, isAuthenticated,authChecked }
+  return { user, login, logout, checkAuth, isAuthenticated, authChecked }
 })

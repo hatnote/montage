@@ -9,15 +9,27 @@
       </div>
 
       <div class="vote-grid-size-controls">
-        <cdx-button :action="gridSize === 3 ? 'progressive' : ''" weight="quiet" @click="setGridSize(3)">
+        <cdx-button
+          :action="gridSize === 3 ? 'progressive' : ''"
+          weight="quiet"
+          @click="setGridSize(3)"
+        >
           <image-size-select-actual class="icon-small" />
           {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
-        <cdx-button :action="gridSize === 2 ? 'progressive' : ''" weight="quiet" @click="setGridSize(2)">
+        <cdx-button
+          :action="gridSize === 2 ? 'progressive' : ''"
+          weight="quiet"
+          @click="setGridSize(2)"
+        >
           <image-size-select-large class="icon-small" />
           {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
-        <cdx-button :action="gridSize === 1 ? 'progressive' : ''" weight="quiet" @click="setGridSize(1)">
+        <cdx-button
+          :action="gridSize === 1 ? 'progressive' : ''"
+          weight="quiet"
+          @click="setGridSize(1)"
+        >
           <image-size-select-small class="icon-small" />
           {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
@@ -31,8 +43,12 @@
 
     <div class="vote-image-grid" :class="'grid-size-' + gridSize">
       <draggable class="vote-gallery" v-model="images">
-        <div v-for="(image, index) in images" :key="image.entry.id" class="vote-gallery-image link"
-          :class="getImageSizeClass()">
+        <div
+          v-for="(image, index) in images"
+          :key="image.entry.id"
+          class="vote-gallery-image link"
+          :class="getImageSizeClass()"
+        >
           <div class="vote-gallery-expand-icon" @click="openImage(image)">
             <arrow-expand-all />
           </div>
@@ -87,7 +103,6 @@ import { useRouter } from 'vue-router'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
-import { getCommonsImageUrl } from '@/utils'
 import CommonsImage from '@/components/CommonsImage.vue'
 
 // Components
@@ -137,7 +152,7 @@ const openImage = (image) => {
     title: $t('montage-vote-image-review', [image.entry.id]),
     props: {
       image: image,
-      onSave: (newValue) => image.review = newValue,
+      onSave: (newValue) => (image.review = newValue)
     },
     content: ImageReviewDialog,
     primaryAction: {
@@ -145,10 +160,10 @@ const openImage = (image) => {
       actionType: 'progressive'
     },
     defaultAction: {
-      label: 'Cancel',
+      label: 'Cancel'
     },
     onDefault: () => console.log('Canceled'),
-    maxWidth: "56rem"
+    maxWidth: '56rem'
   })
 }
 
@@ -182,7 +197,7 @@ const toggleFav = (image) => {
 watch(
   () => props.tasks,
   (tasks) => {
-    if (!tasks) return;
+    if (!tasks) return
 
     console.log(tasks)
     images.value = tasks.tasks
