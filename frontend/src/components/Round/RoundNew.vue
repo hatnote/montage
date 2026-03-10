@@ -381,7 +381,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       })
   }
@@ -423,12 +423,12 @@ const importCategory = (id) => {
             actionType: 'progressive'
           },
           onPrimary: () => {
-            emit('reload-campaign-state')
+            emit('reloadCampaignState')
             emit('update:showAddRoundForm', false)
           }
         })
       } else {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       }
     })
