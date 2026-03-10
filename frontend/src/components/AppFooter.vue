@@ -10,7 +10,7 @@
         {{ $t('montage-about') }}</a
       >
       <a href="https://github.com/hatnote/montage" class="footer-link" target="_blank">
-        {{  $t('montage-source-code') }}
+        {{ $t('montage-source-code') }}
       </a>
     </div>
     <div class="footer-right">

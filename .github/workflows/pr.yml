@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'montage/**'
+              - 'requirements.txt'
+              - 'requirements.in'
+              - 'setup.py'
+              - 'dockerfile'
+            frontend:
+              - 'frontend/**'
+
+  test-backend:
+    name: Test Backend (Python)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    uses: ./.github/workflows/test-backend.yml
+
+  lint-frontend:
+    name: Lint & Build Frontend (Vue)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/lint-frontend.yml
+
+  ci-complete:
+    name: CI Complete
+    runs-on: ubuntu-latest
+    needs: [test-backend, lint-frontend]
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          for job in test-backend lint-frontend; do
+            case "$job" in
+              test-backend)  result="${{ needs.test-backend.result }}" ;;
+              lint-frontend) result="${{ needs.lint-frontend.result }}" ;;
+            esac
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::Job $job failed with result: $result"
+              exit 1
+            fi
+          done
+          echo "All CI jobs passed or were correctly skipped."
