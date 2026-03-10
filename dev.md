@@ -27,7 +27,7 @@ The **Montage Project** is a web application with two main components:
 
 Ensure the following are installed:
 - **Docker** and **Docker Compose**: [Install Docker](https://www.docker.com/products/docker-desktop).
-- **Node.js** (v16 or above): [Install Node.js](https://nodejs.org).
+- **Node.js** (v20 or above): [Install Node.js](https://nodejs.org).
 - **Make**: Available on most Unix-based systems.
 
 ---
@@ -53,7 +53,32 @@ cp .env.default .env
 
 Edit the `.env` file to match your development environment. By default, it's configured to connect to a locally running backend at `http://localhost:5001`.
 
-### 4. Run the Frontend in Development Mode
+### 4. Authentication (OAuth)
+
+Montage uses MediaWiki OAuth for authentication. There are two modes for local development:
+
+**Default (dev/debug mode) -- no setup required:**
+The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely and you are automatically logged in as `Slaporte`. This is sufficient for most frontend and backend development.
+
+**Real OAuth (optional) -- for testing the actual login flow:**
+If you need to test the real OAuth login/logout flow, you need to register an OAuth consumer:
+
+1. Go to [Special:OAuthConsumerRegistration](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) on Meta-Wiki
+2. Fill in the form:
+   - **Application name**: Something like `Montage local dev (<your username>)`
+   - **Callback URL**: `http://localhost:5001/complete_login`
+   - **Applicable grants**: "Basic rights" is sufficient
+3. Save the **consumer token** and **consumer secret** you receive
+4. Copy `config.default.yaml` to `config.dev.yaml` and set:
+   ```yaml
+   debug: False
+   oauth_consumer_token: "<your consumer token>"
+   oauth_secret_token: "<your consumer secret>"
+   ```
+
+See the [MediaWiki OAuth developer guide](https://www.mediawiki.org/wiki/OAuth/For_Developers) for more details on the OAuth flow. For Toolforge-specific OAuth setup, see the [Toolforge documentation](https://wikitech.wikimedia.org/wiki/Help:Toolforge).
+
+### 5. Run the Frontend in Development Mode
 ```bash
 npm run dev
 ```
@@ -62,10 +87,12 @@ This will start the Vite development server with hot module replacement.
 
 Other frontend development commands:
 * `npm run build`: Build for production
-* `npm run lint`: Lint the code
-* `npm run format`: Format the code
+* `npm run lint`: Lint and auto-fix
+* `npm run format`: Format with Prettier
+* `npm run lint:check`: Lint without auto-fix (same as CI)
+* `npm run format:check`: Check formatting without writing (same as CI)
 
-### 5. Use the Makefile to start the backend
+### 6. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
@@ -88,7 +115,7 @@ This will build the docker image for the montage backend and start the container
 * `make logs` : Stream the backend container logs in real-time.
 * `make restart` : Restart the backend container
 
-### 6. Access the Application
+### 7. Access the Application
 * With development server: Open http://localhost:5173 in your browser (frontend)
 * With backend serving frontend: Open http://localhost:5001 in your browser
 
@@ -96,6 +123,54 @@ The application server runs on localhost port 5001, visit [http://localhost:5001
 of valid URL patterns and other details.
 
 Almost all endpoints from backend (except for OAuth and `/static/`) return JSON as long as the proper Accept header is set (done by most libraries) or `format=json` is passed in the query string.
+
+---
+
+## Pre-commit Hooks
+
+Install [pre-commit](https://pre-commit.com/) to catch lint and formatting issues before they reach CI:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Hooks run automatically on `git commit`. To run on all files manually:
+
+```bash
+pre-commit run --all-files
+```
+
+The hooks mirror what CI checks:
+* **Prettier**: auto-formats staged frontend files
+* **ESLint**: lints staged frontend files
+* **Ruff**: checks Python syntax errors and undefined names
+
+---
+
+## CI
+
+Pull requests are checked by GitHub Actions (`.github/workflows/`):
+
+* **Backend**: Docker build, pytest, Python import verification
+* **Frontend**: Prettier formatting, ESLint, Vite build
+
+Changes are only checked if they touch the relevant paths (e.g., frontend-only changes skip backend tests).
+
+To run the same checks locally:
+
+```bash
+# Backend tests
+docker build -t montage-ci -f dockerfile .
+docker run --rm -v $(pwd):/app -e PYTHONPATH=/app montage-ci \
+  python -m pytest montage/tests/test_web_basic.py -v --tb=short
+
+# Frontend checks
+cd frontend
+npx prettier --check src/
+npx eslint src/ --ext .vue,.js,.jsx,.cjs,.mjs
+npm run build
+```
 
 ## Project structure
 ```bash
@@ -119,7 +194,6 @@ Almost all endpoints from backend (except for OAuth and `/static/`) return JSON 
 │   ├── package-lock.json
 │   ├── package.json
 │   ├── .env.default
-│   ├── .env
 │   ├── public
 │   ├── src
 │   └── vite.config.js
@@ -200,7 +274,6 @@ These provides a detailed explanation of the main components in the **Montage Pr
 - **`public/`**: Static assets, such as images and global styles.
 - **`vite.config.js`**: Configuration for the Vite build tool.
 - **`.env.default`**: Template for environment configuration.
-- **`.env`**: Local environment configuration.
 
 
 #### Directory: `tools`
