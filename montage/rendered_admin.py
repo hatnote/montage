@@ -83,7 +83,7 @@ def view_flags(user_dao, round_id):
     raw = get_flagged_entries(user_dao, round_id)
     return raw['data']
 
-def view_jurors(user_dao, round_id, user_id):
+def view_juror(user_dao, round_id, user_id):
     pass
 
 def view_disqualified(user_dao, round_id):
