@@ -69,7 +69,7 @@
         </p>
         <p>
           <strong>{{ $t('montage-round-cancelled-tasks') }}:</strong>
-          {{ rroundResults?.counts.total_cancelled_tasks }}
+          {{ roundResults?.counts.total_cancelled_tasks }}
         </p>
         <p>
           <strong>{{ $t('montage-round-disqualified-files') }}:</strong>

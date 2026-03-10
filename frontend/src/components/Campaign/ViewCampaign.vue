@@ -4,7 +4,12 @@
       <div class="campaign-header">
         <p class="campaign-title">{{ campaign.name }}</p>
         <div class="campaign-button-group">
-          <cdx-button action="destructive" weight="primary" @click="closeCampaign">
+          <cdx-button
+            v-if="canCloseCampaign"
+            action="destructive"
+            weight="primary"
+            @click="closeCampaign"
+          >
             <clipboard-check class="icon-small" /> {{ $t('montage-close-campaign') }}
           </cdx-button>
           <cdx-button action="destructive" @click="archiveCampaign" v-if="!campaign.is_archived">
@@ -326,6 +331,7 @@ const closeCampaign = () => {
     .finalizeCampaign(campaignId)
     .then((resp) => {
       if (resp.status === 'success') {
+        alertService.success('Campaign closed.')
         reloadState()
       }
     })
