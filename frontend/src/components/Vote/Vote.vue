@@ -1,42 +1,25 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div v-if="!tasks || !round" class="loading-container">
     <clip-loader class="loading-bar" size="85px" />
   </div>
 
   <div v-else-if="round && round.status === 'paused'" class="paused-container">
-    <p>{{ $t('montage-round-paused')}}</p>
+    <p>{{ $t('montage-round-paused') }}</p>
   </div>
 
   <template v-else>
     <div v-if="round.directions" class="directions-container">
-      <p><strong>{{ $t('montage-round-directions') }}</strong></p>
+      <p>
+        <strong>{{ $t('montage-round-directions') }}</strong>
+      </p>
       <p>{{ round.directions }}</p>
     </div>
     <vote-yes-no v-if="round.vote_method === 'yesno'" :round="round" :tasks="tasks" />
     <vote-rating v-else-if="round.vote_method === 'rating'" :round="round" :tasks="tasks" />
     <vote-ranking v-else-if="round.vote_method === 'ranking'" :round="round" :tasks="tasks" />
-    </template>
-    
-    <script>
-    export default {
-    
-    }
-    </script>
-    
-    <style>
-    
-    </style>
-    </template>
-    
-    <script>
-    export default {
-    
-    }
-    </script>
-    
-    <style>
-    
-    </style>
+  </template>
+</template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -54,12 +37,18 @@ const round = ref(null)
 const tasks = ref(null)
 
 onMounted(() => {
-    jurorService.getRound(voteId).then((response) => {
-        round.value = response.data
-    }).catch(alertService.error)
-    jurorService.getRoundTasks(voteId).then((response) => {
-        tasks.value = response.data
-    }).catch(alertService.error)
+  jurorService
+    .getRound(voteId)
+    .then((response) => {
+      round.value = response.data
+    })
+    .catch(alertService.error)
+  jurorService
+    .getRoundTasks(voteId)
+    .then((response) => {
+      tasks.value = response.data
+    })
+    .catch(alertService.error)
 })
 </script>
 
