@@ -74,7 +74,6 @@ class MontageTestClient(object):
                 return res
             print('!! ', res.get_data())
             print()
-            import pdb;pdb.set_trace()
             raise AssertionError('got error code %s when fetching %s' % (res.status_code, url))
         return res
 
@@ -115,7 +114,6 @@ class MontageTestClient(object):
         except AssertionError:
             print('!! did not get expected status %r for %s' % (expected_status, url))
             print('  got: ', data_dict)
-            import pdb;pdb.set_trace()
             raise
         return data_dict
 
@@ -705,7 +703,6 @@ def test_home_client(base_client, api_client):
     #resp = fetch('coordinator: cancel campaign',
     #             '/admin/campaign/%s/cancel' % campaign_id,
     #             {'post': True}, as_user='LilyOfTheWest')
-    #import pdb;pdb.set_trace()
 
     # submit the remaining ratings
 
