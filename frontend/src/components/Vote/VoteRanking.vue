@@ -80,10 +80,16 @@
       <h3>{{ $t('montage-vote-all-done') }}</h3>
       <p class="greyed">{{ $t('montage-vote-no-images') }}</p>
       <p class="greyed">{{ $t('montage-vote-no-images-warning') }}</p>
-      <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
-        <pencil class="icon-small" />
-        {{ $t('montage-edit-previous-vote') }}
-      </cdx-button>
+      <div class="voting-completed-actions">
+        <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
+          <pencil class="icon-small" />
+          {{ $t('montage-edit-previous-vote') }}
+        </cdx-button>
+        <cdx-button class="edit-voting-btn" @click="goFaves">
+          <heart class="icon-small" />
+          {{ $t('montage-my-campaign-faves') }}
+        </cdx-button>
+      </div>
     </div>
   </div>
 
@@ -106,12 +112,14 @@ import CommonsImage from '@/components/CommonsImage.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { CdxButton } from '@wikimedia/codex'
 
-// Icon
+// Icons
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ImageSizeSelectActual from 'vue-material-design-icons/ImageSizeSelectActual.vue'
 import ImageSizeSelectLarge from 'vue-material-design-icons/ImageSizeSelectLarge.vue'
 import ImageSizeSelectSmall from 'vue-material-design-icons/ImageSizeSelectSmall.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
 import ImageReviewDialog from './ImageReviewDialog.vue'
 
 const { t: $t } = useI18n()
@@ -180,6 +188,10 @@ const saveRanking = () => {
 
 const editPreviousVotes = () => {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+const goFaves = () => {
+  router.push({ name: 'faves', params: { id: roundLink } })
 }
 
 watch(
@@ -316,8 +328,13 @@ watch(
   align-items: center;
 }
 
-.edit-voting-btn {
+.voting-completed-actions {
+  display: flex;
+  gap: 12px;
   margin-top: 24px;
+}
+
+.edit-voting-btn {
   width: 232px;
 }
 </style>
