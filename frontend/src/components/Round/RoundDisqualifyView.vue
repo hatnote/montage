@@ -26,7 +26,7 @@ import { ref } from 'vue'
 import { CdxTextArea } from '@wikimedia/codex'
 import CommonsImage from '../CommonsImage.vue'
 
-const props = defineProps({
+const { entry } = defineProps({
   entry: {
     type: Object,
     required: true
