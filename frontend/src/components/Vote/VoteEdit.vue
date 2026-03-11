@@ -5,13 +5,13 @@
   </div>
 
   <!-- Main edit screen -->
-  <div
-    v-else-if="round.campaign.status === 'active' && votes.length"
-    class="edit-vote-screen"
-    @scroll="handleScroll"
-    ref="editVoteContainer"
-  >
-    <div class="round-header">
+    <div
+      v-else-if="round.campaign.status === 'active' && votes.length"
+      class="edit-vote-screen"
+      @scroll="handleScroll"
+      ref="editVoteContainer"
+    >
+      <div class="round-header">
       <div>
         <h2
           v-html="$t('montage-vote-edit-for', [`<a href='#/vote/${round.link}'>${round.name}</a>`])"
@@ -37,18 +37,7 @@
       <div class="grid-size-controls" style="margin-left: 60px">
         <p style="font-size: 16px; color: gray; margin-left: 11px">
           {{ $t('montage-vote-gallery-size') }}
-        </p>
-<<<<<<< HEAD
-        <cdx-button :action="gridSize === 3 ? 'progressive' : 'default'" weight="quiet" @click="setGridSize(3)">
-          <image-size-select-actual style="font-size: 6px" />
-          {{ $t('montage-vote-grid-size-large') }}
-        </cdx-button>
-        <cdx-button :action="gridSize === 2 ? 'progressive' : 'default'" weight="quiet" @click="setGridSize(2)">
-          <image-size-select-large style="font-size: 6px" />
-          {{ $t('montage-vote-grid-size-medium') }}
-        </cdx-button>
-        <cdx-button :action="gridSize === 1 ? 'progressive' : 'default'" weight="quiet" @click="setGridSize(1)">
-=======
+         </p>
         <cdx-button
           :action="gridSize === 3 ? 'progressive' : ''"
           weight="quiet"
@@ -69,8 +58,7 @@
           :action="gridSize === 1 ? 'progressive' : ''"
           weight="quiet"
           @click="setGridSize(1)"
-        >
->>>>>>> 8f06934 (Add GitHub Actions CI with backend tests and frontend lint/build (#406))
+         >
           <image-size-select-small style="font-size: 6px" />
           {{ $t('montage-vote-grid-size-small') }}
         </cdx-button>
@@ -115,13 +103,7 @@
           <p>{{ dayjs.utc(image.date).format('D MMM YYYY [at] H:mm [UTC]') }}</p>
         </div>
         <!-- Yes/No voting edit -->
-        <div class="image-grid-vote-action" v-if="isVoting('yesno')">
-<<<<<<< HEAD
-          <cdx-button :action="image.value === 5 ? 'progressive' : 'default'" weight="quiet" @click="setRate(image, 5)">
-            <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
-          </cdx-button>
-          <cdx-button :action="image.value === 1 ? 'progressive' : 'default'" weight="quiet" @click="setRate(image, 1)">
-=======
+          <div class="image-grid-vote-action" v-if="isVoting('yesno')">
           <cdx-button
             :action="image.value === 5 ? 'progressive' : ''"
             weight="quiet"
@@ -133,8 +115,7 @@
             :action="image.value === 1 ? 'progressive' : ''"
             weight="quiet"
             @click="setRate(image, 1)"
-          >
->>>>>>> 8f06934 (Add GitHub Actions CI with backend tests and frontend lint/build (#406))
+            >
             <thumb-down class="icon-small" /> {{ $t('montage-vote-decline') }}
           </cdx-button>
         </div>

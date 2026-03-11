@@ -1,3 +1,4 @@
+/* global describe, it, cy, beforeEach */
 describe('Campaign Details Page', () => {
   beforeEach(() => {
     cy.setCookie('clastic_cookie', '<cookie-validation-string>');

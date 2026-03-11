@@ -150,7 +150,7 @@ def get_tasks_from_round(user_dao, round_id, request):
 
 
 def get_votes_from_round(user_dao, round_id, request, rnd=None):
-    raw_count = request.values.get('count', VOTES_PAGE_DEFAULT)
+    raw_count = request.values.get('count', 50)
     try:
         count = int(raw_count)
     except (TypeError, ValueError):
