@@ -4,7 +4,7 @@
   </div>
 
   <div v-else-if="round && round.status === 'paused'" class="paused-container">
-    <p>{{ $t('montage-round-paused')}}</p>
+    <p>{{ $t('montage-round-paused') }}</p>
   </div>
 
   <template v-else>
@@ -30,12 +30,18 @@ const round = ref(null)
 const tasks = ref(null)
 
 onMounted(() => {
-    jurorService.getRound(voteId).then((response) => {
-        round.value = response.data
-    }).catch(alertService.error)
-    jurorService.getRoundTasks(voteId).then((response) => {
-        tasks.value = response.data
-    }).catch(alertService.error)
+  jurorService
+    .getRound(voteId)
+    .then((response) => {
+      round.value = response.data
+    })
+    .catch(alertService.error)
+  jurorService
+    .getRoundTasks(voteId)
+    .then((response) => {
+      tasks.value = response.data
+    })
+    .catch(alertService.error)
 })
 </script>
 
