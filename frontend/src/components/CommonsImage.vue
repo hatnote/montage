@@ -19,7 +19,7 @@ const props = defineProps({
   },
   width: {
     type: Number,
-    default: 1280,
+    default: 1280
     // Use Commons standard thumbnail sizes for best performance (pre-cached):
     // 320, 640, 800, 1024, 1280, 2560
     // These sizes are already generated and cached by Wikimedia Commons
@@ -52,11 +52,11 @@ const encodedName = computed(() => {
 const urlStrategies = computed(() => {
   const name = encodedName.value
   const width = props.width
-  
+
   return [
     // Strategy 1: Special:Redirect/file with width (works universally, handles TIFF → JPG conversion)
     `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${name}&width=${width}`,
-    
+
     // Strategy 2: Special:Redirect/file without width (full size fallback)
     `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${name}`
   ]
@@ -87,4 +87,3 @@ watch(imageName, () => {
   hasLoaded.value = false
 })
 </script>
-

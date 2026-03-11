@@ -8,5 +8,6 @@ COPY requirements.txt .
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+RUN pip install pytest
 
 EXPOSE 5000

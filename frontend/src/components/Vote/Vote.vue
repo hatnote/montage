@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div v-if="!tasks || !round" class="loading-container">
     <clip-loader class="loading-bar" size="85px" />
