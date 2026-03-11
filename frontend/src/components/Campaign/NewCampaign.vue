@@ -101,9 +101,9 @@
             @update:selectedUsers="formField.coordinators = $event"
           />
         </cdx-field>
-        
+
         <cdx-field class="research-opt-in-field">
-          <cdx-checkbox v-model="formField.researchOptIn" >
+          <cdx-checkbox v-model="formField.researchOptIn">
             {{ $t('montage-label-research-opt-in') }}
           </cdx-checkbox>
           <template #description>

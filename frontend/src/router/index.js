@@ -12,7 +12,6 @@ import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
 import DatasetsView from '@/views/DatasetsView.vue'
-import { name } from 'dayjs/locale/en'
 
 const routes = [
   {
