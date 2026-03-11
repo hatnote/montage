@@ -326,8 +326,6 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
-const hasSubmitted = ref(false)
-
 const errors = ref({
   name: '',
   deadline: '',
