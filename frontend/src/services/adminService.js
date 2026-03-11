@@ -59,9 +59,10 @@ const adminService = {
   // Disqualification management
   getRoundEntries: (id) => apiBackend.get(`admin/round/${id}/entries`),
   getDisqualified: (id) => apiBackend.get(`admin/round/${id}/disqualified`),
-  disqualifyEntry: (roundId, entryId, reason) => apiBackend.post(`admin/round/${roundId}/${entryId}/disqualify`, {reason}),
-  requalifyEntry: (roundId, entryId) => apiBackend.post(`admin/round/${roundId}/${entryId}/requalify`)
-
+  disqualifyEntry: (roundId, entryId, reason) =>
+    apiBackend.post(`admin/round/${roundId}/${entryId}/disqualify`, { reason }),
+  requalifyEntry: (roundId, entryId) =>
+    apiBackend.post(`admin/round/${roundId}/${entryId}/requalify`)
 }
 
 export default adminService
