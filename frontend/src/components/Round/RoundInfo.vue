@@ -234,11 +234,6 @@ function downloadEntries() {
   window.open(url)
 }
 
-function downloadReviews() {
-  const url = adminService.downloadReviews(props.round.id)
-  window.open(url)
-}
-
 function manageDisqualifications() {
   router.push({ name: 'round-disqualify', params: { roundId: props.round.id } })
 }

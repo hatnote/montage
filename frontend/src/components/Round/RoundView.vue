@@ -78,7 +78,6 @@ const isRoundEditing = ref(false)
 const toggleEditing = () => {
   isRoundEditing.value = !isRoundEditing.value
 }
-
 </script>
 
 <style scoped>
