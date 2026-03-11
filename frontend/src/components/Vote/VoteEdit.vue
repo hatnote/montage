@@ -183,7 +183,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch} from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import _ from 'lodash'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -216,7 +216,6 @@ import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
-import ArrowRight from 'vue-material-design-icons/ArrowRight.vue'
 import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 
 // Hooks
@@ -422,11 +421,11 @@ watch(locale, (newLocale) => {
 })
 
 const beforeUnloadListner = (event) => {
-  if (edits.value.length){
+  if (edits.value.length) {
     event.preventDefault()
-    event.returnValue="";
+    event.returnValue = ''
   }
-};
+}
 
 onMounted(() => {
   getRoundDetails(voteId)
@@ -438,16 +437,16 @@ onMounted(() => {
 
   handleResize()
   window.addEventListener('resize', handleResize)
-  window.addEventListener('beforeunload',beforeUnloadListner)
+  window.addEventListener('beforeunload', beforeUnloadListner)
 })
 
 const gobackToRound = () => {
   router.push(`/vote/${round.value.link}`)
 }
 
-onBeforeRouteLeave((to,from,next)=> {
+onBeforeRouteLeave((to, from, next) => {
   if (edits.value.length) {
-    if (confirm("There are unsaved changes. Are you sure you want to leave?")) {
+    if (confirm('There are unsaved changes. Are you sure you want to leave?')) {
       next()
     } else {
       next(false)
@@ -461,7 +460,7 @@ onUnmounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.removeEventListener('scroll', handleScroll)
   }
-  window.removeEventListener('beforeunload',beforeUnloadListner)
+  window.removeEventListener('beforeunload', beforeUnloadListner)
   window.removeEventListener('resize', handleResize)
 })
 </script>
