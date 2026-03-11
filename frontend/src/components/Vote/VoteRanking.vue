@@ -53,7 +53,7 @@
             <arrow-expand-all />
           </div>
           <div class="vote-gallery-fav-icon" @click.stop="toggleFav(image)">
-            <heart :class="{ 'is-fave': image.is_fave }"/>
+            <heart :class="{ 'is-fave': image.is_fave }" />
           </div>
           <div class="vote-gallery-image-container">
             <CommonsImage :image="image" :width="640" />
@@ -187,11 +187,18 @@ const editPreviousVotes = () => {
 }
 
 const toggleFav = (image) => {
-  const action = image.is_fave? jurorService.unfaveImage(props.round.id,image.entry.id):jurorService.faveImage(props.round.id,image.entry.id)
-  action.then(()=> {
-    image.is_fave = !image.is_fave
-    alertService.success(image.is_fave? $t('montage-vote-added-favorites'): $t('montage-vote-removed-favorites'),500)
-  }).catch(alertService.error)
+  const action = image.is_fave
+    ? jurorService.unfaveImage(props.round.id, image.entry.id)
+    : jurorService.faveImage(props.round.id, image.entry.id)
+  action
+    .then(() => {
+      image.is_fave = !image.is_fave
+      alertService.success(
+        image.is_fave ? $t('montage-vote-added-favorites') : $t('montage-vote-removed-favorites'),
+        500
+      )
+    })
+    .catch(alertService.error)
 }
 
 watch(
