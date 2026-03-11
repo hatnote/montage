@@ -48,6 +48,9 @@ const addInterceptors = (instance) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
 
+      const message = error.response?.data?.errors
+      if (message) error.message = message
+
       return Promise.reject(error)
     }
   )
