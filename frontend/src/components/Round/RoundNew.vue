@@ -34,7 +34,7 @@
           <div class="form-container">
             <div class="form-left">
               <cdx-field
-                :status=" errors.name ? 'error' : 'default'"
+                :status="errors.name ? 'error' : 'default'"
                 :messages="{ error: errors.name }"
               >
                 <cdx-text-input v-model="formData.name" />
@@ -42,11 +42,16 @@
               </cdx-field>
               <div class="flex-row">
                 <cdx-field
-                :status=" errors.deadline ? 'error' : 'default'"
+                  :status="errors.deadline ? 'error' : 'default'"
                   :messages="{ error: errors.deadline }"
                 >
-                  <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD"
-                    placeholder="YYYY-MM-DD" value-type="format"></date-picker>
+                  <date-picker
+                    v-model:value="formData.deadline_date"
+                    type="date"
+                    format="YYYY-MM-DD"
+                    placeholder="YYYY-MM-DD"
+                    value-type="format"
+                  ></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
                 <cdx-field>
@@ -84,9 +89,18 @@
                   </p>
                 </template>
               </cdx-field>
-              <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'" :status=" errors.category? 'error':'default'" :messages="{error: errors.category}">
-                <cdx-lookup data-testid="montage-round-category" v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
-                  :placeholder="$t('montage-round-category-placeholder')" @input="searchCategory">
+              <cdx-field
+                v-if="roundIndex === 0 && selectedImportSource === 'category'"
+                :status="errors.category ? 'error' : 'default'"
+                :messages="{ error: errors.category }"
+              >
+                <cdx-lookup
+                  data-testid="montage-round-category"
+                  v-model:selected="importSourceValue.category"
+                  :menu-items="categoryOptions"
+                  :placeholder="$t('montage-round-category-placeholder')"
+                  @input="searchCategory"
+                >
                   <template #label>{{ $t('montage-round-category-label') }}</template>
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
                 </cdx-lookup>
@@ -118,7 +132,7 @@
                 </template>
               </cdx-field>
               <cdx-field
-                :status=" errors.quorum ? 'error' : 'default'"
+                :status="errors.quorum ? 'error' : 'default'"
                 :messages="{ error: errors.quorum }"
               >
                 <cdx-text-input v-model="formData.quorum" input-type="number" />
@@ -131,7 +145,11 @@
                 :status="errors.jurors ? 'error' : 'default'"
                 :messages="{ error: errors.jurors }"
               >
-                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" data-testid="userlist-search" />
+                <UserList
+                  :users="formData.jurors"
+                  @update:selectedUsers="formData.jurors = $event"
+                  data-testid="userlist-search"
+                />
                 <template #label>{{ $t('montage-label-round-jurors') }}</template>
                 <template #help-text>
                   <p>{{ $t('montage-round-jurors-description') }}</p>
@@ -167,7 +185,12 @@
             </div>
           </div>
           <div class="button-group">
-            <cdx-button :disabled="isLoading || !isFormValid" action="progressive" weight="primary" @click="submitRound()">
+            <cdx-button
+              :disabled="isLoading || !isFormValid"
+              action="progressive"
+              weight="primary"
+              @click="submitRound()"
+            >
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
             <cdx-button
@@ -360,12 +383,10 @@ const touched = ref({
   category: false
 })
 
-const isFormValid = computed(() => 
-  !Object.values(errors.value).some(Boolean)
-)
+const isFormValid = computed(() => !Object.values(errors.value).some(Boolean))
 
 const submitRound = () => {
-  Object.keys(touched.value).forEach(key => touched.value[key]=true)
+  Object.keys(touched.value).forEach((key) => (touched.value[key] = true))
   validateForm()
 
   if (!formData.value.deadline_date) {
@@ -374,7 +395,7 @@ const submitRound = () => {
     })
     return
   }
- 
+
   if (!isFormValid.value) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
@@ -495,11 +516,41 @@ const importCategory = (id) => {
     })
 }
 
-watch(() => formData.value.name, () => { touched.value.name = true; validateForm() })
-watch(() => formData.value.deadline_date, () => { touched.value.deadline = true; validateForm() })
-watch(() => formData.value.quorum, () => { touched.value.quorum = true; validateForm() })
-watch(() => formData.value.jurors.length, () => { touched.value.jurors = true; validateForm() })
-watch(() => importSourceValue.value.category, () => { touched.value.category = true; validateForm() })
+watch(
+  () => formData.value.name,
+  () => {
+    touched.value.name = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.deadline_date,
+  () => {
+    touched.value.deadline = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.quorum,
+  () => {
+    touched.value.quorum = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.jurors.length,
+  () => {
+    touched.value.jurors = true
+    validateForm()
+  }
+)
+watch(
+  () => importSourceValue.value.category,
+  () => {
+    touched.value.category = true
+    validateForm()
+  }
+)
 
 watch(thresholds, (value) => {
   thresholdOptions.value = Object.entries(value).map(([key, value]) => ({
