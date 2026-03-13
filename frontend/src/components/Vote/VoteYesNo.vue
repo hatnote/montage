@@ -16,6 +16,22 @@
         @error="handleImageLoad"
       />
       <cdx-button
+        weight="quiet"
+        class="vote-nav-prev"
+        @click="goPrev"
+        v-if="rating.currentIndex > 0"
+      >
+        <arrow-left-thick class="icon-small" />
+      </cdx-button>
+      <cdx-button
+        weight="quiet"
+        class="vote-nav-next"
+        @click="goNext"
+        v-if="votedIds.has(rating.current.id) && rating.currentIndex < images.length - 1"
+      >
+        <arrow-right-thick class="icon-small" />
+      </cdx-button>
+      <cdx-button
         @click="toggleSidebar"
         v-tooltip="$t(showSidebar ? 'montage-vote-hide-panel' : 'montage-vote-show-panel')"
         weight="quiet"
@@ -56,10 +72,18 @@
       <div class="vote-controls">
         <clip-loader v-if="isLoading" color="#36D7B7" size="20px" />
         <div v-else class="vote-controls-button">
-          <cdx-button action="progressive" weight="quiet" @click="setRate(5)">
+          <cdx-button 
+            action="progressive" 
+            :weight="currentVote === 5 ? 'normal' : 'quiet'" 
+            @click="setRate(5)"
+          >
             <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
           </cdx-button>
-          <cdx-button action="destructive" weight="quiet" @click="setRate(1)">
+          <cdx-button 
+            action="destructive" 
+            :weight="currentVote === 1 ? 'normal' : 'quiet'" 
+            @click="setRate(1)"
+          >
             <thumb-down class="icon-small" /> {{ $t('montage-vote-decline') }}
           </cdx-button>
         </div>
@@ -213,6 +237,7 @@ const props = defineProps({
 const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
 const isLoading = ref(false)
+const votedIds = ref(new Map())
 const images = ref(null)
 const stats = ref(null)
 
@@ -223,12 +248,32 @@ const rating = ref({
   rates: [1, 2, 3, 4, 5]
 })
 
+const currentVote = computed(() => {
+  if (!rating.value.current) return null
+  const val = votedIds.value.get(rating.value.current.id)
+  return val !== undefined ? val : null
+})
+
 const toggleSidebar = () => {
   showSidebar.value = !showSidebar.value
 }
 
 const goPrevVoteEditing = () => {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+function goPrev() {
+  if (rating.value.currentIndex > 0) {
+    rating.value.currentIndex -= 1
+    rating.value.current = images.value[rating.value.currentIndex]
+  }
+}
+
+function goNext() {
+  if (rating.value.currentIndex < images.value.length - 1) {
+    rating.value.currentIndex += 1
+    rating.value.current = images.value[rating.value.currentIndex]
+  }
 }
 
 const handleImageLoad = () => {
@@ -280,6 +325,7 @@ function setRate(rate) {
         ratings: [{ task_id: rating.value.current.id, value: val }]
       })
       .then(() => {
+        votedIds.value.set(rating.value.current.id, rate)
         stats.value.total_open_tasks -= 1
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
@@ -505,6 +551,24 @@ watch(voteContainer, () => {
 
 .vote-commons-button {
   color: rgb(51, 102, 204);
+}
+
+.vote-nav-prev,
+.vote-nav-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+}
+
+.vote-nav-prev {
+  left: 10px;
+}
+
+.vote-nav-next {
+  right: 40px;
 }
 
 .vote-section-title {
