@@ -96,7 +96,7 @@
           <heart />
         </div>
         <div class="gallery-image-container">
-          <CommonsImage :image="image" :width="640" />
+          <CommonsImage :image="image" :width="640" loading="lazy" />
         </div>
         <div style="font-size: 14px; color: gray">
           <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
@@ -122,7 +122,7 @@
         <!-- Rating vote editing -->
         <div class="image-grid-vote-action" v-if="isVoting('rating')">
           <span v-for="rate in [1, 2, 3, 4, 5]" :key="rate">
-            <cdx-button weight="quiet" @click="setRate(image, rate)">
+            <cdx-button weight="quiet" action="default" @click="setRate(image, rate)">
               <star :style="{ color: rate <= image.value ? '#3cb371' : '' }" />
             </cdx-button>
           </span>
@@ -142,7 +142,7 @@
             <arrow-expand-all />
           </div>
           <div class="gallery-image-ranking-container">
-            <CommonsImage :image="image" :width="640" />
+            <CommonsImage :image="image" :width="640" loading="lazy" />
           </div>
           <div class="gallery-footer">
             <h3 class="gallery-footer-name">
@@ -159,6 +159,27 @@
           </div>
         </div>
       </draggable>
+    </div>
+    <div v-if="!isVoting('ranking')" class="pagination-bar">
+      <cdx-button
+        action="default"
+        weight="quiet"
+        :disabled="currentPage <= 1 || loadingMore"
+        @click="goPrevPage"
+      >
+        <chevron-left class="pagination-icon" />
+        {{ $t('montage-pagination-previous') }}
+      </cdx-button>
+      <span class="pagination-page">{{ $t('montage-pagination-page', [currentPage]) }}</span>
+      <cdx-button
+        action="default"
+        weight="quiet"
+        :disabled="!hasNextPage || loadingMore"
+        @click="goNextPage"
+      >
+        {{ $t('montage-pagination-next') }}
+        <chevron-right class="pagination-icon" />
+      </cdx-button>
     </div>
   </div>
 
@@ -207,6 +228,8 @@ import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import ChevronLeft from 'vue-material-design-icons/ChevronLeft.vue'
+import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 
 // Hooks
 const { t: $t } = useI18n()
@@ -219,10 +242,14 @@ dayjs.extend(relativeTime)
 dayjs.extend(utc)
 dayjs.locale(locale.value)
 
+const pageSize = 50
+
 const round = ref(null)
 const votes = ref(null)
 const loadingMore = ref(false)
 const editVoteContainer = ref(null)
+const currentPage = ref(1)
+const hasNextPage = ref(false)
 
 const edits = ref([])
 const sort = ref({
@@ -277,7 +304,7 @@ const menuItemsSort = [
 ]
 
 function getRoundDetails(id) {
-  jurorService
+  return jurorService
     .getRound(id)
     .then((response) => {
       const r = response.data
@@ -287,52 +314,96 @@ function getRoundDetails(id) {
     .catch(alertService.error)
 }
 
-function getPastVotes(id) {
-  jurorService
-    .getPastVotes(id)
+const VOTES_CHUNK_SIZE = 10000
+
+function fetchAllPastVotes(id, orderBy, sort) {
+  let offset = 0
+  const accumulate = (acc) => {
+    return jurorService
+      .getPastVotes(id, offset, orderBy, sort, 0)
+      .then((response) => {
+        const chunk = response.data.map((vote) => ({
+          ...vote,
+          value: vote.value * 4 + 1
+        }))
+        const next = acc.concat(chunk)
+        offset += chunk.length
+        if (chunk.length >= VOTES_CHUNK_SIZE) {
+          return accumulate(next)
+        }
+        return next
+      })
+  }
+  return accumulate([])
+}
+
+function loadPage(roundId, page) {
+  loadingMore.value = true
+  const offset = (page - 1) * pageSize
+  return jurorService
+    .getPastVotes(roundId, offset, sort.value.order_by, sort.value.sort, pageSize)
     .then((response) => {
       votes.value = response.data.map((vote) => ({
         ...vote,
         value: vote.value * 4 + 1
       }))
+      hasNextPage.value = response.data.length >= pageSize
     })
     .catch(alertService.error)
+    .finally(() => {
+      loadingMore.value = false
+    })
+}
+
+function getPastVotes(id) {
+  loadingMore.value = true
+  if (round.value && round.value.vote_method === 'ranking') {
+    fetchAllPastVotes(id, sort.value.order_by, sort.value.sort)
+      .then((data) => {
+        votes.value = data
+      })
+      .catch(alertService.error)
+      .finally(() => {
+        loadingMore.value = false
+      })
+  } else {
+    currentPage.value = 1
+    loadPage(id, 1)
+  }
 }
 
 const isVoting = (type) => {
   return round.value && round.value.vote_method === type
 }
 
-const loadMore = () => {
-  if (loadingMore.value) return
+const goPrevPage = () => {
+  if (currentPage.value <= 1 || loadingMore.value) return
+  currentPage.value--
+  loadPage(round.value.id, currentPage.value)
+}
 
-  loadingMore.value = true
-  return jurorService
-    .getPastVotes(round.value.id, votes.value.length, sort.value.order_by, sort.value.sort)
-    .then((response) => {
-      const newVotes = response.data.map((vote) => ({
-        ...vote,
-        value: vote.value * 4 + 1
-      }))
-
-      if (newVotes.length) {
-        if (votes.value.length && newVotes[0].id === votes.value[0].id) {
-          // this is ranking round
-          return false
-        }
-        votes.value.push(...newVotes)
-      }
-
-      return true
-    })
-    .finally(() => {
-      loadingMore.value = false
-    })
+const goNextPage = () => {
+  if (!hasNextPage.value || loadingMore.value) return
+  currentPage.value++
+  loadPage(round.value.id, currentPage.value)
 }
 
 const reorderList = () => {
   votes.value = []
-  loadMore()
+  if (round.value && round.value.vote_method === 'ranking') {
+    loadingMore.value = true
+    fetchAllPastVotes(round.value.id, sort.value.order_by, sort.value.sort)
+      .then((data) => {
+        votes.value = data
+      })
+      .catch(alertService.error)
+      .finally(() => {
+        loadingMore.value = false
+      })
+  } else {
+    currentPage.value = 1
+    loadPage(round.value.id, 1)
+  }
 }
 
 const save = () => {
@@ -379,21 +450,6 @@ const setRate = (image, rate) => {
   edits.value.push(image)
 }
 
-const handleScroll = _.throttle(() => {
-  if (!editVoteContainer.value) return
-  if (loadingMore.value) return
-
-  let distanceFactor = 1
-  const container = editVoteContainer.value
-  const { scrollTop, scrollHeight, clientHeight } = container
-
-  const triggerPoint = scrollHeight - clientHeight * distanceFactor
-
-  if (scrollTop >= triggerPoint) {
-    loadMore()
-  }
-}, 500)
-
 const handleResize = () => {
   const width = window.innerWidth
 
@@ -411,22 +467,13 @@ watch(locale, (newLocale) => {
 })
 
 onMounted(() => {
-  getRoundDetails(voteId)
-  getPastVotes(voteId)
-
-  if (editVoteContainer.value) {
-    editVoteContainer.value.addEventListener('scroll', handleScroll)
-  }
+  getRoundDetails(voteId).then(() => getPastVotes(voteId))
 
   handleResize()
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  if (editVoteContainer.value) {
-    editVoteContainer.value.removeEventListener('scroll', handleScroll)
-  }
-
   window.removeEventListener('resize', handleResize)
 })
 </script>
@@ -444,6 +491,25 @@ onUnmounted(() => {
   padding: 20px;
   overflow-y: auto;
   max-height: 80vh;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 24px;
+  padding: 16px;
+}
+
+.pagination-page {
+  font-size: 14px;
+  color: #54595d;
+}
+
+.pagination-icon {
+  font-size: 20px;
+  vertical-align: middle;
 }
 
 .round-header {
