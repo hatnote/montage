@@ -172,6 +172,10 @@ def get_votes_stats_from_round(user_dao, round_id):
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
 
+    # Only return statistics if show_stats is enabled
+    if not rnd.show_stats:
+        return None
+
     stats = None
 
     if rnd.vote_method == 'yesno':
