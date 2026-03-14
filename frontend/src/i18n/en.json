@@ -91,6 +91,7 @@
   "montage-round-dq-organizers": "Disqualify organizers",
   "montage-round-final-threshold": "Final threshold",
   "montage-round-min-resolution": "Min. resolution",
+  "montage-round-min-resolution-help": "Minimum image resolution in pixels. Images below this resolution will be automatically disqualified. Default is 2,000,000 pixels (2 megapixels).",
   "montage-round-show-filename": "Show filename",
   "montage-round-show-link": "Show link",
   "montage-round-show-resolution": "Show resolution",
