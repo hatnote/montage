@@ -276,6 +276,7 @@ const cancelRound = () => {
 }
 
 
+
  const submitRound = () => {
   //  Validation
   if (!formData.value.deadline_date) {
@@ -286,6 +287,30 @@ const cancelRound = () => {
     alertService.error({ message: $t('montage-required-fill-inputs') })
     return
   }
+  if (!formData.value.deadline_date) {
+    alertService.error({ message: $t('montage-required-voting-deadline') })
+    return
+  }
+
+  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+    alertService.error({ message: $t('montage-required-fill-inputs') })
+    return
+  }
+
+  
+  if (formData.value.quorum > formData.value.jurors.length) {
+    alertService.error({ message: 'Quorum cannot be greater than number of jurors' })
+    return
+  }
+
+ 
+  if (roundIndex === 0) {
+    if (selectedImportSource.value === 'category' && !importSourceValue.value.category) {
+      alertService.error({ message: 'Please select a category before creating the round' })
+      return
+    }
+  }
+
   isLoading.value = true
 
   // Check if the round is the first round
