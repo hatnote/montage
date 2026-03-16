@@ -118,7 +118,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders',
 ]
 
 """
@@ -2869,10 +2869,23 @@ class JurorDAO(object):
             vote.status = COMPLETED_STATUS
             self.rdb_session.add(vote)
         return
+    
+    def get_campaign_favorites(self, campaign_id):
+        return (
+            self.query(Favorite).filter(
+                Favorite.campaign_id == campaign_id,
+                Favorite.user == self.user,
+                Favorite.status == ACTIVE_STATUS
+            ).all()
+        )
 
     def fave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        campaign_id = round_entry.round.campaign.id
+
         existing_fave = (self.query(Favorite)
                              .filter_by(entry_id=entry_id,
+                                        campaign_id=campaign_id,
                                         user=self.user)
                              .first())  # there should be one
         if existing_fave:
@@ -2880,10 +2893,9 @@ class JurorDAO(object):
             existing_fave.status = ACTIVE_STATUS
             return
 
-        round_entry = self.get_round_entry(round_id, entry_id)
         fave = Favorite(entry_id=round_entry.entry.id,
                        round_entry_id = round_entry.id,
-                       campaign_id=round_entry.round.campaign.id,
+                       campaign_id=campaign_id,
                        user=self.user,
                        status=ACTIVE_STATUS)
         self.rdb_session.add(fave)
@@ -2893,6 +2905,7 @@ class JurorDAO(object):
                .join(RoundEntry, RoundEntry.id == Favorite.round_entry_id)
                .filter(Favorite.entry_id == entry_id,
                        Favorite.user == self.user,
+                       Favorite.status == ACTIVE_STATUS,
                        RoundEntry.round_id == round_id)
                .one())
         fave.status = CANCELLED_STATUS
