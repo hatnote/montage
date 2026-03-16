@@ -351,8 +351,31 @@ def import_entries(user_dao, round_id, request_dict):
             import_warnings.append(msg)
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
-        entries = coord_dao.add_entries_from_cat(round_id, cat_name)
         params = {'category': cat_name}
+
+        try:
+            entries = coord_dao.add_entries_from_cat(round_id, cat_name)
+            if not entries:
+                return {
+                'status': 'failure',
+                '_status_code': 400,
+                'errors': 'No images found in this category',
+                'data': None
+            }
+        except Exception:
+            return {
+            'status': 'failure',
+            '_status_code': 400,
+            'errors': 'Invalid Wikimedia Commons category',
+            'data': None
+        }    
+
+
+    
+
+       
+       
+        
     elif import_method == ROUND_METHOD:
         threshold = request_dict['threshold']
         prev_round_id = request_dict['previous_round_id']
@@ -467,21 +490,41 @@ def _prepare_round_params(coord_dao, request_dict):
 
     for column in req_columns + extra_columns:
         val = request_dict.get(column)
+
+        # Required field validation
         if not val and column in req_columns:
             raise InvalidAction('%s is required to create a round (got %r)'
                                 % (column, val))
+
+        # Vote method validation
         if column == 'vote_method' and val not in valid_vote_methods:
             raise InvalidAction('%s is an invalid vote method' % val)
+
+        # Deadline validation
         if column == 'deadline_date':
             val = js_isoparse(val)
+            if not val:
+                raise InvalidAction('Voting deadline is required')
+
+        # Juror validation (PRE-EMPTIVE CHECK)
         if column == 'jurors':
             juror_names = val
+            if not juror_names or len(juror_names) == 0:
+                raise InvalidAction('At least one juror must be selected')
+
         rnd_dict[column] = val
 
+    # Default quorum based on juror count
     default_quorum = len(rnd_dict['jurors'])
     rnd_dict['quorum'] = request_dict.get('quorum', default_quorum)
+
+    # Quorum validation
+    if rnd_dict['quorum'] <= 0:
+        raise InvalidAction('Quorum must be greater than 0')
+
     rnd_dict['jurors'] = []
 
+    # Convert juror names to user objects
     for juror_name in juror_names:
         juror = coord_dao.get_or_create_user(juror_name, 'juror')
         rnd_dict['jurors'].append(juror)
