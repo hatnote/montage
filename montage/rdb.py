@@ -743,11 +743,16 @@ class Vote(Base):
 
     def check_fave(self):
         rdb_session = inspect(self).session
+        campaign_id = (rdb_session.query(Round.campaign_id)
+                        .join(RoundEntry, RoundEntry.round_id == Round.id)
+                        .filter(RoundEntry.id == self.round_entry_id)
+                        .scalar())
         # TODO: check, is this slow?
         faves = (rdb_session.query(Favorite)
                     .filter_by(entry_id=self.entry.id,
-                               user_id=self.user.id,
-                               status=ACTIVE_STATUS)
+                                user_id=self.user.id,
+                                campaign_id=campaign_id,
+                                status=ACTIVE_STATUS)
                     .all())
         return len(faves) > 0
 
@@ -2578,11 +2583,12 @@ class JurorDAO(object):
             return task_query.filter(Vote.id > skip).limit(num).all()
         
         return task_query.limit(num).all()
-
-    def get_faves(self, sort='desc', limit=10, offset=0):
+    def get_faves(self, campaign_id=None, sort='desc', limit=10, offset=0):
         faves_query = (self.query(Favorite)
                             .filter_by(user=self.user,
                                         status=ACTIVE_STATUS))
+        if campaign_id:
+            faves_query = faves_query.filter_by(campaign_id=campaign_id)
         if sort == 'asc':
             faves_query = faves_query.order_by(
                             func.coalesce(Favorite.modified_date,
@@ -2591,7 +2597,7 @@ class JurorDAO(object):
             faves_query = faves_query.order_by(
                             func.coalesce(Favorite.modified_date,
                             Favorite.create_date).desc())
-        faves = faves_query.limit(limit).offset(0).all()
+        faves = faves_query.limit(limit).offset(offset).all()
         return faves
 
     def get_ratings_from_round(self, round_id, num,
@@ -2869,32 +2875,40 @@ class JurorDAO(object):
             vote.status = COMPLETED_STATUS
             self.rdb_session.add(vote)
         return
-
+    
     def fave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        campaign_id = round_entry.round.campaign.id    
+
         existing_fave = (self.query(Favorite)
                              .filter_by(entry_id=entry_id,
-                                        user=self.user)
-                             .first())  # there should be one
+                                        user=self.user,
+                                        campaign_id=campaign_id)
+                             .first())
         if existing_fave:
             existing_fave.modified_date = datetime.datetime.utcnow()
             existing_fave.status = ACTIVE_STATUS
             return
 
-        round_entry = self.get_round_entry(round_id, entry_id)
         fave = Favorite(entry_id=round_entry.entry.id,
-                       round_entry_id = round_entry.id,
-                       campaign_id=round_entry.round.campaign.id,
-                       user=self.user,
-                       status=ACTIVE_STATUS)
+                   round_entry_id=round_entry.id,
+                   campaign_id=campaign_id,
+                   user=self.user,
+                   status=ACTIVE_STATUS)
         self.rdb_session.add(fave)
 
     def unfave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        campaign_id = round_entry.round.campaign.id
+
         fave = (self.query(Favorite)
-               .join(RoundEntry, RoundEntry.id == Favorite.round_entry_id)
-               .filter(Favorite.entry_id == entry_id,
+                .filter(Favorite.entry_id == entry_id,
                        Favorite.user == self.user,
-                       RoundEntry.round_id == round_id)
-               .one())
+                       Favorite.campaign_id == campaign_id,
+                       Favorite.status == ACTIVE_STATUS)
+               .one_or_none())
+        if not fave:
+            return
         fave.status = CANCELLED_STATUS
         fave.modified_date = datetime.datetime.utcnow()
 
