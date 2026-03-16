@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div v-if="!tasks || !round" class="loading-container">
     <clip-loader class="loading-bar" size="85px" />
@@ -26,12 +27,18 @@ const round = ref(null)
 const tasks = ref(null)
 
 onMounted(() => {
-    jurorService.getRound(voteId).then((response) => {
-        round.value = response.data
-    }).catch(alertService.error)
-    jurorService.getRoundTasks(voteId).then((response) => {
-        tasks.value = response.data
-    }).catch(alertService.error)
+  jurorService
+    .getRound(voteId)
+    .then((response) => {
+      round.value = response.data
+    })
+    .catch(alertService.error)
+  jurorService
+    .getRoundTasks(voteId)
+    .then((response) => {
+      tasks.value = response.data
+    })
+    .catch(alertService.error)
 })
 </script>
 

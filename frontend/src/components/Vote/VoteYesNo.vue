@@ -100,7 +100,10 @@
         <div class="vote-details-list">
           <div class="vote-details-list-item vote-details-2-line">
             <cloud-upload class="vote-details-icon" />
-            <div class="vote-details-list-item-text" v-if="rating.current && 'history' in rating.current">
+            <div
+              class="vote-details-list-item-text"
+              v-if="rating.current && 'history' in rating.current"
+            >
               <h3>{{ formattedDateTime.date }}</h3>
               <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
             </div>
@@ -116,7 +119,10 @@
               </p>
             </div>
           </div>
-          <div class="vote-details-list-item vote-details-2-line" v-if="rating.current.history && rating.current.history.length > 0">
+          <div
+            class="vote-details-list-item vote-details-2-line"
+            v-if="rating.current.history && rating.current.history.length > 0"
+          >
             <div class="icon-container">
               <history class="vote-details-icon" />
             </div>
@@ -195,7 +201,7 @@ const router = useRouter()
 const counter = ref(0)
 const skips = ref(0)
 const imageLoading = ref(true)
-const voteContainer = ref(null);
+const voteContainer = ref(null)
 const showSidebar = ref(true)
 const imageCache = new Map()
 
@@ -265,13 +271,13 @@ const getTasks = () => {
 function setRate(rate) {
   if (imageLoading.value) return
   if (isLoading.value) return
-  
+
   if (rate) {
     const val = (rate - 1) / 4
     isLoading.value = true
     jurorService
-      .setRating(props.round.id, { 
-        ratings: [{ task_id: rating.value.current.id, value: val }] 
+      .setRating(props.round.id, {
+        ratings: [{ task_id: rating.value.current.id, value: val }]
       })
       .then(() => {
         stats.value.total_open_tasks -= 1
@@ -290,10 +296,9 @@ function setRate(rate) {
       .finally(() => {
         isLoading.value = false
       })
-      
   } else {
     isLoading.value = true
-    
+
     jurorService
       .skipTask(props.round.id, rating.value.current.id)
       .then(() => {
@@ -341,19 +346,19 @@ const handleFav = () => {
 }
 
 const handleKeyDown = (event) => {
-  if( isLoading.value ) return;
+  if (isLoading.value) return
 
   if (props.round.vote_method === 'yesno') {
-      if (event.key === 'ArrowUp') {
-        setRate(5);
-        alertService.success('Voted: Accept', 500);
-      } else if (event.key === 'ArrowDown') {
-        setRate(1);
-        alertService.success('Voted: Decline', 500);
-      } else if (event.key === 'ArrowRight') {
-        setRate();
-      }
+    if (event.key === 'ArrowUp') {
+      setRate(5)
+      alertService.success('Voted: Accept', 500)
+    } else if (event.key === 'ArrowDown') {
+      setRate(1)
+      alertService.success('Voted: Decline', 500)
+    } else if (event.key === 'ArrowRight') {
+      setRate()
     }
+  }
 }
 
 // Get the formatted date and time of current image
@@ -384,7 +389,7 @@ watch(
 watch(
   () => props.tasks,
   (tasks) => {
-    if (!tasks) return;
+    if (!tasks) return
 
     images.value = tasks.tasks
     stats.value = tasks.stats
@@ -414,11 +419,11 @@ watch(images, (imgs) => {
   }
 })
 
-watch( voteContainer, () => {
+watch(voteContainer, () => {
   if (voteContainer.value) {
-    voteContainer.value.focus();
+    voteContainer.value.focus()
   }
-});
+})
 </script>
 
 <style scoped>
