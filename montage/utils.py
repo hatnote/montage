@@ -198,9 +198,13 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
 
 
 def format_date(date):
-    if isinstance(date, datetime.datetime):
-        date = date.isoformat()
-    return date
+    if date is None:
+        return ""
+
+    try:
+        return date.strftime("%Y-%m-%d")
+    except Exception:
+        return ""
 
 
 def js_isoparse(date_str):
