@@ -232,6 +232,26 @@ const schema = z.object({
     .string()
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
   coordinators: z.array(z.string()).min(1, $t('montage-required-campaign-coordinators'))
+}).superRefine((data, context) => {
+  const hasAllDateParts = data.openDate && data.openTime && data.closeDate && data.closeTime
+  if (!hasAllDateParts) {
+    return
+  }
+
+  const openDateTime = new Date(`${data.openDate}T${data.openTime}:00`)
+  const closeDateTime = new Date(`${data.closeDate}T${data.closeTime}:00`)
+
+  if (Number.isNaN(openDateTime.getTime()) || Number.isNaN(closeDateTime.getTime())) {
+    return
+  }
+
+  if (closeDateTime <= openDateTime) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: $t('montage-error-close-after-open'),
+      path: ['closeDate']
+    })
+  }
 })
 
 const hangleEditCampaignBtnClick = () => {
