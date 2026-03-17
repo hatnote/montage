@@ -33,12 +33,12 @@
         <template #supporting-text>
           <div class="form-container">
             <div class="form-left">
-              <cdx-field>
+              <cdx-field :status="errors.name ? 'error' : 'default'" :messages="{ error: errors.name }">
                 <cdx-text-input v-model="formData.name" />
                 <template #label>{{ $t('montage-round-name') }}</template>
               </cdx-field>
               <div class="flex-row">
-                <cdx-field>
+                <cdx-field :status="errors.deadline_date ? 'error' : 'default'" :messages="{ error: errors.deadline_date }">
                   <date-picker
                     v-model:value="formData.deadline_date"
                     type="date"
@@ -48,7 +48,7 @@
                   ></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
-                <cdx-field>
+                <cdx-field :status="errors.vote_method ? 'error' : 'default'" :messages="{ error: errors.vote_method }">
                   <cdx-select
                     v-model:selected="formData.vote_method"
                     :menu-items="
@@ -121,14 +121,14 @@
                   <p>{{ $t('montage-description-round-stats') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field>
+              <cdx-field :status="errors.quorum ? 'error' : 'default'" :messages="{ error: errors.quorum }">
                 <cdx-text-input v-model="formData.quorum" input-type="number" />
                 <template #label>{{ $t('montage-label-round-quorum') }}</template>
                 <template #description>
                   <p>{{ $t('montage-round-quorum-description') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field>
+              <cdx-field :status="errors.jurors ? 'error' : 'default'" :messages="{ error: errors.jurors }">
                 <UserList
                   :users="formData.jurors"
                   @update:selectedUsers="formData.jurors = $event"
@@ -139,7 +139,7 @@
                   <p>{{ $t('montage-round-jurors-description') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field v-if="thresholds">
+              <cdx-field v-if="thresholds" :status="errors.threshold ? 'error' : 'default'" :messages="{ error: errors.threshold }">
                 <cdx-select
                   v-model:selected="formData.threshold"
                   :menu-items="thresholdOptions"
@@ -262,6 +262,15 @@ const prevRound = roundIndex ? props.rounds[roundIndex - 1] : null
 const thresholds = ref(null)
 const thresholdOptions = ref(null)
 const isLoading = ref(false)
+const errors = ref({
+  name: '',
+  vote_method: '',
+  deadline_date: '',
+  quorum: '',
+  jurors: '',
+  threshold: '',
+  importSource: ''
+})
 
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
@@ -310,18 +319,72 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
-const submitRound = () => {
-  if (!formData.value.deadline_date) {
-    alertService.error({
-      message: $t('montage-required-voting-deadline')
-    })
-    return
+const validateRound = () => {
+  // Clear previous errors
+  Object.keys(errors.value).forEach((key) => {
+    errors.value[key] = ''
+  })
+
+  // Basic validations
+  if (!formData.value.name || formData.value.name.trim() === '') {
+    errors.value.name = $t('montage-error-round-name-required')
+    return false
   }
 
-  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+  if (!formData.value.deadline_date) {
+    errors.value.deadline_date = $t('montage-error-deadline-required')
+    return false
+  }
+
+  if (!formData.value.vote_method) {
+    errors.value.vote_method = 'Vote method is required'
+    return false
+  }
+
+  const quorum = parseInt(formData.value.quorum)
+  if (isNaN(quorum) || quorum <= 0) {
+    errors.value.quorum = $t('montage-error-quorum-positive')
+    return false
+  }
+
+  if (formData.value.jurors.length === 0) {
+    errors.value.jurors = $t('montage-error-jurors-required')
+    return false
+  }
+
+  // For first round, validate import source
+  if (roundIndex === 0) {
+    if (selectedImportSource.value === 'category') {
+      if (!importSourceValue.value.category || importSourceValue.value.category.trim() === '') {
+        errors.value.importSource = $t('montage-error-category-required')
+        return false
+      }
+    } else if (selectedImportSource.value === 'csv') {
+      if (!importSourceValue.value.csv_url || importSourceValue.value.csv_url.trim() === '') {
+        errors.value.importSource = $t('montage-error-csv-url-required')
+        return false
+      }
+    } else if (selectedImportSource.value === 'selected') {
+      if (!importSourceValue.value.file_names || importSourceValue.value.file_names.trim() === '') {
+        errors.value.importSource = $t('montage-error-file-list-required')
+        return false
+      }
+    }
+  }
+
+  // For subsequent rounds, validate threshold
+  if (roundIndex > 0) {
+    if (!formData.value.threshold) {
+      errors.value.threshold = $t('montage-error-threshold-required')
+      return false
+    }
+  }
+
+  return true
+}
+
+const submitRound = () => {
+  if (!validateRound()) {
     return
   }
 
