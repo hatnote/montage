@@ -358,13 +358,16 @@ watch(locale, (newLocale) => {
   dayjs.locale(newLocale)
 })
 
+// Attach scroll listener once the container is rendered (v-else-if means it's null on mount)
+watch(editVoteContainer, (el) => {
+  if (el) {
+    el.addEventListener('scroll', handleScroll)
+  }
+})
+
 onMounted(() => {
   getRoundDetails(voteId)
   getPastVotes(voteId)
-
-  if (editVoteContainer.value) {
-    editVoteContainer.value.addEventListener('scroll', handleScroll)
-  }
 
   handleResize()
   window.addEventListener('resize', handleResize)
