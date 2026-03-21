@@ -71,6 +71,16 @@
         </span>
       </div>
 
+      <template v-if="round.show_stats && votesStats">
+        <h3 class="vote-section-title">{{ $t('montage-vote-my-stats') }}</h3>
+        <div class="vote-stats">
+          <div v-for="(count, label) in votesStats.stats" :key="label" class="vote-stats-item">
+            <span class="vote-stats-label">{{ label }}</span>
+            <span class="vote-stats-count">{{ count }}</span>
+          </div>
+        </div>
+      </template>
+
       <h3 class="vote-section-title">{{ $t('montage-vote-actions') }}</h3>
       <div class="vote-actions">
         <div>
@@ -170,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
@@ -215,6 +225,7 @@ const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 const isLoading = ref(false)
 const images = ref(null)
 const stats = ref(null)
+const votesStats = ref(null)
 
 const rating = ref({
   current: null,
@@ -283,6 +294,10 @@ function setRate(rate) {
         stats.value.total_open_tasks -= 1
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
+        }
+        // Refresh vote stats after each successful vote
+        if (props.round.show_stats) {
+          jurorService.getRoundVotesStats(props.round.id).then(r => { votesStats.value = r.data })
         }
         if (counter.value === 4 || !stats.value.total_open_tasks) {
           counter.value = 0
@@ -422,6 +437,14 @@ watch(images, (imgs) => {
 watch(voteContainer, () => {
   if (voteContainer.value) {
     voteContainer.value.focus()
+  }
+})
+
+onMounted(() => {
+  if (props.round.show_stats) {
+    jurorService.getRoundVotesStats(props.round.id).then((r) => {
+      votesStats.value = r.data
+    })
   }
 })
 </script>
