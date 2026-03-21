@@ -56,10 +56,10 @@
       <div class="vote-controls">
         <clip-loader v-if="isLoading" color="#36D7B7" size="20px" />
         <div v-else class="vote-controls-button">
-          <cdx-button action="progressive" weight="quiet" @click="setRate(5)">
+          <cdx-button action="progressive" weight="quiet" @click="setRate(5)" :disabled="isLoading">
             <thumb-up class="icon-small" /> {{ $t('montage-vote-accept') }}
           </cdx-button>
-          <cdx-button action="destructive" weight="quiet" @click="setRate(1)">
+          <cdx-button action="destructive" weight="quiet" @click="setRate(1)" :disabled="isLoading">
             <thumb-down class="icon-small" /> {{ $t('montage-vote-decline') }}
           </cdx-button>
         </div>
@@ -86,7 +86,7 @@
           </cdx-button>
         </div>
         <div>
-          <cdx-button weight="quiet" @click="setRate()">
+          <cdx-button weight="quiet" @click="setRate()" :disabled="isLoading">
             <arrow-right class="icon-small" /> {{ $t('montage-vote-skip') }}
           </cdx-button>
           <cdx-button weight="quiet" @click="goPrevVoteEditing">
