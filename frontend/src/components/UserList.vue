@@ -1,13 +1,13 @@
 <template>
-    <cdx-multiselect-lookup
-      v-model:input-chips="userChips"
-      v-model:selected="selectedUsers"
-      v-model:input-value="userInputValue"
-      :menu-items="userOptions"
-      @input="searchUser"
-    >
-      <template #no-results> {{  $t('montage-no-results') }} </template>
-    </cdx-multiselect-lookup>
+  <cdx-multiselect-lookup
+    v-model:input-chips="userChips"
+    v-model:selected="selectedUsers"
+    v-model:input-value="userInputValue"
+    :menu-items="userOptions"
+    @input="searchUser"
+  >
+    <template #no-results> {{ $t('montage-no-results') }} </template>
+  </cdx-multiselect-lookup>
 </template>
 
 <script setup>
@@ -21,9 +21,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:selectedUsers'])
 
-const userChips = ref([...props.users].map( u => ({ label: u, value: u })))
+const userChips = ref([...props.users].map((u) => ({ label: u, value: u })))
 const userInputValue = ref('')
-const userOptions = ref([...props.users].map( u => ({ label: u, value: u })))
+const userOptions = ref([...props.users].map((u) => ({ label: u, value: u })))
 const selectedUsers = ref([...props.users])
 
 watch(selectedUsers, (newVal) => {
