@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the workflow and key steps involved in running a campaign in Montage.
+This document outlines the workflow and key steps involved in running a campaign in Montage
 
 ## Roles
 
