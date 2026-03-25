@@ -33,10 +33,16 @@ Add a new series, so you can connect a group of campaigns (e.g., Wiki Loves Monu
   - `url`
   - `status` (optional, default is active)
 
+
 ### Response
-  - `data`: single [`series info`](#series-info) dictionary (TODO)
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - `id`: integer, unique series ID (example: 42)
+      - `name`: string, series name (example: "Wiki Loves Monuments")
+      - `description`: string, series description (example: "Annual photo contest series")
+      - `url`: string, series homepage URL (example: "https://commons.wikimedia.org/wiki/Commons:Wiki_Loves_Monuments")
+      - `status`: string, one of ["active", "inactive"]
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not an organizer
@@ -72,16 +78,21 @@ Add a user as organizer to Montage. Organizers can create/edit a series, campaig
 ### Parameters
   - `username`
   
+
 ### Response
-  - `data`: (TODO: this should be standardized with a [`user info`](#user-info) dictionary)
-    - `username`
-    - `last_active_date`
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - `id`: integer, user id (example: 12345)
+      - `username`: string, Wikimedia username (example: "ExampleUser")
+      - `is_organizer`: boolean, true if user is an organizer
+      - `is_maintainer`: boolean, true if user is a maintainer
+      - `last_active_date`: string, ISO 8601 date of last activity (example: "2026-03-25T12:34:56Z")
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
     
+
 ### Errors
   - 403: not a maintainer
-  - 404: user does not exist (TODO)
+  - 404: user does not exist
 
 ## /v1/admin/remove_organizer
 Remove a user as organizer in Montage
@@ -112,17 +123,17 @@ View the maintainers, organizers, and campaign coordinators
 ### Parameters
 None
 
-### Response
 
-  - `data`:
-    - `maintainers`: list of [`user details`](#user-details) dictionaries
-    - `organizers`: list of [`user details`](#user-details) dictionaries
-    - `campaigns`:
-      + `id`
-      + `name`
-      + `coordinators`: list of [`user details`](#user-details) dictionaries
-  - `status`: success or failure
-  - `errors`: description of the failure (if any) 
+### Response
+  - `data`: object
+      - `maintainers`: array of user details objects (see [user details](#user-details))
+      - `organizers`: array of user details objects (see [user details](#user-details))
+      - `campaigns`: array of objects
+          - `id`: integer, campaign id (example: 101)
+          - `name`: string, campaign name (example: "WLM 2026")
+          - `coordinators`: array of user details objects (see [user details](#user-details))
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not an organizer
@@ -141,10 +152,19 @@ Create a new campaign
   - `series_id` (optional, default is 0)
   - `coordinators`: list of usernames (the creating user is also included by default)
 
+
 ### Response
-  - `data`: single [`campaign details`](#campaign-details) dictionary
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object (see [campaign details](#campaign-details))
+      - `id`: integer, campaign id (example: 101)
+      - `name`: string, campaign name (example: "WLM 2026")
+      - `url_name`: string, slugified campaign name (example: "wlm-2026")
+      - `open_date`: string, ISO 8601 start date (example: "2026-09-01T00:00:00Z")
+      - `close_date`: string, ISO 8601 end date (example: "2026-09-30T23:59:59Z")
+      - `rounds`: array of [round info](#round-info) objects
+      - `coordinators`: array of [user info](#user-info) objects
+      - `active round`: [round info](#round-info) object or null
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a maintainer, organizer, or maintainer
@@ -158,10 +178,19 @@ Return info about a campaign
 ### Parameters
   - `campaign_id` (in path)
 
+
 ### Response
-  - `data`: single [`campaign details`](#campaign-details) dictionary
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object (see [campaign details](#campaign-details))
+      - `id`: integer, campaign id (example: 101)
+      - `name`: string, campaign name (example: "WLM 2026")
+      - `url_name`: string, slugified campaign name (example: "wlm-2026")
+      - `open_date`: string, ISO 8601 start date (example: "2026-09-01T00:00:00Z")
+      - `close_date`: string, ISO 8601 end date (example: "2026-09-30T23:59:59Z")
+      - `rounds`: array of [round info](#round-info) objects
+      - `coordinators`: array of [user info](#user-info) objects
+      - `active round`: [round info](#round-info) object or null
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
   
 ### Errors
   - 403: not a coordinator on this campaign
@@ -227,10 +256,27 @@ Create a new round within a campaign
   - `deadline_date`
   - `config` (optional, default config provided TODO)
 
+
 ### Response
-  - `data`: single [`round details`](#round-details) dictionary
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object (see [round details](#round-details))
+      - `id`: integer, round id (example: 501)
+      - `name`: string, round name (example: "Final Round")
+      - `directions`: string, jury instructions
+      - `canonical_url_name`: string, slugified round name
+      - `vote_method`: string, one of ["yesno", "rating", "ranking"]
+      - `open_date`: string, ISO 8601 start date
+      - `deadline_date`: string, ISO 8601 deadline
+      - `close_date`: string, ISO 8601 finalized date or null
+      - `jurors`: array of [juror info](#juror-info) objects
+      - `status`: string, one of ["active", "paused", "cancelled", "finalized"]
+      - `config`: object, round settings
+      - `quorum`: integer, number of jurors per entry
+      - `total_round_entries`: integer
+      - `stats`: object, round statistics
+      - `juror_details`: array of [juror details](#juror-details) objects
+      - `is_closable`: boolean
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -371,19 +417,17 @@ Load entries into a round via one of four import methods
   - `threshold` (if `import_method=round`)
   - `file_names` (if `import_method=selected`)
 
+
 ### Response
-  - `data`:
-    - `round_id`
-    - `new_entry_count`
-    - `new_round_entry_count`
-    - `total_entries`
-    - `disqualified`: list of [`round entry details`](#round-entry-details) for disqualified files
-    - `warnings`: possible problems to alert the user
-      - `empty import` (no entries)
-      - `duplicate import` (no new entries)
-      - `all disqualified`
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - `round_id`: integer, round id (example: 501)
+      - `new_entry_count`: integer, number of new entries imported
+      - `new_round_entry_count`: integer, number of new entries added to this round
+      - `total_entries`: integer, total entries in the round after import
+      - `disqualified`: array of [round entry details](#round-entry-details) objects for disqualified files
+      - `warnings`: array of strings, possible problems to alert the user (e.g., "empty import", "duplicate import", "all disqualified")
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
   
 ### Errors
   - 403: not a coordinator for this campaign
@@ -434,10 +478,27 @@ Return details about a round
 ### Parameters
   - `round_id` (in path)
 
+
 ### Response
-  - `data`: single [`round details`](#round-details) dictionary (TODO: This is using make_admin_round_details() currently, and should be standardized)
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object (see [round details](#round-details))
+      - `id`: integer, round id (example: 501)
+      - `name`: string, round name (example: "Final Round")
+      - `directions`: string, jury instructions
+      - `canonical_url_name`: string, slugified round name
+      - `vote_method`: string, one of ["yesno", "rating", "ranking"]
+      - `open_date`: string, ISO 8601 start date
+      - `deadline_date`: string, ISO 8601 deadline
+      - `close_date`: string, ISO 8601 finalized date or null
+      - `jurors`: array of [juror info](#juror-info) objects
+      - `status`: string, one of ["active", "paused", "cancelled", "finalized"]
+      - `config`: object, round settings
+      - `quorum`: integer, number of jurors per entry
+      - `total_round_entries`: integer
+      - `stats`: object, round statistics
+      - `juror_details`: array of [juror details](#juror-details) objects
+      - `is_closable`: boolean
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -563,10 +624,17 @@ Get a list of all flaged entries
   - `limit` (optional)
   - `offset` (optional)
 
+
 ### Response
-  - `data`: list of [`flag details`](#flag-details)
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: array of [flag details](#flag-details) objects
+      - `round`: integer, round id
+      - `entry_id`: integer, entry id
+      - `entry_name`: string, entry name
+      - `user`: string, username of who submitted the flag
+      - `reason`: string, reason provided by the user
+      - `date`: string, ISO 8601 date the flag was submitted
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -581,10 +649,14 @@ Returns list of disqualified files
 ### Parameters
   - `round_id` (in path)
 
+
 ### Response
-  - `data`: list of [`round entry details`](#round-entry-details) for disqualified files
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: array of [round entry details](#round-entry-details) objects for disqualified files
+      - `entry`: [entry details](#entry-details) object
+      - `dq_reason`: string, reason for disqualification
+      - `dq_user_id`: integer, user id who disqualified the entry
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -656,14 +728,15 @@ Get a preview of which files will be disqualified
 ### Parameters
   - `round_id` (in path)
 
+
 ### Response
-  - `data`:
-    - `by_upload_date`: list of [`round entry details`](#round-entry-details)
-    - `by_resolution`: list of [`round entry details`](#round-entry-details)
-    - `by_uploader`: list of [`round entry details`](#round-entry-details)
-    - `by_filetype`: list of [`round entry details`](#round-entry-details)
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - `by_upload_date`: array of [round entry details](#round-entry-details) objects
+      - `by_resolution`: array of [round entry details](#round-entry-details) objects
+      - `by_uploader`: array of [round entry details](#round-entry-details) objects
+      - `by_filetype`: array of [round entry details](#round-entry-details) objects
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -690,10 +763,15 @@ Returns a dictionary of votes per user
 ### Parameters
   - `round_id` (in path)
 
+
 ### Response
-  - `data`: dictionary of entries with votes for each `username`. Votes that are not yet complete are marked "tbv"
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - Each key is a `username` (string), and the value is an array of vote objects:
+          - `entry_id`: integer, entry id
+          - `value`: number or string, vote value (or "tbv" if not yet complete)
+          - `review`: string, optional review text
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -727,10 +805,21 @@ Returns a list of entries in a round
 ### Parameters
   - `round_id` (in path)
 
+
 ### Response
-  - `data`: list of [`round entry export`](#round-entry-export) dictionaries
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: array of [round entry export](#round-entry-export) objects
+      - `img_name`: string, file name
+      - `img_major_mime`: string, major MIME type
+      - `img_minor_mime`: string, minor MIME type
+      - `img_width`: integer, width in pixels
+      - `img_height`: integer, height in pixels
+      - `img_user`: integer, uploader user id
+      - `img_user_text`: string, uploader username
+      - `img_timestamp`: string, ISO 8601 upload timestamp
+      - `source_method`: string, how the entry was added
+      - `source_params`: object, parameters for the source method
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a coordinator for this campaign
@@ -832,12 +921,16 @@ Return a set of open (active) votes
   - `count` (optional, default 15)
   - `offset` (optional, default 0)
 
+
 ### Response
-  - `data`: 
-    - `stats`
-    - `tasks`: list of [`vote details`](#vote-details) dictionaries
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: object
+      - `stats`: object
+          - `total_tasks`: integer, number of non-cancelled votes for this juror
+          - `total_open_tasks`: integer, number of active votes for this juror
+          - `percent_tasks_open`: number, percent of active votes to non-cancelled votes
+      - `tasks`: array of [vote details](#vote-details) objects
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a juror in this round
@@ -894,10 +987,20 @@ Return submitted ratings, rankings, yesno votes from a juror
   - `count` (optional): default is 15 -- only for rating or yes/no rounds
   - `offset` (optional) -- only for rating or yes/no rounds
 
+
 ### Response
-  - `data`: list of vote [`vote details`](#vote-details) dictionaries
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: array of [vote details](#vote-details) objects
+      - `id`: integer, vote id
+      - `name`: string, entry name
+      - `user`: string, juror username
+      - `value`: number, vote value
+      - `round_id`: integer, round id
+      - `review`: string, optional review text
+      - `entry`: [entry details](#entry-details) object
+      - `date`: string, ISO 8601 date
+      - `is_fave`: boolean
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a juror for this round
@@ -966,10 +1069,13 @@ Returns a list of fave'd entries
   - `offset` (optional, default 0)
   - `sort` (optional, may be `asc` or `desc`, default `desc`)
 
+
 ### Response
-  - `data`: list of [`entry details`](#entry-details) dictionaries, along with a `fave_date` for each
-  - `status`: success or failure
-  - `errors`: description of the failure (if any)
+  - `data`: array of objects
+      - `entry`: [entry details](#entry-details) object
+      - `fave_date`: string, ISO 8601 date when the entry was favorited
+  - `status`: string, "success" or "failure"
+  - `errors`: string or null, error message if any
 
 ### Errors
   - 403: not a juror for this round
