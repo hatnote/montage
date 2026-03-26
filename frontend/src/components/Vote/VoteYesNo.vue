@@ -121,6 +121,17 @@
           </div>
           <div
             class="vote-details-list-item vote-details-2-line"
+            v-if="rating.current.entry.description"
+          >
+            <div class="icon-container">
+              <text-box class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h3>{{ $t('montage-round-description') }}</h3>
+            </div>
+          </div>
+          <div
+            class="vote-details-list-item vote-details-2-line"
             v-if="rating.current.history && rating.current.history.length > 0"
           >
             <div class="icon-container">
@@ -192,6 +203,7 @@ import History from 'vue-material-design-icons/History.vue'
 import ArrowRightThick from 'vue-material-design-icons/ArrowRightThick.vue'
 import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import TextBox from 'vue-material-design-icons/TextBox.vue'
 
 // Hooks
 const { t: $t } = useI18n()
