@@ -7,7 +7,7 @@ from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
 from .rdb import JurorDAO
-from .utils import format_date, PermissionDenied, InvalidAction
+from .utils import format_date, PermissionDenied, InvalidAction, make_response
 import six
 import html
 
@@ -109,7 +109,7 @@ def get_campaign(user_dao, campaign_id):
         ballot = juror_dao.get_ballot(rnd.id)
         rounds.append(make_juror_round_details(rnd, rnd_stats, ballot))
     data['rounds'] = rounds
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_round(user_dao, round_id):
@@ -121,7 +121,7 @@ def get_round(user_dao, round_id):
     ballot = juror_dao.get_ballot(round_id)
     rnd_stats = juror_dao.get_round_task_counts(round_id)
     data = make_juror_round_details(rnd, rnd_stats, ballot)  # TODO: add to Round model
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_tasks_from_round(user_dao, round_id, request):
@@ -143,7 +143,7 @@ def get_tasks_from_round(user_dao, round_id, request):
     for task in tasks:
         data['tasks'].append(task.to_details_dict())
 
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_votes_from_round(user_dao, round_id, request, rnd=None):
@@ -165,7 +165,7 @@ def get_votes_from_round(user_dao, round_id, request, rnd=None):
         rankings = juror_dao.get_rankings_from_round(round_id)
         data = [r.to_details_dict() for r in rankings]
         data.sort(key=lambda x: x['value'])
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_votes_stats_from_round(user_dao, round_id):
@@ -215,9 +215,7 @@ def get_rankings_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
     if rnd.vote_method != 'ranking':
-        return {'data': None,
-                'status': 'failure',
-                'errors': 'round %s is not a ranking round' % round_id}
+        return make_response(data=None, status='failure', errors='round %s is not a ranking round' % round_id)
     ret = get_votes_from_round(user_dao, round_id, request, rnd=rnd)
     return ret
 
@@ -230,7 +228,7 @@ def get_faves(user_dao, request_dict):
     offset = request_dict.get('offset', 0)
     sort = request_dict.get('sort', 'desc')
     faves = juror_dao.get_faves(sort, limit, offset)
-    return {'data': [f.to_details_dict() for f in faves]}
+    return make_response(data=[f.to_details_dict() for f in faves])
 
 
 def submit_ratings(user_dao, request_dict):

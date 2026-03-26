@@ -178,9 +178,12 @@ const submitForm = () => {
 
   const result = schema.safeParse(formField.value)
   if (!result.success) {
-    result.error.errors.forEach((error) => {
-      errors.value[error.path[0]] = error.message
-    })
+    // Handle validation errors if present
+    if (result.error && result.error.errors) {
+      result.error.errors.forEach((error) => {
+        errors.value[error.path[0]] = error.message
+      })
+    }
     return
   }
 
@@ -196,7 +199,7 @@ const submitForm = () => {
   adminService
     .addCampaign(payload)
     .then((res) => {
-      if (res.status === 'success') {
+      if (res.status === 'success' && res.data) {
         alertService.success($t('montage-campaign-added-success'))
         router.push({
           name: 'campaign',
@@ -205,7 +208,7 @@ const submitForm = () => {
           }
         })
       } else {
-        alertService.error($t('montage-something-went-wrong'))
+        alertService.error(res.errors || $t('montage-something-went-wrong'))
       }
     })
     .catch(alertService.error)

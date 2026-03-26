@@ -91,18 +91,21 @@ onMounted(() => {
   const fetchCoordinatorCampaigns = adminService
     .get()
     .then((response) => {
-      coordinatorCampaigns.value = response.data
-
-      // Order campaigns by open date (more recent at the top)
-      coordinatorCampaigns.value.sort((campaign1, campaign2) => {
-        if (campaign1.create_date === campaign2.create_date) {
-          return 0
-        } else if (campaign1.create_date < campaign2.create_date) {
-          return 1
-        } else {
-          return -1
-        }
-      })
+      if (response.status === 'success' && response.data) {
+        coordinatorCampaigns.value = response.data
+        // Order campaigns by open date (more recent at the top)
+        coordinatorCampaigns.value.sort((campaign1, campaign2) => {
+          if (campaign1.create_date === campaign2.create_date) {
+            return 0
+          } else if (campaign1.create_date < campaign2.create_date) {
+            return 1
+          } else {
+            return -1
+          }
+        })
+      } else {
+        alertService.error(response.errors || 'Failed to fetch campaigns')
+      }
     })
     .catch((error) => {
       if (error.response && error.response.status === 403) return
@@ -113,7 +116,7 @@ onMounted(() => {
   const fetchJurorCampaigns = jurorService
     .get()
     .then((response) => {
-      if (!response.data.length) {
+      if (response.status !== 'success' || !response.data || !response.data.length) {
         jurorCampaigns.value = []
         return
       }

@@ -1,3 +1,18 @@
+def make_response(data=None, status="success", errors=None):
+    """
+    Standardize API responses to always include status, errors, and data fields.
+    Args:
+        data: The main response payload (any type).
+        status: 'success' or 'failure'.
+        errors: String or list of error messages, or None.
+    Returns:
+        dict: Standardized response dictionary.
+    """
+    return {
+        "status": status,
+        "errors": errors,
+        "data": data
+    }
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import
