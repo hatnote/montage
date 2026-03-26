@@ -8,11 +8,14 @@ from clastic import GET, POST, Response
 from clastic.errors import Forbidden
 from boltons.strutils import slugify
 
-from .utils import (format_date,
-                   get_threshold_map,
-                   InvalidAction,
-                   NotImplementedResponse,
-                   js_isoparse)
+from .utils import (
+    format_date,
+    get_threshold_map,
+    InvalidAction,
+    NotImplementedResponse,
+    js_isoparse,
+    make_response
+)
 
 from .rdb import (FINALIZED_STATUS,
                  CoordinatorDAO,
@@ -94,14 +97,14 @@ def get_round_reviews(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     entries = coord_dao.get_reviews_table(round_id)
     entry_infos = [e.to_details_dict() for e in entries]
-    return {'data': entry_infos}
+    return make_response(data=entry_infos)
 
 
 def get_round_entries(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     entries = coord_dao.get_round_entries(round_id)
     entry_infos = [e.to_export_dict() for e in entries]
-    return {'file_infos': entry_infos}
+    return make_response(data={'file_infos': entry_infos})
 
 
 def download_round_entries_csv(user_dao, round_id):
@@ -144,7 +147,7 @@ def add_series(user_dao, request_dict):
     status = request_dict.get('status')
 
     new_series = org_dao.create_series(name, description, url, status)
-    return {'data': new_series}
+    return make_response(data=new_series)
 
 
 def edit_series(user_dao, series_id, request_dict):
@@ -164,7 +167,7 @@ def edit_series(user_dao, series_id, request_dict):
         series_dict['status'] = status
 
     new_series = org_dao.edit_series(series_id, series_dict)
-    return {'data': new_series}
+    return make_response(data=new_series)
 
 
 def publish_report(user_dao, campaign_id):
@@ -210,7 +213,7 @@ def get_users(user_dao, request_dict):
     org_dao = OrganizerDAO(user_dao)
     user_list = org_dao.get_user_list()
 
-    return {'data': user_list}
+    return make_response(data=user_list)
 
 
 # TODO: (clastic) some way to mark arguments as injected from the
@@ -265,8 +268,7 @@ def create_campaign(user_dao, request_dict):
                                        coords=set(coords))
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
-
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_campaign_report(user_dao, campaign_id):
@@ -281,7 +283,7 @@ def get_campaign_report_raw(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     summary = coord_dao.get_campaign_report()
     data = summary.summary
-    return {'data': data}
+    return make_response(data=data)
 
 
 def get_campaign_log(user_dao, campaign_id, request_dict):
@@ -299,7 +301,7 @@ def get_campaign_log(user_dao, campaign_id, request_dict):
                                          log_id=log_id,
                                          action=action)
     ret = [a.to_info_dict() for a in audit_logs]
-    return {'data': ret}
+    return make_response(data=ret)
 
 
 def import_entries(user_dao, round_id, request_dict):

@@ -22,12 +22,14 @@ export const useUserStore = defineStore('user-store', () => {
     authChecked.value = true
   }
 
+
   async function checkAuth() {
     if (!authChecked.value) {
       const res = await adminService.getUser()
-      if (res.status === 'success' && res.user) {
-        login(res.user)
+      if (res.status === 'success' && res.data && res.data.user) {
+        login(res.data.user)
       }
+      // Optionally handle errors here if needed
       authChecked.value = true
     }
   }

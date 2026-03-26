@@ -170,10 +170,11 @@ const activateRound = () => {
     .then((data) => {
       if (data.status === 'success') {
         alertService.success($t('montage-round-activated'))
+        // Refresh the page
+        location.reload()
+      } else {
+        alertService.error(data.errors || $t('montage-something-went-wrong'))
       }
-
-      // Refresh the page
-      location.reload()
     })
     .catch(alertService.error)
 }
@@ -184,10 +185,11 @@ const pauseRound = () => {
     .then((data) => {
       if (data.status === 'success') {
         alertService.success($t('montage-round-paused'))
+        // Refresh the page
+        location.reload()
+      } else {
+        alertService.error(data.errors || $t('montage-something-went-wrong'))
       }
-
-      // Refresh the page
-      location.reload()
     })
     .catch(alertService.error)
 }
@@ -208,9 +210,11 @@ const finalizeRound = () => {
       .then((data) => {
         if (data.status === 'success') {
           alertService.success($t('montage-round-finalized'))
+          // Refresh the page
+          location.reload()
+        } else {
+          alertService.error(data.errors || $t('montage-something-went-wrong'))
         }
-        // Refresh the page
-        location.reload()
       })
       .catch(alertService.error)
   }
@@ -230,7 +234,11 @@ function getRoundDetails(round) {
   adminService
     .getRound(round.id)
     .then((data) => {
-      roundDetails.value = data.data
+      if (data.status === 'success') {
+        roundDetails.value = data.data
+      } else {
+        alertService.error(data.errors || $t('montage-something-went-wrong'))
+      }
     })
     .catch(alertService.error)
 }
@@ -239,7 +247,11 @@ function getRoundResults(round) {
   adminService
     .previewRound(round.id)
     .then((data) => {
-      roundResults.value = data.data
+      if (data.status === 'success') {
+        roundResults.value = data.data
+      } else {
+        alertService.error(data.errors || $t('montage-something-went-wrong'))
+      }
     })
     .catch(alertService.error)
 }
