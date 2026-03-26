@@ -16,6 +16,8 @@ const adminService = {
   addOrganizer: (data) => apiBackend.post('admin/add_organizer', data),
 
   addCampaign: (data) => apiBackend.post('admin/add_campaign', data),
+  
+  checkCampaignName: (name) => apiBackend.get('admin/campaign/check_name', { params: { name } }),
 
   addRound: (id, data) => apiBackend.post(`admin/campaign/${id}/add_round`, data),
 

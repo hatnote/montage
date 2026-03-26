@@ -264,6 +264,13 @@ def submit_ratings(user_dao, request_dict):
                 raise ValueError('review must be less than 8192 '
                                  'chars, not %r' % len(review_stripped))
             review_map[task_id] = html.escape(review_stripped, quote=True)
+        
+        note = rd.get('juror_note')
+        if note:
+            note_stripped = note.strip()
+            if len(note_stripped) > 8192:
+                raise ValueError('note must be less than 8192 chars')
+            rd['juror_note'] = html.escape(note_stripped, quote=True)
 
     try:
         id_map = dict([(r['vote_id'], r['value']) for r in r_dicts])
@@ -312,11 +319,13 @@ def submit_ratings(user_dao, request_dict):
                                 ' (expected %s submissions, got %s.)'
                                 % (len_rnd_entries, len(id_map)))
 
-    if style in ('rating', 'yesno'):
         for t in tasks:
             val = id_map[t.id]
             review = review_map.get(t.id)
-            juror_dao.edit_rating(t, val, review=review)
+            # Find the original dict to get juror_note
+            rd = next((r for r in r_dicts if (r.get('vote_id') or r.get('task_id')) == t.id), {})
+            juror_note = rd.get('juror_note')
+            juror_dao.edit_rating(t, val, review=review, juror_note=juror_note)
 
     elif style == 'ranking':
         # This part is designed to support ties ok though

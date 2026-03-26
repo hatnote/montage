@@ -96,7 +96,7 @@
           <heart />
         </div>
         <div class="gallery-image-container">
-          <CommonsImage :image="image" :width="640" />
+          <CommonsMedia :image="image" :width="640" />
         </div>
         <div style="font-size: 14px; color: gray">
           <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
@@ -142,7 +142,7 @@
             <arrow-expand-all />
           </div>
           <div class="gallery-image-ranking-container">
-            <CommonsImage :image="image" :width="640" />
+            <CommonsMedia :image="image" :width="640" />
           </div>
           <div class="gallery-footer">
             <h3 class="gallery-footer-name">
@@ -190,7 +190,8 @@ import utc from 'dayjs/plugin/utc'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
-import CommonsImage from '@/components/CommonsImage.vue'
+import { getCommonsImageUrl } from '@/utils'
+import CommonsMedia from '@/components/CommonsMedia.vue'
 
 // Components
 import { CdxButton, CdxSelect } from '@wikimedia/codex'
@@ -230,10 +231,11 @@ const sort = ref({
   sort: 'desc'
 })
 
-const gridSize = ref(1)
+const gridSize = ref(Number(localStorage.getItem('montage-grid-size')) || 1)
 
 const setGridSize = (size) => {
   gridSize.value = size
+  localStorage.setItem('montage-grid-size', size)
 }
 
 const getImageSizeClass = () => {

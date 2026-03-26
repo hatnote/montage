@@ -186,5 +186,10 @@
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
-  "montage-required-fill-inputs": "Please fill all the boxes"
+  "montage-required-fill-inputs" : "Please fill all the boxes",
+  "montage-round-notes-coordinator": "Notes to Coordinator",
+  "montage-login-trouble-heading": "Trouble logging in?",
+  "montage-login-trouble-1": "Try clearing your browser cookies and cache.",
+  "montage-login-trouble-2": "Ensure you have a Wikimedia account and are logged in to Meta-Wiki.",
+  "montage-login-trouble-3": "Check if you have third-party cookies disabled in your browser."
 }

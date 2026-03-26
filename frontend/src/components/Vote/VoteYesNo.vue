@@ -6,9 +6,9 @@
     tabindex="0"
     ref="voteContainer"
   >
-    <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
+    <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''" v-if="rating.current">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
-      <CommonsImage
+      <CommonsMedia
         :image="rating.current"
         :width="1280"
         :image-class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
@@ -123,12 +123,21 @@
             class="vote-details-list-item vote-details-2-line"
             v-if="rating.current.entry.description"
           >
-            <div class="icon-container">
-              <text-box class="vote-details-icon" />
-            </div>
             <div class="vote-details-list-item-text">
               <h3>{{ $t('montage-round-description') }}</h3>
               <p>{{ rating.current.entry.description }}</p>
+            </div>
+          </div>
+          <div
+            class="vote-details-list-item vote-details-2-line"
+            v-if="rating.current.entry.camera_model"
+          >
+            <div class="icon-container">
+              <camera class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h3>Camera</h3>
+              <p>{{ rating.current.entry.camera_model }}</p>
             </div>
           </div>
           <div
@@ -155,6 +164,19 @@
             <cdx-button weight="quiet" @click="goPrevVoteEditing">
               <link-icon />
             </cdx-button>
+          </div>
+          <div class="vote-details-list-item vote-details-2-line">
+            <div class="icon-container">
+              <comment-outline class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h3>{{ $t('montage-round-notes-coordinator') }}</h3>
+              <cdx-text-area
+                v-model="rating.jurorNote"
+                placeholder="Report an issue or leave a note..."
+                rows="2"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -189,7 +211,7 @@ import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 import { getCommonsImageUrl } from '@/utils'
 
-import CommonsImage from '@/components/CommonsImage.vue'
+import CommonsMedia from '@/components/CommonsMedia.vue'
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
 import ThumbUp from 'vue-material-design-icons/ThumbUp.vue'
@@ -205,6 +227,8 @@ import ArrowRightThick from 'vue-material-design-icons/ArrowRightThick.vue'
 import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import TextBox from 'vue-material-design-icons/TextBox.vue'
+import Camera from 'vue-material-design-icons/Camera.vue'
+import CommentOutline from 'vue-material-design-icons/CommentOutline.vue'
 
 // Hooks
 const { t: $t } = useI18n()
@@ -233,6 +257,7 @@ const rating = ref({
   current: null,
   currentIndex: 0,
   next: null,
+  jurorNote: '',
   rates: [1, 2, 3, 4, 5]
 })
 
@@ -289,15 +314,27 @@ function setRate(rate) {
     const val = (rate - 1) / 4
     isLoading.value = true
     jurorService
+<<<<<<< HEAD
       .setRating(props.round.id, {
         ratings: [{ task_id: rating.value.current.id, value: val }]
+=======
+      .setRating(props.round.id, { 
+        ratings: [{ 
+          task_id: rating.value.current.id, 
+          value: val,
+          juror_note: rating.value.jurorNote
+        }] 
+>>>>>>> 84223b3 (gsoc 2026: final hardening phase (multi-media, schema validation, skeletons, and guides))
       })
       .then(() => {
-        stats.value.total_open_tasks -= 1
-        if (stats.value.total_open_tasks <= 10) {
-          skips.value = 0
+        rating.value.jurorNote = ''
+        if (stats.value) {
+          stats.value.total_open_tasks -= 1
+          if (stats.value.total_open_tasks <= 10) {
+            skips.value = 0
+          }
         }
-        if (counter.value === 4 || !stats.value.total_open_tasks) {
+        if (counter.value === 4 || (stats.value && !stats.value.total_open_tasks)) {
           counter.value = 0
           getTasks()
         } else {

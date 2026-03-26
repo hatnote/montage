@@ -38,6 +38,7 @@ def get_admin_routes():
            POST('/admin/add_organizer', add_organizer),
            POST('/admin/remove_organizer', remove_organizer),
            POST('/admin/add_campaign', create_campaign),
+           GET('/admin/campaign/check_name', check_campaign_name),
            GET('/admin/users', get_users),
            GET('/admin/user', get_user),
            GET('/admin/campaigns/', get_campaigns),
@@ -217,6 +218,15 @@ def get_users(user_dao, request_dict):
 # request_dict such that the signature can be expanded here. the goal
 # being that create_campaign can be a standalone function without any
 # special middleware dependencies, to achieve a level of testing
+def check_campaign_name(user_dao, name):
+    """
+    Summary: Check if a campaign name is available
+    """
+    org_dao = OrganizerDAO(user_dao)
+    exists = org_dao.session.query(OrganizerDAO.Campaign).filter_by(name=name).first()
+    return {'data': {'available': not exists}}
+
+
 # between the dao and server tests.
 def create_campaign(user_dao, request_dict):
     """

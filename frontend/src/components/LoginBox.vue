@@ -15,6 +15,19 @@
         {{ $t('montage-login-button') }}
       </cdx-button>
       <clip-loader v-if="isLoading" />
+      
+      <div class="login-help-section">
+        <cdx-button weight="quiet" @click="showHelp = !showHelp">
+          {{ $t('montage-login-trouble-heading') }}
+        </cdx-button>
+        <div v-if="showHelp" class="login-help-content">
+          <ul>
+            <li>{{ $t('montage-login-trouble-1') }}</li>
+            <li>{{ $t('montage-login-trouble-2') }}</li>
+            <li>{{ $t('montage-login-trouble-3') }}</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -28,6 +41,7 @@ const userStore = useUserStore()
 
 // State
 const isLoading = ref(false)
+const showHelp = ref(false)
 
 const redirectToLogin = () => {
   isLoading.value = true
@@ -69,6 +83,27 @@ const redirectToLogin = () => {
 .login-button {
   width: 100%;
   margin-top: 20px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.login-help-section {
+  text-align: center;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.login-help-content {
+  text-align: left;
+  font-size: 13px;
+  color: #777;
+  margin-top: 10px;
+}
+
+.login-help-content ul {
+  padding-left: 20px;
+}
+
+.login-help-content li {
+  margin-bottom: 5px;
 }
 </style>

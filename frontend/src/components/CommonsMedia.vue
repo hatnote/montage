@@ -1,12 +1,29 @@
 <template>
-  <img
-    :src="currentSrc"
-    :alt="alt"
-    :class="imageClass"
-    @load="handleLoad"
-    @error="handleError"
-    v-bind="$attrs"
-  />
+  <div class="commons-media">
+    <video
+      v-if="mimeMajor === 'video'"
+      :src="rawUrl"
+      controls
+      :class="imageClass"
+      v-bind="$attrs"
+    />
+    <audio
+      v-else-if="mimeMajor === 'audio'"
+      :src="rawUrl"
+      controls
+      class="commons-media-audio"
+      v-bind="$attrs"
+    />
+    <img
+      v-else
+      :src="currentSrc"
+      :alt="alt"
+      :class="imageClass"
+      @load="handleLoad"
+      @error="handleError"
+      v-bind="$attrs"
+    />
+  </div>
 </template>
 
 <script setup>
@@ -66,6 +83,14 @@ const currentSrc = computed(() => {
   return urlStrategies.value[attemptIndex.value]
 })
 
+const mimeMajor = computed(() => {
+  return props.image?.entry?.mime_major || props.image?.mime_major || 'image'
+})
+
+const rawUrl = computed(() => {
+  return `//commons.wikimedia.org/wiki/Special:FilePath/${encodedName.value}`
+})
+
 const handleLoad = () => {
   hasLoaded.value = true
   emit('load')
@@ -87,3 +112,25 @@ watch(imageName, () => {
   hasLoaded.value = false
 })
 </script>
+
+<style scoped>
+.commons-media {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.commons-media img,
+.commons-media video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.commons-media-audio {
+  width: 100%;
+  padding: 10px;
+}
+</style>

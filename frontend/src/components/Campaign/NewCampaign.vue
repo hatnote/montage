@@ -3,7 +3,10 @@
     <h2 class="new-campaig-heading">{{ $t('montage-new-campaig-heading') }}</h2>
     <cdx-card class="new-campaign-card">
       <template #supporting-text>
-        <cdx-field :status="errors.name ? 'error' : 'default'" :messages="{ error: errors.name }">
+        <cdx-field 
+          :status="isCheckingName ? 'default' : (errors.name ? 'error' : (formField.name && nameAvailable ? 'success' : 'default'))" 
+          :messages="{ error: errors.name, help: isCheckingName ? 'Checking availability...' : (formField.name && nameAvailable ? 'Name is available' : '') }"
+        >
           <template #description> {{ $t('montage-description-campaign-name') }}: </template>
           <cdx-text-input
             v-model="formField.name"
@@ -120,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
@@ -154,6 +157,10 @@ const errors = ref({
   coordinators: ''
 })
 
+const isCheckingName = ref(false)
+const nameAvailable = ref(true)
+let nameTimeout = null
+
 const schema = z.object({
   name: z.string().min(1, $t('montage-required-campaign-name')),
   url: z
@@ -170,6 +177,35 @@ const schema = z.object({
     .refine((val) => /^([01]\d|2[0-3]):?([0-5]\d)$/.test(val), $t('montage-required-close-time')),
   coordinators: z.array(z.string()).min(1, $t('montage-required-campaign-coordinators'))
 })
+
+watch(
+  () => formField.value.name,
+  (newName) => {
+    if (!newName) {
+      errors.value.name = ''
+      nameAvailable.value = true
+      return
+    }
+
+    clearTimeout(nameTimeout)
+    isCheckingName.value = true
+    nameTimeout = setTimeout(() => {
+      adminService
+        .checkCampaignName(newName)
+        .then((res) => {
+          nameAvailable.value = res.available
+          if (!res.available) {
+            errors.value.name = 'This campaign name is already taken'
+          } else {
+            errors.value.name = ''
+          }
+        })
+        .finally(() => {
+          isCheckingName.value = false
+        })
+    }, 500)
+  }
+)
 
 const submitForm = () => {
   Object.keys(errors.value).forEach((key) => {

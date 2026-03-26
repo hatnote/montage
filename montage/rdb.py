@@ -562,6 +562,7 @@ class Entry(Base):
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
     description = Column(Text)
+    camera_model = Column(String(255))
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -588,6 +589,7 @@ class Entry(Base):
                     'url_sm': make_mw_img_url(self.name, size='small'),
                     'url_med': make_mw_img_url(self.name, size='medium'),
                     'description': self.description,
+                    'camera_model': self.camera_model,
                     'resolution': self.resolution})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
@@ -722,6 +724,7 @@ class Vote(Base):
     round_entry_id = Column(Integer, ForeignKey('round_entries.id'), index=True)
 
     value = Column(Float)
+    juror_note = Column(Text)
     status = Column(String(255), index=True)  # active, cancelled, complete
 
     user = relationship('User', back_populates='ratings')
@@ -2803,7 +2806,7 @@ class JurorDAO(object):
         self.rdb_session.add(vote)
         return vote
 
-    def edit_rating(self, task, value, review=''):
+    def edit_rating(self, task, value, review='', juror_note=None):
         if not task.user == self.user:
             raise PermissionDenied()
         now = datetime.datetime.utcnow()
@@ -2813,6 +2816,8 @@ class JurorDAO(object):
         rating.value = value
         if review:
             rating.flags['review'] = review
+        if juror_note:
+            rating.juror_note = juror_note
         rating.modified_date = now
         rating.status = COMPLETED_STATUS
         return rating

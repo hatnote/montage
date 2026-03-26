@@ -53,7 +53,7 @@
             <arrow-expand-all />
           </div>
           <div class="vote-gallery-image-container">
-            <CommonsImage :image="image" :width="640" />
+            <CommonsMedia :image="image" :width="640" />
           </div>
           <div class="vote-gallery-footer">
             <h3 class="vote-gallery-footer-name">
@@ -100,7 +100,8 @@ import { useRouter } from 'vue-router'
 import jurorService from '@/services/jurorService'
 import alertService from '@/services/alertService'
 import dialogService from '@/services/dialogService'
-import CommonsImage from '@/components/CommonsImage.vue'
+import { getCommonsImageUrl } from '@/utils'
+import CommonsMedia from '@/components/CommonsMedia.vue'
 
 // Components
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
@@ -127,10 +128,11 @@ const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 // State variables
 const images = ref(null)
 const stats = ref(null)
-const gridSize = ref(1)
+const gridSize = ref(Number(localStorage.getItem('montage-grid-size')) || 1)
 
 const setGridSize = (size) => {
   gridSize.value = size
+  localStorage.setItem('montage-grid-size', size)
 }
 
 const getOrdinal = (n) => {
