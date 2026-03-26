@@ -30,7 +30,7 @@
                   ? $t('montage-round-rating')
                   : $t('montage-round-ranking')
             }}
-            . {{ round.status }}
+            · {{ round.status }} · {{ round.total_entries }} {{ $t('montage-round-files') }}
           </p>
         </div>
         <div style="margin-left: auto">

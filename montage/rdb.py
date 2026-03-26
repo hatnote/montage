@@ -444,6 +444,7 @@ class Round(Base):
                'status': self.status,
                'config': self.config,
                'show_stats': self.show_stats,
+               'total_entries': len(self.entries),
                'round_sources': []}
         return ret
 
