@@ -57,7 +57,8 @@ def make_entry(edict):
                  'width': width,
                  'height': height,
                  'upload_user_id': edict['img_user'],
-                 'upload_user_text': edict['img_user_text']}
+                 'upload_user_text': edict['img_user_text'],
+                 'description': edict.get('img_description')}
     if edict.get('oi_archive_name'):
         # The file has multiple versions
         raw_entry['flags'] = {

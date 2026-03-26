@@ -561,6 +561,7 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
+    description = Column(Text)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -586,6 +587,7 @@ class Entry(Base):
                     'url': make_mw_img_url(self.name),
                     'url_sm': make_mw_img_url(self.name, size='small'),
                     'url_med': make_mw_img_url(self.name, size='medium'),
+                    'description': self.description,
                     'resolution': self.resolution})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
