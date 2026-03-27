@@ -28,6 +28,15 @@
               <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
             </div>
           </div>
+          <div class="vote-details-list-item vote-details-2-line" v-if="image.entry.description">
+            <div class="icon-container">
+              <text-box class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h4>Description</h4>
+              <p>{{ image.entry.description }}</p>
+            </div>
+          </div>
           <div class="vote-details-list-item vote-details-2-line">
             <div class="icon-container">
               <image-album class="vote-details-icon" />
@@ -61,6 +70,7 @@ import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LinkIcon from 'vue-material-design-icons/Link.vue'
 import CloudUpload from 'vue-material-design-icons/CloudUpload.vue'
 import ImageAlbum from 'vue-material-design-icons/ImageAlbum.vue'
+import TextBox from 'vue-material-design-icons/TextBox.vue'
 
 // const { t: $t } = useI18n()
 

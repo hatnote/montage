@@ -186,6 +186,7 @@ import History from 'vue-material-design-icons/History.vue'
 import ArrowRightThick from 'vue-material-design-icons/ArrowRightThick.vue'
 import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import TextBox from 'vue-material-design-icons/TextBox.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 
 // Hooks
