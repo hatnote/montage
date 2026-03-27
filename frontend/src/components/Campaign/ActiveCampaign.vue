@@ -1,9 +1,9 @@
 <template>
-  <div v-if="!isLoading" class="dashboard-container">
+  <div class="dashboard-container">
     <div class="dashboard-header">
       <div class="dashboard-header-heading">
         <h1>{{ $t('montage-active-campaigns') }}</h1>
-        <div>
+        <div v-if="!isLoading">
           <RouterLink to="/campaign/new" v-if="userStore.user.is_organizer">
             <cdx-button action="progressive" weight="primary">
               {{ $t('montage-new-campaign') }}
@@ -18,23 +18,38 @@
             {{ $t('montage-add-organizer') }}
           </cdx-button>
         </div>
+        <div v-else>
+           <SkeletonLoader width="140px" height="32px" />
+        </div>
       </div>
       <p class="dashboard-info">
         {{ $t('montage-manage-current') }}, {{ $t('montage-or') }}
         <RouterLink to="/campaign/all">{{ $t('montage-view-all') }}</RouterLink>
       </p>
     </div>
-    <section class="juror-campaigns" v-if="jurorCampaigns.length > 0">
+
+    <!-- Juror Campaigns -->
+    <section class="juror-campaigns" v-if="isLoading || jurorCampaigns.length > 0">
       <h2>{{ $t('montage-active-voting-round') }}</h2>
-      <juror-campaign-card
-        v-for="(campaign, index) in jurorCampaigns"
-        :key="index"
-        :campaign="campaign"
-      />
+      <div v-if="isLoading" class="skeleton-grid">
+        <SkeletonLoader v-for="i in 2" :key="i" height="120px" radius="8px" />
+      </div>
+      <template v-else>
+        <juror-campaign-card
+          v-for="(campaign, index) in jurorCampaigns"
+          :key="index"
+          :campaign="campaign"
+        />
+      </template>
     </section>
+
+    <!-- Coordinator Campaigns -->
     <section class="coordinator-campaigns">
       <h2>{{ $t('montage-coordinator-campaigns') }}</h2>
-      <div class="coordinator-campaign-cards">
+      <div v-if="isLoading" class="coordinator-campaign-cards">
+        <SkeletonLoader v-for="i in 3" :key="i" width="300px" height="200px" radius="8px" />
+      </div>
+      <div v-else class="coordinator-campaign-cards">
         <coordinator-campaign-card
           v-for="(campaign, index) in coordinatorCampaigns"
           :key="index"
@@ -43,7 +58,6 @@
       </div>
     </section>
   </div>
-  <clip-loader v-else size="80px" style="padding-top: 120px" />
 </template>
 
 <script setup>
@@ -62,6 +76,7 @@ import { RouterLink } from 'vue-router'
 import { CdxButton } from '@wikimedia/codex'
 import CoordinatorCampaignCard from '@/components/Campaign/CoordinatorCampaignCard.vue'
 import JurorCampaignCard from '@/components/Campaign/JurorCampaignCard.vue'
+import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import AddOrganizer from '../AddOrganizer.vue'
 
 // Hooks
@@ -197,5 +212,11 @@ onMounted(() => {
 
 .juror-campaigns {
   margin-top: 40px;
+}
+
+.skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 </style>

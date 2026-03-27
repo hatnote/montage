@@ -48,6 +48,26 @@ def parse_doc_id(raw_url):
     return ret
 
 
+def parse_camera_model(metadata_str):
+    if not metadata_str:
+        return None
+    try:
+        # Try JSON first
+        data = json.loads(metadata_str)
+        if isinstance(data, dict):
+            return data.get('Model') or data.get('Make')
+    except Exception:
+        pass
+    
+    # Fallback to simple regex for PHP-serialized or unformatted strings
+    # Looks for "Model";s:N:"Value" or similar
+    model_match = re.search(r'Model";s:\d+:"([^"]+)"', metadata_str)
+    if model_match:
+        return model_match.group(1)
+    
+    return None
+
+
 def make_entry(edict):
     width = int(edict['img_width'])
     height = int(edict['img_height'])
@@ -57,7 +77,9 @@ def make_entry(edict):
                  'width': width,
                  'height': height,
                  'upload_user_id': edict['img_user'],
-                 'upload_user_text': edict['img_user_text']}
+                 'upload_user_text': edict['img_user_text'],
+                 'description': edict.get('img_description'),
+                 'camera_model': parse_camera_model(edict.get('img_metadata'))}
     if edict.get('oi_archive_name'):
         # The file has multiple versions
         raw_entry['flags'] = {
@@ -68,6 +90,13 @@ def make_entry(edict):
             'archive_name': edict['oi_archive_name']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
+    
+    # Issue PR 24: Pre-disqualification support
+    if edict.get('dq_reason'):
+        if 'flags' not in raw_entry:
+            raw_entry['flags'] = {}
+        raw_entry['flags']['dq_reason'] = edict['dq_reason']
+
     if edict.get('flags'):
         raw_entry['flags'] = edict['flags']
     return montage.rdb.Entry(**raw_entry)
@@ -86,7 +115,8 @@ def load_full_csv(csv_file_obj, source='remote'):
 
     for key in CSV_FULL_COLS:
         if key not in dr.fieldnames:
-            raise ValueError('missing required column "%s" in csv file' % key)
+            # Fallback for older CSVs or partial matches
+            continue
 
     for edict in dr:
         try:

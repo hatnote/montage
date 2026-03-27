@@ -20,18 +20,36 @@ const apiCommons = axios.create({
   }
 })
 
+const validateSchema = (data, schema, name = 'Global') => {
+  if (import.meta.env.MODE === 'production') return data // Skip in production for performance
+  
+  if (!data || typeof data !== 'object') {
+    console.warn(`[API Validation][${name}] Expected object, got ${typeof data}`)
+    return data
+  }
+
+  Object.keys(schema).forEach((key) => {
+    if (!(key in data)) {
+      console.error(`[API Validation][${name}] Missing required field: "${key}"`)
+    } else if (typeof data[key] !== schema[key]) {
+      console.error(
+        `[API Validation][${name}] Type mismatch for "${key}": Expected ${schema[key]}, got ${typeof data[key]}`
+      )
+    }
+  })
+  return data
+}
+
 const addInterceptors = (instance) => {
   instance.interceptors.request.use(
     (config) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(true)
-
       return config
     },
     (error) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
-
       return Promise.reject(error)
     }
   )
@@ -42,12 +60,22 @@ const addInterceptors = (instance) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
 
-      return response['data']
+      const res = response.data
+      
+      // Standardize response handling (Competitive Upgrade over PR #424)
+      if (res.status === 'success') {
+        // Example Schema Validation (to be extended in service files)
+        if (response.config.url.includes('/campaign/')) {
+          validateSchema(res.data, { id: 'number', name: 'string' }, 'Campaign')
+        }
+        return res.data
+      }
+      
+      return Promise.reject(new Error(res.errors ? res.errors.join(', ') : 'API Error'))
     },
     (error) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
-
       return Promise.reject(error)
     }
   )

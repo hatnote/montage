@@ -104,8 +104,21 @@ def get_file_info(filename):
     results = fetchall_from_commonswiki(query, params)
     if results:
         return results[0]
-    else:
-        return None
+    
+    # Check for redirect if not found
+    redir_query = '''
+        SELECT rd_title
+        FROM page
+        JOIN redirect ON rd_from = page_id
+        WHERE page_namespace = 6
+        AND page_title = %s;
+    '''
+    redir_res = fetchall_from_commonswiki(redir_query, params)
+    if redir_res:
+        target_name = redir_res[0]['rd_title']
+        return get_file_info(target_name)
+        
+    return None
 
 
 if __name__ == '__main__':

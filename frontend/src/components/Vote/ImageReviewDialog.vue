@@ -1,7 +1,73 @@
 <template>
+<<<<<<< HEAD
   <div class="vote-image-review-dialog">
     <div class="vote-image-review-dialog-image-container">
       <CommonsImage :image="image" :width="800" image-class="vote-image-review-dialog-image" />
+=======
+    <div class="vote-image-review-dialog">
+        <div class="vote-image-review-dialog-image-container">
+            <CommonsMedia :image="image" :width="800" image-class="vote-image-review-dialog-image" />
+        </div>
+        <div class="vote-image-review-dialog-review-section">
+            <h3>{{ image.name.split('_').join(' ') }}</h3>
+            <div class="vote-file-links">
+                <a :href="getCommonsImageUrl(image, null)" target="_blank">
+                    <cdx-button>
+                        <image-icon class="icon-small" /> Show full-size
+                    </cdx-button>
+                </a>
+                <a :href="'https://commons.wikimedia.org/wiki/File:' + image.entry.name" target="_blank"
+                    style="margin-right: 16px;">
+                    <cdx-button class="vote-commons-button">
+                        <link-icon class="icon-small" /> Commons page
+                    </cdx-button>
+                </a>
+            </div>
+            <div class="vote-details">
+                <div class="vote-details-list">
+                    <div class="vote-details-list-item vote-details-2-line">
+                        <cloud-upload class="vote-details-icon" />
+                        <div class="vote-details-list-item-text">
+                            <h4>{{ formattedDateTime.date }}</h4>
+                            <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
+                        </div>
+                    </div>
+                        <div class="vote-details-list-item-text">
+                            <h4>Description</h4>
+                            <p>{{ image.entry.description }}</p>
+                        </div>
+                    </div>
+                    <div class="vote-details-list-item vote-details-2-line" v-if="image.entry.camera_model">
+                        <div class="icon-container">
+                            <camera class="vote-details-icon" />
+                        </div>
+                        <div class="vote-details-list-item-text">
+                            <h4>Camera</h4>
+                            <p>{{ image.entry.camera_model }}</p>
+                        </div>
+                    </div>
+                    <div class="vote-details-list-item vote-details-2-line">
+                        <div class="icon-container">
+                            <image-album class="vote-details-icon" />
+                        </div>
+                        <div class="vote-details-list-item-text">
+                            <h4>{{ image.entry.resolution / 1000000 }} Mpix</h4>
+                            <p>
+                                {{ image.entry.width + ' x ' + image.entry.height }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="vote-image-review-dialog-review">
+                <h4>Review:</h4>
+                <cdx-text-area v-model="imageReview" />
+                <p>
+                    All your reviews will be saved after click on "Save Round" / "Save Changes" button.
+                </p>
+            </div>
+        </div>
+>>>>>>> 84223b3 (gsoc 2026: final hardening phase (multi-media, schema validation, skeletons, and guides))
     </div>
     <div class="vote-image-review-dialog-review-section">
       <h3>{{ image.name.split('_').join(' ') }}</h3>
@@ -26,6 +92,19 @@
             <div class="vote-details-list-item-text">
               <h4>{{ formattedDateTime.date }}</h4>
               <p>{{ formattedDateTime.day }}, {{ formattedDateTime.time }}</p>
+            </div>
+          </div>
+          <!-- Selection Advantage: Image Description support -->
+          <div
+            class="vote-details-list-item vote-details-2-line"
+            v-if="image.entry.description"
+          >
+            <div class="icon-container">
+              <text-box class="vote-details-icon" />
+            </div>
+            <div class="vote-details-list-item-text">
+              <h4>Description</h4>
+              <p>{{ image.entry.description }}</p>
             </div>
           </div>
           <div class="vote-details-list-item vote-details-2-line">
@@ -53,14 +132,22 @@
 <script setup>
 import { defineProps, defineExpose, ref, computed } from 'vue'
 // import { useI18n } from 'vue-i18n';
+<<<<<<< HEAD
 import { CdxTextArea, CdxButton } from '@wikimedia/codex'
 import { getCommonsImageUrl } from '@/utils'
 import CommonsImage from '@/components/CommonsImage.vue'
+=======
+import { CdxTextArea, CdxButton } from '@wikimedia/codex';
+import { getCommonsImageUrl } from '@/utils';
+import CommonsMedia from '@/components/CommonsMedia.vue';
+>>>>>>> 84223b3 (gsoc 2026: final hardening phase (multi-media, schema validation, skeletons, and guides))
 
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LinkIcon from 'vue-material-design-icons/Link.vue'
 import CloudUpload from 'vue-material-design-icons/CloudUpload.vue'
 import ImageAlbum from 'vue-material-design-icons/ImageAlbum.vue'
+import TextBox from 'vue-material-design-icons/TextBox.vue'
+import Camera from 'vue-material-design-icons/Camera.vue'
 
 // const { t: $t } = useI18n()
 
