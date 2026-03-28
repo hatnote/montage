@@ -59,6 +59,7 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
+           POST('/admin/round/<round_id:int>/sync', sync_round),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
@@ -94,14 +95,14 @@ def get_round_reviews(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     entries = coord_dao.get_reviews_table(round_id)
     entry_infos = [e.to_details_dict() for e in entries]
-    return {'data': entry_infos}
+    return entry_infos
 
 
 def get_round_entries(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     entries = coord_dao.get_round_entries(round_id)
     entry_infos = [e.to_export_dict() for e in entries]
-    return {'file_infos': entry_infos}
+    return entry_infos
 
 
 def download_round_entries_csv(user_dao, round_id):
@@ -507,6 +508,11 @@ def create_round(user_dao, campaign_id, request_dict):
     data['progress'] = rnd.get_count_map()
 
     return {'data': data}
+
+
+def sync_round(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    return coord_dao.sync_round_entries(round_id)
 
 
 def edit_round(user_dao, round_id, request_dict):
