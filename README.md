@@ -13,4 +13,21 @@ workflow that adapts to the conventions of all groups.
 
 ## Testing
 
+## Local Development Setup
+
+### Prerequisites
+
+- Python 3.x
+- pip
+- Git
+
+---
+
+### Steps to run locally
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/hatnote/montage.git
+
 `pip install tox` into your virtualenv, then `tox`.
