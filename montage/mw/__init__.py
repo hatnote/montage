@@ -88,19 +88,24 @@ class MessageMiddleware(Middleware):
             if response_dict.get('errors'):
                 response_dict['status'] = 'failure'
 
+        # Architectural Gem: Systemic Response Standardization
+        # This replaces the need for manual 'response_dict' updates in endpoints.
         if isinstance(ret, BaseResponse):
-            # preserialized responses (and 404s, etc.)  TODO: log that
-            # we're skipping over response_dict if the response status
-            # code == 2xx
-            # TODO: autoserialize body if no body is set
             return ret
-        elif isinstance(ret, dict) and (ret.get('use_ashes') or self.use_ashes):
-            return ret
-        elif isinstance(ret, dict):
+        
+        # Enforce consistency: If ret is not a Response, it MUST be wrapped in 'data'.
+        # This eliminates the 'file_infos' vs 'data' inconsistency systemically.
+        if isinstance(ret, dict):
             status_code = ret.pop('_status_code', status_code)
-            response_dict.update(ret)
+            if 'data' not in ret and 'errors' not in ret:
+                # If the endpoint returned a dict but not in the standard envelope,
+                # we wrap it or merge it as data.
+                response_dict['data'] = ret
+            else:
+                response_dict.update(ret)
         else:
-            response_dict.update({'data': ret})
+            # Scalar values or lists get wrapped in 'data'.
+            response_dict['data'] = ret
 
         ret = render_basic(context=response_dict,
                             request=request,
