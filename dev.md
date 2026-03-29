@@ -23,16 +23,61 @@ The **Montage Project** is a web application with two main components:
 
 ---
 
-## Prerequisites
+## Prerequisites & Architecture Blueprints
 
-Ensure the following are installed:
+Montage development is supported natively on Unix-based systems (Linux/macOS) and explicitly recommended via **Windows Subsystem for Linux (WSL)** for Windows users to prevent dependency drift.
+
+**Core Requirements:**
 - **Docker** and **Docker Compose**: [Install Docker](https://www.docker.com/products/docker-desktop).
-- **Node.js** (v16 or above): [Install Node.js](https://nodejs.org).
-- **Make**: Available on most Unix-based systems.
+- **Node.js** (v16+): [Install Node.js](https://nodejs.org).
+- **Make**: Available natively or via `sudo apt install make` in WSL.
+
+**⚠️ Windows User Blueprint (WSL2):**
+Running the Montage backend directly on Windows CMD/PowerShell is unsupported due to deep Python Unix dependencies.
+1. Install WSL2: `wsl --install` in an Administrator PowerShell.
+2. Install a Debian-based distro (e.g., Ubuntu 22.04 LTS).
+3. Clone the Montage repository *inside* the WSL filesystem (e.g., `~/Projects/montage`), **not** on the mounted Windows `/mnt/c/` drive, to prevent severe I/O bottlenecking.
+4. Install Docker Desktop and enable WSL2 integration for your specific distro.
 
 ---
 
-## Setting Up the Project
+## 🔐 Advanced System Setup
+
+### 1. OAuth Consumer Registration (Crucial)
+Montage relies entirely on Wikimedia's Meta-Wiki OAuth for authentication. You must register a local development consumer:
+
+1. Navigate to: [Special:OAuthConsumerRegistration/propose on Meta](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose).
+2. **Application Name:** `Montage Local Dev (YourName)`
+3. **Application Description:** `Local dev testing for Montage.`
+4. **OAuth callback URL:** `http://localhost:5001/complete/mediawiki`
+5. **Allow consumer to specify a callback in requests:** Check this box ✅.
+6. **Applicable project:** `All projects`
+7. **Grants:** Select `Basic rights` (or minimally `View user email address` if testing specific admin flows).
+
+> [!WARNING]
+> **Owner-only Access:** Ensure the "This consumer is for use only by [YourUsername]" checkbox is left **UNCHECKED**. If checked, the app will crash with `mwoauth.errors.OAuthException: Consumer is owner-only (E010)` during the first login flow.
+
+### 2. Configure Environment (`config.dev.yaml`)
+Create `config.dev.yaml` based on the template. The backend container explicitly looks for this file.
+
+```yaml
+---
+db_echo: True
+api_log_path: montage_api.log
+db_url: "sqlite:///tmp_montage.db"
+
+cookie_secret: "ReplaceThisWithSomethingRandomAndSecure"
+superuser: "YourWikimediaUsername"
+
+# Paste the keys generated from the OAuth Consumer step above:
+oauth_secret_token: "YOUR_CONSUMER_SECRET"
+oauth_consumer_token: "YOUR_CONSUMER_KEY"
+...
+```
+
+---
+
+## 🚀 Running the Application
 
 ### 1. Clone the Repository
 ```bash
@@ -97,7 +142,21 @@ of valid URL patterns and other details.
 
 Almost all endpoints from backend (except for OAuth and `/static/`) return JSON as long as the proper Accept header is set (done by most libraries) or `format=json` is passed in the query string.
 
-## Project structure
+---
+
+## 🚨 Troubleshooting Matrix
+
+| Error/Symptom | Root Cause | Solution Path |
+| :--- | :--- | :--- |
+| `mwoauth.errors.OAuthException (E010)` | Consumer created as "Owner Only". | Propose a new OAuth consumer on Meta-Wiki and ensure the "owner-only" box is **unchecked**. |
+| `mwoauth.errors.OAuthException: Invalid consumer` | Missing or mismatched keys in `config.dev.yaml`. | Verify `oauth_consumer_token` and `oauth_secret_token` exactly match the proposed Meta-Wiki credentials. |
+| Callback URL mismatch (`400 Bad Request`) | Dev server running on wrong port or URL. | Ensure the backend is on `:5001` and your consumer callback is exactly `http://localhost:5001/complete/mediawiki`. |
+| Make commands throw `docker not found` | Docker daemon is not active. | Start Docker Desktop. If on WSL, verify WSL integration is checked in Docker Desktop settings. |
+| Extreme lag during API calls or hot-reload | WSL I/O mounted across Windows boundary. | Move the `montage/` folder from `/mnt/c/Users/...` into the native Linux filesystem `~/` via the WSL terminal. |
+
+---
+
+## ⚙️ Project Structure
 ```bash
 ├── DEV.md
 ├── Dockerfile
