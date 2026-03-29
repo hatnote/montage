@@ -312,17 +312,36 @@ const cancelRound = () => {
 
 const submitRound = () => {
   if (!formData.value.deadline_date) {
-    alertService.error({
-      message: $t('montage-required-voting-deadline')
-    })
+    alertService.error({ message: $t('montage-required-voting-deadline') })
     return
   }
 
-  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+  if (!formData.value.name || formData.value.name.trim() === '') {
+    alertService.error({ message: $t('montage-required-fill-inputs') })
     return
+  }
+  
+  if (formData.value.quorum <= 0 || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+    alertService.error({ message: $t('montage-error-invalid-quorum') })
+    return
+  }
+
+  if (roundIndex === 0) {
+    // Validate Import Source for first round
+    if (selectedImportSource.value === 'category' && !importSourceValue.value.category) {
+      alertService.error({ message: $t('montage-error-missing-category') })
+      return
+    }
+    if (selectedImportSource.value === 'csv' && !importSourceValue.value.csv_url) {
+      alertService.error({ message: $t('montage-error-missing-csv') })
+      return
+    }
+  } else {
+    // Validate Thresholds for subsequent rounds
+    if (!formData.value.threshold) {
+      alertService.error({ message: $t('montage-error-missing-threshold') })
+      return
+    }
   }
 
   // Check if the round is the first round
