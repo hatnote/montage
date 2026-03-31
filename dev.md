@@ -65,6 +65,8 @@ Other frontend development commands:
 * `npm run lint`: Lint the code
 * `npm run format`: Format the code
 
+**NB**: If you are getting `index.html` static file not found error, run `npm run build` to create the file. If the errors persist, copy `montage\montage\static\a\index.html` and manually copy and paste it to a new file in the `montage/static/index.html`. 
+
 ### 5. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
@@ -87,6 +89,13 @@ This will build the docker image for the montage backend and start the container
 * `make stop` : Stop the backend container
 * `make logs` : Stream the backend container logs in real-time.
 * `make restart` : Restart the backend container
+
+**NB**: if there is a conflict during the installation of the python libraries, do the following:
+
+* Create a virtual environment by running `tox`
+* On windows, activate the environment using: `.tox\py311\Scripts\activate`
+* On Linux, use `source .tox/py311/bin/activate`
+* Then run `make start`.
 
 ### 6. Access the Application
 * With development server: Open http://localhost:5173 in your browser (frontend)
