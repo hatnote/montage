@@ -37,6 +37,9 @@ from boltons.statsutils import mean
 
 from clastic.errors import Forbidden
 
+import logging
+logger = logging.getLogger(__name__)
+
 from .utils import (format_date,
                     basestring,
                     to_unicode,
@@ -1554,7 +1557,12 @@ class CoordinatorDAO(UserDAO):
         return
 
     def add_entries_from_cat(self, round_id, cat_name):
-        rnd = self.user_dao.get_round(round_id)
+        try:
+            rnd = self.user_dao.get_round(round_id)
+        except Exception as e:
+            logger.error("Round not found: %s", round_id)
+            raise InvalidAction("Round not found")
+
         if ENV_NAME == 'dev':
             source = 'remote'
         else:
@@ -1569,7 +1577,12 @@ class CoordinatorDAO(UserDAO):
         return entries
 
     def add_entries_by_name(self, round_id, file_names):
-        rnd = self.user_dao.get_round(round_id)
+        try:
+            rnd = self.user_dao.get_round(round_id)
+        except Exception as e:
+            logger.error("Round not found: %s", round_id)
+            raise InvalidAction("Round not found")
+
         if ENV_NAME == 'dev':
             source = 'remote'
         else:

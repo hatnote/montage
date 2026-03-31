@@ -1,0 +1,1267 @@
+[33m49e2ada[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mround-error[m[33m, [m[1;31morigin/round-error[m[33m, [m[1;31morigin/montage-micro[m[33m)[m handles errors related to Rounds not fetching
+[33m8b57ee7[m improve the doc for solving common errors while running on local machine
+[33ma67db43[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m Localisation updates from https://translatewiki.net.
+[33m8f06934[m[33m ([m[1;32mmontage-micro[m[33m)[m Add GitHub Actions CI with backend tests and frontend lint/build (#406)
+[33me624c1b[m Localisation updates from https://translatewiki.net.
+[33m7afd29d[m Localisation updates from https://translatewiki.net.
+[33m16af02a[m Localisation updates from https://translatewiki.net.
+[33m211a95e[m Localisation updates from https://translatewiki.net.
+[33mfa2e9fa[m Localisation updates from https://translatewiki.net.
+[33m085dcf2[m fix: Skip button reloading from cached images (#360)
+[33mec3a1a7[m Localisation updates from https://translatewiki.net.
+[33m0f20c3b[m Localisation updates from https://translatewiki.net.
+[33mcde44cc[m Localisation updates from https://translatewiki.net.
+[33m411ccd0[m Localisation updates from https://translatewiki.net.
+[33m901b62e[m Localisation updates from https://translatewiki.net.
+[33mbf4f567[m fix: add client-side validation for empty fields in the create round page (#358)
+[33mc7ef2d3[m fail more gracefully on previewing results for an unfinished ranking round
+[33m951b24c[m fix stash merge
+[33m673e1a0[m make cors work with exceptions
+[33mb515f01[m Localisation updates from https://translatewiki.net.
+[33m2565c88[m Localisation updates from https://translatewiki.net.
+[33m0aba181[m Localisation updates from https://translatewiki.net.
+[33mf6b440a[m Localisation updates from https://translatewiki.net.
+[33m801e419[m Localisation updates from https://translatewiki.net.
+[33mf88a3aa[m Change text for round finalize
+[33me3069dd[m Add the finalize the round (#350)
+[33m6d58f35[m new CommonsImage component
+[33m3f98e9d[m more redirect handling, this time to match up the voting history stuff
+[33m8867d6f[m another shot at a better redirect handling approach
+[33mf55e054[m redirect urls on the backend
+[33me0a2562[m redirect handling (for moved images)
+[33m0c82b95[m Localisation updates from https://translatewiki.net.
+[33m6f9dc00[m Localisation updates from https://translatewiki.net.
+[33mafbb17a[m Fix the loading the lanuages (#338)
+[33m1029d42[m Fix misleading progress of jury voting on homepage (#337)
+[33m64f7107[m Ignore the .vscode directory
+[33m8bdeb54[m Update the package-lock.json
+[33m07a3b66[m Bump axios from 1.9.0 to 1.12.0 in /frontend (#318)
+[33m84fbc28[m Bump vite from 6.3.4 to 6.3.6 in /frontend (#317)
+[33m8bfd5c9[m Bump form-data from 4.0.2 to 4.0.4 in /frontend (#299)
+[33mbb3732f[m Bump vue-i18n from 10.0.7 to 10.0.8 in /frontend (#298)
+[33m4f90956[m Bump @intlify/core-base and vue-i18n in /frontend (#297)
+[33md4f9b99[m Fix the state on Voting page to show loader (#335)
+[33mb84a52a[m feat: ALert popup when a round is already active/paused (#303)
+[33m429778e[m Make the env name dynamic in footer (#307)
+[33mef3e205[m Consolidate .gitignore files (#309)
+[33m99d828d[m Add Cypress tests for login and campaign pages (#314)
+[33m45119b4[m Escape the HTML in juror's review (#312)
+[33m10de993[m Temporary workaround (#332)
+[33mf1235a6[m Localisation updates from https://translatewiki.net.
+[33m70566a9[m a few fixes to get things running
+[33m7be651d[m Localisation updates from https://translatewiki.net.
+[33m068edf0[m Localisation updates from https://translatewiki.net.
+[33md2dbeb2[m unfinalize rating round
+[33m41e08d7[m Localisation updates from https://translatewiki.net.
+[33m7debcb8[m Localisation updates from https://translatewiki.net.
+[33mf410b49[m Localisation updates from https://translatewiki.net.
+[33mceea9c2[m Localisation updates from https://translatewiki.net.
+[33m18bc33d[m Fix the date on VoteEdit (#296)
+[33m55b5efb[m Add two more MAINTAINERS
+[33mdd1fee5[m Add create_date in API response
+[33mb3c0633[m Validate the history key
+[33mdf51b35[m Bump urllib3 from 2.2.2 to 2.5.0 (#293)
+[33m03fda1a[m Bump requests from 2.32.2 to 2.32.4 (#292)
+[33mbfd0d97[m Localisation updates from https://translatewiki.net.
+[33m238ffcd[m Localisation updates from https://translatewiki.net.
+[33mbee93fb[m Localisation updates from https://translatewiki.net.
+[33m031309a[m Localisation updates from https://translatewiki.net.
+[33mee55c9d[m Localisation updates from https://translatewiki.net.
+[33ma1ba34e[m Localisation updates from https://translatewiki.net.
+[33maf68f37[m Fixing the autodisqualify (#274) (#285)
+[33m09c1e17[m Fix egg name for python3-vote-core
+[33m4305233[m Fix python3_vote_core installation
+[33m0386f89[m New fresh package-lock.json (#284)
+[33m79e512c[m Bump requests from 2.31.0 to 2.32.2 (#283)
+[33mbe9d87a[m Bump pymysql from 0.9.3 to 1.1.1 (#282)
+[33m19b0a08[m Bump urllib3 from 2.2.1 to 2.2.2 (#281)
+[33m3a55f91[m Bump vite from 5.4.14 to 5.4.19 in /frontend (#278)
+[33mef35539[m Bump zipp from 3.18.1 to 3.19.1 (#270)
+[33md3e74af[m Bump sentry-sdk from 2.0.0 to 2.8.0 (#269)
+[33med3ab60[m Bump esbuild, @vitejs/plugin-vue and vite in /frontend (#268)
+[33m4a715ad[m Bump prismjs from 0.0.1 to 1.30.0 in /montage/static/mdl (#267)
+[33m48af51f[m Bump certifi from 2024.2.2 to 2024.7.4 (#261)
+[33m7d824c3[m Bump nanoid from 3.3.7 to 3.3.8 in /frontend (#254)
+[33m105969a[m Bump sqlalchemy from 1.0.14 to 1.2.19 (#245)
+[33mce0fc05[m Bump @intlify/shared and vue-i18n in /frontend (#243)
+[33m4b377fe[m Bump @intlify/core-base and vue-i18n in /frontend (#242)
+[33m5a3dc7c[m Bump rollup from 4.21.3 to 4.28.1 in /frontend (#241)
+[33ma060257[m Change voting deadline message
+[33m3e3d2ec[m Fix voting deadline error message (#280)
+[33md857b4d[m Fix the icon on juror (#279)
+[33m714bc70[m Add CORS (#277)
+[33ma308de7[m Sorting by creation date (#276)
+[33md711388[m Validate the round index
+[33md7524b4[m Localisation updates from https://translatewiki.net.
+[33mac2bc3d[m Localisation updates from https://translatewiki.net.
+[33m7b2e2dc[m Localisation updates from https://translatewiki.net.
+[33m8f54d30[m Export image entry id in CSV
+[33m1a75ffc[m Update README.md
+[33m1545e37[m Bump vite from 5.4.6 to 5.4.14 in /frontend (#258)
+[33m0512b9b[m Bump vue-i18n from 10.0.4 to 10.0.6 in /frontend (#262)
+[33m2b4d39c[m Remove v1 (#266)
+[33m3d78319[m Fixing coordinators add/remove
+[33mb11c490[m Fixing the datetime format (#265)
+[33m5f39628[m Localisation updates from https://translatewiki.net.
+[33mfa1d122[m Localisation updates from https://translatewiki.net.
+[33m879aab7[m Localisation updates from https://translatewiki.net.
+[33m1415a34[m Localisation updates from https://translatewiki.net.
+[33mfff69a2[m Added Review in Ranking vote (#259)
+[33me885745[m Localisation updates from https://translatewiki.net.
+[33m0e75b88[m Localisation updates from https://translatewiki.net.
+[33me34f1ec[m Localisation updates from https://translatewiki.net.
+[33mc131441[m Localisation updates from https://translatewiki.net.
+[33mf9948aa[m Localisation updates from https://translatewiki.net.
+[33m018e2f8[m Localisation updates from https://translatewiki.net.
+[33m049b4af[m Localisation updates from https://translatewiki.net.
+[33mb116429[m Localisation updates from https://translatewiki.net.
+[33m4ee349c[m Add the Permission Denied component (#253)
+[33m0894112[m Fix Campaign URL (#252)
+[33m60e2541[m Reduced the API call and data for current user's details (#251)
+[33m01b8a44[m Localisation updates from https://translatewiki.net.
+[33meeb8ab0[m Use toolforge proxy for Font CDN (#248)
+[33m8c81e30[m Addressed feedback from deployment (#247)
+[33me923079[m Localisation updates from https://translatewiki.net.
+[33m30fc247[m Addressed feedback for Round 2 (#246)
+[33m4a7eb9b[m v2 version (#239)
+[33mf5139df[m a bit more bytestring handling
+[33m854ec6e[m improve output filenames (ascii=True makes slugs into bytestrings)
+[33mb7ee59a[m more py3 cleanup
+[33mfcd2da2[m remove outdated tests which had already been ported to pytest tests (run w tox), plus a few old comments
+[33mbdec016[m fix raw_input refs and remove a future import
+[33mfdeace7[m remove py27 from tox
+[33mb7a672b[m Merge branch 'py3'
+[33m43612f6[m fully onto inner joins, no more exists
+[33mea7021f[m more joining, less exists-ing
+[33m5f71a4d[m try a join instead of exists to speed up task counts
+[33m01a3fe7[m fix sudden change in sentry sdk https://github.com/getsentry/sentry-python/issues/926
+[33m84b04b2[m initial sql profiler middleware
+[33md419579[m better handling of a frontend error where threshold isn't a required field and can be unset in the request
+[33m3185e7d[m better handling of a frontend error where juror names are null
+[33m4152374[m back off cryptography version due to https://github.com/pyca/cryptography/issues/9016
+[33m8630861[m loaders fix (bytes and json header)
+[33m5222777[m bump requirements for python 3.9 and clastic update
+[33m59bc34a[m update py37 tox env to py39
+[33m5992c97[m some notes on updating
+[33m637358b[m fix function sig
+[33m6ec677d[m try a different approach that should work with the older mysqldb client library as well as new
+[33m4501b8f[m Revert "be explicit with db session collation"
+[33ma3b6f24[m be explicit with db session collation
+[33ma81791b[m bring over a quick fix from the py3 branch
+[33m5ccb6ef[m frontend: add button to see jury comments
+[33m07f5e62[m bunch of tools py3 quick fixes
+[33m77cf9e3[m typo
+[33mb3975bb[m fix bug on ranking round validation with disqualified entries
+[33me6580b1[m handle a schema oddity on labs
+[33m0ccf4e9[m misc py3
+[33m34aac1d[m bump a couple requirements for py3
+[33m3fa4428[m ignore flychecks
+[33m3965221[m add __main__ to facilitate debugging
+[33m7dddfd9[m Merge pull request #202 from bryanoltman/update-copyright
+[33mc757f77[m Update copyright date in footer
+[33m48ef92c[m fix replay log mode
+[33m6f01442[m tox says py27 and py37 are both passing, so checkpointing
+[33m1088937[m bump to sqlalchemy 1.2.19 to fix warnings
+[33me501e65[m python-modernize run, with some fixups, and now a couple of tests passing py37
+[33m3166f56[m all packages installing under py2 and py3
+[33md8b3ca2[m adding py37 tox env targeting toolforge k8s
+[33m41815bd[m fix headers issue from requests switchover
+[33m91f1636[m quick switch loaders over to requests
+[33m16824ae[m switch userid to newer http method
+[33m1be5d09[m work around the lets encrypt issue https://phabricator.wikimedia.org/T291387
+[33me67c48b[m bump certifi as a quick fix
+[33mfe5dc80[m Merge pull request #188 from afnecors/patch-1
+[33m7fd8f46[m Minor fix in design.md
+[33m8a642b5[m Merge pull request #180 from hatnote/angular-upgrade
+[33m53bb619[m frontend: upgrade angularjs 1.5 to 1.8
+[33m498f3d4[m Merge branch 'master' of github.com:hatnote/montage into master
+[33m6fc0ffb[m frontend: fix loading circle
+[33m0c028c6[m backend: fix loading circle
+[33m175a054[m quick unicode fix on media import warning message generation, fixes sentry MONTAGE-3A
+[33m701a2ab[m bump frontend version
+[33m7625785[m fix orderby error
+[33m6a3e610[m add loading spinners to dashboard
+[33m5716dfb[m Merge pull request #178 from hatnote/hiding-inactive-campaigns
+[33md5bf6a9[m clean up the backend a bit
+[33me66e3b7[m header level tweak
+[33m6237a25[m added 'Active' headers and links from 'All' back to dashboard. bump version.
+[33m893d826[m remove redundant onInits per comment in #178
+[33m10b6715[m add back in campaign finalization to endpoint
+[33m9339b6f[m frontend changes for the archiving/unarchiving functionality. also made link only appear when signed in.
+[33mace6a6f[m Merge remote-tracking branch 'origin/master' into hiding-inactive-campaigns
+[33m883970d[m Merge pull request #169 from baturin/force-close-campaign
+[33mab6844f[m WIP: archive flag, backend tested working for admins and jurors
+[33maeded12[m Merge branch 'force-close-campaign' of github.com:baturin/montage into hiding-inactive-campaigns
+[33mf8e0c72[m Merge pull request #171 from baturin/allow-any-hostname-for-dev-env
+[33m53fe394[m Merge pull request #173 from baturin/configure-user
+[33m2f9db52[m Merge pull request #175 from baturin/files-list-import-issues
+[33m1085669[m Merge pull request #159 from baturin/votes-stats-tests
+[33mf7cd5ff[m Merge branch 'master' of github.com:hatnote/montage into votes-stats-tests
+[33m9d1bb64[m Avoid fail when file does not exist
+[33m27ccd08[m Merge pull request #170 from baturin/update-gitignore
+[33m7dce661[m Allow to specify current user in config
+[33ma5af8a5[m Allow any host for dev environment
+[33m9802fb7[m Exclude PyCharm files by .gitignore
+[33me972d54[m Archive for coordinator campaigns
+[33m0f2b1e7[m Clean up order campaigns code
+[33mcf23699[m Show finalized campaigns only on archive page
+[33md9c4444[m use new toolforge.org domain
+[33m83a5f8a[m Refactor campaign status on frontend
+[33m8f0a939[m Reopen finalized campaign
+[33m0c7a52b[m add detail to project log
+[33m8c0c7b3[m added new svelte components
+[33m2465f10[m move montage-dev to new and better url
+[33m8628b37[m Hide close button for already closed campaigns
+[33m6379c61[m Order campaigns, collapse finalized campaigns
+[33mb920f1a[m Force finalize campaign
+[33ma921c5d[m Merge pull request #167 from hatnote/dependabot/npm_and_yarn/client/websocket-extensions-0.1.4
+[33mdc87b70[m Bump websocket-extensions from 0.1.3 to 0.1.4 in /client
+[33mbec5a71[m Merge pull request #163 from hatnote/svelte-admin
+[33mf7c5c1b[m Merge branch 'master' of github.com:hatnote/montage
+[33md268e82[m backend: prevent duplicate jurors
+[33m5666d51[m backend: prevent duplicate jurors
+[33ma5b7e77[m add some more timing info
+[33m968e531[m fix travis
+[33mdde6399[m remove a todo
+[33m9b2fd78[m more backfilling utility
+[33m4506fd0[m a couple of series-related commands for admin.py
+[33mb490c9a[m split out requirements-dev.txt from requirements.txt
+[33mb6b9285[m deployment notes
+[33mad53706[m handle some deploy script exit behavior
+[33mb504daa[m factor out some knobs and add check for being fully pushed
+[33maa4c163[m initial fabfile (might rewrite in paramiko later), run 'fab deploy' to deploy the backend (complete with requirements upgrading)
+[33m5917f99[m add sketch of round view
+[33m5221672[m PROJECT_LOG updates on hackathon weekend
+[33mb54e695[m clean up new admin svelte files
+[33mb262b74[m add more wip post functionality
+[33mec59e41[m more wip
+[33m89a2087[m add dangerous new campaign pagea
+[33m3eff286[m add status and reverse chrono sorting to campaigns list (just toolin around)
+[33m300e29d[m add cache middleware to help a bit with the refresh cycle
+[33m3c87929[m the tiniest bit of fe cleanup
+[33m6b1d346[m Merge branch 'master' into svelte-admin
+[33m868273a[m static shortcut to /a/
+[33mab18ca9[m add new index.html too
+[33mad68144[m add new admin client in svelte
+[33ma20c9c0[m couple of updates for wmflabs integration
+[33m020592f[m finalize sentry support (for now), based on clastic==20.0.0 (and a few incidental) package upgrades
+[33m7769770[m backend: more tests, am I doing this right?
+[33mb99025d[m Merge pull request #127 from prtksxna/hello-user
+[33m0cf465f[m Merge branch 'master' into hello-user
+[33m0303b9a[m delete some commented out code
+[33m7d42052[m first quick pass at sentry middleware/integration. need to make a clastic middleware+WSGI middleware affordance.
+[33ma681264[m bit of todo/project log updatin
+[33m269b087[m have test setup create an index.html if it doesn't exist
+[33mb354d10[m travis isn't seeing static in the package, let's see if a graft fixes it
+[33m9842fe5[m add tox to requirements, upgrade a few packages, note that mysqlclient is necessary on labs but not local
+[33me19e835[m add initial travis yml
+[33m26b7113[m Merge pull request #139 from brittag/patch-1
+[33m4fd639d[m backend: more tests
+[33m2a7cfb2[m include __env__ in loaded envs
+[33m1512697[m Merge branch 'master' of github.com:hatnote/montage
+[33m4e1b782[m backend: more juror web endpoint tests
+[33m81c5218[m point REMOTE_UTILS_URL at a more reliable endpoint
+[33m5b4cdff[m update project log
+[33m52000e1[m integrate rest of system test (with only minor tweaks)
+[33m1736dc9[m bring in more tests and update logging format
+[33mb648e9b[m refactor into pytest fixtures
+[33mf4cdba4[m auth worked around and good chunk of tests now working
+[33m3f6fbd8[m wip getting credentials right
+[33mf928573[m minimum viable tox with coverage setup, toss openapi_endpoints
+[33m47c4c65[m first pass at pytestability
+[33mc9708bf[m pull in the tested-working changes to the importing endpoints (labs.py) from montage-dev
+[33m779f07a[m Merge pull request #142 from hatnote/face-refactor-admin-tools
+[33m0f21ea1[m upgrade requirements.txt
+[33m82ba933[m Merge branch 'master' into face-refactor-admin-tools
+[33m389749e[m note deploy automation
+[33maa7b9a5[m technical roadmap notes
+[33m38af324[m improve votes stats test assertions
+[33m69cbb61[m retrieve first uploader if file has multiple versions (#155)
+[33m924c6a0[m add feature to import from Google Spreadhsheet and download entries (closes #152)
+[33m68f64ca[m update version
+[33mdcf9d46[m Merge branch 'master' of github.com:hatnote/montage
+[33m2806de3[m tweak style for vote stats beta feature
+[33mf65fb00[m use round config instead of flags
+[33m9287fb3[m clean up error raising discipline, plus add an env var for getting a pdb in the server process for unexpected errors
+[33mca324ef[m do basic format check on votes stats
+[33m413f1a7[m Merge pull request #153 from baturin/vote-stats
+[33m9b30baf[m Simple call to votes stats in integration test
+[33m98cfbfa[m vote stats proto
+[33m63f3686[m Merge branch 'master' of github.com:hatnote/montage
+[33m5af6710[m some research data thoughts for lodewijk
+[33me723447[m Merge pull request #149 from hatnote/2019-hackathon-sp
+[33m2ad04b0[m Remove comma to fix syntax error
+[33m3e811b6[m initial attempt at updating the dependencies (based on pip-tools/requirements.in)
+[33m6ffc551[m bump face version to 19.1.2
+[33m9be2964[m refactor rdb console, make it more debuggable
+[33mdd71206[m better error message for pymysql missing
+[33m621693c[m sql refactor for actor table
+[33mbe71e29[m wip command grouping
+[33md487162[m linting
+[33mf78f70a[m add method for finalizing campaign
+[33mc8e6116[m handle file load error
+[33m4d5dbfc[m avoid duplicate vote and voting when loading
+[33ma53f2f0[m fix displaying files with non-standard filenames
+[33m7c8db67[m add 2019 to footer
+[33mc00e764[m distinguish open and closed campaigns on dashboard
+[33m488e2ff[m add textarea for above
+[33mc26689e[m add file list as new round method, show popup with errors
+[33m1e50866[m add closing campaign
+[33m0ed73ae[m push non-uglified code to dev
+[33me6d1bac[m clean-up scripts
+[33mf976cec[m Merge branch 'master' of github.com:hatnote/montage
+[33mfb2203b[m bump node-sass to 4.0 to match node 8
+[33m0ddab49[m bunch of minor updates and fixes, remove mentions of oursql, add pymysql dep, etc.
+[33m0ad8dd1[m add face 19.1.1 to requirements.txt
+[33m5b3430e[m remove some unused flags
+[33maa1330f[m various small cleanups before restructuring files
+[33m68a2085[m fix up cancel_campaign a bit
+[33maaed7d1[m make some arguments required
+[33m9df16df[m remove redundant pdbs and fix up cancel campaign subcommand as well as a few improvements to apply_round_ratings
+[33m943688b[m argparse now removed from admin tools
+[33m2505001[m mostly done porting commands, need to finish out docstrings and make sure no subcommands were dropped
+[33m2431e05[m several subcommands, also switch to flags instead of posargs for now
+[33m52adc4d[m cancel campaign and list campaigns ported
+[33m016de5f[m clear out dead code, port create_campaign
+[33ma9c09ff[m port rdb console
+[33m3b1dac0[m wip face refactor
+[33m94417d4[m seamlessly handle cases when a user changes their mw username
+[33m725da01[m add chert to requirements
+[33m9590d6e[m add wmflabs app.py thing
+[33mf8ef4f6[m Correct two minor typos on login page
+[33m20a1f33[m bump lithoxyl version to 0.4.3 to fix recurring stale file handle issue
+[33m41d26b6[m Merge branch 'master' of github.com:hatnote/montage
+[33m5bbdcf1[m Merge pull request #128 from prtksxna/dev-doc
+[33m8fcc454[m docs: add setup instructions from @slaporte's email
+[33ma8eec42[m frontend: greet user on dashboard
+[33m5d17873[m backend: swap tasks between two jurors (WIP)
+[33m878f59c[m backend: convert gist url to raw gist url for ease of import (per #108)
+[33m90c4123[m frontend: use wikimedia font cdn instead of google fonts (closes #124)
+[33mb814962[m backend: refine org/coord permissions
+[33m501bf10[m backend: endpoint for coord to get list of reviews
+[33mc75d6c7[m backend: reviews accepted in yes/no & rating rounds (closes #105)
+[33m6326a07[m backend/tools: alternative CLI
+[33maff3be8[m backend: minor change to get_rankings_from_round
+[33m757f388[m backend: coords can add/remove coords on their campaign (closes #104)
+[33m512fb1f[m version 17.10.06
+[33m97f4b19[m fix(vote-edit): fix logic
+[33m558fc8b[m fix(vote-single): bring back `Skip` button Closes #93.
+[33mac170c8[m fix(vote): change unicode arrows, change button styling Closes #98.
+[33md2de843[m version 17.10.05
+[33m3415c87[m feat(app): add ranking round voting
+[33mbf8bffd[m fix(round): fix logic regarging showing `Finalize` button Sometimes previous round is finalized and we still need to show `Finalize` button. Most probable scenario is finalizing round, removing last round and try to add last round again
+[33m15211c1[m Merge branch 'master' of github.com:hatnote/montage
+[33m6c39c6f[m a bit more notes and removing a TODO
+[33m56c475e[m backend: juror endpoint to skip a task, for #86
+[33mec1433c[m add some thoughts on potential dynamic allocation futures
+[33md7f2786[m version 17.10.03
+[33mdedf5a4[m feat(vote-faves): add routing and component for favourites Relates to #72.
+[33me7c54f7[m fix(vote-edit): rewrite loading screen, some simplification Closes #90.
+[33m98622eb[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mf972a8f[m fix(dahsboard): hide new campaign buttons for non-organizers Closes #92.
+[33m6ee602e[m Merge branch 'master' of github.com:hatnote/montage
+[33m5405680[m backend tools: adding new entries to round
+[33m643b6f0[m improve run_server_test (add unicode character to test round name, plus jerryrig a download csv test)
+[33m5a3d233[m asciify round names going into files because werkzeug hardcodes latin-1 encoding on headers
+[33mae9a93a[m remove get_tasks (we only use get_tasks_from_round)
+[33ma582967[m Merge branch 'master' of github.com:hatnote/montage
+[33m31aa6c5[m bunch of juror_endpoints cleanup: remove a few unused endpoint functions, remove a pdb, fix round_id to rnd.id in get_campaign
+[33mc73ccc8[m backend: revising fave endpoints
+[33m5a2829c[m Merge branch 'montage-dev'
+[33m126c4ea[m backend: get faves endpoint
+[33m49e2364[m on second thought, only slugify the round name, not the whole filename, better addressing #79
+[33maf36146[m slugify download filenames, addressing #79
+[33m53862bc[m backend: minor response change
+[33m47861c4[m Merge branch 'master' of github.com:hatnote/montage
+[33m4a6eb3b[m backend: new endpoint for juror view of prev votes
+[33m6b0861a[m version 17.10.02
+[33m4ae1fe1[m feat(vote-single): add more prominent information about shortcuts Closes #52.
+[33m547d1f1[m feat(app): add faving and reporting images Relates to #72.
+[33m229bc80[m fix(text): clean Polish translations
+[33mcfa20d6[m feat(round): small round cleanup
+[33mbe9ce41[m feat(vote): add saving vote information Relates to #70.
+[33ma04f5c0[m Merge branch 'master' of github.com:hatnote/montage
+[33m2a5298d[m backend: speeding up get_index for admins
+[33m698d3a3[m feat(vote-edit): show accept and decline labels
+[33mb231876[m feat(vote-edit): add link to vote round
+[33mdb72d1f[m fix(round): display translated vote method
+[33m7c50771[m fix(round): hide finalize button when round is finalized
+[33m2503a2a[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m9206645[m feat(vote-single): prettify `All done` alert, fix link Closes #75.
+[33m2405e9d[m Merge branch 'master' of github.com:hatnote/montage
+[33mc909e0e[m backend: added is_closable to round info, added a better response for non-closable ranking rounds
+[33m0cb96a0[m Merge branch 'montage-dev'
+[33m42fc4a0[m backend: minor fix in active users endpoint
+[33m2f3d48c[m Update api.md
+[33m0915206[m Merge branch 'montage-dev' of github.com:hatnote/montage into montage-dev
+[33mfd846fa[m Merge branch 'master' of github.com:hatnote/montage
+[33m1ec3790[m backend: juror voting info for round endpoint for #50
+[33m975dd42[m backend: more allowed file types;
+[33mcab6c2e[m backend: organizers and maintainers can view a user list
+[33m4fa8d04[m version 17.10.01
+[33m32e3d0c[m feat(vote-single): add button to previous votes It will need redesign soon, but for now it closes #69.
+[33m6b39355[m fix(vote): set fixed height for file title Temporary solution, needs something more elegant. Relates to #52.
+[33m6b35bfd[m feat(app): change `Deadline date` to `Voting deadline` Closes #57.
+[33mbbdb7db[m feat(campaign): add loading indicator for new round Relates to #51.
+[33m6d66f9a[m fix(campaign-new): fix typo, add error handling
+[33m229aabe[m feat(campaign-new): add loading indicator Relates to #51.
+[33m33b2df9[m fix(filter): fix `forNow` filter text This filter should include one more date, since deadline is end of day, not beginning. Closes #58.
+[33m642dd51[m fix(dashboard): fix empty campaign error Empty campaign is the last tile with Create New Campaign button.
+[33m8c50459[m feat(campaign): add loading indicator, add download results Relates to #51, #44, #54
+[33mbcd364f[m feat(campaign-new): add description for campaign URL Requested via Commons: https://commons.wikimedia.org/w/index.php?diff=261615810.
+[33mca584c5[m Merge branch 'master' of https://github.com/hatnote/montage
+[33me200472[m fix(footer): fix footer links Closes #63.
+[33m5676ba3[m Merge branch 'master' of github.com:hatnote/montage
+[33m854b72f[m better default for the api log path
+[33m2fb581e[m fix(services): fix getting file history For some weird reason getting history of some files is not possible. Probably because file is deleted? But in that case Russians are reporting different error... Nevertheless this one hopefully closes #68.
+[33mfc93e7c[m fix(styles): change default link color
+[33m174aaeb[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m15d4f6a[m feat(login): more elegant login screen
+[33m307dc14[m upgrade clastic and add stale cookie clearing
+[33m275abea[m not all BaseResponses have mimetypes (e.g., BadRequest)
+[33m9670dea[m Merge branch 'montage-dev' of github.com:hatnote/montage into montage-dev
+[33mcee5c54[m not all BaseResponses have mimetypes (e.g., BadRequest)
+[33m7b726f8[m backend: fix typo in preview dq
+[33m42e1bbf[m backend: loading a list of files
+[33m4a943ef[m backend: let me know when remote file info is missing
+[33mcc4c6ce[m backend: fix downloading round results
+[33m8bd643d[m backend: quick fix for file list imports
+[33m9f09d2b[m version 17.09.05
+[33m5b8a54c[m fix(round): show details when data are loaded
+[33mff1d780[m fix(app): remove all cancelled rounds from the view
+[33m96619dd[m fix(round-edit): fix typo Resolves #53.
+[33mf297e97[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m9efa799[m feat(round-edit): add deleting round
+[33mec16c1a[m Merge branch 'master' of github.com:hatnote/montage
+[33m3f1d08e[m backend: maintainer and organizers can now view any campaign; added audit log filtering
+[33m014ea38[m version 17.09.04
+[33mca40f6e[m fix(vote-single): improve loading image
+[33maa675a7[m version 17.09.03
+[33m9974723[m fix(vote-single): small adjustments
+[33m5b03551[m fix(vote-single): small adjustments
+[33md59ca00[m feat(round-new): add import from CSV
+[33m5887e7e[m fix(dashboard): small code cleanup
+[33m92761bd[m fix(campaign-new): change lorem ipsum lol
+[33mc517db6[m fix(dashboard): always show `Your campaigns` section for admins
+[33m9736a88[m chore(app): add prod html file
+[33meb5f6ca[m upgrade clastic and add stale cookie clearing
+[33m93649dd[m Update deployment.md
+[33m81e3fc4[m backend: docs for setting up labs
+[33m15b7f7e[m backend: minor changes
+[33mbc05f37[m frontend: fix for adding organizers
+[33m8062844[m Merge pull request #49 from hatnote/frontend-cleanup
+[33m9552ebb[m feat(app): batch update
+[33m5ad3d7f[m Merge branch 'master' of https://github.com/hatnote/montage into frontend-cleanup
+[33mb8f8633[m feat(app): batch update
+[33mabfb2a5[m backend: sort and order_by options to juror ratings endpoint
+[33mc99f862[m Merge branch 'master' of https://github.com/hatnote/montage into frontend-cleanup
+[33mda320c6[m feat(app): batch update
+[33m497bc86[m sp
+[33m18f9740[m sp
+[33mbc84b7e[m backend: added import warnings; enabled autodisqualification based on round config
+[33m885bb61[m backend: fix task count
+[33mc9cc51e[m Merge branch 'master' of https://github.com/hatnote/montage into frontend-cleanup
+[33m3a9d551[m backend: ordering ratings
+[33m82dbca6[m backend: bug fix; added date to vote details in api
+[33m72d33c3[m backend: fix remote category loader url
+[33m005a9f8[m backend: raw campaign report; new use_ashes strategy
+[33ma1001d2[m API docs [wip, lots of todos]
+[33mf3d28f8[m updating mdl styles
+[33mee660ab[m feat(campaign): campaign features, fixes and adjustments
+[33mb382296[m feat(user-list): styling adjustment for user list
+[33ma9e3a91[m chore(app): add l10n
+[33m44cbf29[m feat(campaign-new): add component for creating campaign
+[33m66ac01f[m feat(dashboard): remove old creating campaign, add link to new form
+[33mb034755[m feat(campaign): separate components for round
+[33me11f118[m feat(app): change default color
+[33m0262ed3[m feat(vote): rewrite voting screen, initial version
+[33mcfa8c7c[m feat(dashboard): styling juror and admin boxes
+[33md8b9747[m feat(main): add wide container
+[33mbb6ce39[m fix(app): fix base url
+[33m92f3094[m feat(campaign): add campaign features
+[33m6fde390[m feat(toolbar): logon / logout buttons
+[33m7ee0570[m feat(dashboard): dashboard styling
+[33me2930dc[m feat(app): add footer as component
+[33mda4596f[m feat(dashboard): add `campaign-juror-box` component
+[33mf346ef8[m feat(app): major structural rewrite, part I
+[33m51882ed[m docs template
+[33mcd1ad0e[m chore(app): update angular, install eslint
+[33m76e5f0b[m chore(app): rename `app` to `src`, some file name changes
+[33m2cbb6f0[m resolve a quick admin merge conflict
+[33md3b8974[m fix a couple of merge conflicts related to the API/UI route split
+[33mb0eda3a[m split out API and UI routes, update server and test code accordingly
+[33m2c7c180[m backend: sketch of ashes-driven admin [wip]
+[33m7529161[m backend: give the public some basic info about entries; plus campaign specific audit logs for coordinators
+[33mc90f672[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33mb0188e9[m cron job idea
+[33m8cbea9a[m backend: adjusting round source [schema change!]
+[33mbdae9ad[m backend: download entries from round [schema change!]
+[33m3fc153a[m remove stray set_trace in the run_server_test
+[33mda994c5[m automatically add timings to html returns when possible
+[33m3b2d462[m add doctypes to ashes templates
+[33me2fdeb6[m fix closing tag typo in docs base.html
+[33m549a8ba[m add table of contents and good external link behavior to docs
+[33m31c3e40[m backend: small fix
+[33me39ab64[m backend: labs query fixes
+[33mbfce84a[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m3d41142[m backend: importing files by filename
+[33m8c10e60[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33mb09ba3c[m update requirements.txt with markdown/ashes
+[33m5e29904[m backend: get files from category via tool labs
+[33m6270158[m work-in-progress docs endpoint. mostly working, but TOC generation may need to be pulled over from chert
+[33mf8cc8d9[m explicit include of column names for labs queries
+[33mc56793a[m fix import error, fix ret -> files in util endpoints
+[33m64f1d02[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33ma8481b1[m backend: public endpoints to get file info from the database
+[33mf1ceda5[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m7e18c67[m make NotImplementedResponse, a 400 error, for cases like quorum decreases where the feature doesn't exist yet, plus a little bit of cleanup
+[33m1b8d0fa[m backend: endpoints to manually disqualify and requalify an entry
+[33m2c33cb0[m resolve merge conflict around campaign url
+[33m2ea0e31[m add indexes on most foreign keys, status columns, and some date columns, rename get_favtes to get_faves
+[33med07816[m backend: view grouped flags
+[33m0b823b8[m switch create_round to flush instead of commit, and do it before the audit log so ids show up right
+[33mf614d6f[m major run_server_test refactor to include a lot more information about which tests are being executed (still a bit of a WIP), but now does better error checking, descriptive printing, and cleaner invocation
+[33m0347d43[m flush session to generate proper db ids for serializing result summary
+[33m294f3d1[m default series now comes from a constant instead of a file, remove file loading code
+[33m66a63ff[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m0e39a3b[m adding WIP docs outline
+[33m4dd5748[m backend: publish and view reports
+[33m9610862[m move default/unofficial series to the utils.py instead of series.yaml
+[33md027b41[m improvements to the report (correct usage of @size must not have quotes, too touchy :/
+[33m5c9dc1d[m allow for multiple superusers in the config, with backwards compat to single superuser
+[33m190f166[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m35ae551[m backend: adding campaigns to a series [db schema changes]
+[33mceebb0f[m category -> cat_name
+[33mbe5fedb[m yet another minor permissions fix to enable organizers to work from an empty state
+[33m926e8bf[m another minor permissions fix to enable organizers to work from an empty state
+[33me9e539f[m add a fix for maintainers to be viewed as organizers
+[33me6274a4[m backend: bug fix for importing duplicates
+[33m452258a[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m4974cd9[m backend: flags and faves
+[33mbe66e51[m switch all strings to have length (for mysql)
+[33m61911e2[m Merge branch 'votes' of github.com:hatnote/montage into votes
+[33m1e40596[m improve error message on stale cookie. not the perfect solution, but somethig to hold us over. see also #48.
+[33m8586c49[m backend: tracking import actions
+[33m4d818e8[m backend: some db changes [wip]
+[33m2d4b66d[m fix for labs
+[33m45b7707[m backend: add new entries to an ongoing (paused) round
+[33m52c4b95[m backend: updating admin tools to use the refactored dao [wip]
+[33mc1849ca[m backend: additional refactoring
+[33mbb162f5[m backend: work in progress dao refactor (admin tools and more need to be updated)
+[33m3a55f94[m Merge remote-tracking branch 'origin/quorumedit'
+[33mfb21718[m backend: quorum editing and admin tool
+[33ma2b6ba4[m backend: rating submission refactor
+[33m9bc1101[m backend: removing tasks table and using votes
+[33mddd9eb7[m improvements to the report (correct usage of @size must not have quotes, too touchy :/
+[33m18ac5c5[m allow for multiple superusers in the config, with backwards compat to single superuser
+[33m6975cf9[m backend: merging Rating and Ranking into Vote table [schema change!]
+[33m18b421f[m fix a gaggle of small typos and snafus
+[33mb238944[m backend: cancelling a campaign [w another db schema change]
+[33m67c1fb6[m backend: finalizing ranking round and generating campaign summary report [Note: the schema has changed]
+[33mfe22248[m backend: preview autodisqualification
+[33mc81616c[m Merge branch 'master' of github.com:hatnote/montage
+[33m76520f6[m backend: increasing quorum
+[33me4ad31f[m backend: use the round get_count_map instead of dao method
+[33mfff0edd[m sync beta uwsgi.ini with dev
+[33mfb6475b[m add lazy-apps to dev and switch on http -> https redirect
+[33m68dc951[m backend: adding maintainer path to view disqualified entries
+[33me753f37[m actually working redirect
+[33m6299270[m wip: http to https redirect route
+[33m5561b01[m Create LICENSE
+[33ma75669b[m Create TODO.md
+[33mddf790e[m moving TODOs to TODO.md or github issues
+[33m96c7028[m adding beta-uwsgi.ini (same as dev, just different string constants)
+[33mfc8dc36[m move the dev-uwsgi to the config dir
+[33m97cff10[m add dev-uwsgi.ini
+[33ma35c1bd[m Merge pull request #12 from hatnote/dev
+[33m332ba67[m version 17.06.01
+[33m89449a2[m chore(gitignore): fix gitignore
+[33mb92ea0d[m chore(webpack): add builds for dev and beta
+[33mcbf954e[m feat(campaign): add edit hour for round deadline
+[33mb6e9126[m feat(campaign): add edit hour for round deadline
+[33m16b0ab8[m feat(campaign): show UTC label, just to make sure
+[33md72a710[m fix(dashboard): fix UTC problems for creating new campaign
+[33m2920895[m feat(main): it's 2017
+[33mf28dbb7[m add logo and links
+[33ma44d5f1[m Merge branch 'master' of github.com:hatnote/montage
+[33m2d792a1[m add Montage's frontend specialist and Hatnote's newest member to the LICENSE
+[33meeea9e0[m refactor(app): split index.js file
+[33mf134d59[m ver. 16.11.03
+[33mf764132[m fix(round): temporary history fix
+[33mf77fe48[m ver. 16.11.02
+[33m3c49d02[m feat(round): move link buttons up
+[33m82832d2[m feat(app): add loading from gist
+[33m3e3ca91[m feat(campaign): hide round directions for now
+[33mc2262c5[m backend: loading short csv WIP
+[33mc4dd373[m feat(round): show last file edit date and link to commons
+[33m1b6c0a2[m fix(services): support 50+ titles
+[33md191f66[m ver. 16.11.01
+[33ma562b6e[m feat(round): show file history
+[33mf2eca36[m fix(app): remove self-closed tags
+[33m97b09bf[m refactor(styles): split styles to separate files
+[33ma37c837[m feat(campaign): show round config
+[33m3d32277[m Update TODO.md
+[33m5dde018[m backend: fix rating results
+[33m9e2b020[m add get_uploaders and respective count to Round count_map
+[33me01db27[m Merge branch 'master' of github.com:hatnote/montage
+[33m2636fd2[m small campaign info switch
+[33m8be556f[m report mockup
+[33mf88f641[m get_campaign_report checked in for real (always check yr git stash)
+[33mceebccc[m add some new TODOs
+[33me510955[m work-in-progress campaign report generation
+[33mf36f12a[m backend: reports no longer show cancelled tasks
+[33m2bf204c[m backend: reports for ranking
+[33m4489283[m feat(app): add spinners for changing dashboard and entering round
+[33m09f2b3b[m feat(app): add initial spinner
+[33mc4a05f6[m ver. 16.10.29
+[33mead1b69[m fix(vote-edit): move image opener to image only
+[33m75fc70a[m refactor(round): merge views of rating and yesno round
+[33mc2d90c8[m ver. 16.10.28
+[33mca288d7[m Merge branch 'master' of https://github.com/hatnote/montage
+[33me0c8051[m fix(campaign): fix display of active/inactive jurors
+[33m94d48eb[m feat(user-list): add some styling
+[33m4207188[m last fix for juror reactivation, with test
+[33ma1e7cff[m fix CoordinatorDAO.modify_jurors to enable reactivation
+[33ma12de63[m properly filter active jurors by round; fixes #10
+[33mb881ebf[m handle reactivating inactive jurors
+[33mc1a0826[m ver. 16.10.27
+[33m1420bb3[m fix(round): fix opening external links
+[33mcf41bdf[m rev. 16.10.16
+[33m02b7e04[m fest(round): add review disclaimer
+[33m9125b20[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mc022873[m feat(round): add reviews, details in image window
+[33m8e09e17[m feat(vote-edit): add edit ranking
+[33m611b4e6[m Merge branch 'master' of github.com:hatnote/montage
+[33m84c0f91[m quick fix to ranking checks to unblock @yarl's ranking editing frontend
+[33mde172ff[m fix(round): fix screen for closed round
+[33m98cb073[m fix(services): fix ordinal for zero last digit
+[33m90ccd0c[m fix(round): fix path to thumbnail
+[33m93e9b6e[m feat(round): add link to edit votes on `good job` screen
+[33m89e9eda[m feat(main): add loading spinner for dashboard link & logout
+[33m41e2529[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m2f18df3[m ver. 16.10.25
+[33m67b610e[m fix(campaign): temporary hide edit ranking round
+[33m7f20f2e[m fix(vote-edit): fix small images thumbnail
+[33m7c8a7a9[m fix(vote-edit): fix stars position, add link to round
+[33m11cbd2d[m fix(css): global style for link
+[33ma5f2627[m little bit of a user backend, plus fix last_active_date tracking for dev cases
+[33me3938a1[m add ranking editing and move around some editing code
+[33m78342a3[m expose review on rating and ranking, also add ranking read endpoint
+[33mfb007d0[m new-style ranking and reviews are implemented, half-tested (and so far working)
+[33m5dd281d[m ver. 16.10.24
+[33mc80570a[m fix(round): add missing css
+[33m88948a3[m feat(campaign): add link to edit votes
+[33mc415cf1[m feat(round): add edit votes info
+[33m0cebc06[m feat(vote-edit): add yesno round type
+[33m847d84b[m feat(vote-edit): add saving
+[33m5203c08[m ensure that entry is available when reviewing and editing pst ratings (this feature needs to be implemented for rankings still)
+[33m9c347b8[m wip first pass on reviews (still not tested or working for rankings)
+[33m5e59423[m resolving merge conflicts
+[33m7c0f0a1[m Merge branch 'master' of github.com:hatnote/montage
+[33ma9e97ed[m backend: editing ratings; prevent submission to paused rounds
+[33m1a70923[m Merge branch 'master' of github.com:hatnote/montage
+[33m567ca2c[m feat(vote-edit): add edit vote screen
+[33m36ec7ee[m fix(app): remove obsolete admin round view
+[33mba68123[m feat(app): add infinite scroll
+[33m4cad156[m enable complete task submission check
+[33m16cb486[m ver. 16.10.23
+[33me5f6710[m feat(campaign): show boolean status for ranking round
+[33m6f3589d[m feat(round): additional message for ranking round
+[33mf3e5c78[m fix(round): fix saving ranking round
+[33m8857d33[m ver. 16.10.22
+[33me6dee99[m feat(round): add error info for ranking saving
+[33m0b9351e[m feat(round): add ranking round, add test save round
+[33m7eabd40[m feat(services): add ordinal filter
+[33m8833dce[m fix(campaign): disable `next round` button if not last round
+[33mc57a642[m fix(campaign): do not show `next round` button in ranking round
+[33m1ad693b[m fix(campaign): hide non active jurors
+[33m9a36b9c[m fix(campaign): styling fix
+[33m4600e06[m fix dangling complete task issue on csv ratings import
+[33m9ca3069[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m68af01e[m ver. 16.10.21
+[33m4661907[m feat(campaign): enable adding new round
+[33m0076355[m Merge branch 'master' of github.com:hatnote/montage
+[33mebdd208[m backend: endpoint for viewing submitted ratings
+[33m0447b24[m percent encode the urls even though this isn't strictly necessary
+[33m9c997c8[m add rdb console to admin tool
+[33mba25ca3[m Merge branch 'master' of https://github.com/hatnote/montage
+[33md52ef4c[m ver. 16.10.20
+[33mff83257[m fix(round): fix asynch saving/loading images
+[33m773ea2a[m Merge branch 'master' of https://github.com/hatnote/montage
+[33ma0038c2[m fix a couple minor csv ratings admin tool issues
+[33m22e07e7[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m0e87b9b[m ver. 16.10.19
+[33m8aaf116[m feat(main): add small logo
+[33mad47d06[m feat(login): styling login screen
+[33mf66e615[m Merge branch 'master' of github.com:hatnote/montage
+[33mba0ced2[m backend: fixed csv download and added web view for results
+[33mb128b3c[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m7570551[m fix(app): small footer css fixing
+[33m0bd5d15[m fix(round): switch to save after every vote
+[33ma61e714[m feat(campaign): add editing round directions
+[33mf79db4a[m feat(campaign): show break lines
+[33m0806a4e[m approaching code complete on assigning ratings from csv
+[33m9001bc7[m Merge branch 'master' of https://github.com/hatnote/montage
+[33maa1dc88[m floor instead of round for thresholds
+[33ma7446e3[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mf856e5a[m Merge branch 'master' of github.com:hatnote/montage
+[33m3cd8bd9[m WIP admin ratings from csv
+[33m06ca078[m Merge branch 'master' of https://github.com/hatnote/montage
+[33md496c71[m ver. 16.10.18
+[33m7c5c3aa[m fix(round): critical fix for duplicated ratings
+[33m930bacc[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m9fbde69[m Merge branch 'master' of github.com:hatnote/montage
+[33mb5207c5[m threshold rounding error fix
+[33m710e4fb[m frontend: resetting rating list between batches
+[33m9da7f5e[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m8ba89b2[m Merge branch 'master' of github.com:hatnote/montage
+[33m48ec588[m resolving merge
+[33me7e1511[m temp fix for duplicate submissions
+[33m2c3951f[m tools: get threshold map
+[33mf51c79f[m a bit of retask work, print messages
+[33m276275d[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m0d11d94[m minor admin tool change around displaying double-assigned tasks
+[33m3416191[m add retask admin command for reverting duplicate ratings
+[33mbf8d822[m add read endpoint for frontend tests, re-enable remaining server test code
+[33mcfb56df[m Merge branch 'master' of github.com:hatnote/montage
+[33m5fd51a6[m tools: checking double-assigned tasks and reassigning
+[33m30774e6[m adding frontend logging endpoint, configure feel_log_path to enable, check the updated config gist for an example
+[33mdf02ead[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mf0b7182[m ver. 16.10.17
+[33m250b212[m style(campaign): format code
+[33m115d470[m feat(dashboard): add time and date info
+[33ma1a6a8e[m backend: quick fix for re-assigning dup tasks
+[33m2c93604[m Merge branch 'master' of github.com:hatnote/montage
+[33mb450290[m prevent reassignment from double assigning the same entry to a user by removing them from the eligibility map
+[33m3629eef[m ver. 16.10.16
+[33md2fd57d[m fix(campaign): temporary disable adding round
+[33m765bf1d[m fix(round): small tuning for end of round
+[33mbd9c349[m fix(round): fix saving vote and offset
+[33me0298c7[m backend: maintainer download permissions
+[33m6d38a09[m make reassignment robust to duplicate assignments (even though that shouldn't happen)
+[33m4348cbf[m frontend: fix
+[33m0c862ae[m frontend: re-enabling round 2
+[33mcc0daf4[m frontend: wip round advancement button
+[33mc6c6f69[m Merge branch 'master' of github.com:hatnote/montage
+[33m425908d[m frontend: admins can download results from finalized campaigns
+[33m2de54d9[m remove a stray pdb, get server test running again, clarify on python-vote-core
+[33m098fd76[m backend: fix maintainer view
+[33mda59922[m frontend: round editing
+[33m9ed0e7a[m backend: merging modify_jurors and edit_round functions
+[33m41787d5[m ver. 16.10.15
+[33m273797b[m fix(campaign): fix adding new round conditions
+[33mc2072be[m feat(campaign): add confirmation for cancel round
+[33m9028380[m fix(campaign): `completed` to `finalized` fix, minor styling
+[33m9f3c36d[m fix(campaign): round image stats
+[33m27d3979[m rev. 16.10.14
+[33m1ce9f59[m fix(campaign): disable creating round when finalized
+[33md351ff8[m fix(campaign): get prev round id for creating new round
+[33m42602ff[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m746240e[m backend: beter exception for advance_round
+[33m33aed45[m ver. 16.10.13
+[33m58bd816[m feat(campaign): add next round, show vote details
+[33m83319b1[m feat(campaign): let coordinators cancel rounds (TODO: add confirmation dialog? this would be an annoying mistake to click on accident)
+[33m2189d07[m backend: moving rdb_session.commit() out of dao + various small changes
+[33mf42097c[m fix(round): fix image sizes in round
+[33m94090dc[m fix(dashboard): fix JS error for non-jurors
+[33md438d2c[m feat(campaign): add round details
+[33ma80599b[m ranking rounds can now remove (and add) jurors and the quorum is shifted dynamically
+[33m680762e[m juror list editing for ranking rounds complete, needs more testing and audit logs however
+[33m47e8438[m tools: activating, pausing, and advancing rounds
+[33m9f4f074[m backend: cancelling tasks when we dq entries
+[33m1d13104[m resolve rdb merge conflict, remove some unused lines
+[33m30e6094[m removing 'points' from ranking result
+[33me423e4b[m get final rankings using Schulze method implemented and exposed (this commit has 'points', but those will be removed shortly)
+[33mb279857[m backend: disqualifing entries
+[33m0cd4c33[m frontend: widen dialog
+[33m9874661[m Merge branch 'master' of github.com:hatnote/montage
+[33mf169aff[m backend: csv download from finalized rounds
+[33mdf6b84d[m couple of ratings submission corner cases, update audit logs url in server test
+[33m7dfae02[m ranking task submission works, just about to ranking calculation!
+[33m7b573bd[m tools: minor fixes
+[33m710b5df[m tools: add campaign and round; changed route for audit_logs
+[33m175d657[m generating ranking tasks more or less completed
+[33mb19a2c0[m advancing to ranking rounds, but ranking round task assignment is not yet done (ranking rounds cannot be activated yet).
+[33m402e439[m Merge branch 'master' of github.com:hatnote/montage
+[33m7cad522[m ver. 16.10.12
+[33me0a101d[m feat(round): add tiny sidebar
+[33m545805e[m fix(round): fix display of image, show loading spinner
+[33m1c5af91[m fix(campaign): remove cancelled rounds. the proper way
+[33mf69b006[m ver. 16.10.11
+[33m74e93d0[m fix(campaign): revert filter hotfix
+[33m8b9d99e[m refactor(app): clean-up app config
+[33m0cf76da[m ver. 16.10.10
+[33mcd08294[m fix(campaign): remove cancelled rounds
+[33m356d7f4[m ver. 16.10.09
+[33mcee917b[m refactor(service): rewrite version service
+[33mb981b44[m fix(campaign): remove juror list, order jurors by name
+[33me5a92fd[m removing a couple stray set_traces
+[33m040ab94[m adding round advancement audit log
+[33m02b3093[m exclude disqualified from advancing
+[33m3f3dd4b[m round advance api tested working, also re-enable startup checks and maintainer bootstrapping
+[33mad34c8a[m ver. 16.10.08
+[33mbc15b89[m feat(campaign): edit time of campaign
+[33m90a309f[m feat(services): add editable hide delay to toast service
+[33mc7095ec[m feat(round): add keyboard voting
+[33m5601191[m fix(round): image gallery size
+[33ma18acc1[m ver. 16.10.07
+[33m8634412[m feat(dashboard): add time in new campaign modal
+[33m144c1c7[m feat(services): add import csv method for testing
+[33m16a565c[m fix(round): fix image size calculations
+[33mccad588[m backend: show round config settings for jurors and admins
+[33m3d62072[m ver. 16.10.06
+[33m7206038[m fix(round): fix image size and encode name
+[33m94450fd[m feat(campaign): show juror stats for admin
+[33m12cc680[m Merge branch 'master' of github.com:hatnote/montage
+[33mdbb0c3d[m backend: maintainer endpoints; added organizer as coordinator to created campaigns
+[33m2a27ba7[m Merge branch 'master' of https://github.com/hatnote/montage into live-hacking
+[33mcae36d9[m commit minor replay log fix that causes failures on non-logged-in users
+[33mb0e425e[m backend: get_mw_userid uses better api
+[33m4757df2[m chore(webpack): add version to compiled js files name
+[33m0c20ace[m ver. 16.10.05
+[33m7beef23[m feat(campaign): add edit campaign jurors
+[33m2cfe6eb[m fix(campaign): fix missing event
+[33m4274446[m feat(campaign): show jurors in admin panel
+[33m7568d53[m feat(campaign): add edit campaign
+[33mb719660[m fix(main): hide user menu in login screen
+[33mbc1076b[m fix(campaign): hide round headers when no rounds
+[33m52f339a[m feat(campaign): change date format to more international
+[33m0ecd177[m Commit live-hacks
+[33m295ae3b[m resolving some merge conflict that was just sitting here
+[33m658bdbe[m ver. 16.10.04
+[33me9a364b[m Merge branch 'master' of https://github.com/hatnote/montage
+[33md1cc543[m fix(dashboard): fix dashboard calculated height
+[33maab9ada[m fix(dashboard): add button for switching juror/admin view
+[33mfb3690c[m tools: cancel rounds/campaigns and more handy tools
+[33mc72c26c[m frontend: enable new round after cancelled round
+[33mfe833d6[m typo fix for real this time
+[33m51de23f[m typo fix
+[33m8a9d9a9[m backend: organizers may see audit logs
+[33mc36a5d0[m tools: create organizers and cancel rounds
+[33m2ff8654[m backend: juror view for campaign open/close
+[33mdbb1ee1[m ver. 16.10.03
+[33m8cc96e1[m feat(main): add 'about' link, env name in toolbar
+[33m96be929[m feat(campaign): add campaign open and close dates
+[33ma0d5db4[m feat(app): set calendar format to yyyy-mm-dd
+[33ma089769[m fix(dashboard): fix monts
+[33me31253f[m Merge branch 'master' of github.com:hatnote/montage
+[33m835c2a9[m backend: open and close date to campaign info dict
+[33m6ded9fc[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m47af664[m v. 16.10.02
+[33mb49ac97[m chore(webpack): add missing sourcemap
+[33m4bc0100[m fix(campaign): fix UTC dates
+[33mb82eb79[m feat(dashboard): add campaign default open and close date
+[33md8a3390[m Merge branch 'master' of github.com:hatnote/montage
+[33m1b305ea[m backend: parse output from js toISOString()
+[33m231bf81[m v. 1.0
+[33mad6ea8a[m fix(round): fix loading images to juror
+[33m8786b27[m Merge branch 'master' of github.com:hatnote/montage
+[33me7bc095[m Merge branch 'master' of github.com:hatnote/montage
+[33m01725b1[m Merge branch 'markrwilliams-faster-juror-index'
+[33m94d70fc[m backend: trying a fix for losing mysql connections
+[33mcaa8c84[m Merge branch 'faster-juror-index' of https://github.com/markrwilliams/montage into markrwilliams-faster-juror-index
+[33mdace61e[m feat(campaing): add loading state for round
+[33m37e4a95[m Merge branch 'master' of github.com:hatnote/montage
+[33m4bba70a[m backend: oops, stray pdb
+[33me0f5a0e[m Merge branch 'master' of github.com:hatnote/montage
+[33m9c09efb[m add replay middleware, configure replay_log_path to enable
+[33m11830d3[m fix(dashboard): remove min date for campaign open date
+[33mc1ba416[m fix(style): fix html/body styling, style scrollbar
+[33mf424649[m fix(services): fix alert position
+[33mf8de1be[m backend: prevent multiple active rounds or activating an empty round
+[33m9150c6b[m fix(campaign): new round fixes, add directions
+[33m1d2c138[m fix(dashboard): new campaign fixes
+[33mae3f180[m frontend: build option for beta
+[33m2933022[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mfa1c16a[m basic validation for campaign creation
+[33m5f66614[m backend: actually save directions and description for rounds
+[33ma5a2e3a[m backend: allow maintainers to modify campaigns
+[33m7035c61[m backend: fix directions-not-saving bug
+[33m94fcaed[m fix(dashboard): CSS fixes
+[33m4f6fc5e[m feat(dashboard): add campaign organizer
+[33m3764c96[m feat(campaign): show round directions
+[33mdd8a42a[m fix(campaign): beautify admin campaign
+[33m4beb32b[m Merge branch 'master' into faster-juror-index
+[33md3abca1[m remove comment cruft
+[33m11fe657[m three query juror_endpoint get_index.  could be reduced to two.
+[33mb0c0167[m backend: added stats on dqs
+[33mfe3e74a[m backend: added config settings per round; enabled autodisqualification
+[33m04ec637[m backend: don't default campaign.open_date to now (now is usually the end of the contest, not the beginning. check create_date for that info instead.
+[33mc061fdf[m Merge branch 'master' of github.com:hatnote/montage
+[33me69b975[m backend: fixing bulk save ratings bug
+[33m4183b01[m fix(campaign): restore juror number info
+[33md3c0c46[m backend: allow new campaigns with no open_date specified
+[33m63a067a[m backend: added admin views of task stats
+[33m7fbed90[m run_server_test can now submit all open tasks for yesno and rating rounds (tested and untested, respectively)
+[33mafbf98c[m backend: fix campaign edit date parsing
+[33m450c268[m a bit of finetuning on the server test (add open/close dates for campaign)
+[33mc5639e0[m fix(campaign): temporary hide info about juror list
+[33m4a3e1fe[m fix(round): fix stats images remaining
+[33m02f52f6[m fix(round): adjust set rating backend changes
+[33mdf48337[m fix(services): fix endpoint paths
+[33mcb97ebb[m actually do the config.default.yaml this time
+[33mdd2b6e6[m a bit of restructuring and updating setup steps
+[33m7f1c8c4[m remove some url cruft
+[33m8533607[m backend: new admin routes installed and tested with _run_server_test. also remove stray pdb
+[33md533030[m Merge branch 'master' of github.com:hatnote/montage
+[33m0fb0865[m rolling out new routes for jurors
+[33m3d0c7f2[m Merge branch 'master' of github.com:hatnote/montage
+[33mc4754cd[m backend: added some round stats, but its slow
+[33m67a5217[m skip complete_login in _run_server_test for now
+[33m1bd01bc[m resolving merge conflict
+[33m1864648[m backend: added stats to tasks
+[33m183401f[m backend: cleaned up integration tests
+[33mc6b756b[m add beta env
+[33m86c3be1[m Merge branch 'master' of github.com:hatnote/montage
+[33m7683d2d[m backend: sketching out the refactored routes
+[33m646315f[m fix(main): fix "go to dashboard" title link
+[33m44eaed7[m feat(round): get more images to vote on
+[33m1694b77[m fix(campaign): hide edit campaign button
+[33m345e457[m feat(campaign): add pause round
+[33m1cf298e[m feat(campaign): add saving edit round
+[33m356de94[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m2bb5830[m chore(webpack): fix dev build
+[33m252f978[m adding python-vote-core dependency for ranking later on
+[33ma71df4a[m add a couple of dev log endpoints
+[33m13e1e61[m feat(campaign): adjustments on adding and editing round
+[33mdf0c38e[m chore(jshint): disable camel case checking
+[33mc8edb27[m feat(campaign): add fallback text for admin
+[33ma9a4245[m feat(campaign): init edit round
+[33m8499fe7[m refactor(campaign): rewrite adding new round
+[33m991243a[m feat(service): add dialog service
+[33ma722ff0[m feat(campaign): add fallback text for juror
+[33md61130b[m chore(webpack): fix public path
+[33m0c1faeb[m backend: SCHEMA CHANGE bootstrap maintainer users at startup, change last_login_date to last_active_date
+[33meda5b12[m backend: note on round editing endpoint
+[33m6c24acd[m backend: re-enable round basic attributes editing
+[33m0d9ad4f[m backend: quick fix _run_server_test to run and add method to logging, WIP ranking DAO and unified ratings endpoint
+[33m69c8af5[m backend: added endpoints to pause rounds and edit jurors
+[33m8049f9e[m feat(login): add logo
+[33m30268da[m chore(webpack): fix loading images
+[33m94141ac[m resolving merge conflict
+[33m8d7568e[m backend: complete category import function
+[33m7318a4d[m backend: add a logging middleware using lithoxyl, includes special exception log file
+[33mfa9ee71[m backend: cat import bug fixes
+[33m4cbc55e[m Merge branch 'superuser'
+[33m3abcbe4[m add su_to support in the server test
+[33m0cf4c61[m backend: superuser feature of UserMiddleware ostensibly working
+[33mb56af0b[m backend: added endpoint to import by category
+[33m0b2f6c9[m backend: resolving merge conflict
+[33m65d8ef3[m backend: wip category importing
+[33mb92a4df[m backend: successfully used dao to create a rating round from a previous round
+[33ma51e7ad[m backend: rounds now "open" on their first activation, but initial tasks are not regenerated in further pauses/activations
+[33ma77e774[m backend: separate add_round_entries dao method, better audit logging, correct megapixel value (per the internet)
+[33mafafe9a[m Merge branch 'master' of github.com:hatnote/montage
+[33m98df8fd[m tools: fix drop_schema and a few rdb things for starting from scratch with the dao test
+[33mdc77284[m fix(campaign): clean-up alerts
+[33mb33993e[m feat(services): add alert service
+[33m73e66c3[m Merge branch 'master' of github.com:hatnote/montage
+[33m67b273f[m add TimingMiddleware for timings on every request, also fix percent_tasks_open bug and inconsistency due to duplication
+[33m6d76275[m feat(round): add links to original file and commons page
+[33m104d2ed[m Merge branch 'master' of github.com:hatnote/montage
+[33m5632dc7[m cleaned up a bunch of user creation/fetching, added audit logging for the same, and a bunch of miscellaneous cleanup to get the dao test running like a charm again
+[33m08e4572[m fix(campaign): fixing creating round
+[33md77772f[m fix(campaign): show only deadline date for juror
+[33m25ca478[m backend: (minor) add deadline date to juror/admin endpoints
+[33mdaac2da[m fix(dashboard): fix adding new campaign
+[33m45b94b8[m feat(user-list): add user list component
+[33m0803720[m fix(app): remove intercepting POST requests
+[33mbd64e5b[m backend: add coords to new campaigns; more wip
+[33m9d00d95[m backend: pop some TODOs
+[33md5ce138[m backend: improved input checks on juror rating submission
+[33ma1450a2[m get rid of comma-separated string for jurors, json has us covered. also fix active_round serialization.
+[33mf897c61[m backend: ratings rounds now finalizable. fixed dao test, fixed datetimes all over. round config_json is just config now, and used to store final threshold in rating rounds.
+[33m3d8fbf4[m a few backend todos
+[33mf3515fa[m backend: cleanup datetime imports, (utc)now usage, add round info to results preview
+[33m2ef0cc9[m backend: results previewing for ratings rounds (one step closer to closing)
+[33m91aba2f[m backend: switch everything back over to json-encoded bodies, using request_dict (which also unifies the request.args (query parameters) in with the json for easy overriding
+[33m10257ca[m backend: bunch of assignment cleanup and audit logging
+[33m8b90580[m backend: fixed up the weighted_choice suite, added it to utils, added some more error checking to the DAOs
+[33maf3518b[m backend: checkpointing a working version of juror modification/reassignment
+[33md0475eb[m feat(campaign): added round activation
+[33m5914b19[m feat(campaign): added round activation
+[33m8adb358[m fix(dashboard): fix "Add campaing" button visibility
+[33m997b574[m fix(services): fix endpoints for edit
+[33m365530d[m feat(dashboard): adding new campaign
+[33m5039907[m fix(campaign): fixing adding new round logic
+[33m38806a7[m feat(dashboard): add new campaign button
+[33m8bfcac6[m update build
+[33m1dc029b[m feat(round): rewrite 'next image' logic, add yes/no round view
+[33m5ce5b76[m Update rdb.py
+[33m0ca11e3[m resolving merge conflict
+[33mf20da15[m backend: added deadline_date to rounds; added method to autodisqualify entries based on upload user
+[33madf473e[m backend: minor changes across the board
+[33m4dc7c38[m backend: big refactor to switch from id-based methods to model-based methods
+[33mc68d2ca[m backend: remove some unused/duplicate imports
+[33m7befcc0[m backend: slightly improved endpoint/route import convention
+[33m63dcbe9[m backend: refactor all but one 'make_*' function into methods for juror endpoints
+[33m0d59fc3[m backend: finished porting all but one admin 'make_*' function to methods on the models
+[33meb2dac7[m checkpointing the start of the refactor of basic serialization functions down into their respective models, toward enabling a more featureful admin index, without code bloat
+[33m5a6ff3f[m chore: nuke static app, add zip instead
+[33m051898e[m feat(main): add footer with env and version
+[33mf330567[m Merge branch 'master' of github.com:hatnote/montage
+[33m7f63e35[m backend todos from pawel syncup
+[33m4431346[m fix(campaign): hide unset values
+[33ma72a9f6[m feat(campaign): adding rounds to campaign
+[33me8aaaff[m fix(campaign): disable entering to round for admin
+[33m31cc4f9[m feat(round): preload next image, add desc and animation
+[33m0249e93[m fix(campaign): round percentage
+[33m7b0ba7a[m backend: working toward finalize_round, a few refactors and renamings here and there
+[33maf849f4[m backend: dao method to cancel a round
+[33m7f42c93[m Merge branch 'master' of github.com:hatnote/montage
+[33m627c85e[m backend: added autodisqualification options for resolution and image date
+[33m983e39a[m feature request: undo?
+[33mb83784b[m audit log for creating round + campaign
+[33m1e39e46[m backend: fix a few typos
+[33mdc142bb[m backend: a bit more exception hygiene
+[33m0e1fc65[m backend: better exception hygiene
+[33m99fad73[m backend: initial permission checking scheme, this time for task completion
+[33m9bf89a3[m backend: couple minor changes and TODOs
+[33m1c1c5a3[m backend: endpoint for maintainers to read audit logs
+[33mbbe4847[m backend: misc rdb cleanup
+[33m46ff98a[m backend: rename votes table to ratings
+[33mccf7daa[m Merge branch 'master' of github.com:hatnote/montage
+[33mca3409e[m automatic population for round/campaign id in the audit log
+[33m71cfb5d[m updating build
+[33m0de5516[m client: adding dist files
+[33ma75e18b[m client: building client app
+[33m2b1a808[m Merge branch 'master' of github.com:hatnote/montage
+[33mf0b892c[m backend: dao method to calculate round results
+[33m393b61e[m feat(round): add voting on image (rating)
+[33m3e86927[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m086e08b[m feat(main): add link to juror panel in right-top menu
+[33m24cedd0[m tool to generate votes
+[33m32d74e5[m initial bit of audit logging
+[33m4338b3c[m feat(campaign): add progress percentage on juror view
+[33ma763a1d[m feat(campaign): add progress percentage on juror view
+[33mdd65f44[m fix(app): fix routing around login
+[33m702bb7f[m docs(README): updated documentation about build
+[33m36d5649[m Merge branch 'master' of https://github.com/hatnote/montage
+[33mffdc815[m chore(app): add templates for different env
+[33m056a808[m backend: change num of tasks
+[33me90b6ef[m Merge branch 'master' of https://github.com/hatnote/montage
+[33me56ddf6[m Merge branch 'master' of github.com:hatnote/montage
+[33m4dc81e9[m backend: minor utf8 updates
+[33m8217aa2[m write header for new csv
+[33m35046b8[m adding a modicum of logging, scripts first
+[33mb82243e[m adding trim_csv utility
+[33meb13818[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m1f7ab14[m Merge branch 'master' of github.com:hatnote/montage
+[33m9381a7e[m change db logging
+[33mc7b776f[m refactor server test to be a bit cleaner
+[33m608fc80[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m8a7eb62[m resolving merge conflict
+[33m6173bbb[m backend: basic logging for sqlalchemy ;
+[33m1b0d2be[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m8dbea1a[m add MetaApplication back in under /meta
+[33m42988e2[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m9cdb389[m Merge branch 'master' of github.com:hatnote/montage
+[33mc8ee1a1[m add reading of frozen cookie to _run_server_test
+[33m09e16d2[m updating TODOs
+[33m91f9808[m Merge branch 'master' of github.com:hatnote/montage
+[33m13bc46a[m update dev doc
+[33m1c769e4[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m30476e7[m client: change paths for labs
+[33m6d2ae17[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m514b75c[m backend: added new task method; updated the server test script
+[33ma6bba49[m backend: ping connection to ensure mysql never visibly goes away
+[33mc6d193c[m a few tasks listed, a few closing designs discussed
+[33m8d7a94f[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m46613eb[m fix login url for labs
+[33md708949[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m74250a7[m adding static assets
+[33m1d53b99[m Merge branch 'master' of https://github.com/hatnote/montage
+[33ma9e9e07[m Merge branch 'master' of github.com:hatnote/montage
+[33m3492343[m backend: display index.html
+[33mf243d44[m adding a mysql connection dev note
+[33m00367f8[m Merge branch 'master' of https://github.com/hatnote/montage
+[33m32dc6f8[m backend: gotta close the session, too, as it turns out
+[33m8b1be99[m backend: timestamp config for mariadb 5.5, as requied by labs
+[33m287041e[m tools: remove some cruft from check_schema
+[33m397743d[m Merge branch 'master' of github.com:hatnote/montage
+[33m0a9655f[m drop_schema script added, and all scripts made consistent with output
+[33m595f7b4[m backend: added endpoint for campaign editing, plus some other small fixes
+[33mefb5144[m add create_schema and check_schema scripts for working with the database. next up, drop_schema (for labs)
+[33m77ca5a3[m Merge branch 'master' of github.com:hatnote/montage
+[33m0e3458c[m backend: updating db schema database types, for mysql compatibility on labs
+[33ma95315c[m backend: more all-encompassing environment management
+[33m95f1c10[m merge conflict
+[33m68c26e9[m resolving merge conflict
+[33me5e3d6f[m backend: more thorough process for adding and editing rounds
+[33m10bae22[m checkpointing a bunch of openapi stuff and miscellaneous tweaks (including some automatic editor whitespace stuff)
+[33m23de10b[m backend: basic round editing
+[33m9f3cc52[m backend: stats for juror and admin rnds
+[33m77ff65b[m fix(campaign): comment out adding round
+[33mbc09878[m feat(campaing): polishing admin campaign view
+[33m0553e14[m fix(round): misc round fixes
+[33m9090159[m feat(main): add link to admin panel
+[33m1e26f0f[m Merge branch 'master' of https://github.com/hatnote/montage
+[33ma2b6cbb[m refactor(round): nuke `image` view, fixes
+[33m0c092d4[m backend: standard date format
+[33mf7312ac[m feat(app): central error CSS class
+[33m44354e5[m refactor(round): merge `round` and `image` view
+[33m43dae69[m fix(dashboard): fix and simplify grouping
+[33m8af0e34[m feat(campaign): polish design for juror campaign
+[33m2be02aa[m fix(app): change POST to form data format
+[33m43386b8[m backend: standizing the api spec (some)
+[33me06c4f3[m typo fix
+[33md9bd4f4[m backend: adding entry details for task endpoint
+[33m87dbd20[m feat(campaign): test add round
+[33m36ac62f[m feat(round): get round tasks
+[33m00dfbf4[m feat(campaign): add momentjs and fromNow info
+[33mc33dd18[m refactor(app): rewrite state provider, optimize backend communication
+[33m855d952[m feat(campaign): add reparate view for juror
+[33medfb33e[m refactor(app): rewrite state provider, optimize backend communication
+[33m631a278[m backend: adding names to campaigns for juror rounds
+[33mce428a9[m backend: turning off debug mode
+[33m69cb189[m backend: final sketch of the main routes
+[33m451f1dc[m feat(app): add separate views for admin
+[33m8c3e95d[m feat(round): show drag handle only if ranking vote
+[33mbe13201[m feat(services): rewrite user service
+[33me397273[m fix(round): fix img footer background and font size
+[33m1c37e20[m feat(login): add spinner on loading
+[33ma2bf222[m feat(dashboard): add logout button if forbidden
+[33m47966ef[m fix(round): fix image size
+[33md33a564[m feat(round): rewrite grid, add sortable
+[33m500406b[m backend: MAINTAINERS not ROOT_ADMINS
+[33mfbc1869[m backend: is_maintainer flag on the User rdb model
+[33m3289493[m adding api specs
+[33m7ddc505[m backend stub out get_juror_index real quick
+[33m7c75dc1[m split out endpoint functions into public/admin/juror, greatly lightening up server.py
+[33m0e7f872[m added methods to juror_dao
+[33m22d0ee2[m backend: response wrapper openapi support and base defs
+[33m3c0be19[m feat(image): add image screen
+[33mffd09af[m feat(dashboard): show error info from backend
+[33mf2c893e[m fix: backed communication changes
+[33m541cb8d[m dao_method for editing rounds; fixed initial task assignment
+[33m96f40e0[m backend: flex was a no-go, as was the way i implemented response model. al that's fixed, and we're using bravado_core
+[33m7b1206d[m backend: quick flex add. this may be temporary, as i notice flex doesn't raise errors on missing models that are referenced in type fields. also, nearly forgot the response model loading.
+[33mbb40207[m backend: more progress on openapi, starting the middleware implementation, about to add the flex dep
+[33m71f8728[m backend: more openapi progress, rewrote prototype docstring for version 2.0
+[33me5596a7[m backend: swagger api checkpoint (serialization groundwork)
+[33m2688a69[m WIP validation + endpoint schema
+[33mee76963[m dao method for adding entries (chunked!)
+[33m0f5627f[m coord dao methods to add entries and more
+[33m6a5b807[m maintainer and organizer level write functions, a work in progress
+[33m6fdf789[m first function for adding organizers
+[33m9a50df0[m Merge branch 'master' of github.com:hatnote/montage
+[33m048e925[m added an outline of methods in the daos based on _run_dao_test
+[33m532b59c[m modeling rankings, results summaries, and audit log entries
+[33mdec4e20[m Merge branch 'master' of github.com:hatnote/montage
+[33mf2b3557[m adding _run_dao_test, an integration test script that scopes out some of the data wrangling we need to implement
+[33m8a179d4[m Merge branch 'master' of github.com:hatnote/montage
+[33m33aa277[m adding basic permission checks
+[33m9d3c3b5[m merged all the conflicts
+[33me9a8370[m resolving DAO import merge conflict
+[33m1cd0875[m keep tmp database in the project root
+[33m6e9cbf5[m quick rdb_check rename (for easier autocomplete)
+[33m98fd87f[m Merge branch 'master' of github.com:hatnote/montage
+[33mbe8b298[m moving to juror and coord dao
+[33m82710cf[m add a bunch of flags columns
+[33m00b7023[m Merge branch 'master' of github.com:hatnote/montage
+[33md8451e7[m adding initial permissions notes
+[33m29f0e0d[m adding routes [work in progress]
+[33md653add[m fix(round): attach link to tile, not image
+[33m8829a15[m campaign creation permission and experimental flags column approach
+[33mac30a94[m moving tmp database
+[33m1562b5d[m feat(round): add initial next/prev photo switch
+[33mf99c7a1[m feat(round): add image dialog
+[33m9a138ec[m fix(round): bigger spacing between images
+[33m39b04ad[m feat(round): style size switcher and grid footer
+[33m071018e[m feat(data): add test json with images
+[33maa3394a[m feat(campaign): add name toast and settings icon
+[33m9bce1eb[m fix(dashboard): fix display dashboard
+[33mfc7110e[m feat(main): add link style to app name
+[33m11fec37[m fix(campaign): import campaign, nuke test component
+[33m9722211[m feat(campaign): create separate component for camp.
+[33mc0e05d0[m basic arguments for run_data_test.py
+[33me44974b[m affirmatively check database against models. Also, more efficient declarative dictable base convention
+[33m25a63dd[m docs(package): add project description
+[33m1256e6b[m feat(dashboard): show more info about round
+[33m3158a6b[m feat(round): init image gallery
+[33m626824f[m feat(dashboard): add info when no campaigns
+[33m9c887ba[m feat: update material-design icons
+[33m9f9820e[m feat(main): add logout
+[33m6c6bce6[m docs(README): fix documentation
+[33m1e03f65[m backend: re-expose meta through better Application factoring
+[33mebb303d[m Merge branch 'master' of github.com:hatnote/montage
+[33m34c1884[m backend: remove a bunch of redirect logic, since redirects (aka url changes) are handled in the frontend. still need to add canonical name to some of these (by properties perhaps). make naming consistent for the upcoming addition of add/update/delete (put/post/delete). rename ResponseDictMiddleware to MessageMiddleware so that it can take care of a basic request_dict for us, too.
+[33m61929b9[m backend: a couple of middleware TODOs
+[33m720dcea[m feat(style): add missing style
+[33ma00d448[m refactor(main): move main to separate file
+[33m4c07197[m fix(services): clean-up and fix services
+[33mcc6cb62[m fix(app): rewrite routing, add link to dahsboard
+[33mbe84151[m feat(round): init round screen
+[33m2e93077[m feat(dashboard): add link to round, add "add round"
+[33m33982f6[m feat(app): change color to blue
+[33mba8e7df[m refactor(style): add variables to separate file
+[33m84c5e1d[m fix(login): disable login button when loading
+[33mbe714b0[m a bunch of service refactoring for more consistent JSON responses and better error handling. should add command-line flags next.
+[33mcace0d6[m feat(dashboard): add dashboard and userService
+[33m32110e6[m fix: add visual studio files to gitignore
+[33ma63e2a0[m feat(login): add login action and styling
+[33me70c1a6[m feat(login): init login
+[33m04886ba[m feat(app): add ui-router
+[33m13cd186[m refactor(*): change app module name
+[33m0493015[m docs(README): more info about how to run app
+[33md448368[m fix: add statics to gitignore
+[33m8ff2869[m chore(webpack): move index.html to server static
+[33mb85ea40[m chore(webpack): move bundle.js to server static
+[33me4f6db6[m Merge branch 'master' of github.com:hatnote/montage
+[33m2b6d6c9[m make oursql loading lazy (for local dev). need to do something about loaders simplicity.
+[33m1e283dd[m init angular app
+[33m163588a[m nuke front-end app
+[33m42970c5[m adding static route and more dev notes
+[33maaed303[m vote split (ranking vs rating) wip
+[33m4c5894b[m adding dev docs (including flow)
+[33m0240729[m Merge branch 'master' of github.com:hatnote/montage
+[33m38b1ce1[m quick TODOs
+[33mdc34e4f[m adding category loader
+[33mbf5199d[m 3 jurors, 2 quorum, some notes, and a quick typo fix
+[33m9b2575c[m refactor data testing and take the french data for a spin
+[33m34c53ee[m WIP: attempting make RoundEntry bidirectional
+[33m25f3fd2[m adding a csv loader, as well as fixing association proxies, and making a more realistic data population flow
+[33m5a609ab[m give a nicer default repr for models
+[33m74f1f3e[m adding a bunch of requirements, including unicodecsv and the as-yet-unused phpserialize (mediawiki stores exif data, etc. this way)
+[33m58cf8fb[m adding a note about unicode vs bytes
+[33m9670c5c[m adding a utility for generating commons urls from filenames
+[33m8054a20[m adding test data ("full" CSVs from quarry)
+[33m5d5bf94[m added simple script to load images by category from the tool labs db
+[33mc62b0f9[m Merge branch 'frontend'
+[33m644bb30[m added response body format for the admin endpoints
+[33mf343def[m Merge branch 'master' of github.com:hatnote/montage
+[33m2026051[m changed the route naming, added round/campaign title redirects, and added juror view
+[33m27e3002[m little schema update (+directions)
+[33m40afbc5[m cleanup
+[33m2b8d1e6[m resolving merge conflict
+[33m64c78cb[m added initial jury overview endpoint function
+[33m71d2419[m UserDAO refactor complete
+[33m035f4e8[m merging with oauth work
+[33m99773be[m jury paths work in progress
+[33mf194144[m emacs gitignore updates
+[33mbe715c5[m middlewares to their own module, env-based config, more secure cookie, logout endpoint, and configurable root path (for deployment to labs)
+[33m1194c2a[m resolve merge conflicts (mostly ca_user -> username renaming)
+[33m8435e4a[m create user on login, rdb autocommit middleware, User autolookup, public endpoints, and dictable User
+[33me85467d[m Merge branch 'master' of github.com:hatnote/montage
+[33m17ac1f3[m updated gitignore
+[33mb0ab9f9[m a bunch of comments around oauth possibilities
+[33mce5f20b[m resolving merge conflict
+[33m73fc422[m renamed admins to coordinators
+[33maf6c130[m Merge branch 'master' of github.com:hatnote/montage
+[33me1313ae[m oauth and config, config for oauth is distributed oob (need to set cookie options)
+[33ma3d0546[m Merge branch 'master' of github.com:hatnote/montage
+[33m1897aa7[m added query for the round admin
+[33m043c2f4[m get rid of global relational database session, now injecting a new rdb_session for every request.
+[33m3ba96bb[m adding datetime serialization hack
+[33m40d3788[m work in progress with a simple server
+[33m930d846[m resolving merge conflict
+[33m05f5b48[m Test server
+[33m38350bb[m Add Round & ImagesInfo components
+[33m0610e50[m Add Round & ImagesInfo components
+[33mbc4b041[m Add simple react skeleton
+[33mf05da31[m Here is a rough outline of the design of the tool, based on sketches by Leila and Yuvi
+[33m27e5693[m adding the entry, vote, and task tables, in rough form
+[33m0534ae7[m couple more todos
+[33mc4f28d9[m adding initial sqlalchemy models, as demonstrated to Stephen, as well as some TODOs (and gitignoring sqlite dbs)
+[33m6cdb5b7[m initial commit
+[33me27d3f8[m Initial commit
