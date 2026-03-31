@@ -116,6 +116,11 @@ def get_round(user_dao, round_id):
     """
     Summary: Get juror-level details for a round, identified by round ID.
     """
+    try:
+        round_id = int(round_id)
+    except (ValueError, TypeError):
+        raise ValueError("Invalid round ID")
+
     juror_dao = JurorDAO(user_dao)
     rnd = juror_dao.get_round(round_id)
     ballot = juror_dao.get_ballot(round_id)
