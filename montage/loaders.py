@@ -51,25 +51,35 @@ def parse_doc_id(raw_url):
 def make_entry(edict):
     width = int(edict['img_width'])
     height = int(edict['img_height'])
+    
+    # Issue #155 Fix: Extract author and date from the original upload version
+    is_reupload = bool(edict.get('oi_archive_name'))
+    
+    upload_user_id = edict.get('rec_img_user') if is_reupload else edict['img_user']
+    upload_user_text = edict.get('rec_img_text') if is_reupload else edict['img_user_text']
+    upload_date_str = edict.get('rec_img_timestamp') if is_reupload else edict['img_timestamp']
+    
     raw_entry = {'name': edict['img_name'],
                  'mime_major': edict['img_major_mime'],
                  'mime_minor': edict['img_minor_mime'],
                  'width': width,
                  'height': height,
-                 'upload_user_id': edict['img_user'],
-                 'upload_user_text': edict['img_user_text']}
-    if edict.get('oi_archive_name'):
-        # The file has multiple versions
+                 'upload_user_id': upload_user_id,
+                 'upload_user_text': upload_user_text,
+                 'upload_date': wpts2dt(upload_date_str),
+                 'resolution': width * height}
+
+    if is_reupload:
         raw_entry['flags'] = {
             'reupload': True,
-            'reupload_date': wpts2dt(edict['rec_img_timestamp']),
-            'reupload_user_id': edict['rec_img_user'],
-            'reupload_user_text': edict['rec_img_text'],
+            'latest_upload_date': wpts2dt(edict['img_timestamp']),
+            'latest_user_id': edict['img_user'],
+            'latest_user_text': edict['img_user_text'],
             'archive_name': edict['oi_archive_name']}
-    raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
-    raw_entry['resolution'] = width * height
+
     if edict.get('flags'):
-        raw_entry['flags'] = edict['flags']
+        raw_entry.setdefault('flags', {}).update(edict['flags'])
+        
     return montage.rdb.Entry(**raw_entry)
 
 
