@@ -307,6 +307,16 @@ const submitRound = () => {
       alertService.error($t('montage-something-went-wrong'))
       return
     }
+    if (
+      formData.value.vote_method === 'ranking' &&
+      thresholds.value &&
+      (formData.value.threshold === null || formData.value.threshold === '')
+    ) {
+      alertService.error({
+        message: $t('montage-round-threshold-default')
+      })
+      return
+    }
 
     const payload = {
       next_round: {
@@ -327,7 +337,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       })
   }
@@ -369,12 +379,12 @@ const importCategory = (id) => {
             actionType: 'progressive'
           },
           onPrimary: () => {
-            emit('reload-campaign-state')
+            emit('reloadCampaignState')
             emit('update:showAddRoundForm', false)
           }
         })
       } else {
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       }
     })
