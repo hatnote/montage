@@ -57,7 +57,7 @@
         <clip-loader v-if="isLoading" color="#36D7B7" size="20px" />
         <div v-else class="vote-controls-button">
           <span v-for="rate in [1, 2, 3, 4, 5]" :key="rate">
-            <cdx-button weight="quiet" @click="setRate(rate)">
+            <cdx-button weight="quiet" @click="setRate(rate)" :disabled="isLoading">
               <star />
             </cdx-button>
           </span>
@@ -85,7 +85,7 @@
           </cdx-button>
         </div>
         <div>
-          <cdx-button weight="quiet" @click="setRate()">
+          <cdx-button weight="quiet" @click="setRate()" :disabled="isLoading">
             <arrow-right class="icon-small" /> {{ $t('montage-vote-skip') }}
           </cdx-button>
           <cdx-button weight="quiet" @click="goPrevVoteEditing">
