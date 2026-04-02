@@ -14,8 +14,7 @@ from .utils import (format_date,
                    NotImplementedResponse,
                    js_isoparse)
 
-from .rdb import (FINALIZED_STATUS,
-                 CoordinatorDAO,
+from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
@@ -418,9 +417,28 @@ def pause_round(user_dao, round_id, request_dict):
 def finalize_round(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-    rnd.status = FINALIZED_STATUS
 
-    return {'status': 'success'}
+    if rnd.vote_method == 'ranking':
+        result_summary = coord_dao.finalize_ranking_round(round_id)
+        return {'status': 'success',
+                'result_summary_id': result_summary.id}
+    elif rnd.vote_method in ('rating', 'yesno'):
+        try:
+            raw_threshold = request_dict['threshold']
+        except KeyError:
+            raise InvalidAction('threshold is required to finalize a rating/yesno round')
+        try:
+            threshold = float(raw_threshold)
+        except (TypeError, ValueError):
+            raise InvalidAction('threshold must be a number between 0.0 and 1.0 to finalize a rating/yesno round')
+        if not (0.0 <= threshold <= 1.0):
+            raise InvalidAction('threshold must be between 0.0 and 1.0 to finalize a rating/yesno round')
+        advance_group = coord_dao.finalize_rating_round(round_id, threshold=threshold)
+        return {'status': 'success',
+                'advancing_count': len(advance_group),
+                'threshold': threshold}
+    else:
+        raise InvalidAction('unknown vote method: %s' % rnd.vote_method)
 
 def edit_campaign(user_dao, campaign_id, request_dict):
     """
