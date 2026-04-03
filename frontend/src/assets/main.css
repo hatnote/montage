@@ -1,12 +1,26 @@
+:root {
+  /* Gem 4: official Wikimedia Codex Design Tokens */
+  --color-base: #202122;
+  --color-subtle: #72777d;
+  --color-placeholder: #72777d;
+  --color-progressive: #36c;
+  --color-progressive-hover: #447ff5;
+  --color-destructive: #d33;
+  --background-color-base: #fff;
+  --font-family-base: 'Lato', 'Helvetica', 'Arial', sans-serif;
+  --max-width-base: 1200px;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Lato', sans-serif;
+  font-family: var(--font-family-base);
+  color: var(--color-base);
 }
 
 .greyed {
-  color: #8c8c8c;
+  color: var(--color-subtle);
 }
 
 .icon-small {

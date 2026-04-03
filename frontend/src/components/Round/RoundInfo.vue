@@ -121,6 +121,10 @@
       <check style="font-size: 6px" />{{ $t('montage-round-finalize') }}
     </cdx-button>
 
+    <cdx-button @click="syncRoundEntries">
+      <sync style="font-size: 6px" /> {{ $t('montage-round-sync-commons') }}
+    </cdx-button>
+
     <cdx-button @click="downloadResults">
       <download style="font-size: 6px" /> {{ $t('montage-round-download-results') }}
     </cdx-button>
@@ -147,10 +151,14 @@ import Pause from 'vue-material-design-icons/Pause.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import ImageMultiple from 'vue-material-design-icons/ImageMultiple.vue'
+import Sync from 'vue-material-design-icons/Sync.vue'
 
 const { t: $t } = useI18n()
 const props = defineProps({
-  round: Object
+  round: {
+    type: Object,
+    required: true
+  }
 })
 
 const roundDetails = ref(null)
@@ -164,89 +172,90 @@ const remainingDays = computed(() => {
   return diffDays
 })
 
-const activateRound = () => {
-  adminService
-    .activateRound(props.round.id)
-    .then((data) => {
-      if (data.status === 'success') {
-        alertService.success($t('montage-round-activated'))
-      }
-
-      // Refresh the page
-      location.reload()
-    })
-    .catch(alertService.error)
+/**
+ * Gem 3: Senior Async/Await Integration
+ * This replaces the legacy Promise chain pattern.
+ */
+const activateRound = async () => {
+  try {
+    await adminService.activateRound(props.round.id)
+    alertService.success($t('montage-round-activated'))
+    location.reload()
+  } catch (error) {
+    alertService.error(error)
+  }
 }
 
-const pauseRound = () => {
-  adminService
-    .pauseRound(props.round.id)
-    .then((data) => {
-      if (data.status === 'success') {
-        alertService.success($t('montage-round-paused'))
-      }
-
-      // Refresh the page
-      location.reload()
-    })
-    .catch(alertService.error)
+const pauseRound = async () => {
+  try {
+    await adminService.pauseRound(props.round.id)
+    alertService.success($t('montage-round-paused'))
+    location.reload()
+  } catch (error) {
+    alertService.error(error)
+  }
 }
 
-const finalizeRound = () => {
+const finalizeRound = async () => {
   const completionPercentage = Math.round(roundDetails.value?.is_closable || 0)
-
   const confirmText =
     completionPercentage === 100
       ? 'All votes are done. Click OK to confirm finalize round.'
       : `Only ${completionPercentage}% of votes are complete. Click OK to finalize anyway.`
 
-  const shouldFinalize = confirm(confirmText)
-
-  if (shouldFinalize) {
-    adminService
-      .finalizeRound(props.round.id)
-      .then((data) => {
-        if (data.status === 'success') {
-          alertService.success($t('montage-round-finalized'))
-        }
-        // Refresh the page
-        location.reload()
-      })
-      .catch(alertService.error)
+  if (confirm(confirmText)) {
+    try {
+      await adminService.finalizeRound(props.round.id)
+      alertService.success($t('montage-round-finalized'))
+      location.reload()
+    } catch (error) {
+      alertService.error(error)
+    }
   }
 }
 
-function downloadResults() {
+/**
+ * Gem 5: Adaptive Commons Sync
+ * Triggers backend metadata reconciliation.
+ */
+const syncRoundEntries = async () => {
+  try {
+    const data = await adminService.syncRound(props.round.id)
+    alertService.success($t('montage-round-synced', [data.synced_count]))
+    if (data.warnings && data.warnings.length > 0) {
+      alertService.warning(`${data.warnings.length} entries could not be found.`)
+    }
+  } catch (error) {
+    alertService.error(error)
+  }
+}
+
+const downloadResults = () => {
   const url = adminService.downloadRound(props.round.id)
   window.open(url)
 }
 
-function downloadEntries() {
+const downloadEntries = () => {
   const url = adminService.downloadEntries(props.round.id)
   window.open(url)
 }
 
-function getRoundDetails(round) {
-  adminService
-    .getRound(round.id)
-    .then((data) => {
-      roundDetails.value = data.data
-    })
-    .catch(alertService.error)
-}
-
-function getRoundResults(round) {
-  adminService
-    .previewRound(round.id)
-    .then((data) => {
-      roundResults.value = data.data
-    })
-    .catch(alertService.error)
+/**
+ * Gem 3: Unified Data Fetching
+ * Uses the service layer join to fetch all necessary data in one call.
+ */
+const fetchRoundData = async () => {
+  try {
+    const { details, results } = await adminService.getRoundOverview(props.round.id)
+    roundDetails.value = details
+    roundResults.value = results
+  } catch (error) {
+    alertService.error(error)
+  }
 }
 
 onMounted(() => {
-  getRoundDetails(props.round)
-  getRoundResults(props.round)
+  fetchRoundData()
 })
 </script>
 

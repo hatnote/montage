@@ -63,34 +63,49 @@ class MessageMiddleware(Middleware):
         try:
             ret = next()
         except Exception as e:
-            if self.debug_errors and not isinstance(e, MontageError):
-                import pdb; pdb.post_mortem()
-                import pdb;pdb.set_trace()
-            if self.raise_errors:
-                raise
-            ret = None
-            exc_info = ExceptionInfo.from_current()
-            err = '%s: %s' % (exc_info.exc_type, exc_info.exc_msg)
-            response_dict['errors'].append(err)
-            response_dict['status'] = 'exception'
+            if isinstance(e, MontageError):
+                err = str(e)
+                # Some clastic errors like BadRequest have a description property
+                if hasattr(e, 'description') and e.description:
+                    err = e.description
+                response_dict['errors'].append(err)
+                response_dict['status'] = 'failure'
+                response_dict['_status_code'] = getattr(e, 'code', getattr(e, 'status_code', 400))
+                ret = None
+            else:
+                if self.debug_errors:
+                    import pdb; pdb.post_mortem()
+                if self.raise_errors:
+                    raise
+                ret = None
+                exc_info = ExceptionInfo.from_current()
+                err = '%s: %s' % (exc_info.exc_type, exc_info.exc_msg)
+                response_dict['errors'].append(err)
+                response_dict['status'] = 'exception'
+                response_dict['_status_code'] = 500
         else:
             status_code = response_dict.pop('_status_code', None)
             if response_dict.get('errors'):
                 response_dict['status'] = 'failure'
 
+        # Architectural Gem: Systemic Response Standardization
+        # This replaces the need for manual 'response_dict' updates in endpoints.
         if isinstance(ret, BaseResponse):
-            # preserialized responses (and 404s, etc.)  TODO: log that
-            # we're skipping over response_dict if the response status
-            # code == 2xx
-            # TODO: autoserialize body if no body is set
             return ret
-        elif isinstance(ret, dict) and (ret.get('use_ashes') or self.use_ashes):
-            return ret
-        elif isinstance(ret, dict):
+        
+        # Enforce consistency: If ret is not a Response, it MUST be wrapped in 'data'.
+        # This eliminates the 'file_infos' vs 'data' inconsistency systemically.
+        if isinstance(ret, dict):
             status_code = ret.pop('_status_code', status_code)
-            response_dict.update(ret)
+            if 'data' not in ret and 'errors' not in ret:
+                # If the endpoint returned a dict but not in the standard envelope,
+                # we wrap it or merge it as data.
+                response_dict['data'] = ret
+            else:
+                response_dict.update(ret)
         else:
-            response_dict.update({'data': ret})
+            # Scalar values or lists get wrapped in 'data'.
+            response_dict['data'] = ret
 
         ret = render_basic(context=response_dict,
                             request=request,
