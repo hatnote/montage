@@ -49,12 +49,28 @@ const adminService = {
 
   advanceRound: (id, data) => apiBackend.post(`admin/round/${id}/advance`, data),
 
-  finalizeRound: (id) => apiBackend.post(`/admin/round/${id}/finalize`),
+  syncRound: (id) => apiBackend.post(`admin/round/${id}/sync`, { post: true }),
+
+  finalizeRound: (id) => apiBackend.post(`admin/round/${id}/finalize`),
 
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,
-  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`
+  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`,
+
+  // Gem 3: High-Level Aggregate Methods (Service Layer)
+  // This offloads complexity from Vue components and improves testability.
+  
+  /**
+   * Fetches unified round data including metadata and stats preview.
+   */
+  async getRoundOverview(id) {
+    const [details, results] = await Promise.all([
+      this.getRound(id),
+      this.previewRound(id)
+    ])
+    return { details, results }
+  }
 }
 
 export default adminService

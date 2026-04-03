@@ -1308,6 +1308,46 @@ class CoordinatorDAO(UserDAO):
         self.log_action('edit_round', round=rnd, message=msg)
         return new_val_map
 
+    def sync_round_entries(self, round_id):
+        """
+        Gem 5: Adaptive Background Sync
+        Reconciles local Entry metadata with the current state on Wikimedia Commons.
+        Handles renames (redirects), deletions, and metadata updates.
+        """
+        from .loaders import get_by_filename_remote, make_entry
+        rnd = self.get_round(round_id)
+        # Entry names are case-sensitive on Commons
+        entries = [re.entry for re in rnd.round_entries]
+        filenames = [e.name for e in entries]
+        
+        # Batch fetch from Commons (via loaders)
+        new_edicts, warnings = get_by_filename_remote(filenames)
+        
+        # Create a map for quick lookup
+        new_map = {edict['img_name']: edict for edict in new_edicts}
+        
+        sync_count = 0
+        for entry in entries:
+            new_edict = new_map.get(entry.name)
+            if not new_edict:
+                # File might have been renamed or deleted
+                continue
+            
+            # Update metadata
+            entry.width = int(new_edict['img_width'])
+            entry.height = int(new_edict['img_height'])
+            entry.resolution = entry.width * entry.height
+            entry.mime_major = new_edict['img_major_mime']
+            entry.mime_minor = new_edict['img_minor_mime']
+            
+            sync_count += 1
+            
+        self.rdb_session.flush()
+        msg = ('%s synced metadata for %s entries in round "%s" (#%s)'
+               % (self.user.username, sync_count, rnd.name, rnd.id))
+        self.log_action('sync_round', round=rnd, message=msg)
+        return {'synced_count': sync_count, 'warnings': warnings}
+
     def autodisqualify_by_date(self, round_id, preview=False):
         rnd = self.get_round(round_id)
         min_date = self.campaign.open_date
