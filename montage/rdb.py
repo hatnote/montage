@@ -1784,6 +1784,19 @@ class CoordinatorDAO(UserDAO):
         
         return rnd
 
+    def finalize_round(self, round_id):
+        rnd = self.get_round(round_id)
+        if rnd.vote_method == 'ranking':
+            return self.finalize_ranking_round(round_id)
+            
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = FINALIZED_STATUS
+        
+        msg = ('%s finalized %s round "%s" (#%s)' % 
+               (self.user.username, rnd.vote_method, rnd.name, rnd.id))
+        self.log_action('finalize_round', round=rnd, message=msg)
+        return rnd
+
     def finalize_ranking_round(self, round_id):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
