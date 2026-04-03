@@ -2462,7 +2462,7 @@ class JurorDAO(object):
 
     def _get_round_juror(self, round_id):
         round_juror = (self.query(RoundJuror)
-                           .filter_by(user=self.user,
+                           .filter_by(user_id=self.user.id,
                                       round_id=round_id)
                            .one_or_none())
         return round_juror
@@ -2471,13 +2471,18 @@ class JurorDAO(object):
     def get_campaign(self, campaign_id):
         if self.user.is_maintainer:
             return self.user_dao._get_any_campaign(campaign_id)
+        
+        # Security Hardening: We query the association proxy directly to ensure
+        # the juror is not only assigned by ID, but also strictly active in the round.
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
-                           Round.jurors.any(username=self.user.username)))\
+                           Round.round_jurors.any(
+                               user_id=self.user.id,
+                               is_active=True)))\
                        .filter_by(id=campaign_id)\
                        .one_or_none()
         if not campaign:
-            raise Forbidden('not a juror on campaign %s' % campaign_id)
+            raise Forbidden('not an active juror on campaign %s' % campaign_id)
         return campaign
 
     def get_round(self, round_id):
@@ -2485,11 +2490,13 @@ class JurorDAO(object):
             return self.user_dao._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
-                      Round.jurors.any(username=self.user.username),
+                      Round.round_jurors.any(
+                          user_id=self.user.id, 
+                          is_active=True),
                       Round.id == round_id)\
                   .one_or_none()
         if not rnd:
-            raise Forbidden('not a juror for round %s' % round_id)
+            raise Forbidden('not an active juror for round %s' % round_id)
         return rnd
 
     def get_round_entry(self, round_id, entry_id):
