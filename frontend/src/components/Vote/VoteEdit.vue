@@ -410,13 +410,16 @@ watch(locale, (newLocale) => {
   dayjs.locale(newLocale)
 })
 
+// Attach scroll listener dynamically once the v-else container is injected into DOM
+watch(editVoteContainer, (el) => {
+  if (el) {
+    el.addEventListener('scroll', handleScroll)
+  }
+})
+
 onMounted(() => {
   getRoundDetails(voteId)
   getPastVotes(voteId)
-
-  if (editVoteContainer.value) {
-    editVoteContainer.value.addEventListener('scroll', handleScroll)
-  }
 
   handleResize()
   window.addEventListener('resize', handleResize)
