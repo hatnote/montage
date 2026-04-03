@@ -431,6 +431,13 @@ class Round(Base):
         return False
 
     def to_info_dict(self):
+        rdb_session = inspect(self).session
+        total_entries = 0
+        if rdb_session:
+            total_entries = rdb_session.query(func.count(RoundEntry.id))\
+                                       .filter(RoundEntry.round_id == self.id)\
+                                       .scalar()
+
         ret = {'id': self.id,
                'name': self.name,
                'directions': self.directions,
@@ -444,6 +451,7 @@ class Round(Base):
                'status': self.status,
                'config': self.config,
                'show_stats': self.show_stats,
+               'total_entries': total_entries,
                'round_sources': []}
         return ret
 
