@@ -1,12 +1,27 @@
 <template>
   <div class="juror-campaign-round-card">
     <div class="round-header">
-      <thumbs-up-down v-if="formData.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36"
-        fillColor="white" style="background-color: grey" />
-      <star-outline v-if="formData.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36"
-        fillColor="white" style="background-color: grey" />
-      <sort v-if="formData.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white"
-        style="background-color: grey" />
+      <thumbs-up-down
+        v-if="formData.vote_method === 'yesno'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
+      <star-outline
+        v-if="formData.vote_method === 'rating'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
+      <sort
+        v-if="formData.vote_method === 'ranking'"
+        class="juror-campaign-round-icon"
+        :size="36"
+        fillColor="white"
+        style="background-color: grey"
+      />
       <div class="round-info">
         <h2>{{ formData.name }}</h2>
         <p>{{ $t(getVotingName(formData.vote_method)) }}</p>
@@ -24,22 +39,35 @@
               </cdx-field>
               <div class="flex-row">
                 <cdx-field>
-                  <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD"
-                    placeholder="YYYY-MM-DD" value-type="format"></date-picker>
+                  <date-picker
+                    v-model:value="formData.deadline_date"
+                    type="date"
+                    format="YYYY-MM-DD"
+                    placeholder="YYYY-MM-DD"
+                    value-type="format"
+                  ></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
                 <cdx-field>
-                  <cdx-select v-model:selected="formData.vote_method" :menu-items="voteMethods.map((method) => ({
-                    label: $t(getVotingName(method)),
-                    value: method
-                  }))
-                    " />
+                  <cdx-select
+                    v-model:selected="formData.vote_method"
+                    :menu-items="
+                      voteMethods.map((method) => ({
+                        label: $t(getVotingName(method)),
+                        value: method
+                      }))
+                    "
+                  />
                   <template #label>{{ $t('montage-round-vote-method') }}</template>
                 </cdx-field>
               </div>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio v-for="source in importSourceMethods" :key="'radio-' + source.value"
-                  v-model="selectedImportSource" :input-value="source.value">
+                <cdx-radio
+                  v-for="source in importSourceMethods"
+                  :key="'radio-' + source.value"
+                  v-model="selectedImportSource"
+                  :input-value="source.value"
+                >
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>{{ $t('montage-round-source') }}</template>
@@ -56,8 +84,13 @@
                 </template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
-                <cdx-lookup data-testid="montage-round-category" v-model:selected="importSourceValue.category" :menu-items="categoryOptions"
-                  :placeholder="$t('montage-round-category-placeholder')" @input="searchCategory">
+                <cdx-lookup
+                  data-testid="montage-round-category"
+                  v-model:selected="importSourceValue.category"
+                  :menu-items="categoryOptions"
+                  :placeholder="$t('montage-round-category-placeholder')"
+                  @input="searchCategory"
+                >
                   <template #label>{{ $t('montage-round-category-label') }}</template>
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
                 </cdx-lookup>
@@ -75,8 +108,12 @@
                 <template #label>{{ $t('montage-directions') }}</template>
               </cdx-field>
               <cdx-field v-if="roundIndex === 0">
-                <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value"
-                  v-model="formData.show_stats" :input-value="source.value">
+                <cdx-radio
+                  v-for="source in showStatsOptions"
+                  :key="'show_stats-' + source.value"
+                  v-model="formData.show_stats"
+                  :input-value="source.value"
+                >
                   {{ source.label }}
                 </cdx-radio>
                 <template #label>{{ $t('montage-label-round-stats') }}</template>
@@ -92,25 +129,36 @@
                 </template>
               </cdx-field>
               <cdx-field>
-                <UserList :users="formData.jurors" @update:selectedUsers="formData.jurors = $event" data-testid="userlist-search" />
+                <UserList
+                  :users="formData.jurors"
+                  @update:selectedUsers="formData.jurors = $event"
+                  data-testid="userlist-search"
+                />
                 <template #label>{{ $t('montage-label-round-jurors') }}</template>
                 <template #help-text>
                   <p>{{ $t('montage-round-jurors-description') }}</p>
                 </template>
               </cdx-field>
               <cdx-field v-if="thresholds">
-                <cdx-select v-model:selected="formData.threshold" :menu-items="thresholdOptions"
-                  :default-label="$t('montage-round-threshold-default')" />
+                <cdx-select
+                  v-model:selected="formData.threshold"
+                  :menu-items="thresholdOptions"
+                  :default-label="$t('montage-round-threshold-default')"
+                />
                 <template #label>{{ $t('montage-round-threshold') }}</template>
                 <template #description>
                   <p>{{ $t('montage-round-threshold-description') }}</p>
                 </template>
               </cdx-field>
             </div>
-            <div class="form-right" v-if="roundIndex === 0">
+            <div class="form-right">
               <p>{{ $t('montage-round-file-setting') }}</p>
               <cdx-field>
-                <cdx-checkbox v-for="key in fileSettingsOptions" :key="key" v-model="formData.config[key]">
+                <cdx-checkbox
+                  v-for="key in fileSettingsOptions"
+                  :key="key"
+                  v-model="formData.config[key]"
+                >
                   {{ $t('montage-round-' + key.replaceAll('_', '-')) }}
                 </cdx-checkbox>
               </cdx-field>
@@ -121,10 +169,19 @@
             </div>
           </div>
           <div class="button-group">
-            <cdx-button :disabled="isLoading" action="progressive" weight="primary" @click="submitRound()">
+            <cdx-button
+              :disabled="isLoading"
+              action="progressive"
+              weight="primary"
+              @click="submitRound()"
+            >
               <check class="icon-small" /> {{ $t('montage-round-add') }}
             </cdx-button>
-            <cdx-button action="destructive" @click="cancelRound()" data-testid="cancel-round-button">
+            <cdx-button
+              action="destructive"
+              @click="cancelRound()"
+              data-testid="cancel-round-button"
+            >
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
@@ -180,6 +237,7 @@ const campaignId = route.params.id.split('-')[0]
 
 const voteMethods = ['yesno', 'rating', 'ranking']
 const fileSettingsOptions = [
+  'dq_by_filetype',
   'dq_by_uploader',
   'dq_by_resolution',
   'dq_by_upload_date',
@@ -206,6 +264,20 @@ const thresholds = ref(null)
 const thresholdOptions = ref(null)
 const isLoading = ref(false)
 
+const defaultConfig = {
+  dq_by_filetype: true,
+  dq_by_resolution: false,
+  min_resolution: 2000000,
+  dq_by_uploader: false,
+  dq_by_upload_date: true,
+  dq_coords: true,
+  dq_maintainers: true,
+  dq_organizers: true,
+  show_filename: true,
+  show_link: true,
+  show_resolution: true
+}
+
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
   vote_method: roundIndex !== 0 && roundIndex < 3 ? voteMethods[roundIndex] : 'yesno',
@@ -215,18 +287,8 @@ const formData = ref({
   threshold: null,
   jurors: roundIndex !== 0 ? prevRound.jurors.map((juror) => juror.username) : [],
   directions: '',
-  config: {
-    dq_by_resolution: false,
-    min_resolution: 2000000,
-    dq_by_uploader: true,
-    dq_by_upload_date: false,
-    dq_coords: false,
-    dq_maintainers: false,
-    dq_organizers: false,
-    show_filename: false,
-    show_link: false,
-    show_resolution: false
-  }
+  config:
+    roundIndex !== 0 ? { ...defaultConfig, ...(prevRound.config || {}) } : { ...defaultConfig }
 })
 
 // States for import source
@@ -257,18 +319,15 @@ const submitRound = () => {
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
-    });
-    return;
+    })
+    return
   }
 
-  if (
-  !formData.value.name ||
-  (formData.value.quorum > 0 && formData.value.jurors.length === 0)
-) {
+  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
-    });
-    return;
+    })
+    return
   }
 
   // Check if the round is the first round
@@ -314,11 +373,13 @@ const submitRound = () => {
         vote_method: formData.value.vote_method,
         quorum: formData.value.quorum,
         deadline_date: formData.value.deadline_date + 'T00:00:00',
-        jurors: formData.value.jurors
+        jurors: formData.value.jurors,
+        config: formData.value.config
       },
       threshold: formData.value.threshold
     }
 
+    isLoading.value = true
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
@@ -327,6 +388,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
+        isLoading.value = false
         emit('reload-campaign-state')
         emit('update:showAddRoundForm', false)
       })
