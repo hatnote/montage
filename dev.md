@@ -78,6 +78,10 @@ juror.)
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
+* Build the frontend for the backend (run from the `frontend/` directory):
+```bash
+npm run toolforge:build
+```
 * Start the montage backend
 ```bash
 make start
