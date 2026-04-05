@@ -86,7 +86,9 @@ npm run toolforge:build
 ```bash
 make start
 ```
-This will build the docker image for the montage backend and start the container. Apart from `make start`, these are other commands:
+The backend is ready when you see `Debugger PIN` in the logs. It is available at http://localhost:5001.
+
+Apart from `make start`, these are other commands:
 * `make start-detached` : Start the backend container in detached mode
 * `make stop` : Stop the backend container
 * `make logs` : Stream the backend container logs in real-time.
