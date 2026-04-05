@@ -310,6 +310,22 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
+const normalizeFileNames = (rawValue) => {
+  return String(rawValue || '')
+    .split('\n')
+    .map((name) => name.trim())
+    .filter((name, index, arr) => name && arr.indexOf(name) === index)
+}
+
+const isValidHttpUrl = (value) => {
+  try {
+    const parsed = new URL(String(value || '').trim())
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const submitRound = () => {
   const quorum = Number(formData.value.quorum)
 
@@ -336,6 +352,35 @@ const submitRound = () => {
 
   // Check if the round is the first round
   if (roundIndex === 0) {
+    const category = String(importSourceValue.value.category || '').trim()
+    const csvUrl = String(importSourceValue.value.csv_url || '').trim()
+    const fileNames = normalizeFileNames(importSourceValue.value.file_names)
+
+    if (selectedImportSource.value === 'category' && !category) {
+      alertService.error({
+        message: $t('montage-required-fill-inputs')
+      })
+      return
+    }
+
+    if (selectedImportSource.value === 'csv' && !isValidHttpUrl(csvUrl)) {
+      alertService.error({
+        message: $t('montage-required-fill-inputs')
+      })
+      return
+    }
+
+    if (selectedImportSource.value === 'selected' && fileNames.length === 0) {
+      alertService.error({
+        message: $t('montage-required-fill-inputs')
+      })
+      return
+    }
+
+    importSourceValue.value.category = category
+    importSourceValue.value.csv_url = csvUrl
+    importSourceValue.value.file_names = fileNames
+
     const payload = {
       name: formData.value.name,
       vote_method: formData.value.vote_method,
@@ -352,12 +397,6 @@ const submitRound = () => {
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
-
-        if (selectedImportSource.value === 'selected') {
-          importSourceValue.value.file_names = importSourceValue.value.file_names
-            .split('\n')
-            .filter((elem) => elem)
-        }
 
         importCategory(resp.data.id)
       })
