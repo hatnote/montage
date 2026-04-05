@@ -1,0 +1,26 @@
+{
+  "data": {
+    "id": 123,
+    "name": "Validation Campaign",
+    "url_name": "validation-campaign",
+    "open_date": "2025-08-01T10:00:00",
+    "close_date": "2025-08-10T18:00:00",
+    "create_date": "2025-08-01T09:30:00",
+    "status": "active",
+    "is_archived": false,
+    "isArchived": false,
+    "coordinators": [
+      {
+        "id": 1,
+        "username": "tester",
+        "is_organizer": true,
+        "is_maintainer": false,
+        "last_active_date": "2025-08-01T09:30:00",
+        "created_by": null
+      }
+    ],
+    "rounds": [],
+    "active_round": null
+  },
+  "status": "success"
+}

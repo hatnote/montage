@@ -1,6 +1,79 @@
+describe('Round Creation Validation', () => {
+  beforeEach(() => {
+    cy.setCookie('clastic_cookie', '<cookie-validation-string>')
+
+    cy.intercept('GET', '/v1/admin/user', {
+      status: 'success',
+      user: {
+        id: 1,
+        username: 'tester',
+        is_organizer: true,
+        is_maintainer: false,
+        last_active_date: '2025-08-01T09:30:00',
+        created_by: null
+      }
+    }).as('getUser')
+
+    cy.intercept('GET', '/v1/admin/campaign/123', {
+      fixture: 'roundValidationCampaign.json'
+    }).as('getCampaign')
+
+    cy.intercept('GET', '**/w/api.php*', {
+      query: {
+        globalallusers: [
+          {
+            name: 'AadarshM07',
+            id: 101
+          }
+        ]
+      }
+    }).as('searchUser')
+
+    cy.visit('http://localhost:5173/#/campaign/123')
+    cy.wait('@getUser')
+    cy.wait('@getCampaign')
+  })
+
+  it('should show actionable validation errors when creating a round', () => {
+    cy.get('.add-round-button').click()
+
+    cy.get('.form-container input[placeholder="YYYY-MM-DD"]').first().type('2025-08-15')
+    cy.get('.form-container input[type="number"]').first().clear().type('1')
+    cy.get('[data-testid="userlist-search"] input').type('Ada')
+    cy.wait('@searchUser')
+    cy.get('[data-testid="userlist-search"]').find('li').first().click()
+
+    cy.contains('Add Round').click()
+    cy.contains('Please fill all the boxes (category is required for category import)').should('be.visible')
+
+    cy.get('[data-testid="cancel-round-button"]').click()
+    cy.get('.add-round-button').click()
+    cy.get('.form-container input[placeholder="YYYY-MM-DD"]').first().type('2025-08-15')
+    cy.get('.form-container input[type="number"]').first().clear().type('1')
+    cy.get('[data-testid="userlist-search"] input').type('Ada')
+    cy.wait('@searchUser')
+    cy.get('[data-testid="userlist-search"]').find('li').first().click()
+    cy.contains('File List URL').click()
+    cy.get('input[type="url"]').type('not-a-url')
+    cy.contains('Add Round').click()
+    cy.contains('Please fill all the boxes (provide a valid http/https CSV URL)').should('be.visible')
+
+    cy.get('[data-testid="cancel-round-button"]').click()
+    cy.get('.add-round-button').click()
+    cy.get('.form-container input[placeholder="YYYY-MM-DD"]').first().type('2025-08-15')
+    cy.get('.form-container input[type="number"]').first().clear().type('1')
+    cy.get('[data-testid="userlist-search"] input').type('Ada')
+    cy.wait('@searchUser')
+    cy.get('[data-testid="userlist-search"]').find('li').first().click()
+    cy.contains('File List').click()
+    cy.contains('Add Round').click()
+    cy.contains('Please fill all the boxes (add at least one filename for file list import)').should('be.visible')
+  })
+})
+
 describe('Campaign Details Page', () => {
   beforeEach(() => {
-    cy.setCookie('clastic_cookie', '<cookie-validation-string>');
+    cy.setCookie('clastic_cookie', '<cookie-validation-string>')
     cy.visit('http://localhost:5173/#/')
     cy.get('div.coordinator-campaign-cards').find('.coordinator-campaign-card').first().click()
     cy.url().should('match', /\/campaign\/\d+/)
