@@ -174,8 +174,8 @@ npm run build
 
 ## Project structure
 ```bash
-├── DEV.md
-├── Dockerfile
+├── dev.md
+├── dockerfile
 ├── LICENSE
 ├── MANIFEST.in
 ├── Makefile
@@ -222,7 +222,6 @@ npm run build
 │   ├── templates
 │   ├── tests
 │   └── utils.py
-├── report.html
 ├── requirements-dev.txt
 ├── requirements.in
 ├── requirements.txt
