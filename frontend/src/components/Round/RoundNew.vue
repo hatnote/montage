@@ -200,7 +200,14 @@ import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
 
 import { useRoute } from 'vue-router'
-import { getVotingName } from '@/utils'
+import {
+  getVotingName,
+  parsePositiveQuorum,
+  hasEnoughJurors,
+  isThresholdSelected,
+  normalizeFileNames,
+  isValidHttpUrl
+} from '@/utils'
 
 import {
   CdxCard,
@@ -310,24 +317,8 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
-const normalizeFileNames = (rawValue) => {
-  return String(rawValue || '')
-    .split('\n')
-    .map((name) => name.trim())
-    .filter((name, index, arr) => name && arr.indexOf(name) === index)
-}
-
-const isValidHttpUrl = (value) => {
-  try {
-    const parsed = new URL(String(value || '').trim())
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 const submitRound = () => {
-  const quorum = Number(formData.value.quorum)
+  const quorum = parsePositiveQuorum(formData.value.quorum)
 
   if (!formData.value.deadline_date) {
     alertService.error({
@@ -336,14 +327,14 @@ const submitRound = () => {
     return
   }
 
-  if (!formData.value.name || !Number.isFinite(quorum) || quorum < 1) {
+  if (!formData.value.name || quorum === null) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
     return
   }
 
-  if (formData.value.jurors.length < quorum) {
+  if (!hasEnoughJurors(formData.value.jurors, quorum)) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
@@ -421,7 +412,7 @@ const submitRound = () => {
       threshold: formData.value.threshold
     }
 
-    if (payload.threshold === null || payload.threshold === undefined || payload.threshold === '') {
+    if (!isThresholdSelected(payload.threshold)) {
       alertService.error({
         message: $t('montage-required-fill-inputs')
       })

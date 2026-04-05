@@ -97,6 +97,7 @@ import { CdxButton, CdxField, CdxTextInput, CdxRadio, CdxTextArea } from '@wikim
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import { hasEnoughJurors, parsePositiveQuorum } from '@/utils'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
@@ -150,7 +151,7 @@ const cancelRound = () => {
 }
 
 const saveRound = () => {
-  const quorum = Number(formData.value.quorum)
+  const quorum = parsePositiveQuorum(formData.value.quorum)
 
   if (!formData.value.deadline_date) {
     alertService.error({
@@ -159,14 +160,14 @@ const saveRound = () => {
     return
   }
 
-  if (!formData.value.name || !Number.isFinite(quorum) || quorum < 1) {
+  if (!formData.value.name || quorum === null) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
     return
   }
 
-  if (formData.value.jurors.length < quorum) {
+  if (!hasEnoughJurors(formData.value.jurors, quorum)) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })

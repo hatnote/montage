@@ -80,3 +80,35 @@ export function getCommonsImageUrl(image, width = 1280) {
     return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}`
   }
 }
+
+export function parsePositiveQuorum(value) {
+  const quorum = Number(value)
+  if (!Number.isFinite(quorum) || quorum < 1) {
+    return null
+  }
+  return quorum
+}
+
+export function hasEnoughJurors(jurors, quorum) {
+  return Array.isArray(jurors) && jurors.length >= quorum
+}
+
+export function isThresholdSelected(value) {
+  return value !== null && value !== undefined && value !== ''
+}
+
+export function normalizeFileNames(rawValue) {
+  return String(rawValue || '')
+    .split('\n')
+    .map((name) => name.trim())
+    .filter((name, index, arr) => name && arr.indexOf(name) === index)
+}
+
+export function isValidHttpUrl(value) {
+  try {
+    const parsed = new URL(String(value || '').trim())
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
