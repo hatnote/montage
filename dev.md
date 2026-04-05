@@ -27,7 +27,7 @@ The **Montage Project** is a web application with two main components:
 
 Ensure the following are installed:
 - **Docker** and **Docker Compose**: [Install Docker](https://www.docker.com/products/docker-desktop).
-- **Node.js** (v16 or above): [Install Node.js](https://nodejs.org).
+- **Node.js** (v18 or above): [Install Node.js](https://nodejs.org).
 - **Make**: Available on most Unix-based systems.
 
 ---
@@ -74,7 +74,7 @@ log in to the local app in your browser, and then copy the value from the
 * (Optional) Add your username as the `superuser` in the config. (This will allow you to
 add `su_to=<any user>` to the backend, if you want to test submitting as another
 juror.)
-* Add your username to the list of maintainers in [rdb.py line 113](https://github.com/hatnote/montage/blob/master/montage/rdb.py#L113).
+* Add your username to the list of maintainers in [rdb.py line 119](https://github.com/hatnote/montage/blob/master/montage/rdb.py#L119).
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
@@ -99,8 +99,8 @@ Almost all endpoints from backend (except for OAuth and `/static/`) return JSON 
 
 ## Project structure
 ```bash
-├── DEV.md
-├── Dockerfile
+├── dev.md
+├── dockerfile
 ├── LICENSE
 ├── MANIFEST.in
 ├── Makefile
@@ -148,7 +148,6 @@ Almost all endpoints from backend (except for OAuth and `/static/`) return JSON 
 │   ├── templates
 │   ├── tests
 │   └── utils.py
-├── report.html
 ├── requirements-dev.txt
 ├── requirements.in
 ├── requirements.txt

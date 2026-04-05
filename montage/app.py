@@ -185,7 +185,7 @@ def create_app(env_name='prod', config=None):
         root_mws.append(SentryMiddleware())
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
-                            StaticFileRoute('/a/', STATIC_PATH + '/a/index.html'),
+                            StaticFileRoute('/a/', STATIC_PATH + '/index.html'),
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
