@@ -71,6 +71,67 @@ describe('Round Creation Validation', () => {
   })
 })
 
+describe('Round Edit Validation', () => {
+  beforeEach(() => {
+    cy.setCookie('clastic_cookie', '<cookie-validation-string>')
+
+    cy.intercept('GET', '/v1/admin/user', {
+      status: 'success',
+      user: {
+        id: 1,
+        username: 'tester',
+        is_organizer: true,
+        is_maintainer: false,
+        last_active_date: '2025-08-01T09:30:00',
+        created_by: null
+      }
+    }).as('getUser')
+
+    cy.intercept('GET', '/v1/admin/campaign/124', {
+      fixture: 'roundEditValidationCampaign.json'
+    }).as('getCampaign')
+
+    cy.intercept('GET', '/v1/admin/round/9001', {
+      fixture: 'roundEditDetails.json'
+    }).as('getRound')
+
+    cy.intercept('GET', '/v1/admin/round/9001/preview_results', {
+      data: {
+        counts: {
+          all_mimes: ['image/jpeg'],
+          percent_tasks_open: 0,
+          total_cancelled_tasks: 0,
+          total_disqualified_entries: 0,
+          total_open_tasks: 0,
+          total_round_entries: 1,
+          total_tasks: 1,
+          total_uploaders: 1
+        }
+      },
+      status: 'success'
+    }).as('previewRound')
+
+    cy.intercept('POST', '/v1/admin/round/9001/edit', {
+      status: 'success',
+      data: {}
+    }).as('editRound')
+
+    cy.visit('http://localhost:5173/#/campaign/124')
+    cy.wait('@getUser')
+    cy.wait('@getCampaign')
+    cy.wait('@getRound')
+    cy.wait('@previewRound')
+  })
+
+  it('should show actionable validation errors when editing a round', () => {
+    cy.contains('Edit round').click()
+    cy.get('.form-container input[type="text"]').first().clear()
+    cy.contains('Save').click()
+    cy.contains('Please fill all the boxes (round name is required)').should('be.visible')
+    cy.get('@editRound.all').should('have.length', 0)
+  })
+})
+
 describe('Campaign Details Page', () => {
   beforeEach(() => {
     cy.setCookie('clastic_cookie', '<cookie-validation-string>')
