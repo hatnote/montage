@@ -317,6 +317,12 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
+const showValidationError = (detail) => {
+  alertService.error({
+    message: `${$t('montage-required-fill-inputs')} (${detail})`
+  })
+}
+
 const submitRound = () => {
   const quorum = parsePositiveQuorum(formData.value.quorum)
 
@@ -327,17 +333,18 @@ const submitRound = () => {
     return
   }
 
-  if (!formData.value.name || quorum === null) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+  if (!formData.value.name) {
+    showValidationError('round name is required')
+    return
+  }
+
+  if (quorum === null) {
+    showValidationError('quorum must be a number greater than or equal to 1')
     return
   }
 
   if (!hasEnoughJurors(formData.value.jurors, quorum)) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+    showValidationError(`add at least ${quorum} juror(s) to match quorum`)
     return
   }
 
@@ -348,23 +355,17 @@ const submitRound = () => {
     const fileNames = normalizeFileNames(importSourceValue.value.file_names)
 
     if (selectedImportSource.value === 'category' && !category) {
-      alertService.error({
-        message: $t('montage-required-fill-inputs')
-      })
+      showValidationError('category is required for category import')
       return
     }
 
     if (selectedImportSource.value === 'csv' && !isValidHttpUrl(csvUrl)) {
-      alertService.error({
-        message: $t('montage-required-fill-inputs')
-      })
+      showValidationError('provide a valid http/https CSV URL')
       return
     }
 
     if (selectedImportSource.value === 'selected' && fileNames.length === 0) {
-      alertService.error({
-        message: $t('montage-required-fill-inputs')
-      })
+      showValidationError('add at least one filename for file list import')
       return
     }
 
@@ -413,9 +414,7 @@ const submitRound = () => {
     }
 
     if (!isThresholdSelected(payload.threshold)) {
-      alertService.error({
-        message: $t('montage-required-fill-inputs')
-      })
+      showValidationError('select a threshold before advancing the round')
       return
     }
 

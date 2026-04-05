@@ -150,6 +150,12 @@ const cancelRound = () => {
   emit('update:isRoundEditing', false)
 }
 
+const showValidationError = (detail) => {
+  alertService.error({
+    message: `${$t('montage-required-fill-inputs')} (${detail})`
+  })
+}
+
 const saveRound = () => {
   const quorum = parsePositiveQuorum(formData.value.quorum)
 
@@ -160,17 +166,18 @@ const saveRound = () => {
     return
   }
 
-  if (!formData.value.name || quorum === null) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+  if (!formData.value.name) {
+    showValidationError('round name is required')
+    return
+  }
+
+  if (quorum === null) {
+    showValidationError('quorum must be a number greater than or equal to 1')
     return
   }
 
   if (!hasEnoughJurors(formData.value.jurors, quorum)) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+    showValidationError(`add at least ${quorum} juror(s) to match quorum`)
     return
   }
 
