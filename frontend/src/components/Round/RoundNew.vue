@@ -419,6 +419,7 @@ const submitRound = () => {
       return
     }
 
+    isLoading.value = true
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
@@ -427,6 +428,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
+        isLoading.value = false
         emit('reload-campaign-state')
         emit('update:showAddRoundForm', false)
       })
