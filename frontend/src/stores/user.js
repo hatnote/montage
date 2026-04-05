@@ -24,9 +24,14 @@ export const useUserStore = defineStore('user-store', () => {
 
   async function checkAuth() {
     if (!authChecked.value) {
-      const res = await adminService.getUser()
-      if (res.status === 'success' && res.user) {
-        login(res.user)
+      try {
+        const res = await adminService.getUser()
+        if (res.status === 'success' && res.user) {
+          login(res.user)
+        }
+      } catch (error) {
+        // Handle 401/403 auth errors; user remains logged out
+        console.error('Auth check failed:', error?.response?.status || error?.message)
       }
       authChecked.value = true
     }

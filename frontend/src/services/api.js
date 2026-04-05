@@ -42,7 +42,25 @@ const addInterceptors = (instance) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
 
-      return response['data']
+      const data = response['data']
+      if (data?.status === 'failure' || data?.status === 'exception') {
+        const rawErrors = data.errors
+        let messages = []
+        if (Array.isArray(rawErrors)) {
+          messages = rawErrors
+        } else if (typeof rawErrors === 'string') {
+          messages = [rawErrors]
+        } else if (rawErrors && typeof rawErrors === 'object') {
+          messages = Object.values(rawErrors).flatMap((value) =>
+            Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+          )
+        }
+        const err = new Error(messages.join('; ') || 'An error occurred')
+        err.response = response
+        return Promise.reject(err)
+      }
+
+      return data
     },
     (error) => {
       const loadingStore = useLoadingStore()

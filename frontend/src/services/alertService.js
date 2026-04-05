@@ -13,7 +13,17 @@ const AlertService = {
     })
   },
   error(error, time) {
-    const message = error?.response?.data?.message || error?.message || 'An error occurred'
+    const backendErrors = error?.response?.data?.errors
+    const normalizedBackendErrors = Array.isArray(backendErrors)
+      ? backendErrors.length && backendErrors.join('; ')
+      : typeof backendErrors === 'string'
+        ? backendErrors
+        : null
+    const message =
+      normalizedBackendErrors ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'An error occurred'
     const detail = error?.response?.data?.detail
 
     const text = detail ? `${message}: ${detail}` : message
