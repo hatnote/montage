@@ -51,7 +51,7 @@
           :rounds="campaignRounds"
           v-if="showAddRoundForm"
           v-model:showAddRoundForm="showAddRoundForm"
-          @reloadCampaignState="reloadState"
+          @reload-campaign-state="reloadState"
         />
       </div>
     </div>

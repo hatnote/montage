@@ -230,7 +230,7 @@ const props = defineProps({
   rounds: Array
 })
 
-const emit = defineEmits(['update:showAddRoundForm', 'reloadCampaignState'])
+const emit = defineEmits(['update:showAddRoundForm', 'reload-campaign-state'])
 
 const route = useRoute()
 const campaignId = route.params.id.split('-')[0]
