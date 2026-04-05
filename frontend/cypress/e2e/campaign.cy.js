@@ -130,6 +130,20 @@ describe('Round Edit Validation', () => {
     cy.contains('Please fill all the boxes (round name is required)').should('be.visible')
     cy.get('@editRound.all').should('have.length', 0)
   })
+
+  it('should submit a valid round edit', () => {
+    cy.contains('Edit round').click()
+    cy.get('.form-container input[type="text"]').first().clear().type('Updated Round 1')
+    cy.contains('Save').click()
+
+    cy.wait('@editRound')
+      .its('request.body')
+      .then((body) => {
+        expect(body.name).to.eq('Updated Round 1')
+        expect(body.quorum).to.eq(1)
+        expect(body.new_jurors).to.deep.eq(['AadarshM07'])
+      })
+  })
 })
 
 describe('Campaign Details Page', () => {
