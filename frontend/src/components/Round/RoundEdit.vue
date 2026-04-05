@@ -150,6 +150,8 @@ const cancelRound = () => {
 }
 
 const saveRound = () => {
+  const quorum = Number(formData.value.quorum)
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -157,10 +159,24 @@ const saveRound = () => {
     return
   }
 
+  if (!formData.value.name || !Number.isFinite(quorum) || quorum < 1) {
+    alertService.error({
+      message: $t('montage-required-fill-inputs')
+    })
+    return
+  }
+
+  if (formData.value.jurors.length < quorum) {
+    alertService.error({
+      message: $t('montage-required-fill-inputs')
+    })
+    return
+  }
+
   const round = {
     id: props.round.id,
     name: formData.value.name,
-    quorum: formData.value.quorum,
+    quorum,
     directions: formData.value.directions,
     show_stats: formData.value.show_stats,
     deadline_date: formData.value.deadline_date + 'T00:00:00',

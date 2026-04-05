@@ -311,6 +311,8 @@ const cancelRound = () => {
 }
 
 const submitRound = () => {
+  const quorum = Number(formData.value.quorum)
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -318,7 +320,14 @@ const submitRound = () => {
     return
   }
 
-  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+  if (!formData.value.name || !Number.isFinite(quorum) || quorum < 1) {
+    alertService.error({
+      message: $t('montage-required-fill-inputs')
+    })
+    return
+  }
+
+  if (formData.value.jurors.length < quorum) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
@@ -332,7 +341,7 @@ const submitRound = () => {
       vote_method: formData.value.vote_method,
       deadline_date: formData.value.deadline_date + 'T00:00:00',
       show_stats: formData.value.show_stats,
-      quorum: formData.value.quorum,
+      quorum,
       jurors: formData.value.jurors,
       directions: formData.value.directions,
       config: formData.value.config
@@ -366,11 +375,18 @@ const submitRound = () => {
       next_round: {
         name: formData.value.name,
         vote_method: formData.value.vote_method,
-        quorum: formData.value.quorum,
+        quorum,
         deadline_date: formData.value.deadline_date + 'T00:00:00',
         jurors: formData.value.jurors
       },
       threshold: formData.value.threshold
+    }
+
+    if (payload.threshold === null || payload.threshold === undefined || payload.threshold === '') {
+      alertService.error({
+        message: $t('montage-required-fill-inputs')
+      })
+      return
     }
 
     adminService
