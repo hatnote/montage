@@ -150,3 +150,7 @@ cypress/screenshots/
 cypress/videos/
 
 .vscode/
+
+# Claude Code
+.claude/
+tmp/
