@@ -6,8 +6,11 @@ db_url: "sqlite:///tmp_montage.db"
 cookie_secret: ReplaceThisWithSomethingSomewhatSecret
 superuser: Slaporte
 
-# Optional: set to true to bypass OAuth and log in automatically as a maintainer (dev only)
+# Optional: set to true to bypass OAuth and log in automatically (dev only)
 debug: false
+# Optional: set these to log in as yourself in debug mode (defaults to Slaporte / 6024474)
+# debug_username: Slaporte
+# debug_userid: 6024474
 
 dev_local_cookie_value: "contact maintainers for details"
 dev_remote_cookie_value: "contact maintainers for details"

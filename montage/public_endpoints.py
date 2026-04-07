@@ -154,8 +154,8 @@ def logout(request, cookie, root_path):
 def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log, config):
     # TODO: Remove or standardize the DEBUG option
     if config.get('debug'):
-        identity = {'sub': 6024474,
-                    'username': 'Slaporte'}
+        identity = {'sub': config.get('debug_userid', 6024474),
+                    'username': config.get('debug_username', 'Slaporte')}
     else:
         handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 

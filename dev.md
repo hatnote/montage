@@ -68,8 +68,8 @@ Other frontend development commands:
 ### 5. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
-* (Optional) Set `debug: true` in `config.dev.yaml` to bypass OAuth entirely and be logged in automatically as a maintainer. This is the easiest way to get started locally without setting up OAuth.
-* (Optional) Set `userid: <your numeric Wikipedia user ID>` to be auto-logged in as yourself instead of the default maintainer account. Your numeric user ID can be found at https://en.wikipedia.org/wiki/Special:CentralAuth/YOUR_USERNAME.
+* (Optional) Set `debug: true` in `config.dev.yaml` to bypass OAuth entirely. This is the easiest way to get started locally without setting up OAuth. To log in, navigate to http://localhost:5001/complete_login directly — the "Login with Wikimedia" button still requires OAuth and won't work locally.
+* (Optional) Set `debug_userid: <your numeric Wikipedia CentralAuth ID>` and `debug_username: <your Wikipedia username>` to be auto-logged in as yourself in debug mode. Your CentralAuth ID can be found at https://en.wikipedia.org/wiki/Special:CentralAuth/YOUR_USERNAME.
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
 log in to the local app in your browser, and then copy the value from the
 `clastic_cookie` in the apps' cookies. This is your login cookie.
