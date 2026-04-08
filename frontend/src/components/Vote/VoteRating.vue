@@ -119,6 +119,10 @@
             class="vote-details-list-item vote-details-2-line"
             v-if="rating.current.history && rating.current.history.length > 0"
           >
+          <div
+            class="vote-details-list-item vote-details-2-line"
+            v-if="rating.current.history && rating.current.history.length > 0"
+          >
             <div class="icon-container">
               <history class="vote-details-icon" />
             </div>
@@ -166,12 +170,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 import { getCommonsImageUrl } from '@/utils'
+import { useVoteDraft } from '@/composables/useVoteDraft'
 
 import CommonsImage from '@/components/CommonsImage.vue'
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
@@ -207,6 +212,23 @@ const props = defineProps({
 })
 
 const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
+const { handleVoteError, replayDrafts } = useVoteDraft(props.round.id)
+
+onMounted(async () => {
+  isLoading.value = true
+
+  try {
+    const { appliedCount } = await replayDrafts()
+
+    if (appliedCount) {
+      await getTasks()
+    }
+  } catch (error) {
+    alertService.error(error)
+  } finally {
+    isLoading.value = false
+  }
+})
 
 const images = ref(null)
 const stats = ref(null)
@@ -267,12 +289,16 @@ function setRate(rate) {
   if (imageLoading.value) return
   if (isLoading.value) return
 
+
   if (rate) {
     const val = (rate - 1) / 4
+    const taskId = rating.value.current.id
+
     isLoading.value = true
+
     jurorService
       .setRating(props.round.id, {
-        ratings: [{ task_id: rating.value.current.id, value: val }]
+        ratings: [{ task_id: taskId, value: val }]
       })
       .then(() => {
         stats.value.total_open_tasks -= 1
@@ -287,12 +313,17 @@ function setRate(rate) {
           getNextImage()
         }
       })
-      .catch(alertService.error)
+      .catch((error) => {
+        if (!handleVoteError(error, taskId, val)) {
+          alertService.error(error)
+        }
+      })
       .finally(() => {
         isLoading.value = false
       })
   } else {
     isLoading.value = true
+
 
     jurorService
       .skipTask(props.round.id, rating.value.current.id)
@@ -347,7 +378,6 @@ const handleKeyDown = (event) => {
     const value = parseInt(event.key, 10)
     if (rating.value.rates.includes(value)) {
       setRate(value)
-      alertService.success(`Voted ${value}/5`, 250)
     } else if (event.key === 'ArrowRight') {
       setRate()
     }
