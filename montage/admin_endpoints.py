@@ -628,18 +628,22 @@ def advance_round(user_dao, round_id, request_dict):
 def finalize_campaign(user_dao, campaign_id):
     # TODO: add some docs
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    last_rnd = coord_dao.campaign.active_round
+    campaign = coord_dao.campaign
+    active_rnd = campaign.active_round
 
-    if not last_rnd:
-        raise InvalidAction('no active rounds')
+    if active_rnd:
+        if active_rnd.vote_method != 'ranking':
+            raise InvalidAction('last round must be finalized before closing campaign')
+        campaign_summary = coord_dao.finalize_ranking_round(active_rnd.id)
+        coord_dao.finalize_campaign()
+        return campaign_summary
 
-    if last_rnd.vote_method != 'ranking':
-        raise InvalidAction('only ranking rounds can be finalized')
+    final_rnds = [r for r in campaign.rounds if r.status == FINALIZED_STATUS]
+    if not final_rnds:
+        raise InvalidAction('campaign has no finalized rounds')
 
-    campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
     coord_dao.finalize_campaign()
-    return campaign_summary
-
+    return {'data': 'finalized'}
 
 def reopen_campaign(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
