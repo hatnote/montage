@@ -4,7 +4,17 @@
     <clip-loader class="loading-bar" size="85px" />
   </div>
 
+  <div v-else-if="round && round.status === 'paused'" class="paused-container">
+    <p>{{ $t('montage-round-paused') }}</p>
+  </div>
+
   <template v-else>
+    <div v-if="round.directions" class="directions-container">
+      <p>
+        <strong>{{ $t('montage-round-directions') }}</strong>
+      </p>
+      <p>{{ round.directions }}</p>
+    </div>
     <vote-yes-no v-if="round.vote_method === 'yesno'" :round="round" :tasks="tasks" />
     <vote-rating v-else-if="round.vote_method === 'rating'" :round="round" :tasks="tasks" />
     <vote-ranking v-else-if="round.vote_method === 'ranking'" :round="round" :tasks="tasks" />

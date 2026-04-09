@@ -4,7 +4,7 @@ api_log_path: montage_api.log
 db_url: "sqlite:///tmp_montage.db"
 
 cookie_secret: ReplaceThisWithSomethingSomewhatSecret
-superuser: Slaporte
+superuser: PrityKumari
 
 dev_local_cookie_value: "contact maintainers for details"
 dev_remote_cookie_value: "contact maintainers for details"

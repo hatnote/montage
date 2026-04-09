@@ -81,6 +81,8 @@
   "montage-round-edit": "Edit round",
   "montage-round-save": "Save Round",
   "montage-round-delete-confirm": "Are you sure you want to delete this round?",
+  "montage-round-paused": "This round is currently paused.",
+  "montage-round-directions": "Round Instructions",
   "montage-round-allowed-filetypes": "Allowed filetypes",
   "montage-round-dq-by-filetype": "Disqualify by filetype",
   "montage-round-dq-by-resolution": "Disqualify by resolution",
