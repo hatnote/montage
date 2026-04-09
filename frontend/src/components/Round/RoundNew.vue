@@ -409,7 +409,7 @@ const cancelRound = () => {
       })
       .then(() => {
         //  Hide the form only after successful import
-        emit('reload-campaign-state')
+        emit('reloadCampaignState')
         emit('update:showAddRoundForm', false)
       })
       .catch(alertService.error)

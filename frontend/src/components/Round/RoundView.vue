@@ -46,7 +46,12 @@
       <cdx-card style="margin-top: 24px" class="information-card">
         <template #description>
           <round-info :round="round" v-if="!isRoundEditing" />
-          <round-edit :round="round" v-else v-model:isRoundEditing="isRoundEditing" />
+          <round-edit
+  :round="round"
+  v-else
+  v-model:isRoundEditing="isRoundEditing"
+
+/>
         </template>
       </cdx-card>
     </div>
