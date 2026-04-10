@@ -188,10 +188,6 @@ npm run build
 ├── MANIFEST.in
 ├── Makefile
 ├── PROJECT_LOG.md
-├── config
-│   ├── beta-uwsgi.ini
-│   ├── dev-uwsgi.ini
-│   └── prod-uwsgi.ini
 ├── config.default.yaml
 ├── deployment.md
 ├── design.md
@@ -293,5 +289,5 @@ These provides a detailed explanation of the main components in the **Montage Pr
 
 
 #### Docker Files
-- **`Dockerfile`**: Builds the backend container.
+- **`dockerfile`**: Builds the backend container.
 - **`docker-compose.yml`**: Orchestrates service for backend.
