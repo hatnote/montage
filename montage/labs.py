@@ -15,8 +15,8 @@ IMAGE_COLS = ['img_width',
               'img_name',
               'img_major_mime',
               'img_minor_mime',
-              'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
-              'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
+              'IFNULL(oi_actor.actor_user, ci.actor_user) AS img_user',
+              'IFNULL(oi_actor.actor_name, ci.actor_name) AS img_user_text',
               'IFNULL(oi_timestamp, img_timestamp) AS img_timestamp',
               'img_timestamp AS rec_img_timestamp',
               'ci.actor_user AS rec_img_user',
@@ -60,14 +60,8 @@ def get_files(category_name):
         SELECT {cols}
         FROM commonswiki_p.image AS i
         LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        LEFT JOIN oldimage AS oi ON img_name = oi.oi_name
+        LEFT JOIN actor AS oi_actor ON oi.oi_actor = oi_actor.actor_id
         JOIN page ON page_namespace = 6
         AND page_title = img_name
         JOIN categorylinks ON cl_from = page_id
@@ -88,14 +82,8 @@ def get_file_info(filename):
         SELECT {cols}
         FROM commonswiki_p.image AS i
         LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        LEFT JOIN oldimage AS oi ON img_name = oi.oi_name
+        LEFT JOIN actor AS oi_actor ON oi.oi_actor = oi_actor.actor_id
         WHERE img_name = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
