@@ -129,6 +129,9 @@ const images = ref(null)
 const stats = ref(null)
 const gridSize = ref(1)
 
+// Issue #473 Offline Vote Preserver Namespace
+const CACHE_KEY = `montage_draft_ranks_${props.round.id}`
+
 const setGridSize = (size) => {
   gridSize.value = size
 }
@@ -173,6 +176,7 @@ const saveRanking = () => {
   jurorService
     .setRating(props.round.id, { ratings })
     .then(() => {
+      localStorage.removeItem(CACHE_KEY)
       router.go(0)
     })
     .catch(alertService.error)
@@ -183,12 +187,37 @@ const editPreviousVotes = () => {
 }
 
 watch(
+  images,
+  (newImages) => {
+    if (newImages && newImages.length > 0) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(newImages))
+    }
+  },
+  { deep: true }
+)
+
+watch(
   () => props.tasks,
   (tasks) => {
     if (!tasks) return
 
-    console.log(tasks)
-    images.value = tasks.tasks
+    const cachedRanks = localStorage.getItem(CACHE_KEY)
+    if (cachedRanks) {
+      try {
+        const parsed = JSON.parse(cachedRanks)
+        // Ensure cache aligns with exact active task lengths to prevent schema breaks
+        if (parsed.length === tasks.tasks.length) {
+          images.value = parsed
+          alertService.success({ message: $t('montage-offline-cache-restored') || 'Unsaved Voting Progress Recovered!' })
+        } else {
+          images.value = tasks.tasks
+        }
+      } catch (e) {
+        images.value = tasks.tasks
+      }
+    } else {
+      images.value = tasks.tasks
+    }
     stats.value = tasks.stats
   },
   { immediate: true }
