@@ -270,24 +270,42 @@ function setRate(rate) {
   if (rate) {
     const val = (rate - 1) / 4
     isLoading.value = true
+    // Save cache state for optimistic buffering rollback
+    const prevStats = { ...stats.value }
+    const prevCounter = counter.value
+    const prevSkips = skips.value
+    const prevIndex = rating.value.currentIndex
+    const prevCurrent = rating.value.current
+    const prevNext = rating.value.next
+    const originalTaskId = rating.value.current.id
+
+    // Mutate state optimistically
+    stats.value.total_open_tasks -= 1
+    if (stats.value.total_open_tasks <= 10) {
+      skips.value = 0
+    }
+    if (counter.value === 4 || !stats.value.total_open_tasks) {
+      counter.value = 0
+      getTasks()
+    } else {
+      counter.value += 1
+      getNextImage()
+    }
+
     jurorService
       .setRating(props.round.id, {
-        ratings: [{ task_id: rating.value.current.id, value: val }]
+        ratings: [{ task_id: originalTaskId, value: val }]
       })
-      .then(() => {
-        stats.value.total_open_tasks -= 1
-        if (stats.value.total_open_tasks <= 10) {
-          skips.value = 0
-        }
-        if (counter.value === 4 || !stats.value.total_open_tasks) {
-          counter.value = 0
-          getTasks()
-        } else {
-          counter.value += 1
-          getNextImage()
-        }
+      .catch((err) => {
+        // Rollback state natively when network auth faults bubble (401/403)
+        stats.value = prevStats
+        counter.value = prevCounter
+        skips.value = prevSkips
+        rating.value.currentIndex = prevIndex
+        rating.value.current = prevCurrent
+        rating.value.next = prevNext
+        alertService.error(err)
       })
-      .catch(alertService.error)
       .finally(() => {
         isLoading.value = false
       })
