@@ -6,21 +6,18 @@
         class="juror-campaign-round-icon"
         :size="36"
         fillColor="white"
-        style="background-color: grey"
       />
       <star-outline
         v-if="formData.vote_method === 'rating'"
         class="juror-campaign-round-icon"
         :size="36"
         fillColor="white"
-        style="background-color: grey"
       />
       <sort
         v-if="formData.vote_method === 'ranking'"
         class="juror-campaign-round-icon"
         :size="36"
         fillColor="white"
-        style="background-color: grey"
       />
       <div class="round-info">
         <h2>{{ formData.name }}</h2>
@@ -465,7 +462,7 @@ onMounted(() => {
 }
 
 .juror-campaign-round-icon {
-  background-color: grey;
+  background-color: var(--color-base-70);
   height: 56px;
   padding: 10px;
   border-radius: 50%;
