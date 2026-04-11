@@ -461,6 +461,8 @@ def cancel_campaign(user_dao, campaign_id):
 
 def _prepare_round_params(coord_dao, request_dict):
     rnd_dict = {}
+    if not request_dict:
+        request_dict = {}
     req_columns = ['jurors', 'name', 'vote_method', 'deadline_date']
     extra_columns = ['description', 'config', 'directions', 'show_stats']
     valid_vote_methods = ['ranking', 'rating', 'yesno']
