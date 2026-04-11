@@ -4,7 +4,7 @@
       <div class="campaign-header">
         <p class="campaign-title">{{ campaign.name }}</p>
         <div class="campaign-button-group">
-          <cdx-button action="destructive" weight="primary" @click="closeCampaign">
+          <cdx-button action="destructive" weight="primary" @click="closeCampaign" :disabled="!canCloseCampaign">
             <clipboard-check class="icon-small" /> {{ $t('montage-close-campaign') }}
           </cdx-button>
           <cdx-button action="destructive" @click="archiveCampaign" v-if="!campaign.is_archived">
@@ -15,7 +15,7 @@
           </cdx-button>
           <cdx-button
             action="progressive"
-            datatest="editbutton"
+            data-testid="editbutton"
             @click="hangleEditCampaignBtnClick"
             :disabled="campaign.is_archived"
           >
@@ -41,7 +41,7 @@
               ? (ActiveGoalAlert = true)
               : addRound()
           "
-          :disabled="campaign.isArchived"
+          :disabled="campaign.is_archived"
           icon
           class="add-round-button"
         >
@@ -72,7 +72,7 @@
             action="destructive"
             @click="cancelEdit"
             class="cancel-button"
-            v-if="!campaign.isArchived"
+            v-if="!campaign.is_archived"
           >
             <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
           </cdx-button>
