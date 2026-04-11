@@ -863,6 +863,66 @@ def test_multiple_jurors(api_client, mock_external_apis):
                  as_user='LilyOfTheWest')
 
 
+def test_finalize_round_sets_close_date_and_logs_action(api_client,
+                                                        mock_external_apis):
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    campaign_data = {'name': 'Finalize Round Regression Campaign',
+                     'coordinators': [u'LilyOfTheWest',
+                                      u'Yarl'],
+                     'close_date': '2015-10-01 17:00:00',
+                     'url': 'http://hatnote.com',
+                     'series_id': series_id}
+    resp = fetch('organizer: create campaign',
+                 '/admin/add_campaign',
+                 campaign_data,
+                 as_user='Yarl')
+    campaign_id = resp['data']['id']
+
+    rnd_data = {'name': 'Finalize Endpoint Round',
+                'vote_method': 'yesno',
+                'quorum': 1,
+                'deadline_date': '2016-10-15T00:00:00',
+                'jurors': [u'Slaporte']}
+    resp = fetch('coordinator: add round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    resp = fetch('coordinator: import entries',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'category',
+                  'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: activate round',
+                 '/admin/round/%s/activate' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: finalize round',
+                 '/admin/round/%s/finalize' % round_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: get round details',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['status'] == 'finalized'
+    assert resp['data']['close_date'] is not None
+    assert 'final_threshold' not in resp['data']['config']
+
+    resp = fetch('coordinator: get finalize_round audit logs',
+                 '/admin/campaign/%s/audit?action=finalize_round' % campaign_id,
+                 as_user='LilyOfTheWest')
+    matching_logs = [log for log in resp['data'] if log['round_id'] == round_id]
+    assert len(matching_logs) == 1
+
+
 @script_log.wrap('critical', verbose=True)
 def submit_ratings(client, round_id, coord_user='Yarl'):
     """
