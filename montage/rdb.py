@@ -486,8 +486,9 @@ class RoundJuror(Base):
 
     @property
     def skip(self):
-        skip = self.flags.get('skip')
-        return skip
+        if not self.flags:
+            return []
+        return self.flags.get('skipped', [])
 
     def get_count_map(self):
         rdb_session = inspect(self).session
@@ -2567,16 +2568,20 @@ class JurorDAO(object):
             .filter(RoundEntry.round_id == round_id)
             .order_by(Vote.id)
         )
-        
+
         round_juror = self._get_round_juror(round_id)
-        
-        skip = None
+
+        skipped = []
         if round_juror and round_juror.flags:
-            skip = round_juror.flags.get('skip')
-        
-        if skip:
-            return task_query.filter(Vote.id > skip).limit(num).all()
-        
+            skipped = round_juror.flags.get('skipped', [])
+
+        if skipped:
+            non_skipped = task_query.filter(~Vote.id.in_(skipped)).limit(num).all()
+            if non_skipped:
+                return non_skipped
+       
+            return task_query.filter(Vote.id.in_(skipped)).limit(num).all()
+
         return task_query.limit(num).all()
 
     def get_faves(self, sort='desc', limit=10, offset=0):
@@ -2821,29 +2826,28 @@ class JurorDAO(object):
             .filter_by(id=vote_id, user=self.user)
             .one_or_none()
         )
-        
+
         if not vote:
             return InvalidAction('vote %s does not exist for this user' % vote_id)
-        
+
         if not round_id:
             round_id = vote.round_entry.round_id
-        
+
         round_juror = self._get_round_juror(round_id)
-        
+
         if not round_juror:
             return InvalidAction('round_juror not found')
-        
+
         if round_juror.flags is None:
             round_juror.flags = {}
-        
-        current_skip = round_juror.flags.get('skip')
-        if current_skip is None or vote_id > current_skip:
-            round_juror.flags['skip'] = vote_id
-            
+
+        skipped = round_juror.flags.get('skipped', [])
+        if vote_id not in skipped:
+            skipped.append(vote_id)
+            round_juror.flags['skipped'] = skipped
             flag_modified(round_juror, 'flags')
-            
             self.rdb_session.add(round_juror)
-        
+
         return
 
     def apply_ranking(self, ballot):

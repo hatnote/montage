@@ -954,3 +954,89 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
+
+def test_vote_later_reappears(api_client):
+    """
+    Regression test for #371 / #372: skipped tasks should reappear after
+    the juror exhausts all remaining non-skipped tasks.
+    """
+    fetch = api_client.fetch
+
+    fetch('maintainer: add organizer',
+          '/admin/add_organizer',
+          {'username': 'Yarl'})
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    resp = fetch('organizer: create campaign',
+                 '/admin/add_campaign',
+                 {'name': 'Vote Later Repro',
+                  'coordinators': [u'LilyOfTheWest',
+                                   u'Slaporte',
+                                   u'Yarl'],
+                  'open_date': '2015-09-01 17:00:00',
+                  'close_date': '2015-10-01 17:00:00',
+                  'url': 'http://hatnote.com',
+                  'series_id': series_id},
+                 as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Vote Later Test Round',
+                  'vote_method': 'yesno',
+                  'quorum': 1,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': [u'Slaporte']},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    fetch('coordinator: import entries',
+          '/admin/round/%s/import' % round_id,
+          {'import_method': 'category',
+           'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+          as_user='LilyOfTheWest')
+
+    fetch('coordinator: activate round',
+          '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('juror: get tasks', '/juror/round/%s/tasks' % round_id,
+                 as_user='Slaporte')
+    all_tasks = resp['data']['tasks']
+    assert len(all_tasks) >= 2, 'need at least 2 tasks to test skip'
+
+    skip_vote_id = all_tasks[0]['id']
+    fetch('juror: skip first task',
+          '/juror/round/%s/tasks/skip' % round_id,
+          {'vote_id': skip_vote_id},
+          as_user='Slaporte')
+
+    for _ in range(100):
+        resp = fetch('juror: get remaining tasks',
+                     '/juror/round/%s/tasks' % round_id,
+                     as_user='Slaporte')
+        remaining = resp['data']['tasks']
+        if not remaining:
+            break
+        if any(t['id'] == skip_vote_id for t in remaining):
+            break
+        for task in remaining:
+            fetch('juror: vote on task',
+                  '/juror/round/%s/tasks/submit' % round_id,
+                  {'ratings': [{'vote_id': task['id'], 'value': 1}]},
+                  as_user='Slaporte')
+
+    resp = fetch('juror: get tasks after voting all others',
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Slaporte')
+    final_task_ids = [t['id'] for t in resp['data']['tasks']]
+
+    assert skip_vote_id in final_task_ids, (
+        'BUG #371: skipped task (vote_id=%s) never reappeared. '
+        'Tasks returned: %r' % (skip_vote_id, final_task_ids)
+    )
+    
