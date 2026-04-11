@@ -18,8 +18,7 @@ from .utils import (format_date,
 from . import import_check
 from .loaders import make_entry
 
-from .rdb import (FINALIZED_STATUS,
-                 CoordinatorDAO,
+from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO,
                  lock_errors_as_busy)
@@ -494,8 +493,7 @@ def pause_round(user_dao, round_id, request_dict):
 
 def finalize_round(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    rnd = coord_dao.get_round(round_id)
-    rnd.status = FINALIZED_STATUS
+    coord_dao.finalize_round(round_id)
 
     return {'status': 'success'}
 

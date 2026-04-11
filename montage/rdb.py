@@ -1745,6 +1745,17 @@ class CoordinatorDAO(UserDAO):
 
         return
 
+    def finalize_round(self, round_id):
+        rnd = self.get_round(round_id)
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = FINALIZED_STATUS
+
+        msg = '%s finalized round "%s" (#%s)' % (self.user.username,
+                                                 rnd.name,
+                                                 rnd.id)
+        self.log_action('finalize_round', round=rnd, message=msg)
+        return rnd
+
     def add_checked_entries(self, round_id, entries, source_description):
         """Store the entries of a checked import (import_check.py, #510);
         returns the stored Entry rows, in the order given."""
