@@ -1805,21 +1805,22 @@ class CoordinatorDAO(UserDAO):
         rnd.status = FINALIZED_STATUS
         # rnd.config['ranking_method'] = method
 
-        summary = self.build_campaign_report()
-
-        result_summary = RoundResultsSummary(round_id=round_id,
-                                             campaign_id=rnd.campaign.id,
-                                             summary=summary)
-        self.rdb_session.add(result_summary)
-        self.rdb_session.flush()
-        msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
-               (self.user.username, rnd.name, rnd.id, result_summary.id))
+        msg = ('%s finalized ranking round "%s" (#%s)' %
+               (self.user.username, rnd.name, rnd.id))
         self.log_action('finalize_ranking_round', round=rnd, message=msg)
-        return result_summary
-
+        return rnd
     def finalize_campaign(self):
         last_rnd = self.campaign.rounds[-1] if len(self.campaign.rounds) > 0 else None
         self.campaign.status = FINALIZED_STATUS
+        if last_rnd and last_rnd.vote_method == 'ranking':
+            summary = self.build_campaign_report()
+            result_summary = RoundResultsSummary(
+                round_id=last_rnd.id,
+                campaign_id=self.campaign.id,
+                summary=summary)
+            self.rdb_session.add(result_summary)
+            self.rdb_session.flush()
+            
         #self.campaign.close_date = datetime.datetime.utcnow() # TODO
         if last_rnd:
             msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
