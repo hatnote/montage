@@ -97,6 +97,7 @@ import { CdxButton, CdxField, CdxTextInput, CdxRadio, CdxTextArea } from '@wikim
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import { hasEnoughJurors, parsePositiveQuorum } from '@/utils'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
@@ -149,7 +150,15 @@ const cancelRound = () => {
   emit('update:isRoundEditing', false)
 }
 
+const showValidationError = (detail) => {
+  alertService.error({
+    message: `${$t('montage-required-fill-inputs')} (${detail})`
+  })
+}
+
 const saveRound = () => {
+  const quorum = parsePositiveQuorum(formData.value.quorum)
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -157,10 +166,25 @@ const saveRound = () => {
     return
   }
 
+  if (!formData.value.name) {
+    showValidationError('round name is required')
+    return
+  }
+
+  if (quorum === null) {
+    showValidationError('quorum must be a number greater than or equal to 1')
+    return
+  }
+
+  if (!hasEnoughJurors(formData.value.jurors, quorum)) {
+    showValidationError(`add at least ${quorum} juror(s) to match quorum`)
+    return
+  }
+
   const round = {
     id: props.round.id,
     name: formData.value.name,
-    quorum: formData.value.quorum,
+    quorum,
     directions: formData.value.directions,
     show_stats: formData.value.show_stats,
     deadline_date: formData.value.deadline_date + 'T00:00:00',

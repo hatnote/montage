@@ -1,0 +1,62 @@
+{
+  "data": {
+    "id": 124,
+    "name": "Edit Validation Campaign",
+    "url_name": "edit-validation-campaign",
+    "open_date": "2025-08-01T10:00:00",
+    "close_date": "2025-08-10T18:00:00",
+    "create_date": "2025-08-01T09:30:00",
+    "status": "active",
+    "is_archived": false,
+    "isArchived": false,
+    "coordinators": [
+      {
+        "id": 1,
+        "username": "tester",
+        "is_organizer": true,
+        "is_maintainer": false,
+        "last_active_date": "2025-08-01T09:30:00",
+        "created_by": null
+      }
+    ],
+    "rounds": [
+      {
+        "id": 9001,
+        "name": "Round 1",
+        "directions": "Review entries carefully.",
+        "canonical_url_name": "round-1",
+        "vote_method": "yesno",
+        "open_date": "2025-08-01T10:00:00",
+        "deadline_date": "2025-08-08T18:00:00",
+        "close_date": null,
+        "jurors": [
+          {
+            "id": 11,
+            "username": "AadarshM07",
+            "is_active": true
+          }
+        ],
+        "status": "active",
+        "config": {
+          "dq_by_resolution": false,
+          "min_resolution": 2000000,
+          "dq_by_uploader": true,
+          "dq_by_upload_date": false,
+          "dq_coords": false,
+          "dq_maintainers": false,
+          "dq_organizers": false,
+          "show_filename": false,
+          "show_link": false,
+          "show_resolution": false
+        }
+      }
+    ],
+    "active_round": {
+      "id": 9001,
+      "name": "Round 1",
+      "vote_method": "yesno",
+      "status": "active"
+    }
+  },
+  "status": "success"
+}

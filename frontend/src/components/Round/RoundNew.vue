@@ -200,7 +200,14 @@ import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
 
 import { useRoute } from 'vue-router'
-import { getVotingName } from '@/utils'
+import {
+  getVotingName,
+  parsePositiveQuorum,
+  hasEnoughJurors,
+  isThresholdSelected,
+  normalizeFileNames,
+  isValidHttpUrl
+} from '@/utils'
 
 import {
   CdxCard,
@@ -230,7 +237,7 @@ const props = defineProps({
   rounds: Array
 })
 
-const emit = defineEmits(['update:showAddRoundForm', 'reloadCampaignState'])
+const emit = defineEmits(['update:showAddRoundForm', 'reload-campaign-state'])
 
 const route = useRoute()
 const campaignId = route.params.id.split('-')[0]
@@ -310,7 +317,15 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
+const showValidationError = (detail) => {
+  alertService.error({
+    message: `${$t('montage-required-fill-inputs')} (${detail})`
+  })
+}
+
 const submitRound = () => {
+  const quorum = parsePositiveQuorum(formData.value.quorum)
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -318,21 +333,52 @@ const submitRound = () => {
     return
   }
 
-  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
-    alertService.error({
-      message: $t('montage-required-fill-inputs')
-    })
+  if (!formData.value.name) {
+    showValidationError('round name is required')
+    return
+  }
+
+  if (quorum === null) {
+    showValidationError('quorum must be a number greater than or equal to 1')
+    return
+  }
+
+  if (!hasEnoughJurors(formData.value.jurors, quorum)) {
+    showValidationError(`add at least ${quorum} juror(s) to match quorum`)
     return
   }
 
   // Check if the round is the first round
   if (roundIndex === 0) {
+    const category = String(importSourceValue.value.category || '').trim()
+    const csvUrl = String(importSourceValue.value.csv_url || '').trim()
+    const fileNames = normalizeFileNames(importSourceValue.value.file_names)
+
+    if (selectedImportSource.value === 'category' && !category) {
+      showValidationError('category is required for category import')
+      return
+    }
+
+    if (selectedImportSource.value === 'csv' && !isValidHttpUrl(csvUrl)) {
+      showValidationError('provide a valid http/https CSV URL')
+      return
+    }
+
+    if (selectedImportSource.value === 'selected' && fileNames.length === 0) {
+      showValidationError('add at least one filename for file list import')
+      return
+    }
+
+    importSourceValue.value.category = category
+    importSourceValue.value.csv_url = csvUrl
+    importSourceValue.value.file_names = fileNames
+
     const payload = {
       name: formData.value.name,
       vote_method: formData.value.vote_method,
       deadline_date: formData.value.deadline_date + 'T00:00:00',
       show_stats: formData.value.show_stats,
-      quorum: formData.value.quorum,
+      quorum,
       jurors: formData.value.jurors,
       directions: formData.value.directions,
       config: formData.value.config
@@ -343,12 +389,6 @@ const submitRound = () => {
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
-
-        if (selectedImportSource.value === 'selected') {
-          importSourceValue.value.file_names = importSourceValue.value.file_names
-            .split('\n')
-            .filter((elem) => elem)
-        }
 
         importCategory(resp.data.id)
       })
@@ -366,13 +406,19 @@ const submitRound = () => {
       next_round: {
         name: formData.value.name,
         vote_method: formData.value.vote_method,
-        quorum: formData.value.quorum,
+        quorum,
         deadline_date: formData.value.deadline_date + 'T00:00:00',
         jurors: formData.value.jurors
       },
       threshold: formData.value.threshold
     }
 
+    if (!isThresholdSelected(payload.threshold)) {
+      showValidationError('select a threshold before advancing the round')
+      return
+    }
+
+    isLoading.value = true
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
@@ -381,6 +427,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
+        isLoading.value = false
         emit('reload-campaign-state')
         emit('update:showAddRoundForm', false)
       })

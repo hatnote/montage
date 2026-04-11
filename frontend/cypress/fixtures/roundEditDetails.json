@@ -1,0 +1,41 @@
+{
+  "data": {
+    "id": 9001,
+    "name": "Round 1",
+    "directions": "Review entries carefully.",
+    "canonical_url_name": "round-1",
+    "vote_method": "yesno",
+    "open_date": "2025-08-01T10:00:00",
+    "deadline_date": "2025-08-08T18:00:00",
+    "close_date": null,
+    "jurors": [
+      {
+        "id": 11,
+        "username": "AadarshM07",
+        "is_active": true,
+        "stats": {
+          "total_tasks": 1,
+          "total_open_tasks": 0,
+          "percent_tasks_open": 0,
+          "total_cancelled_tasks": 0
+        }
+      }
+    ],
+    "status": "active",
+    "quorum": 1,
+    "show_stats": false,
+    "config": {
+      "dq_by_resolution": false,
+      "min_resolution": 2000000,
+      "dq_by_uploader": true,
+      "dq_by_upload_date": false,
+      "dq_coords": false,
+      "dq_maintainers": false,
+      "dq_organizers": false,
+      "show_filename": false,
+      "show_link": false,
+      "show_resolution": false
+    }
+  },
+  "status": "success"
+}
