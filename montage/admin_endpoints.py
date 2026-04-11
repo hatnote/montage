@@ -367,7 +367,7 @@ def import_entries(user_dao, round_id, request_dict):
                 u'- {}'.format(warning) for warning in warnings
             ])
             msg = u'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
-            import_warnings.append({'import issues', msg})
+            import_warnings.append({'import issues': msg})
         params = {'file_names': file_names}
     else:
         raise NotImplementedResponse()
