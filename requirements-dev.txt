@@ -3,4 +3,5 @@
 tox<3.15.0
 Fabric3
 coverage==5.0.2
-pytest==4.6.9
+pytest>=7,<9
+responses>=0.25.0
