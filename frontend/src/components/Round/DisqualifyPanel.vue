@@ -91,7 +91,9 @@
       @primary="confirmRequalify"
       @default="requalifyDialogOpen = false"
     >
-      <p>Are you sure you want to requalify "{{ pendingRequalifyEntry?.name.split('_').join(' ') }}"?</p>
+      <p>
+        Are you sure you want to requalify "{{ pendingRequalifyEntry?.name.split('_').join(' ') }}"?
+      </p>
     </cdx-dialog>
   </div>
 </template>
@@ -142,7 +144,6 @@ const confirmRequalify = () => {
   requalifyDialogOpen.value = false
   pendingRequalifyEntry.value = null
 }
-
 </script>
 
 <style scoped>
