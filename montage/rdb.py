@@ -218,6 +218,7 @@ class Campaign(Base):
     url = Column(Text)
     status = Column(String(255), index=True)  # active, cancelled, finalized
     is_archived = Column(Boolean, default=False, index=True)  # added 2020-09
+    research_opt_in = Column(Boolean,default=False)
     create_date = Column(TIMESTAMP, server_default=func.now())
     flags = Column(JSONEncodedDict)
 
@@ -243,6 +244,7 @@ class Campaign(Base):
                'create_date': format_date(self.create_date),
                'status': self.status,
                'is_archived': self.is_archived or False,
+               'research_opt_in':self.research_opt_in or False,
         }
         return ret
 
@@ -954,8 +956,37 @@ class PublicDAO(object):
                        'campaign_results_published': results_published,
                        'disqualified': disqualified,
                        'source': round_entry.round_source.params}
-            ret['campaigns'].append(re_info)
+            ret['campaigns'].append(re_info)        
         return ret
+    def get_research_campaigns(self):
+        """Get all campaigns that have opted in to research data sharing."""
+        campaigns = (self.query(Campaign)
+                     .filter_by(research_opt_in=True)
+                     .all())
+        return [c.to_info_dict() for c in campaigns]
+       
+    def get_research_dataset(self, campaign_id):
+        campaign = (self.query(Campaign)
+                    .filter_by(id=campaign_id, research_opt_in=True)
+                    .one_or_none())
+        if not campaign:
+            raise DoesNotExist('campaign not found or not opted in to research')
+        
+        votes = (self.query(Vote)
+                .join(RoundEntry, Vote.round_entry_id == RoundEntry.id)
+                .join(Round, RoundEntry.round_id == Round.id)
+                .join(Entry, RoundEntry.entry_id == Entry.id)
+                .filter(Round.campaign_id == campaign_id)
+                .filter(Vote.status == COMPLETED_STATUS)
+                .all())
+            
+        vote_data = []
+        for vote in votes:
+            vote_data.append({
+                'filename':vote.entry.name,
+                'value':vote.value
+            })
+        return campaign, vote_data
 
 
 class UserDAO(PublicDAO):
@@ -2288,7 +2319,7 @@ class OrganizerDAO(object):
         self.log_action('edit_series', message=msg, role='organizer')
         return series
 
-    def create_campaign(self, name, url, open_date, close_date, series_id, coords=None):
+    def create_campaign(self, name, url, open_date, close_date, series_id, coords=None, research_opt_in = False ):
         other_campaigns = self._get_campaigns_named(name)
 
         if type(open_date) is not datetime.datetime:
@@ -2308,7 +2339,8 @@ class OrganizerDAO(object):
                             status=ACTIVE_STATUS,
                             series_id=series_id,
                             url=url,
-                            coords=coords)
+                            coords=coords,
+                            research_opt_in=research_opt_in)
         self.rdb_session.add(campaign)
         self.rdb_session.flush()  # to get a campaign id
         msg = '%s created campaign "%s"' % (self.user.username, campaign.name)

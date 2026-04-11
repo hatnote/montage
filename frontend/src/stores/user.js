@@ -24,9 +24,13 @@ export const useUserStore = defineStore('user-store', () => {
 
   async function checkAuth() {
     if (!authChecked.value) {
-      const res = await adminService.getUser()
-      if (res.status === 'success' && res.user) {
-        login(res.user)
+      try {
+        const res = await adminService.getUser()
+        if (res.status === 'success' && res.user) {
+          login(res.user)
+        }
+      } catch (error) {
+        // Leaving this like this, because we don't need auth for viewing public dataset pages
       }
       authChecked.value = true
     }
