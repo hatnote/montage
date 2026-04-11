@@ -354,6 +354,11 @@ def skip_rating(user_dao, round_id, request, request_dict):
     juror_dao.skip_voting(vote_id, round_id)    
     return {'data': {'success': True}}
 
+def get_campaign_favorites(user_dao, campaign_id):
+    juror_dao = JurorDAO(user_dao)
+    faves = juror_dao.get_campaign_favorites(campaign_id)
+    return [f.to_details_dict() for f in faves]
+
 
 def submit_fave(user_dao, round_id, entry_id):
     juror_dao = JurorDAO(user_dao)
