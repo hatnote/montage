@@ -7,10 +7,18 @@
       <h4>{{ entry.name }}</h4>
       <div class="disqualify-dialog-form">
         <label for="dq-reason">Reason for disqualification *</label>
+        <cdx-select
+          :selected="selectedReason"
+          :menu-items="reasonOptions"
+          default-label="Select a reason"
+          :status="reasonError ? 'error' : 'default'"
+          @update:selected="selectedReason = $event"
+        />
         <cdx-text-area
+          v-if="selectedReason === 'other'"
+          v-model="otherReason"
           id="dq-reason"
-          v-model="reason"
-          placeholder="e.g., Photo not in correct country, copyright issue, etc."
+          placeholder="Enter custom reason"
           :status="reasonError ? 'error' : 'default'"
         />
         <p v-if="reasonError" class="disqualify-dialog-error">
@@ -22,7 +30,7 @@
 </template>
 <script setup>
 import { ref, defineProps, defineExpose } from 'vue'
-import { CdxTextArea } from '@wikimedia/codex'
+import { CdxTextArea, CdxSelect } from '@wikimedia/codex'
 import CommonsImage from '@/components/CommonsImage.vue'
 
 const props = defineProps({
@@ -35,18 +43,38 @@ const props = defineProps({
     required: true
   }
 })
-const reason = ref('')
+
+const selectedReason = ref('')
+const otherReason = ref('')
 const reasonError = ref(false)
+
+const reasonOptions = [
+  { label: 'Wrong country', value: 'wrong_country' },
+  { label: 'Photo not in the correct country', value: 'incorrect_country' },
+  { label: 'Photo does not indicate building number', value: 'no_building_number' },
+  { label: 'Copyright infringement', value: 'copyright' },
+  { label: 'Photo taken by employee of local chapter or sponsor', value: 'employee_photo' },
+  { label: 'Other', value: 'other' }
+]
+
 const saveImageData = () => {
-  reasonError.value = !reason.value.trim()
-  if (reasonError.value) {
-    return
+  let finalReason = ''
+  
+  if (selectedReason.value === 'other') {
+    finalReason = otherReason.value.trim()
+  } else {
+    const option = reasonOptions.find(o => o.value === selectedReason.value)
+    finalReason = option ? option.label : ''
   }
 
+  reasonError.value = !finalReason
+  if (reasonError.value) return
+
   if (props.onSave) {
-    props.onSave(reason.value.trim())
+    props.onSave(finalReason)
   }
 }
+
 defineExpose({ saveImageData })
 </script>
 <style scoped>

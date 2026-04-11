@@ -1,10 +1,10 @@
 <template>
   <div class="disqualify-panel">
-    <div class="diqualify-panel-controls">
+    <div class="disqualify-panel-controls">
       <div class="disqualify-grid-size-controls">
         <cdx-button
           :action="gridSize === 3 ? 'progressive' : ''"
-          weight="quite"
+          weight="quiet"
           @click="setGridSize(3)"
         >
           <image-size-select-actual class="icon-small" />
@@ -12,7 +12,7 @@
         </cdx-button>
         <cdx-button
           :action="gridSize === 2 ? 'progressive' : ''"
-          weight="quite"
+          weight="quiet"
           @click="setGridSize(2)"
         >
           <image-size-select-large class="icon-small" />
@@ -20,7 +20,7 @@
         </cdx-button>
         <cdx-button
           :action="gridSize === 1 ? 'progressive' : ''"
-          weight="quite"
+          weight="quiet"
           @click="setGridSize(1)"
         >
           <image-size-select-small class="icon-small" />
@@ -74,7 +74,7 @@
             <cdx-button
               v-if="canModify && entry.dq_user_id"
               action="progressive"
-              @click="$emit('requalify', entry)"
+              @click="openRequalifyDialog(entry)"
             >
               <undo-icon class="icon-small" />
               {{ $t('montage-requalify-action') }}
@@ -83,13 +83,23 @@
         </div>
       </div>
     </div>
+    <cdx-dialog
+      v-model:open="requalifyDialogOpen"
+      title="Requalify image?"
+      :primary-action="{ label: 'Requalify', actionType: 'progressive' }"
+      :default-action="{ label: 'Cancel' }"
+      @primary="confirmRequalify"
+      @default="requalifyDialogOpen = false"
+    >
+      <p>Are you sure you want to requalify "{{ pendingRequalifyEntry?.name.split('_').join(' ') }}"?</p>
+    </cdx-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CdxButton } from '@wikimedia/codex'
+import { CdxButton, CdxDialog } from '@wikimedia/codex'
 import CommonsImage from '@/components/CommonsImage.vue'
 
 import ImageSizeSelectActual from 'vue-material-design-icons/ImageSizeSelectActual.vue'
@@ -111,11 +121,28 @@ defineProps({
   }
 })
 
-defineEmits(['disqualify', 'requalify'])
+const emit = defineEmits(['disqualify', 'requalify'])
 const gridSize = ref(2)
+const requalifyDialogOpen = ref(false)
+const pendingRequalifyEntry = ref(null)
+
 const setGridSize = (size) => {
   gridSize.value = size
 }
+
+const openRequalifyDialog = (entry) => {
+  pendingRequalifyEntry.value = entry
+  requalifyDialogOpen.value = true
+}
+
+const confirmRequalify = () => {
+  if (pendingRequalifyEntry.value) {
+    emit('requalify', pendingRequalifyEntry.value)
+  }
+  requalifyDialogOpen.value = false
+  pendingRequalifyEntry.value = null
+}
+
 </script>
 
 <style scoped>
