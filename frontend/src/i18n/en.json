@@ -186,5 +186,15 @@
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
-  "montage-required-fill-inputs": "Please fill all the boxes"
+  "montage-required-fill-inputs": "Please fill all the boxes",
+  "montage-error-close-after-open": "Close date and time must be after open date and time",
+  "montage-error-deadline-required": "Voting deadline is required",
+  "montage-error-round-name-required": "Round name is required",
+  "montage-error-quorum-positive": "Quorum must be a positive number",
+  "montage-error-jurors-required": "At least one juror is required for this round",
+  "montage-error-threshold-required": "Threshold must be selected",
+  "montage-error-import-source-required": "Please select an import source",
+  "montage-error-category-required": "Category is required",
+  "montage-error-csv-url-required": "CSV URL is required",
+  "montage-error-file-list-required": "File list is required"
 }
