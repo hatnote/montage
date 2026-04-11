@@ -45,6 +45,7 @@
                     format="YYYY-MM-DD"
                     placeholder="YYYY-MM-DD"
                     value-type="format"
+                    :default-value="new Date()"
                   ></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
@@ -103,7 +104,7 @@
                 <cdx-text-area v-model="importSourceValue.file_names" rows="5" />
                 <template #label>{{ $t('montage-round-file-list') }}</template>
               </cdx-field>
-              <cdx-field v-if="roundIndex === 0">
+              <cdx-field>
                 <cdx-text-area v-model="formData.directions" rows="3" />
                 <template #label>{{ $t('montage-directions') }}</template>
               </cdx-field>
@@ -368,7 +369,8 @@ const submitRound = () => {
         vote_method: formData.value.vote_method,
         quorum: formData.value.quorum,
         deadline_date: formData.value.deadline_date + 'T00:00:00',
-        jurors: formData.value.jurors
+        jurors: formData.value.jurors,
+        directions: formData.value.directions
       },
       threshold: formData.value.threshold
     }
