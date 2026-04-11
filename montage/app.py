@@ -53,6 +53,17 @@ def set_mysql_session_charset_and_collation(connection, branch):
     return
 
 
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    # @ayushshukla1807: Intercepting the raw dialect connection natively here to enforce WAL mode. 
+    # This physically overrides the default DELETE journal locks and completely eliminates 
+    # the 'Database is Locked' queue drops during our concurrent testing loops (#477).
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+
 def create_app(env_name='prod', config=None):
     # rendering is handled by MessageMiddleware
     ui_routes = (PUBLIC_UI_ROUTES + JUROR_UI_ROUTES
@@ -68,7 +79,13 @@ def create_app(env_name='prod', config=None):
         config = load_env_config(env_name=env_name)
     print('==  loaded config file: %s' % (config['__file__'],))
 
-    engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
+    db_url = config.get('db_url', DEFAULT_DB_URL)
+    engine = create_engine(db_url, pool_recycle=60)
+    
+    if 'sqlite' in db_url:
+        event.listen(engine, 'connect', set_sqlite_pragma)
+    elif 'mysql' in db_url:
+        event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
     tmp_rdb_session = session_type()
@@ -122,6 +139,8 @@ def create_app(env_name='prod', config=None):
 
         if 'mysql' in db_url:
             event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
+        elif 'sqlite' in db_url:
+            event.listen(engine, 'connect', set_sqlite_pragma)
 
         return engine
 
