@@ -486,8 +486,9 @@ class RoundJuror(Base):
 
     @property
     def skip(self):
-        skip = self.flags.get('skip')
-        return skip
+        if not self.flags:
+            return []
+        return self.flags.get('skipped', [])
 
     def get_count_map(self):
         rdb_session = inspect(self).session
