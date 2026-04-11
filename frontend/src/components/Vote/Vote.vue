@@ -30,13 +30,21 @@ onMounted(() => {
   jurorService
     .getRound(voteId)
     .then((response) => {
-      round.value = response.data
+      if (response.status === 'success' && response.data) {
+        round.value = response.data
+      } else {
+        alertService.error(response.errors || 'Failed to load round')
+      }
     })
     .catch(alertService.error)
   jurorService
     .getRoundTasks(voteId)
     .then((response) => {
-      tasks.value = response.data
+      if (response.status === 'success' && response.data) {
+        tasks.value = response.data
+      } else {
+        alertService.error(response.errors || 'Failed to load tasks')
+      }
     })
     .catch(alertService.error)
 })

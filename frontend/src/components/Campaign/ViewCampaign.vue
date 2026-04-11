@@ -288,9 +288,10 @@ const saveEditCampaign = () => {
     .editCampaign(campaignId, payload)
     .then((resp) => {
       Promise.all([...added, ...removed].map(([func, param]) => func(campaignId, param)))
-
       if (resp.status === 'success') {
         reloadState()
+      } else {
+        alertService.error(resp.errors || 'Failed to update campaign')
       }
     })
     .catch(alertService.error)
@@ -310,6 +311,8 @@ const archiveCampaign = () => {
     .then((resp) => {
       if (resp.status === 'success') {
         reloadState()
+      } else {
+        alertService.error(resp.errors || 'Failed to update campaign')
       }
     })
     .catch(alertService.error)
@@ -323,6 +326,8 @@ const unarchiveCampaign = () => {
     .then((resp) => {
       if (resp.status === 'success') {
         reloadState()
+      } else {
+        alertService.error(resp.errors || 'Failed to update campaign')
       }
     })
     .catch(alertService.error)
@@ -334,6 +339,8 @@ const closeCampaign = () => {
     .then((resp) => {
       if (resp.status === 'success') {
         reloadState()
+      } else {
+        alertService.error(resp.errors || 'Failed to update campaign')
       }
     })
     .catch(alertService.error)
@@ -347,9 +354,13 @@ const reloadState = () => {
   adminService
     .getCampaign(campaignId)
     .then((response) => {
-      campaign.value = response.data
-      campaignRounds.value = response.data?.rounds.filter((round) => round.status !== 'cancelled')
-      canCloseCampaign.value = response.data.status === 'active'
+      if (response.status === 'success' && response.data) {
+        campaign.value = response.data
+        campaignRounds.value = response.data?.rounds.filter((round) => round.status !== 'cancelled')
+        canCloseCampaign.value = response.data.status === 'active'
+      } else {
+        alertService.error(response.errors || 'Failed to load campaign')
+      }
     })
     .catch((error) => {
       if (error.response && error.response.status === 403) {

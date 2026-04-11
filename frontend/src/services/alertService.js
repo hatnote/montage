@@ -13,11 +13,19 @@ const AlertService = {
     })
   },
   error(error, time) {
-    const message = error?.response?.data?.message || error?.message || 'An error occurred'
-    const detail = error?.response?.data?.detail
-
-    const text = detail ? `${message}: ${detail}` : message
-
+    // Prefer new API error format: error.response.data.errors
+    let text = 'An error occurred'
+    if (error?.response?.data?.errors) {
+      if (Array.isArray(error.response.data.errors)) {
+        text = error.response.data.errors.join('; ')
+      } else {
+        text = error.response.data.errors
+      }
+    } else if (error?.response?.data?.message) {
+      text = error.response.data.message
+    } else if (error?.message) {
+      text = error.message
+    }
     toast.error(text, {
       timeout: time || 5000,
       position: 'top-right'
