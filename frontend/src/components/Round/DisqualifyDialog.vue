@@ -59,11 +59,11 @@ const reasonOptions = [
 
 const saveImageData = () => {
   let finalReason = ''
-  
+
   if (selectedReason.value === 'other') {
     finalReason = otherReason.value.trim()
   } else {
-    const option = reasonOptions.find(o => o.value === selectedReason.value)
+    const option = reasonOptions.find((o) => o.value === selectedReason.value)
     finalReason = option ? option.label : ''
   }
 
