@@ -146,9 +146,23 @@ def get_tasks_from_round(user_dao, round_id, request):
     return {'data': data}
 
 
+
+
+
 def get_votes_from_round(user_dao, round_id, request, rnd=None):
-    count = request.values.get('count', 15)
-    offset = request.values.get('offset', 0)
+    raw_count = request.values.get('count', 50)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = 50
+    if count == 0 or (isinstance(raw_count, str) and raw_count.strip().lower() == 'all'):
+        count = 10000
+    count = min(max(count, 1), 10000)
+    try:
+        offset = int(request.values.get('offset', 0))
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(offset, 0)
     order_by = request.values.get('order_by', 'date')
     sort = request.values.get('sort', 'asc')
     juror_dao = JurorDAO(user_dao)

@@ -1,3 +1,4 @@
+/* global describe, it, cy, beforeEach */
 describe('Home View Conditional Rendering', () => {
 
   beforeEach(() => {
