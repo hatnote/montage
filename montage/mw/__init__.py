@@ -136,9 +136,6 @@ class UserMiddleware(Middleware):
                 else:
                     if ep_is_public:
                         return next(user=None, user_dao=None)
-                    # @ayushshukla1807: we must explicitly return 401 here so MessageMiddleware
-                    # doesn't catch the empty dict and wrap it in a silent 200 OK. 
-                    # This is what breaks the Axios catch loop in Issue #116.
                     err = 'invalid cookie userid, try logging in again.'
                     response_dict['errors'].append(err)
                     return {'_status_code': 401}

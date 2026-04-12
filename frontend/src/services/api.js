@@ -48,6 +48,12 @@ const addInterceptors = (instance) => {
       const loadingStore = useLoadingStore()
       loadingStore.setLoading(false)
 
+      if (error.response && error.response.status === 401) {
+        // Auth failure - could be session expired
+        // Hard redirect to home to trigger re-auth check
+        window.location.href = '#/'
+      }
+
       return Promise.reject(error)
     }
   )
