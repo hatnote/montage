@@ -188,5 +188,6 @@
 	"permission-denied-title": "Доступ запрещён",
 	"permission-denied-message": "У вас недостаточно прав для доступа к этой странице.",
 	"permission-denied-home": "Перейти на главную",
-	"montage-required-voting-deadline": "Выберите действительный срок голосования"
+	"montage-required-voting-deadline": "Выберите действительный срок голосования",
+	"montage-required-fill-inputs": "Пожалуйста, заполните все поля"
 }

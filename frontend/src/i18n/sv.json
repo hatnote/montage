@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Haxpett"
+			"Haxpett",
+			"Stefan2255"
 		]
 	},
 	"montage-about": "Om",
@@ -109,7 +110,7 @@
 	"montage-round-pause": "Pausa",
 	"montage-round-paused": "Omgången pausades.",
 	"montage-round-added": "Omgången har lagts till.",
-	"montage-round-finalize": "Avsluta",
+	"montage-round-finalize": "Slutför omgången",
 	"montage-round-finalized": "Omgången avslutades.",
 	"montage-round-download-results": "Ladda ned resultat",
 	"montage-round-download-entries": "Ladda ner poster",
@@ -150,6 +151,7 @@
 	"montage-vote-last-version": "Senaste versionen på {0}",
 	"montage-vote-all-done": "Allt klart!",
 	"montage-vote-no-images": "Du röstade på alla bilder i denna omgång. Du kan fortfarande redigera dina tidigare röster med knappen nedan.",
+	"montage-vote-no-images-warning": "VARNING - det finns en risk att din webbläsare fortfarande laddar nästa uppgifter. Kontrollera Montages startsida för att verifiera om \"dina framsteg\" verkligen är 100 %.",
 	"montage-vote-hide-panel": "Dölj panel",
 	"montage-vote-show-panel": "Visa panel",
 	"montage-vote-image": "Bild",
@@ -159,7 +161,7 @@
 	"montage-vote-grid-size-large": "Stor",
 	"montage-vote-grid-size-medium": "Medel",
 	"montage-vote-grid-size-small": "Liten",
-	"montage-vote-image-review": "Bildgranskning",
+	"montage-vote-image-review": "Bildgranskning #{0}",
 	"montage-vote-ordinal-place": "{0} plats",
 	"montage-vote-order-by": "Sortera efter:",
 	"montage-vote-gallery-size": "Galleristorlek",
@@ -182,5 +184,9 @@
 	"montage-round-files": "Filer",
 	"montage-round-tasks": "Uppgifter",
 	"montage-round-uploaders": "Uppladdare",
+	"permission-denied-title": "Tillstånd nekat",
+	"permission-denied-message": "Du har inte de behörigheter som krävs för att komma åt den här sidan.",
+	"permission-denied-home": "Gå till startsidan",
+	"montage-required-voting-deadline": "Välj ett giltigt slutdatum för röstningen",
 	"montage-required-fill-inputs": "Vänligen fyll i alla rutor"
 }

@@ -74,7 +74,6 @@ class MontageTestClient(object):
                 return res
             print('!! ', res.get_data())
             print()
-            import pdb;pdb.set_trace()
             raise AssertionError('got error code %s when fetching %s' % (res.status_code, url))
         return res
 
@@ -115,7 +114,6 @@ class MontageTestClient(object):
         except AssertionError:
             print('!! did not get expected status %r for %s' % (expected_status, url))
             print('  got: ', data_dict)
-            import pdb;pdb.set_trace()
             raise
         return data_dict
 
@@ -167,7 +165,7 @@ def api_client(montage_app):
     return api_client
 
 
-def test_home_client(base_client, api_client):
+def test_home_client(base_client, api_client, mock_external_apis):
 
     resp = base_client.fetch('organizer: home', '/')
     #resp = base_client.fetch('public: login', '/login')
@@ -442,6 +440,15 @@ def test_home_client(base_client, api_client):
                  '/juror/round/%s/tasks/skip' % round_id,
                  {'vote_id': skip_vote_id},
                  as_user='Jimbo Wales')
+    
+    resp = fetch(
+                'juror: gets task after skip',
+                '/juror/round/%s/tasks'%round_id,
+                as_user='Jimbo Wales')
+    
+    task_after_skip = resp['data']['tasks']
+    returned_vote_id = [task['id'] for task in task_after_skip]
+    assert skip_vote_id not in returned_vote_id
 
     entry_id = tasks[-1]['entry']['id']
     resp = fetch('juror: mark an entry as favorite',
@@ -696,7 +703,6 @@ def test_home_client(base_client, api_client):
     #resp = fetch('coordinator: cancel campaign',
     #             '/admin/campaign/%s/cancel' % campaign_id,
     #             {'post': True}, as_user='LilyOfTheWest')
-    #import pdb;pdb.set_trace()
 
     # submit the remaining ratings
 
@@ -815,7 +821,7 @@ def test_home_client(base_client, api_client):
     #resp = base_client.fetch('public: logout', '/logout')
 
 
-def test_multiple_jurors(api_client):
+def test_multiple_jurors(api_client, mock_external_apis):
     # This is copied from above. What's the best way to break up the tests into
     # various stages? Should I use a pytest.fixture?
     fetch = api_client.fetch

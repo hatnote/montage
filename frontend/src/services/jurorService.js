@@ -30,6 +30,12 @@ const jurorService = {
 
   setRating: (id, data) => apiBackend.post(`juror/round/${id}/tasks/submit`, data),
 
+  skipTask: (roundId, voteId) => {
+    return apiBackend.post(`juror/round/${roundId}/tasks/skip`, {
+      vote_id: voteId
+    })
+  },
+
   getRoundTasks: (id, offset = 0) => {
     return apiBackend.get(`juror/round/${id}/tasks?count=10&offset=${offset}`).then((data) => {
       const tasks = data.data.tasks
@@ -54,10 +60,10 @@ const jurorService = {
             if (page && page.imageinfo) {
               // Match by filename (could be the actual name or after redirect)
               const pageTitle = page.title.replace(/^File:/i, '')
-              
+
               // Try to find by actual page title first, then check if any task redirects to this
               let image = _.find(tasks, (task) => task.entry.name === pageTitle)
-              
+
               // If not found, check if this page is the target of a redirect
               if (!image) {
                 const originalName = _.findKey(redirectMap, (target) => target === pageTitle)
@@ -65,7 +71,7 @@ const jurorService = {
                   image = _.find(tasks, (task) => task.entry.name === originalName)
                 }
               }
-              
+
               if (image) {
                 image.history = page.imageinfo
               }

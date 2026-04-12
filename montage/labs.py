@@ -72,7 +72,9 @@ def get_files(category_name):
         AND page_title = img_name
         JOIN categorylinks ON cl_from = page_id
         AND cl_type = 'file'
-        AND cl_to = %s
+        JOIN linktarget ON cl_target_id = lt_id
+        AND lt_namespace = 14
+        AND lt_title = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))

@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Amedeo463",
 			"Antonino Faro",
 			"Beta16",
 			"Emabarto01",
@@ -11,11 +12,11 @@
 	"montage-about": "Informazioni",
 	"montage-credit": "dal team di Montage",
 	"montage-source-code": "Codice sorgente",
-	"montage-login-heading": "Per favore effettua l'accesso",
-	"montage-login-description": "Verrai reindirizzato a Meta-Wiki per confermare la tua identità. Montage non pubblicherà nulla sui progetti Wikimedia utilizzando la tua utenza.",
-	"montage-login-account-instructions": "Se non hai un utenza Wikimedia, puoi crearne una su {0}.",
+	"montage-login-heading": "Per favore accedi",
+	"montage-login-description": "Verrai reindirizzato a Meta-Wiki per confermare la tua identità. Montage non pubblicherà nulla sui progetti Wikimedia utilizzando il tuo account.",
+	"montage-login-account-instructions": "Se non hai un account Wikimedia, puoi crearne uno su {0}.",
 	"montage-login-metawiki": "Meta-Wiki",
-	"montage-login-button": "Effettua utilizzando l'utenza di Wikimedia",
+	"montage-login-button": "Effettua utilizzando l'account di Wikimedia",
 	"montage-login-logout": "Esci",
 	"montage-active-campaigns": "Campagne attive",
 	"montage-all-campaigns": "Tutte le campagne",
@@ -154,6 +155,7 @@
 	"montage-vote-last-version": "Ultima versione a {0}",
 	"montage-vote-all-done": "Tutto fatto!",
 	"montage-vote-no-images": "Hai votato per tutte le immagini di questo torneo. Puoi ancora modificare i tuoi voti precedenti usando il pulsante qui sotto.",
+	"montage-vote-no-images-warning": "ATTENZIONE - c'è una possibilità che il tuo browser stia ancora caricando le prossime attività. Per favore controlla la pagina principale di Montage per verificare se 'il tuo progresso' sia davvero al 100%.",
 	"montage-vote-hide-panel": "Nascondi pannello",
 	"montage-vote-show-panel": "Mostra pannello",
 	"montage-vote-image": "Immagine",

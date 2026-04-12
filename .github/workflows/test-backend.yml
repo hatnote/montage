@@ -1,0 +1,33 @@
+name: Test Backend (Python)
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t montage-ci -f dockerfile .
+
+      - name: Run pytest
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/app \
+            -e PYTHONPATH=/app \
+            montage-ci \
+            python -m pytest montage/tests/ \
+              -v --tb=short -p no:cacheprovider
+
+      - name: Verify backend imports
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/app \
+            -e PYTHONPATH=/app \
+            montage-ci \
+            python -c "from montage import loaders, rdb, admin_endpoints, juror_endpoints; print('All modules import OK')"
