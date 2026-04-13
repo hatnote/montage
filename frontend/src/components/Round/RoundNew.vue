@@ -170,7 +170,7 @@
           </div>
           <div class="button-group">
             <cdx-button
-              :disabled="isLoading"
+              :disabled="isLoading || (roundIndex !== 0 && !thresholds)"
               action="progressive"
               weight="primary"
               @click="submitRound()"
@@ -446,10 +446,15 @@ watch(thresholds, (value) => {
 })
 
 onMounted(() => {
-  if (prevRound) {
-    adminService.previewRound(prevRound.id).then((resp) => {
-      thresholds.value = resp.data.thresholds
-    })
+  if (prevRound && prevRound.vote_method !== 'ranking') {
+    adminService
+      .previewRound(prevRound.id)
+      .then((resp) => {
+        thresholds.value = resp.data.thresholds
+      })
+      .catch(() => {
+        thresholds.value = null
+      })
   }
 })
 </script>
