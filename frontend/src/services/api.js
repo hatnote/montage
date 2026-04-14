@@ -20,6 +20,8 @@ const apiCommons = axios.create({
   }
 })
 
+import AlertService from './alertService'
+
 const addInterceptors = (instance) => {
   instance.interceptors.request.use(
     (config) => {
@@ -51,7 +53,10 @@ const addInterceptors = (instance) => {
       if (error.response && error.response.status === 401) {
         // Auth failure - could be session expired
         // Hard redirect to home to trigger re-auth check
-        window.location.href = '#/'
+        AlertService.error({ message: 'Session expired. Please log in again.' })
+        setTimeout(() => {
+          window.location.href = '#/'
+        }, 2000)
       }
 
       return Promise.reject(error)

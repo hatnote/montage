@@ -158,7 +158,7 @@ class UserMiddleware(Middleware):
             if not user:
                 err = 'unknown su_to user %r' % (su_to,)
                 response_dict['errors'].append(err)
-                return {'_status_code': 401}
+                return {'_status_code': 400}
 
         now = datetime.datetime.utcnow()
         last_minute = now - datetime.timedelta(seconds=60)
