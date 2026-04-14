@@ -1553,6 +1553,22 @@ class CoordinatorDAO(UserDAO):
 
         return
 
+    def finalize_round(self, round_id):
+        rnd = self.get_round(round_id)
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = FINALIZED_STATUS
+
+        msg = '%s finalized round "%s" (#%s)' % (self.user.username,
+                                                 rnd.name,
+                                                 rnd.id)
+        self.log_action('finalize_round', round=rnd, message=msg)
+        
+        if rnd.vote_method == 'ranking':
+            # Note: RoundResultsSummary creation is handled in finalize_campaign
+            pass
+
+        return rnd
+
     def add_entries_from_cat(self, round_id, cat_name):
         rnd = self.user_dao.get_round(round_id)
         if ENV_NAME == 'dev':
@@ -1787,26 +1803,26 @@ class CoordinatorDAO(UserDAO):
     def finalize_ranking_round(self, round_id):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
-
-        rnd.close_date = datetime.datetime.utcnow()
-        rnd.status = FINALIZED_STATUS
-        # rnd.config['ranking_method'] = method
-
-        summary = self.build_campaign_report()
-
-        result_summary = RoundResultsSummary(round_id=round_id,
-                                             campaign_id=rnd.campaign.id,
-                                             summary=summary)
-        self.rdb_session.add(result_summary)
-        self.rdb_session.flush()
-        msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
-               (self.user.username, rnd.name, rnd.id, result_summary.id))
-        self.log_action('finalize_ranking_round', round=rnd, message=msg)
-        return result_summary
+        
+        # This is now handled by the generic finalize_round dispatcher
+        # but kept for backward compatibility or specific ranking logic if needed.
+        # Currently just returns the round.
+        
+        return rnd
 
     def finalize_campaign(self):
         last_rnd = self.campaign.rounds[-1] if len(self.campaign.rounds) > 0 else None
         self.campaign.status = FINALIZED_STATUS
+        
+        if last_rnd and last_rnd.vote_method == 'ranking':
+            summary = self.build_campaign_report()
+            result_summary = RoundResultsSummary(
+                round_id=last_rnd.id,
+                campaign_id=self.campaign.id,
+                summary=summary)
+            self.rdb_session.add(result_summary)
+            self.rdb_session.flush()
+
         #self.campaign.close_date = datetime.datetime.utcnow() # TODO
         if last_rnd:
             msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
