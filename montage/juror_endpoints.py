@@ -12,7 +12,8 @@ import six
 import html
 
 
-MAX_RATINGS_SUBMIT = 100
+MAX_RATINGS_SUBMIT = 100   # max ratings per bulk-submit batch (yesno/rating)
+MAX_RANKING_TASKS = 2000   # max images in a single ranking round ballot
 VALID_RATINGS = (0.0, 0.25, 0.5, 0.75, 1.0)
 VALID_YESNO = (0.0, 1.0)
 
@@ -132,7 +133,7 @@ def get_tasks_from_round(user_dao, round_id, request):
     juror_dao.confirm_active(round_id)
     rnd = juror_dao.get_round(round_id)
     if rnd.vote_method == 'ranking':
-        count = MAX_RATINGS_SUBMIT  # TODO: better constant
+        count = MAX_RANKING_TASKS  # ranking rounds must load all entries at once
     tasks = juror_dao.get_tasks_from_round(round_id,
                                            num=count,
                                            offset=offset)
@@ -247,10 +248,7 @@ def submit_ratings(user_dao, request_dict):
 
     r_dicts = request_dict['ratings']
 
-    if len(r_dicts) > MAX_RATINGS_SUBMIT:
-        raise InvalidAction('can submit up to 100 ratings at once, not %r'
-                            % len(r_dicts))
-    elif not r_dicts:
+    if not r_dicts:
         return {}  # submitting no ratings = immediate return
 
     review_map = {}
@@ -283,6 +281,11 @@ def submit_ratings(user_dao, request_dict):
     rnd = juror_dao.get_round(round_id)
     rnd.confirm_active()
     style = rnd.vote_method
+
+    # Enforce batch limit for rating/yesno — ranking rounds must submit all at once anyway
+    if style != 'ranking' and len(r_dicts) > MAX_RATINGS_SUBMIT:
+        raise InvalidAction('can submit up to %s ratings at once, not %r'
+                            % (MAX_RATINGS_SUBMIT, len(r_dicts)))
 
     # validation
     if style == 'rating':
