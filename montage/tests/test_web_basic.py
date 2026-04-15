@@ -308,11 +308,20 @@ def test_home_client(base_client, api_client, mock_external_apis):
                 as_user='LilyOfTheWest')
 
     config = rnd['data']['config']
+    dq_config_keys = ['dq_by_upload_date',
+                      'dq_by_resolution',
+                      'dq_by_uploader',
+                      'dq_by_filetype',
+                      'dq_coords',
+                      'dq_organizers',
+                      'dq_maintainers']
+    round_1_dq_config = dict((k, config.get(k)) for k in dq_config_keys)
     config['show_filename'] = False
+    round_1_full_config = dict(config)
 
     resp = fetch('coordinator: edit round config',
                  '/admin/round/%s/edit' % round_id,
-                 {'config': config},
+                 {'config': round_1_full_config},
                  as_user='LilyOfTheWest')
 
     data = {'import_method': 'category',
@@ -564,6 +573,9 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  '/admin/round/%s/preview_results' % round_id,
                  as_user='LilyOfTheWest')
 
+    round_2_submit_config = dict(round_1_full_config)
+    round_2_submit_config['min_resolution'] = 1500000
+
     rnd_data = {'name': 'Test advance to rating round',
                 'vote_method': 'rating',
                 'quorum': 3,
@@ -571,7 +583,8 @@ def test_home_client(base_client, api_client, mock_external_apis):
                 'jurors': [u'Slaporte',
                            u'Effeietsanders',
                            u'Jean-Frédéric',
-                           u'LilyOfTheWest']}
+                           u'LilyOfTheWest'],
+                'config': dict(round_2_submit_config)}
 
     resp = fetch('coordinator: close round, loading results into a new round',
                  '/admin/round/%s/advance' % round_id,
@@ -579,6 +592,43 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  as_user='LilyOfTheWest')
 
     rnd_2_id = resp['data']['id']
+
+    rnd_2_details = fetch('coordinator: verify round 2 inherited round 1 dq flags',
+                          '/admin/round/%s' % rnd_2_id,
+                          as_user='LilyOfTheWest')
+    rnd_2_config = rnd_2_details['data']['config']
+    round_2_dq_config = dict((k, rnd_2_config.get(k)) for k in dq_config_keys)
+    assert round_2_dq_config == round_1_dq_config
+    assert rnd_2_config.get('min_resolution') == round_2_submit_config.get('min_resolution')
+    assert rnd_2_config.get('show_filename') == round_1_full_config.get('show_filename')
+
+    round_2_updated_dq_config = dict(round_2_dq_config)
+    round_2_updated_dq_config.update({'dq_by_resolution': True,
+                                      'dq_by_uploader': False,
+                                      'dq_coords': False,
+                                      'dq_maintainers': False})
+    rnd_2_config.update(round_2_updated_dq_config)
+    resp = fetch('coordinator: edit round 2 dq flags',
+                 '/admin/round/%s/edit' % rnd_2_id,
+                 {'config': rnd_2_config},
+                 as_user='LilyOfTheWest')
+
+    rnd_2_details = fetch('coordinator: verify round 2 dq flags persisted after edit',
+                          '/admin/round/%s' % rnd_2_id,
+                          as_user='LilyOfTheWest')
+    rnd_2_config = rnd_2_details['data']['config']
+    round_2_saved_dq_config = dict((k, rnd_2_config.get(k)) for k in dq_config_keys)
+    assert round_2_saved_dq_config == round_2_updated_dq_config
+
+    resp = fetch('coordinator: clear round 2 config to simulate empty config',
+                 '/admin/round/%s/edit' % rnd_2_id,
+                 {'config': {}},
+                 as_user='LilyOfTheWest')
+
+    rnd_2_details = fetch('coordinator: verify round 2 config is empty',
+                          '/admin/round/%s' % rnd_2_id,
+                          as_user='LilyOfTheWest')
+    assert rnd_2_details['data']['config'] == {}
 
     # TODO: test getting a csv of final round results needs more instrumentation
     print('>> downloading results')
@@ -618,12 +668,21 @@ def test_home_client(base_client, api_client, mock_external_apis):
                 'jurors': [u'Slaporte',
                            u'Effeietsanders',
                            u'Jean-Frédéric',
-                           u'MahmoudHashemi']}
+                           u'MahmoudHashemi'],
+                'config': dict(round_1_full_config)}
     resp = fetch('coordinator: advance to round 3',
                  '/admin/round/%s/advance' % rnd_2_id,
                  {'next_round': rnd_data, 'threshold': cur_thresh},
                  as_user='LilyOfTheWest')
     rnd_3_id = resp['data']['id']
+
+    rnd_3_details = fetch('coordinator: verify round 3 inherited round 1 config after round 2 was empty',
+                          '/admin/round/%s' % rnd_3_id,
+                          as_user='LilyOfTheWest')
+    rnd_3_config = rnd_3_details['data']['config']
+    round_3_dq_config = dict((k, rnd_3_config.get(k)) for k in dq_config_keys)
+    assert round_3_dq_config == round_1_dq_config
+    assert rnd_3_config.get('show_filename') == round_1_full_config.get('show_filename')
 
     resp = fetch('coordinator: preview empty ranking round (should fail gracefully)',
                  '/admin/round/%s/preview_results' % rnd_3_id,
@@ -800,6 +859,72 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  as_user='LilyOfTheWest')
 
     pprint(resp['data'])
+
+    resp = fetch('get default series for default config fallback scenario',
+                 '/series')
+    fallback_series_id = resp['data'][0]['id']
+
+    fallback_campaign_data = {'name': 'Default Config Fallback Campaign',
+                              'coordinators': [u'LilyOfTheWest',
+                                               u'Slaporte',
+                                               u'Yarl'],
+                              'close_date': '2015-11-01 17:00:00',
+                              'url': 'http://hatnote.com',
+                              'series_id': fallback_series_id}
+    resp = fetch('organizer: create campaign for default config fallback scenario',
+                 '/admin/add_campaign',
+                 fallback_campaign_data,
+                 as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view for default config fallback scenario',
+                 '/admin', as_user='LilyOfTheWest')
+    fallback_campaign_id = resp['data'][-1]['id']
+
+    fallback_round_1_data = {'name': 'Fallback yes/no round',
+                             'vote_method': 'yesno',
+                             'quorum': 1,
+                             'deadline_date': "2016-11-01T00:00:00",
+                             'jurors': [u'Slaporte']}
+    resp = fetch('coordinator: add fallback round without explicit config',
+                 '/admin/campaign/%s/add_round' % fallback_campaign_id,
+                 fallback_round_1_data,
+                 as_user='LilyOfTheWest')
+    fallback_round_1_id = resp['data']['id']
+
+    fallback_round_1_details = fetch('coordinator: read fallback round 1 config',
+                                     '/admin/round/%s' % fallback_round_1_id,
+                                     as_user='LilyOfTheWest')
+    fallback_round_1_config = fallback_round_1_details['data']['config']
+    assert fallback_round_1_config.get('dq_by_upload_date') is True
+    assert fallback_round_1_config.get('dq_by_resolution') is False
+
+    resp = fetch('coordinator: import fallback round entries',
+                 '/admin/round/%s/import' % fallback_round_1_id,
+                 {'import_method': 'category',
+                  'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: activate fallback round',
+                 '/admin/round/%s/activate' % fallback_round_1_id,
+                 {'post': True},
+                 as_user='LilyOfTheWest')
+
+    submit_ratings(api_client, fallback_round_1_id, coord_user='LilyOfTheWest')
+
+    fallback_round_2_data = {'name': 'Fallback rating round',
+                             'vote_method': 'rating',
+                             'quorum': 1,
+                             'deadline_date': "2016-11-03T00:00:00",
+                             'jurors': [u'Slaporte'],
+                             'config': dict(fallback_round_1_config)}
+    resp = fetch('coordinator: advance fallback round using default config',
+                 '/admin/round/%s/advance' % fallback_round_1_id,
+                 {'next_round': fallback_round_2_data,
+                  'threshold': 0.0},
+                 as_user='LilyOfTheWest')
+    fallback_round_2_config = resp['data']['config']
+    for key, value in fallback_round_1_config.items():
+        assert fallback_round_2_config.get(key) == value
 
 
     # maintainer stuff
