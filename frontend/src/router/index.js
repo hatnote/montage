@@ -11,6 +11,7 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
+import DatasetsView from '@/views/DatasetsView.vue'
 
 const routes = [
   {
@@ -52,6 +53,11 @@ const routes = [
     path: '/permission-denied',
     name: 'permission-denied',
     component: PermissionDenied
+  },
+  {
+    path: '/datasets',
+    name: 'datasets',
+    component: DatasetsView
   }
 ]
 
