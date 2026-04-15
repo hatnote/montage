@@ -210,6 +210,7 @@ const roundLink = [props.round.id, props.round.canonical_url_name].join('-')
 
 const images = ref(null)
 const stats = ref(null)
+const voteStats = ref(null)  // voting stats for show_stats display (#325)
 
 const rating = ref({
   current: null,
@@ -275,15 +276,19 @@ function setRate(rate) {
         ratings: [{ task_id: rating.value.current.id, value: val }]
       })
       .then(() => {
-        stats.value.total_open_tasks -= 1
-        if (stats.value.total_open_tasks <= 10) {
-          skips.value = 0
-        }
-        if (counter.value === 4 || !stats.value.total_open_tasks) {
-          counter.value = 0
-          getTasks()
+        if (stats.value) {
+          stats.value.total_open_tasks -= 1
+          if (stats.value.total_open_tasks <= 10) {
+            skips.value = 0
+          }
+          if (counter.value === 4 || !stats.value.total_open_tasks) {
+            counter.value = 0
+            getTasks()
+          } else {
+            counter.value += 1
+            getNextImage()
+          }
         } else {
-          counter.value += 1
           getNextImage()
         }
       })
@@ -400,6 +405,16 @@ watch(
         img.src = getCommonsImageUrl(images.value[index])
         imageCache.set(images.value[index].entry.id, img)
       }
+    }
+
+    // Fetch voting stats if round.show_stats is enabled (Issue #325)
+    if (props.round?.show_stats) {
+      jurorService
+        .getRoundVotesStats(props.round.id)
+        .then((response) => {
+          voteStats.value = response
+        })
+        .catch(() => {})
     }
   },
   { immediate: true }
