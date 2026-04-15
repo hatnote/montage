@@ -138,14 +138,14 @@ class UserMiddleware(Middleware):
                         return next(user=None, user_dao=None)
                     err = 'invalid cookie userid, try logging in again.'
                     response_dict['errors'].append(err)
-                    return {}
+                    return {'_status_code': 401}
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
         if user is None and not ep_is_public:
             err = 'unknown cookie userid, try logging in again'
             response_dict['errors'].append(err)
-            return {}
+            return {'_status_code': 401}
 
         superuser = config.get('superuser')
         superusers = config.get('superusers', [superuser] if superuser else [])
@@ -158,7 +158,7 @@ class UserMiddleware(Middleware):
             if not user:
                 err = 'unknown su_to user %r' % (su_to,)
                 response_dict['errors'].append(err)
-                return {}
+                return {'_status_code': 400}
 
         now = datetime.datetime.utcnow()
         last_minute = now - datetime.timedelta(seconds=60)
