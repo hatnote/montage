@@ -335,8 +335,32 @@ const reorderList = () => {
   loadMore()
 }
 
+const BATCH_SIZE = 100  // mirrors MAX_RATINGS_SUBMIT on the backend
+
 const save = () => {
-  saveRating()
+  const allEdits = [...edits.value]
+
+  // Warn the user if there are many edits — UX transparency
+  if (allEdits.length === 0) return
+
+  // Chunk into batches of BATCH_SIZE to avoid the backend 100-submission limit
+  const batches = []
+  for (let i = 0; i < allEdits.length; i += BATCH_SIZE) {
+    batches.push(allEdits.slice(i, i + BATCH_SIZE))
+  }
+
+  // Submit all batches sequentially
+  batches
+    .reduce((chain, batch) => {
+      return chain.then(() =>
+        jurorService.setRating(round.value.id, {
+          ratings: batch.map((element) => ({
+            vote_id: element.id,
+            value: (element.value - 1) / 4
+          }))
+        })
+      )
+    }, Promise.resolve())
     .then(() => {
       edits.value = []
       votes.value.forEach((image) => {
