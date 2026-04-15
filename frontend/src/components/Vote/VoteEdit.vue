@@ -84,6 +84,11 @@
       >
         <content-save-outline style="font-size: 6px" /> {{ $t('montage-round-save') }}
       </cdx-button>
+
+      <cdx-button weight="quiet" action="default" @click="gobackToRound">
+        <ArrowLeftThick />
+        <span>Back to Round</span>
+      </cdx-button>
     </div>
     <div class="image-grid" :class="'grid-size-' + gridSize" v-if="!isVoting('ranking')">
       <div
@@ -197,6 +202,10 @@ import { CdxButton, CdxSelect } from '@wikimedia/codex'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import ImageReviewDialog from './ImageReviewDialog.vue'
 
+//Services
+// import { EventBus } from 'vue-toastification' // Currently depricated
+import { onBeforeRouteLeave } from 'vue-router'
+
 // Icons
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ImageSizeSelectActual from 'vue-material-design-icons/ImageSizeSelectActual.vue'
@@ -207,6 +216,7 @@ import ThumbDown from 'vue-material-design-icons/ThumbDown.vue'
 import Star from 'vue-material-design-icons/Star.vue'
 import ArrowExpandAll from 'vue-material-design-icons/ArrowExpandAll.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import ArrowLeftThick from 'vue-material-design-icons/ArrowLeftThick.vue'
 
 // Hooks
 const { t: $t } = useI18n()
@@ -410,6 +420,13 @@ watch(locale, (newLocale) => {
   dayjs.locale(newLocale)
 })
 
+const beforeUnloadListner = (event) => {
+  if (edits.value.length) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+
 onMounted(() => {
   getRoundDetails(voteId)
   getPastVotes(voteId)
@@ -420,13 +437,30 @@ onMounted(() => {
 
   handleResize()
   window.addEventListener('resize', handleResize)
+  window.addEventListener('beforeunload', beforeUnloadListner)
+})
+
+const gobackToRound = () => {
+  router.push(`/vote/${round.value.link}`)
+}
+
+onBeforeRouteLeave((to, from, next) => {
+  if (edits.value.length) {
+    if (confirm('There are unsaved changes. Are you sure you want to leave?')) {
+      next()
+    } else {
+      next(false)
+    }
+  } else {
+    next()
+  }
 })
 
 onUnmounted(() => {
   if (editVoteContainer.value) {
     editVoteContainer.value.removeEventListener('scroll', handleScroll)
   }
-
+  window.removeEventListener('beforeunload', beforeUnloadListner)
   window.removeEventListener('resize', handleResize)
 })
 </script>
