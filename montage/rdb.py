@@ -2569,14 +2569,24 @@ class JurorDAO(object):
         )
         
         round_juror = self._get_round_juror(round_id)
-        
-        skip = None
+
+        skipped_ids = []
         if round_juror and round_juror.flags:
-            skip = round_juror.flags.get('skip')
-        
-        if skip:
-            return task_query.filter(Vote.id > skip).limit(num).all()
-        
+            raw = round_juror.flags.get('skipped_ids')
+            if isinstance(raw, list):
+                skipped_ids = raw
+            elif isinstance(raw, int):
+                # Migrate legacy single-watermark format to list (#371)
+                skipped_ids = [raw]
+
+        if skipped_ids:
+            # First: serve non-skipped tasks (exclude all explicitly skipped IDs)
+            non_skipped = task_query.filter(~Vote.id.in_(skipped_ids)).limit(num).all()
+            if non_skipped:
+                return non_skipped
+            # All non-skipped tasks done — now serve skipped ones so juror can finish (#371)
+            return task_query.filter(Vote.id.in_(skipped_ids)).limit(num).all()
+
         return task_query.limit(num).all()
 
     def get_faves(self, sort='desc', limit=10, offset=0):
@@ -2821,29 +2831,36 @@ class JurorDAO(object):
             .filter_by(id=vote_id, user=self.user)
             .one_or_none()
         )
-        
+
         if not vote:
             return InvalidAction('vote %s does not exist for this user' % vote_id)
-        
+
         if not round_id:
             round_id = vote.round_entry.round_id
-        
+
         round_juror = self._get_round_juror(round_id)
-        
+
         if not round_juror:
             return InvalidAction('round_juror not found')
-        
+
         if round_juror.flags is None:
             round_juror.flags = {}
-        
-        current_skip = round_juror.flags.get('skip')
-        if current_skip is None or vote_id > current_skip:
-            round_juror.flags['skip'] = vote_id
-            
+
+        # Migrate legacy single-watermark to list format (#371)
+        skipped_ids = round_juror.flags.get('skipped_ids')
+        if skipped_ids is None:
+            legacy = round_juror.flags.get('skip')
+            skipped_ids = [legacy] if legacy is not None else []
+
+        if vote_id not in skipped_ids:
+            skipped_ids.append(vote_id)
+            round_juror.flags['skipped_ids'] = skipped_ids
+            # Remove legacy key if present to avoid confusion
+            round_juror.flags.pop('skip', None)
+
             flag_modified(round_juror, 'flags')
-            
             self.rdb_session.add(round_juror)
-        
+
         return
 
     def apply_ranking(self, ballot):
