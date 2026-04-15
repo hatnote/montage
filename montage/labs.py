@@ -17,11 +17,33 @@ IMAGE_COLS = ['img_width',
               'img_minor_mime',
               'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
               'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
-              'IFNULL(oi_timestamp, img_timestamp) AS img_timestamp',
+              'IFNULL(oi.oi_timestamp, img_timestamp) AS img_timestamp',
               'img_timestamp AS rec_img_timestamp',
               'ci.actor_user AS rec_img_user',
               'ci.actor_name AS rec_img_text',
-              'oi.oi_archive_name AS oi_archive_name']
+              'oi.oi_archive_name AS oi_archive_name',
+              # Original (first-ever) uploader fields — used for disqualification (#155)
+              'orig.actor_name AS orig_upload_user_text',
+              'orig.actor_user AS orig_upload_user_id',
+              'orig.oi_timestamp AS orig_upload_date']
+
+# Subquery that finds the oldest oldimage revision per file (the original upload)
+ORIG_UPLOADER_SUBQUERY = """
+    LEFT JOIN (
+        SELECT oi_name,
+               actor_user,
+               actor_name,
+               oi_timestamp
+        FROM oldimage
+        LEFT JOIN actor ON oi_actor = actor.actor_id
+        WHERE oi_timestamp = (
+            SELECT MIN(oi2.oi_timestamp)
+            FROM oldimage oi2
+            WHERE oi2.oi_name = oldimage.oi_name
+        )
+        GROUP BY oi_name
+    ) AS orig ON img_name = orig.oi_name
+"""
 
 
 class MissingMySQLClient(RuntimeError):
@@ -60,14 +82,22 @@ def get_files(category_name):
         SELECT {cols}
         FROM commonswiki_p.image AS i
         LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        LEFT JOIN (
+            SELECT oi_name,
+                   oi_actor,
+                   actor_user,
+                   actor_name,
+                   oi_timestamp,
+                   oi_archive_name
+            FROM oldimage
+            LEFT JOIN actor ON oi_actor=actor.actor_id
+            WHERE oi_timestamp = (
+                SELECT MIN(oi2.oi_timestamp)
+                FROM oldimage oi2
+                WHERE oi2.oi_name = oldimage.oi_name
+            )
+        ) AS oi ON img_name=oi.oi_name
+        {orig_subquery}
         JOIN page ON page_namespace = 6
         AND page_title = img_name
         JOIN categorylinks ON cl_from = page_id
@@ -77,7 +107,7 @@ def get_files(category_name):
         AND lt_title = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
-    '''.format(cols=', '.join(IMAGE_COLS))
+    '''.format(cols=', '.join(IMAGE_COLS), orig_subquery=ORIG_UPLOADER_SUBQUERY)
     params = (category_name.replace(' ', '_'),)
 
     results = fetchall_from_commonswiki(query, params)
@@ -90,18 +120,26 @@ def get_file_info(filename):
         SELECT {cols}
         FROM commonswiki_p.image AS i
         LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+        LEFT JOIN (
+            SELECT oi_name,
+                   oi_actor,
+                   actor_user,
+                   actor_name,
+                   oi_timestamp,
+                   oi_archive_name
+            FROM oldimage
+            LEFT JOIN actor ON oi_actor=actor.actor_id
+            WHERE oi_timestamp = (
+                SELECT MIN(oi2.oi_timestamp)
+                FROM oldimage oi2
+                WHERE oi2.oi_name = oldimage.oi_name
+            )
+        ) AS oi ON img_name=oi.oi_name
+        {orig_subquery}
         WHERE img_name = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
-    '''.format(cols=', '.join(IMAGE_COLS))
+    '''.format(cols=', '.join(IMAGE_COLS), orig_subquery=ORIG_UPLOADER_SUBQUERY)
     params = (filename.replace(' ', '_'),)
     results = fetchall_from_commonswiki(query, params)
     if results:

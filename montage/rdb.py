@@ -577,7 +577,12 @@ class Entry(Base):
     def to_details_dict(self, **kw):
         with_uploader = kw.pop('with_uploader', None)
         ret = self.to_info_dict()
+        flags = self.flags or {}
+        # For reuploaded files, expose the original (first) uploader and date (#155)
+        orig_user_text = flags.get('orig_upload_user_text') or self.upload_user_text
+        orig_upload_date = flags.get('orig_upload_date') or format_date(self.upload_date)
         ret.update({'upload_date': format_date(self.upload_date),
+                    'orig_upload_date': orig_upload_date,
                     'mime_major': self.mime_major,
                     'mime_minor': self.mime_minor,
                     'name': self.name,
@@ -589,6 +594,7 @@ class Entry(Base):
                     'resolution': self.resolution})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
+            ret['orig_upload_user_text'] = orig_user_text  # original author for DQ (#155)
         return ret
 
     def to_export_dict(self):

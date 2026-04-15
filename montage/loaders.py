@@ -59,13 +59,19 @@ def make_entry(edict):
                  'upload_user_id': edict['img_user'],
                  'upload_user_text': edict['img_user_text']}
     if edict.get('oi_archive_name'):
-        # The file has multiple versions
-        raw_entry['flags'] = {
+        # The file has multiple versions — capture the original (first) upload info (#155)
+        flags = {
             'reupload': True,
             'reupload_date': wpts2dt(edict['rec_img_timestamp']),
             'reupload_user_id': edict['rec_img_user'],
             'reupload_user_text': edict['rec_img_text'],
             'archive_name': edict['oi_archive_name']}
+        # Preserve original author from the first-ever revision if available
+        if edict.get('orig_upload_user_text'):
+            flags['orig_upload_user_text'] = edict['orig_upload_user_text']
+            flags['orig_upload_user_id'] = edict.get('orig_upload_user_id')
+            flags['orig_upload_date'] = wpts2dt(edict['orig_upload_date']) if edict.get('orig_upload_date') else None
+        raw_entry['flags'] = flags
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
     if edict.get('flags'):
