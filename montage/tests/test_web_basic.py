@@ -954,3 +954,96 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
+
+
+def test_vote_later_reappears(api_client, mock_external_apis):
+    """
+    Regression test for #371 / #372: skipped tasks ("Vote Later") should
+    reappear after the juror exhausts all remaining non-skipped tasks.
+
+    Without the fix: BUG #371 — get_tasks_from_round used a single-integer
+    watermark (Vote.id > skip), permanently hiding skipped images even after
+    all other tasks were completed.
+
+    With the fix: skips are stored as a list of vote IDs. Non-skipped tasks
+    are served first; only when none remain are the skipped ones returned.
+    """
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    resp = fetch('organizer: create campaign for vote-later test',
+                 '/admin/add_campaign',
+                 {'name': 'Vote Later Regression Test',
+                  'coordinators': [u'LilyOfTheWest', u'Slaporte', u'Yarl'],
+                  'open_date': '2015-09-01 17:00:00',
+                  'close_date': '2015-10-01 17:00:00',
+                  'url': 'http://hatnote.com',
+                  'series_id': series_id},
+                 as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Vote Later Test Round',
+                  'vote_method': 'yesno',
+                  'quorum': 1,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': [u'Slaporte']},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    fetch('coordinator: import entries',
+          '/admin/round/%s/import' % round_id,
+          {'import_method': 'category',
+           'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+          as_user='LilyOfTheWest')
+
+    fetch('coordinator: activate round',
+          '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('juror: get initial tasks',
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Slaporte')
+    all_tasks = resp['data']['tasks']
+    assert len(all_tasks) >= 2, 'need at least 2 tasks to test skip'
+
+    skip_vote_id = all_tasks[0]['id']
+    fetch('juror: skip first task',
+          '/juror/round/%s/tasks/skip' % round_id,
+          {'vote_id': skip_vote_id},
+          as_user='Slaporte')
+
+    # Skipped task must not appear immediately
+    resp = fetch('juror: get tasks right after skip',
+                 '/juror/round/%s/tasks' % round_id,
+                 as_user='Slaporte')
+    assert skip_vote_id not in [t['id'] for t in resp['data']['tasks']], (
+        'skipped task appeared immediately — should be deferred')
+
+    # Vote on all remaining non-skipped tasks until the skipped one reappears
+    found_skipped = False
+    for _ in range(200):
+        resp = fetch('juror: get remaining tasks',
+                     '/juror/round/%s/tasks' % round_id,
+                     as_user='Slaporte')
+        remaining = resp['data']['tasks']
+        if not remaining:
+            break
+        if any(t['id'] == skip_vote_id for t in remaining):
+            found_skipped = True
+            break
+        for task in remaining:
+            fetch('juror: vote on task',
+                  '/juror/round/%s/tasks/submit' % round_id,
+                  {'ratings': [{'vote_id': task['id'], 'value': 1}]},
+                  as_user='Slaporte')
+
+    assert found_skipped, (
+        'BUG #371: skipped task (vote_id=%s) never reappeared after all '
+        'non-skipped tasks were completed.' % skip_vote_id
+    )
