@@ -51,4 +51,32 @@ describe('CommonsMedia Component', () => {
     const commonsImage = wrapper.findComponent(CommonsImage)
     expect(commonsImage.exists()).toBe(true)
   })
+
+  it('renders metadata overlay when showMetadata is true', () => {
+    const wrapper = mount(CommonsMedia, {
+      props: {
+        image: { name: 'Audio.ogg' },
+        showMetadata: true,
+        duration: 125,
+        width: 800
+      }
+    })
+    
+    // Should render the timestamp and mime badge
+    const overlay = wrapper.find('.media-metadata-overlay')
+    expect(overlay.exists()).toBe(true)
+    expect(wrapper.text()).toContain('2:05') // 125s calculated format
+  })
+  
+  it('gracefully handles missing image props', () => {
+    const wrapper = mount(CommonsMedia, {
+      props: {
+        image: null,
+        width: 800
+      }
+    })
+    
+    // Should fall back to generic CommonsImage or render empty block without crashing
+    expect(wrapper.find('.commons-media-container').exists()).toBe(true)
+  })
 })
