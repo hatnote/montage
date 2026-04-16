@@ -1,13 +1,25 @@
 <template>
   <div class="commons-media-container" :style="{ width: containerWidth }">
+    
+    <!-- Error Fallback -->
+    <template v-if="hasError">
+      <div class="media-error-state">
+        <i class="fa fa-exclamation-triangle"></i>
+        <span>{{ $t('montage-media-load-error', 'Unable to load media.') }}</span>
+      </div>
+    </template>
+    
     <!-- Video Handler -->
-    <template v-if="isMediaVideo">
+    <template v-else-if="isMediaVideo">
+
       <video
+        @error="onMediaError"
         ref="mediaElement"
         controls
         preload="metadata"
         :poster="mediaUrl"
         class="commons-media-content"
+        @error="onMediaError"
       >
         <source :src="fileUrl" :type="mimeType" />
         <source v-if="majorMime === 'video' && minorMime === 'webm'" :src="fileUrl" type="video/webm" />
@@ -20,6 +32,7 @@
     <template v-else-if="isMediaAudio">
       <div class="audio-wrapper">
         <audio
+          @error="onMediaError"
           ref="mediaElement"
           controls
           class="commons-media-audio"
@@ -39,6 +52,7 @@
         :src="mediaUrl"
         :alt="filename"
         class="commons-media-content"
+        @error="onMediaError"
         :class="{ 'pixelated': !isHighRes }"
         @click="emitClick"
       />
@@ -52,7 +66,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+
+const hasError = ref(false)
+
+const onMediaError = () => {
+  hasError.value = true
+}
 
 const props = defineProps({
   mediaUrl: {
@@ -185,4 +205,22 @@ const emitClick = () => {
   font-size: 12px;
   font-weight: bold;
 }
+
+.media-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2em;
+  color: #72777d;
+  background: #eaecf0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.media-error-state i {
+  font-size: 2em;
+  margin-bottom: 8px;
+}
+
 </style>
