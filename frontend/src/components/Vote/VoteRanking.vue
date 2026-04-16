@@ -54,22 +54,22 @@
           </div>
           <div class="vote-gallery-image-container">
             <CommonsImage :image="image" :width="640" />
-          </div>
-          <div class="vote-gallery-footer">
-            <h3 class="vote-gallery-footer-name">
-              <div>
-                <strong>
-                  {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
-                </strong>
+              <div class="vote-gallery-footer">
+                <h3 class="vote-gallery-footer-name">
+                  <div>
+                    <strong>
+                      {{ $t('montage-vote-ordinal-place', [getOrdinal(index + 1)]) }}
+                    </strong>
+                  </div>
+                  <span v-if="!round.config.show_filename">
+                    {{ $t('montage-vote-image') }} #{{ image.entry.id }}
+                  </span>
+                  <span v-else>
+                    {{ image.entry.name.split('_').join(' ') }}
+                  </span>
+                </h3>
               </div>
-              <span v-if="!round.config.show_filename">
-                {{ $t('montage-vote-image') }} #{{ image.entry.id }}
-              </span>
-              <span v-else>
-                {{ image.entry.name.split('_').join(' ') }}
-              </span>
-            </h3>
-          </div>
+            </div>
         </div>
       </draggable>
     </div>
@@ -225,39 +225,37 @@ watch(
 }
 
 .vote-gallery-image {
-  display: inline-block;
+  display: inline-flex;
+  flex-direction: column;
   position: relative;
-  background: #ccc;
   width: calc((100% - 100px) / 5);
-  height: 15vw;
-  margin: 10px 10px 60px;
+  margin: 10px;
   vertical-align: top;
   cursor: grab;
+  background: none;
 }
 
 .vote-gallery-image--size-2 {
-  width: calc((100% - 100px) / 3);
-  height: 28vw;
+  width: calc((100% - 60px) / 3);
 }
 
 .vote-gallery-image--size-3 {
-  width: calc((100% - 100px) / 2);
-  height: 43vw;
+  width: calc((100% - 40px) / 2);
 }
 
 .vote-gallery-image-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: relative;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4/3;
   overflow: hidden;
+  background: #000;
 }
 
 .vote-gallery-image-container img {
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .vote-gallery-expand-icon {
@@ -274,6 +272,7 @@ watch(
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1;
 }
 
 .vote-gallery-footer {
@@ -281,7 +280,7 @@ watch(
   width: 100%;
   height: 26px;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   text-align: center;
   padding-top: 5px;
@@ -298,6 +297,7 @@ watch(
 .vote-gallery-footer:hover {
   height: 50%;
   background: #e0e0e0;
+  color: black;
 }
 
 .vote-gallery-footer-name:hover {
