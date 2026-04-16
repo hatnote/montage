@@ -43,9 +43,10 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 * Add the `oauth_consumer_token` and `oauth_secret_token` 
 * Add a `cookie_secret: <your random secret>`
 * Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
-    * The format is: `mysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
-* Add `api_log_path: /data/project/<project>/logs/montage_api.log`
-* Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
+    * The format is: `mysql+pymysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
+* Add `api_log_path` and `replay_log_path` — the path depends on the instance:
+    * Production (`montage`): `api_log_path: /data/project/montage/logs/montage_api.log`
+    * Beta (`montage-beta`): `api_log_path: /data/project/montage-beta/montage_api.log`
 * Add `labs_db: True`
 * Add `db_echo: False`
 * Add `root_path: '/'`
