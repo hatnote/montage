@@ -325,6 +325,14 @@ const submitRound = () => {
     return
   }
 
+  // Validate that a threshold is selected for ranking rounds (#383)
+  if (formData.value.vote_method === 'ranking' && !formData.value.threshold && formData.value.threshold !== 0) {
+    alertService.error({
+      message: $t('montage-required-fill-inputs') // Standard form validation error
+    })
+    return
+  }
+
   // Check if the round is the first round
   if (roundIndex === 0) {
     const payload = {
