@@ -67,7 +67,12 @@ def get_files(category_name):
                           oi_timestamp,
                           oi_archive_name
                    FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+                   LEFT JOIN actor ON oi_actor=actor.actor_id
+                   WHERE oi_timestamp = (
+                       SELECT MIN(oi_timestamp)
+                       FROM oldimage AS oi2
+                       WHERE oi2.oi_name = oldimage.oi_name)
+                   ) AS oi ON img_name=oi.oi_name
         JOIN page ON page_namespace = 6
         AND page_title = img_name
         JOIN categorylinks ON cl_from = page_id
@@ -97,7 +102,12 @@ def get_file_info(filename):
                           oi_timestamp,
                           oi_archive_name
                    FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
+                   LEFT JOIN actor ON oi_actor=actor.actor_id
+                   WHERE oi_timestamp = (
+                       SELECT MIN(oi_timestamp)
+                       FROM oldimage AS oi2
+                       WHERE oi2.oi_name = oldimage.oi_name)
+                   ) AS oi ON img_name=oi.oi_name
         WHERE img_name = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
