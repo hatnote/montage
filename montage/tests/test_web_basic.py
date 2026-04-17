@@ -5,6 +5,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 import os
 import json
+from unittest.mock import patch
 import six.moves.urllib.parse, six.moves.urllib.error
 from pprint import pprint
 
@@ -861,6 +862,19 @@ def test_multiple_jurors(api_client, mock_external_apis):
                  '/admin/campaign/%s/add_round' % campaign_id,
                  rnd_data,
                  as_user='LilyOfTheWest')
+
+
+def test_get_files_info_by_name(api_client):
+    """GET /utils/file returns file_infos with file_id populated."""
+    from .conftest import SELECTED_FILE_INFO
+    with patch('montage.public_endpoints.get_file_info', return_value=SELECTED_FILE_INFO):
+        resp = api_client.fetch(
+            'public: get file info by name',
+            '/utils/file',
+            {'names': [SELECTED_FILE_INFO['img_name']]},
+        )
+    assert len(resp['file_infos']) == 1
+    assert resp['file_infos'][0]['file_id'] == 99999
 
 
 @script_log.wrap('critical', verbose=True)

@@ -18,6 +18,7 @@ from sqlalchemy import (Text,
                         Column,
                         String,
                         Integer,
+                        BigInteger,
                         Float,
                         Boolean,
                         DateTime,
@@ -561,6 +562,7 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
+    file_id = Column(BigInteger, nullable=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
