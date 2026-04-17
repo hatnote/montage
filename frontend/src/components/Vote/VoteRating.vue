@@ -144,7 +144,16 @@
       </div>
     </div>
   </div>
-  <div class="voting-completed" v-if="round.status === 'active' && !images?.length">
+  <div
+    class="vote-batch-loading"
+    v-if="round.status === 'active' && isFetchingTasks && !images?.length"
+  >
+    <clip-loader size="80px" style="padding-top: 120px" />
+  </div>
+  <div
+    class="voting-completed"
+    v-if="round.status === 'active' && !isFetchingTasks && !images?.length"
+  >
     <div>
       <h3>{{ $t('montage-vote-all-done') }}</h3>
       <p class="greyed">
@@ -172,6 +181,7 @@ import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 import { getCommonsImageUrl } from '@/utils'
+import { getWrappedNextIndex, removeVotedFromQueue } from '@/utils/voteQueue'
 
 import CommonsImage from '@/components/CommonsImage.vue'
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
@@ -193,12 +203,12 @@ const { t: $t } = useI18n()
 const router = useRouter()
 
 // States variables
-const counter = ref(0)
 const skips = ref(0)
 const imageLoading = ref(true)
 const voteContainer = ref(null)
 const showSidebar = ref(true)
 const imageCache = new Map()
+const isFetchingTasks = ref(false)
 const isLoading = ref(false)
 
 const props = defineProps({
@@ -242,25 +252,47 @@ const formattedDate = (timestamp) => {
 }
 
 function getNextImage() {
-  rating.value.currentIndex = (rating.value.currentIndex + 1) % images.value?.length
+  if (!images.value?.length) {
+    rating.value.current = null
+    rating.value.next = null
+    rating.value.currentIndex = 0
+    return
+  }
+  rating.value.currentIndex = getWrappedNextIndex(rating.value.currentIndex, images.value.length)
   rating.value.current = images.value[rating.value.currentIndex]
-  rating.value.next = images.value[(rating.value.currentIndex + 1) % images.value?.length]
+  rating.value.next =
+    images.value[getWrappedNextIndex(rating.value.currentIndex, images.value.length)]
+}
+
+function removeCurrentImage() {
+  const result = removeVotedFromQueue(images.value, rating.value.currentIndex)
+  images.value = result.queue
+  rating.value.currentIndex = result.currentIndex
+  rating.value.current = result.current
+  rating.value.next = result.next
 }
 
 function getTasks() {
-  return jurorService.getRoundTasks(props.round.id, skips.value).then((response) => {
-    images.value = response.data.tasks
-    rating.value.current = images.value?.[0]
-    rating.value.currentIndex = 0
-    rating.value.next = images.value?.[1] || null
+  isFetchingTasks.value = true
+  return jurorService
+    .getRoundTasks(props.round.id, skips.value)
+    .then((response) => {
+      images.value = response.data.tasks
+      stats.value = response.data.stats
+      rating.value.current = images.value?.[0]
+      rating.value.currentIndex = 0
+      rating.value.next = images.value?.[1] || null
 
-    // Preload the next 10 images
-    for (let i = 0; i < 10 && i < images.value.length; i++) {
-      const img = new Image()
-      img.src = getCommonsImageUrl(images.value[i])
-      imageCache.set(images.value[i].entry.id, img)
-    }
-  })
+      // Preload the next 10 images
+      for (let i = 0; i < 10 && i < images.value.length; i++) {
+        const img = new Image()
+        img.src = getCommonsImageUrl(images.value[i])
+        imageCache.set(images.value[i].entry.id, img)
+      }
+    })
+    .finally(() => {
+      isFetchingTasks.value = false
+    })
 }
 
 function setRate(rate) {
@@ -275,16 +307,14 @@ function setRate(rate) {
         ratings: [{ task_id: rating.value.current.id, value: val }]
       })
       .then(() => {
+        removeCurrentImage()
         stats.value.total_open_tasks -= 1
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
         }
-        if (counter.value === 4 || !stats.value.total_open_tasks) {
-          counter.value = 0
-          getTasks()
-        } else {
-          counter.value += 1
-          getNextImage()
+
+        if (!rating.value.current) {
+          return getTasks()
         }
       })
       .catch(alertService.error)
@@ -300,7 +330,7 @@ function setRate(rate) {
         if (rating.value.currentIndex < images.value.length - 1) {
           getNextImage()
         } else {
-          getTasks()
+          return getTasks()
         }
       })
       .catch(alertService.error)
@@ -429,6 +459,13 @@ watch(voteContainer, () => {
 
 .vote-container:focus {
   outline: none;
+}
+
+.vote-batch-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 156.5px);
 }
 
 .vote-image-container {
