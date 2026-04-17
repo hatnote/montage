@@ -1138,8 +1138,8 @@ class CoordinatorDAO(UserDAO):
     def get_campaign_rounds(self, campaign, with_cancelled=False):
         q = self.query(Round).filter_by(campaign=campaign)
         if not with_cancelled:
-            q.filter(Round.status != CANCELLED_STATUS)
-        q.order_by(Round.create_date)
+            q = q.filter(Round.status != CANCELLED_STATUS)
+        q = q.order_by(Round.create_date)
         return q.all()
 
     def get_active_jurors(self, round_id):
