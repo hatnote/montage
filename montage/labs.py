@@ -56,6 +56,22 @@ def fetchall_from_commonswiki(query, params):
 
 
 def get_files(category_name):
+    category_name = category_name.replace(' ', '_')
+    
+    # Check if category is a redirect
+    redirect_query = '''
+        SELECT rd_title
+        FROM page
+        JOIN redirect ON rd_from = page_id
+        WHERE page_namespace = 14
+        AND page_title = %s
+    '''
+    redirect_results = fetchall_from_commonswiki(redirect_query, (category_name,))
+    if redirect_results:
+        category_name = redirect_results[0]['rd_title']
+        if isinstance(category_name, bytes):
+            category_name = category_name.decode('utf8')
+
     query = '''
         SELECT {cols}
         FROM commonswiki_p.image AS i
@@ -78,7 +94,7 @@ def get_files(category_name):
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
-    params = (category_name.replace(' ', '_'),)
+    params = (category_name,)
 
     results = fetchall_from_commonswiki(query, params)
 
