@@ -877,6 +877,86 @@ def test_get_files_info_by_name(api_client):
     assert resp['file_infos'][0]['file_id'] == 99999
 
 
+def test_make_entry_reupload_preserves_original_author():
+    """make_entry() correctly attributes the original uploader for re-uploaded files.
+
+    When oi_archive_name is non-empty, the entry must credit the original
+    upload date and author from the earliest filerevision subquery, not
+    the re-uploader's identity.
+    """
+    from montage.loaders import make_entry
+    from .conftest import REUPLOAD_FILE_INFO
+
+    entry = make_entry(REUPLOAD_FILE_INFO)
+
+    # Original uploader must be preserved on the top-level entry attributes
+    assert entry.upload_user_id == '1111', (
+        'Expected original uploader id 1111, got %s' % entry.upload_user_id
+    )
+    assert entry.upload_user_text == 'OriginalUploader'
+    assert entry.upload_date.year == 2014
+
+    # Reupload metadata is stored in entry.flags
+    flags = entry.flags
+    assert flags.get('reupload') is True
+    assert flags.get('reupload_user_id') == '2222'
+    assert flags.get('reupload_user_text') == 'ReuploadingUser'
+    assert flags.get('reupload_date').year == 2016
+
+    # file_id must survive through to the entry
+    assert entry.file_id == 88888
+
+
+def test_labs_import_entries_have_file_id(api_client, mock_external_apis):
+    """After a Toolforge category import, every RoundEntry has a non-null file_id.
+
+    Regression for the image->file/filerevision migration (issue #504).
+    file_id is the stable identity for each Commons file going forward and
+    must be stored on import so deduplication and rename-tracking work
+    correctly post-migration.
+    """
+    from montage.tests.conftest import FIXTURE_FILE_INFOS
+
+    # ---- create campaign ----
+    coord_resp = api_client.fetch(
+        'coordinator: create campaign for file_id test',
+        '/admin/campaign',
+        {'name': 'FileID Migration Test',
+         'open_date': '2015-08-01T00:00:00',
+         'close_date': '2016-01-01T00:00:00'},
+        as_user='Yarl',
+    )
+    campaign_id = coord_resp['data']['id']
+
+    # ---- import by category (hits the Toolforge mock) ----
+    import_resp = api_client.fetch(
+        'coordinator: import entries via category',
+        '/admin/campaign/%s/import' % campaign_id,
+        {'import_method': 'category',
+         'import_type': 'category',
+         'category': 'Category:Wiki_Loves_Monuments_2015_–_(country)'},
+        as_user='Yarl',
+    )
+
+    assert import_resp.get('status') != 'failure', (
+        'Import failed: %r' % import_resp
+    )
+
+    # ---- verify every entry in the DB has a non-null file_id ----
+    entries_resp = api_client.fetch(
+        'coordinator: get entries for campaign',
+        '/admin/campaign/%s/entries' % campaign_id,
+        as_user='Yarl',
+    )
+    entries = entries_resp.get('data', {}).get('entries', [])
+    assert len(entries) > 0, 'Expected at least one entry after import'
+
+    missing = [e['name'] for e in entries if not e.get('file_id')]
+    assert missing == [], (
+        'Entries missing file_id after labs import: %s' % missing
+    )
+
+
 @script_log.wrap('critical', verbose=True)
 def submit_ratings(client, round_id, coord_user='Yarl'):
     """
