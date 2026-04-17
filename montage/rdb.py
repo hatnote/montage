@@ -1561,14 +1561,17 @@ class CoordinatorDAO(UserDAO):
             source = 'remote'
         else:
             source = 'local'
-        entries = loaders.load_category(cat_name, source=source)
+        entries, warnings = loaders.load_category(cat_name, source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from category (%s), %s new entries added'
                % (self.user.username, len(entries), cat_name, new_entry_count))
+        if warnings:
+            msg += ', %s entries skipped due to errors' % len(warnings)
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries
+
 
     def add_entries_by_name(self, round_id, file_names):
         rnd = self.user_dao.get_round(round_id)
