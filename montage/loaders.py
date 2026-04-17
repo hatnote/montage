@@ -72,8 +72,6 @@ def make_entry(edict):
     # CSV-imported entries intentionally get file_id=NULL.
     if edict.get('file_id') is not None:
         raw_entry['file_id'] = edict['file_id']
-    if edict.get('flags'):
-        raw_entry['flags'] = edict['flags']
     return montage.rdb.Entry(**raw_entry)
 
 
@@ -220,15 +218,20 @@ def load_by_filename(filenames, source='local'):
 
 def load_category(category_name, source='local'):
     ret = []
+    warnings = []
     if source == 'remote':
         files = get_from_category_remote(category_name)
     else:
         files = get_files(category_name)
     for edict in files:
-        entry = make_entry(edict)
-        ret.append(entry)
+        try:
+            entry = make_entry(edict)
+        except (TypeError, KeyError, ValueError) as e:
+            warnings.append((edict, e))
+        else:
+            ret.append(entry)
 
-    return ret
+    return ret, warnings
 
 
 def get_from_category_remote(category_name):
