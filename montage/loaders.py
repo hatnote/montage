@@ -68,6 +68,8 @@ def make_entry(edict):
             'archive_name': edict['oi_archive_name']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
+    # file_id is only available from wikireplica imports (labs.py), not CSV.
+    # CSV-imported entries intentionally get file_id=NULL.
     if edict.get('file_id') is not None:
         raw_entry['file_id'] = edict['file_id']
     if edict.get('flags'):

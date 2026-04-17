@@ -76,6 +76,7 @@ def get_files(category_name):
         SELECT {cols}
         FROM commonswiki_p.file AS file
         JOIN commonswiki_p.filerevision AS fr ON fr.fr_id = file.file_latest
+          AND fr.fr_deleted = 0
         LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
         LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
         {earliest_rev}
@@ -98,6 +99,7 @@ def get_file_info(filename):
         SELECT {cols}
         FROM commonswiki_p.file AS file
         JOIN commonswiki_p.filerevision AS fr ON fr.fr_id = file.file_latest
+          AND fr.fr_deleted = 0
         LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
         LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
         {earliest_rev}
