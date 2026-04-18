@@ -186,5 +186,10 @@
   "permission-denied-message": "You do not have the required permissions to access this page.",
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
-  "montage-required-fill-inputs": "Please fill all the boxes"
+  "montage-required-fill-inputs": "Please fill all the boxes",
+  "montage-error-missing-category": "Please provide a valid category",
+  "montage-error-missing-csv": "Please provide a valid CSV URL",
+  "montage-error-missing-file-list": "Please provide at least one file name",
+  "montage-error-missing-threshold": "Please select a threshold",
+  "montage-error-invalid-quorum": "Quorum must be greater than 0 and jurors must be selected if quorum is greater than 0."
 }

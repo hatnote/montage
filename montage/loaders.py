@@ -55,21 +55,31 @@ def make_entry(edict):
                  'mime_major': edict['img_major_mime'],
                  'mime_minor': edict['img_minor_mime'],
                  'width': width,
-                 'height': height,
-                 'upload_user_id': edict['img_user'],
-                 'upload_user_text': edict['img_user_text']}
+                 'height': height}
+                 
     if edict.get('oi_archive_name'):
-        # The file has multiple versions
+        # Issue #448 fix: prioritize original uploader
+        raw_entry['upload_user_id'] = edict['rec_img_user']
+        raw_entry['upload_user_text'] = edict['rec_img_text']
+        raw_entry['upload_date'] = wpts2dt(edict['rec_img_timestamp'])
+        
         raw_entry['flags'] = {
             'reupload': True,
-            'reupload_date': wpts2dt(edict['rec_img_timestamp']),
-            'reupload_user_id': edict['rec_img_user'],
-            'reupload_user_text': edict['rec_img_text'],
+            'reupload_date': wpts2dt(edict['img_timestamp']),
+            'reupload_user_id': edict['img_user'],
+            'reupload_user_text': edict['img_user_text'],
             'archive_name': edict['oi_archive_name']}
-    raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
+    else:
+        raw_entry['upload_user_id'] = edict['img_user']
+        raw_entry['upload_user_text'] = edict['img_user_text']
+        raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
+
     raw_entry['resolution'] = width * height
     if edict.get('flags'):
-        raw_entry['flags'] = edict['flags']
+        if 'flags' in raw_entry:
+            raw_entry['flags'].update(edict['flags'])
+        else:
+            raw_entry['flags'] = edict['flags']
     return montage.rdb.Entry(**raw_entry)
 
 
