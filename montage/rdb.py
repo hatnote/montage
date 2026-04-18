@@ -18,6 +18,7 @@ from sqlalchemy import (Text,
                         Column,
                         String,
                         Integer,
+                        BigInteger,
                         Float,
                         Boolean,
                         DateTime,
@@ -561,6 +562,7 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
+    file_id = Column(BigInteger, nullable=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -586,7 +588,8 @@ class Entry(Base):
                     'url': make_mw_img_url(self.name),
                     'url_sm': make_mw_img_url(self.name, size='small'),
                     'url_med': make_mw_img_url(self.name, size='medium'),
-                    'resolution': self.resolution})
+                    'resolution': self.resolution,
+                    'file_id': self.file_id})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
         return ret
@@ -600,7 +603,8 @@ class Entry(Base):
                'img_height': self.height,
                'img_user': self.upload_user_id,
                'img_user_text': self.upload_user_text,
-               'img_timestamp': format_date(self.upload_date)}
+               'img_timestamp': format_date(self.upload_date),
+               'file_id': self.file_id}
         return ret
 
 

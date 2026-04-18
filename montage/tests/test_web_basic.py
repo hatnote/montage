@@ -5,6 +5,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 import os
 import json
+from unittest.mock import patch
 import six.moves.urllib.parse, six.moves.urllib.error
 from pprint import pprint
 
@@ -861,6 +862,96 @@ def test_multiple_jurors(api_client, mock_external_apis):
                  '/admin/campaign/%s/add_round' % campaign_id,
                  rnd_data,
                  as_user='LilyOfTheWest')
+
+
+def test_get_files_info_by_name(api_client):
+    """GET /utils/file returns file_infos with file_id populated."""
+    from .conftest import SELECTED_FILE_INFO
+    with patch('montage.public_endpoints.get_file_info', return_value=SELECTED_FILE_INFO):
+        resp = api_client.fetch(
+            'public: get file info by name',
+            '/utils/file',
+            {'names': [SELECTED_FILE_INFO['img_name']]},
+        )
+    assert len(resp['file_infos']) == 1
+    assert resp['file_infos'][0]['file_id'] == 99999
+
+
+def test_import_entries_have_file_id(api_client, mock_external_apis):
+    """After a category import, every entry returned by the API has a non-null file_id.
+
+    Regression for the image→file/filerevision migration (hatnote/montage#504).
+    file_id is the stable Commons identifier and must survive the full pipeline:
+    labs.py → make_entry() → DB → to_details_dict() → API response.
+    """
+    from montage.tests.conftest import FIXTURE_FILE_INFOS
+
+    # Set up organizer (required before creating a campaign)
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    api_client.fetch('maintainer: create series', '/admin/add_series',
+                     {'name': 'Test Series', 'description': 'desc',
+                      'url': 'http://hatnote.com'})
+
+    series_resp = api_client.fetch('get default series', '/series')
+    series_id = series_resp['data'][0]['id']
+
+    camp_resp = api_client.fetch(
+        'organizer: create campaign',
+        '/admin/add_campaign',
+        {'name': 'file_id regression test',
+         'coordinators': ['Yarl'],
+         'open_date': '2015-01-01T00:00:00',
+         'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com',
+         'series_id': series_id},
+        as_user='Yarl',
+    )
+    campaign_id = camp_resp['data']['id']
+
+    rnd_resp = api_client.fetch(
+        'coordinator: create round',
+        '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'Test round',
+         'vote_method': 'yesno',
+         'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl',
+    )
+    round_id = rnd_resp['data']['id']
+
+    api_client.fetch(
+        'coordinator: import entries via category',
+        '/admin/round/%s/import' % round_id,
+        {'import_method': 'category',
+         'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+        as_user='Yarl',
+    )
+
+    api_client.fetch(
+        'coordinator: activate round',
+        '/admin/round/%s/activate' % round_id,
+        {'post': True},
+        as_user='Yarl',
+    )
+
+    entries_resp = api_client.fetch(
+        'coordinator: get round entries',
+        '/admin/round/%s/entries' % round_id,
+        as_user='Yarl',
+    )
+    entries = entries_resp.get('file_infos', [])
+    assert len(entries) > 0, 'Expected entries after import'
+
+    missing = [e['img_name'] for e in entries if e.get('file_id') is None]
+    assert missing == [], 'Entries missing file_id after import: %s' % missing
+
+    expected_ids = {fi['file_id'] for fi in FIXTURE_FILE_INFOS}
+    actual_ids = {e['file_id'] for e in entries}
+    assert actual_ids == expected_ids, (
+        'file_id values do not match fixture: extra=%s missing=%s'
+        % (actual_ids - expected_ids, expected_ids - actual_ids)
+    )
 
 
 @script_log.wrap('critical', verbose=True)

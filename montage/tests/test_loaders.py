@@ -3,16 +3,20 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+import os
+
+import pytest
 import responses
 from pytest import raises
 
-from montage.loaders import get_entries_from_gsheet
+from montage.loaders import get_entries_from_gsheet, make_entry
 
 from .conftest import (
     FIXTURE_FILE_INFOS,
     FIXTURE_FULL_CSV,
     FIXTURE_FILENAME_CSV,
     TOOLFORGE_FILE_URL,
+    REUPLOAD_FILE_INFO,
 )
 
 RESULTS = 'https://docs.google.com/spreadsheets/d/1RDlpT23SV_JB1mIz0OA-iuc3MNdNVLbaK_LtWAC7vzg/edit?usp=sharing'
@@ -90,3 +94,24 @@ def test_no_persmission():
     )
     with raises(ValueError):
         get_entries_from_gsheet(FORBIDDEN_SHEET, source='remote')
+
+
+def test_make_entry_reupload():
+    """make_entry() correctly handles a reuploaded file."""
+    entry = make_entry(REUPLOAD_FILE_INFO)
+    assert entry.flags['reupload'] is True
+    assert entry.flags['reupload_user_id'] == '2222'
+    assert entry.file_id == 88888
+
+
+@pytest.mark.xfail(
+    os.environ.get('TOOLFORGE') != '1',
+    reason='Requires live wikireplica (Toolforge); set TOOLFORGE=1 to run',
+)
+def test_get_files_parity():
+    """New file/filerevision query returns same filenames as old image/oldimage query."""
+    from montage.labs import get_files, get_files_legacy
+    category = 'Images_from_Wiki_Loves_Monuments_2015_in_France'
+    new = {r['img_name'] for r in get_files(category)}
+    old = {r['img_name'] for r in get_files_legacy(category)}
+    assert new == old

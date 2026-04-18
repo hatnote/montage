@@ -55,6 +55,8 @@ def _generate_file_infos(n):
             'img_user_text': 'Khoshamadgou',
             # All timestamps after campaign open_date (2015-09-01)
             'img_timestamp': '201509060%05d' % (20000 + i),
+            'oi_archive_name': '',  # empty string = not a reupload
+            'file_id': 1000 + i,
         })
     return infos
 
@@ -71,6 +73,24 @@ SELECTED_FILE_INFO = {
     'img_user': '12345',
     'img_user_text': 'TestUploader',
     'img_timestamp': '20140817120000',
+    'oi_archive_name': '',  # empty string = not a reupload
+    'file_id': 99999,
+}
+
+REUPLOAD_FILE_INFO = {
+    'img_name': 'Reuploaded_test_image.jpg',
+    'img_major_mime': 'image',
+    'img_minor_mime': 'jpeg',
+    'img_width': '4000',
+    'img_height': '3000',
+    'img_user': '1111',           # original uploader
+    'img_user_text': 'OriginalUploader',
+    'img_timestamp': '20140101120000',  # original upload date
+    'oi_archive_name': '20140101120000!Reuploaded_test_image.jpg',
+    'rec_img_timestamp': '20160601120000',  # reupload date
+    'rec_img_user': '2222',        # reuploading user
+    'rec_img_text': 'ReuploadingUser',
+    'file_id': 88888,
 }
 
 CSV_FULL_COLS = [

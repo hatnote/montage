@@ -52,8 +52,8 @@ def make_entry(edict):
     width = int(edict['img_width'])
     height = int(edict['img_height'])
     raw_entry = {'name': edict['img_name'],
-                 'mime_major': edict['img_major_mime'],
-                 'mime_minor': edict['img_minor_mime'],
+                 'mime_major': edict.get('img_major_mime') or None,
+                 'mime_minor': edict.get('img_minor_mime') or None,
                  'width': width,
                  'height': height,
                  'upload_user_id': edict['img_user'],
@@ -68,6 +68,10 @@ def make_entry(edict):
             'archive_name': edict['oi_archive_name']}
     raw_entry['upload_date'] = wpts2dt(edict['img_timestamp'])
     raw_entry['resolution'] = width * height
+    # file_id is only available from wikireplica imports (labs.py), not CSV.
+    # CSV-imported entries intentionally get file_id=NULL.
+    if edict.get('file_id') is not None:
+        raw_entry['file_id'] = edict['file_id']
     if edict.get('flags'):
         raw_entry['flags'] = edict['flags']
     return montage.rdb.Entry(**raw_entry)
