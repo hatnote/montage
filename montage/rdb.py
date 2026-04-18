@@ -603,7 +603,8 @@ class Entry(Base):
                'img_height': self.height,
                'img_user': self.upload_user_id,
                'img_user_text': self.upload_user_text,
-               'img_timestamp': format_date(self.upload_date)}
+               'img_timestamp': format_date(self.upload_date),
+               'file_id': self.file_id}
         return ret
 
 
