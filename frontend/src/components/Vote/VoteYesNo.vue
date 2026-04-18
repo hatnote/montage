@@ -93,6 +93,11 @@
             <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
           </cdx-button>
         </div>
+        <div>
+          <cdx-button weight="quiet" @click="goFaves()">
+            <heart class="icon-small" /> {{ $t('montage-my-campaign-faves') }}
+          </cdx-button>
+        </div>
       </div>
 
       <h3 class="vote-section-title">{{ $t('montage-vote-description') }}</h3>
@@ -157,10 +162,16 @@
       <p class="greyed">
         {{ $t('montage-vote-no-images-warning') }}
       </p>
-      <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
-        <pencil class="icon-small" />
-        {{ $t('montage-edit-previous-vote') }}
-      </cdx-button>
+      <div class="voting-completed-actions">
+        <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
+          <pencil class="icon-small" />
+          {{ $t('montage-edit-previous-vote') }}
+        </cdx-button>
+        <cdx-button class="edit-voting-btn" @click="goFaves()">
+          <heart class="icon-small" />
+          {{ $t('montage-my-campaign-faves') }}
+        </cdx-button>
+      </div>
     </div>
   </div>
   <div v-if="round.status !== 'active'">
@@ -229,6 +240,10 @@ const toggleSidebar = () => {
 
 const goPrevVoteEditing = () => {
   router.push({ name: 'vote-edit', params: { id: roundLink } })
+}
+
+const goFaves = () => {
+  router.push({ name: 'faves', params: { id: roundLink } })
 }
 
 const handleImageLoad = () => {
@@ -608,8 +623,13 @@ watch(voteContainer, () => {
   align-items: center;
 }
 
-.edit-voting-btn {
+.voting-completed-actions {
+  display: flex;
+  gap: 12px;
   margin-top: 24px;
+}
+
+.edit-voting-btn {
   width: 232px;
 }
 </style>
