@@ -84,7 +84,9 @@ def get_files(category_name):
           AND page_title = file.file_name
         JOIN categorylinks ON cl_from = page_id
           AND cl_type = 'file'
-          AND cl_to = %s
+        JOIN linktarget ON cl_target_id = lt_id
+          AND lt_namespace = 14
+          AND lt_title = %s
         WHERE file.file_deleted = 0
         ORDER BY file.file_name ASC
     '''.format(cols=', '.join(FILE_COLS),
@@ -150,7 +152,9 @@ def get_files_legacy(category_name):
         AND page_title = img_name
         JOIN categorylinks ON cl_from = page_id
         AND cl_type = 'file'
-        AND cl_to = %s
+        JOIN linktarget ON cl_target_id = lt_id
+        AND lt_namespace = 14
+        AND lt_title = %s
         GROUP BY img_name
         ORDER BY oi_timestamp ASC;
     '''.format(cols=', '.join(IMAGE_COLS))
