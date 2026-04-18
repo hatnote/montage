@@ -70,7 +70,7 @@ oauthlib==3.2.2
     # via
     #   mwoauth
     #   requests-oauthlib
-pycparser==3.0
+pycparser==2.22
     # via cffi
 pyjwt==2.8.0
     # via mwoauth
