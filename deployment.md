@@ -124,3 +124,46 @@ toolforge webservice python3.9 restart
 ##### 9. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
 * In the top section, you should see that the service was restarted in the last few seconds/minutes.
+
+
+---
+
+
+## Debugging
+
+##### Viewing logs
+
+The uwsgi log is at:
+```bash
+tail -50 /data/project/montage-beta/uwsgi.log
+```
+
+Note: there is no `logs/` directory inside `src/` — the log is one level up.
+
+##### Running Python / pip commands
+
+Always run `pip install` and Python diagnostics inside the webservice shell, not the bastion shell. The two environments use different venvs:
+
+```bash
+toolforge webservice python3.9 shell
+# venv is activated automatically
+pip install -r ~/www/python/src/requirements.txt
+python3 -c "import montage.app"
+exit
+```
+
+Running `pip` on the bastion shell installs to a different venv and will not affect the running service.
+
+##### Restarting the service
+
+```bash
+toolforge webservice python3.9 restart
+```
+
+##### Inspecting the SQLite database (beta only)
+
+There is no `sqlite3` CLI on Toolforge. Use Python instead:
+
+```bash
+python3 -c 'import sqlite3; c=sqlite3.connect("/data/project/montage-beta/www/python/src/tmp_montage.db"); print(c.execute("SELECT COUNT(*) FROM entries").fetchone())'
+```
