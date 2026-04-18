@@ -106,8 +106,11 @@ sqlalchemy==1.2.19
     # via
     #   -r requirements.in
     #   sqltap
-setuptools==82.0.1
+setuptools==81.0.0
     # via python-graph-core (pkg_resources namespace; implicit dep on Python 3.13)
+    # Pinned <82: setuptools 82 removed pkg_resources entirely; python-graph-core
+    # depends on it via namespace packages. Remove this pin once python-graph-core
+    # no longer uses pkg_resources (tracked in hatnote/montage#421).
 sqlparse==0.5.0
     # via sqltap
 sqltap==0.3.11
