@@ -588,7 +588,8 @@ class Entry(Base):
                     'url': make_mw_img_url(self.name),
                     'url_sm': make_mw_img_url(self.name, size='small'),
                     'url_med': make_mw_img_url(self.name, size='medium'),
-                    'resolution': self.resolution})
+                    'resolution': self.resolution,
+                    'file_id': self.file_id})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
         return ret
