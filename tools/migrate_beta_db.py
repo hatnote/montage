@@ -17,15 +17,22 @@ if not os.path.exists(DB_PATH):
     sys.exit(1)
 
 c = sqlite3.connect(DB_PATH)
+try:
+    col_exists = 'file_id' in [row[1] for row in c.execute("PRAGMA table_info(entries)")]
+    idx_exists = 'ix_entry_file_id' in [row[1] for row in c.execute("PRAGMA index_list(entries)")]
 
-# Check if already migrated
-cols = [row[1] for row in c.execute("PRAGMA table_info(entries)")]
-if 'file_id' in cols:
-    print('Already migrated — file_id column exists. Nothing to do.')
-    sys.exit(0)
+    if col_exists and idx_exists:
+        print('Already migrated — file_id column and index exist. Nothing to do.')
+        sys.exit(0)
 
-print(f'Migrating {DB_PATH} ...')
-c.execute("ALTER TABLE entries ADD COLUMN file_id INTEGER DEFAULT NULL")
-c.execute("CREATE INDEX ix_entry_file_id ON entries (file_id)")
-c.commit()
-print('Done. file_id column and index created.')
+    print(f'Migrating {DB_PATH} ...')
+    # Both DDL steps inside one transaction — atomic, rollback on failure.
+    # SQLite DDL is transactional; both steps succeed or neither does.
+    with c:
+        if not col_exists:
+            c.execute("ALTER TABLE entries ADD COLUMN file_id INTEGER DEFAULT NULL")
+        if not idx_exists:
+            c.execute("CREATE INDEX ix_entry_file_id ON entries (file_id)")
+    print('Done. file_id column and index created.')
+finally:
+    c.close()
