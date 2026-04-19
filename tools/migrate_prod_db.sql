@@ -1,4 +1,4 @@
--- Production migration: add file_id column to entry table.
+-- Production migration: add file_id column to entries table.
 -- Companion to revert_prod_db.sql (exact reverse).
 -- Idempotent: safe to run more than once.
 --
@@ -7,5 +7,5 @@
 --
 -- Part of hatnote/montage#505 (image/oldimage → file/filerevision migration).
 
-ALTER TABLE entry ADD COLUMN IF NOT EXISTS file_id BIGINT NULL;
-CREATE INDEX IF NOT EXISTS ix_entry_file_id ON entry (file_id);
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS file_id BIGINT NULL;
+CREATE INDEX IF NOT EXISTS ix_entries_file_id ON entries (file_id);

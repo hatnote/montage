@@ -1,4 +1,4 @@
--- Production revert: remove file_id column from entry table.
+-- Production revert: remove file_id column from entries table.
 -- Exact reverse of migrate_prod_db.sql.
 -- Idempotent: safe to run more than once.
 --
@@ -7,5 +7,5 @@
 --
 -- Part of hatnote/montage#505 (image/oldimage → file/filerevision migration).
 
-DROP INDEX IF EXISTS ix_entry_file_id ON entry;
-ALTER TABLE entry DROP COLUMN IF EXISTS file_id;
+DROP INDEX IF EXISTS ix_entries_file_id ON entries;
+ALTER TABLE entries DROP COLUMN IF EXISTS file_id;
