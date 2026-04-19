@@ -18,6 +18,7 @@ from sqlalchemy import (Text,
                         Column,
                         String,
                         Integer,
+                        BigInteger,
                         Float,
                         Boolean,
                         DateTime,
@@ -561,6 +562,7 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
+    file_id = Column(BigInteger, nullable=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -586,7 +588,8 @@ class Entry(Base):
                     'url': make_mw_img_url(self.name),
                     'url_sm': make_mw_img_url(self.name, size='small'),
                     'url_med': make_mw_img_url(self.name, size='medium'),
-                    'resolution': self.resolution})
+                    'resolution': self.resolution,
+                    'file_id': self.file_id})
         if with_uploader:
             ret['upload_user_text'] = self.upload_user_text
         return ret
@@ -600,7 +603,8 @@ class Entry(Base):
                'img_height': self.height,
                'img_user': self.upload_user_id,
                'img_user_text': self.upload_user_text,
-               'img_timestamp': format_date(self.upload_date)}
+               'img_timestamp': format_date(self.upload_date),
+               'file_id': self.file_id}
         return ret
 
 
@@ -1631,6 +1635,20 @@ class CoordinatorDAO(UserDAO):
     def add_entries(self, rnd, entries):
         # TODO: you shouldn't be able to use this method to add
         # entries to anything other than the first round in a campaign
+
+        # Deduplicate case-insensitively before chunking. MySQL/MariaDB uses a
+        # case-insensitive collation (utf8mb4_unicode_ci) on entries.name, so
+        # two filenames differing only in case (e.g. Photo.JPG / photo.jpg)
+        # would collide on the unique index. Keep the first occurrence.
+        seen_lower = {}
+        deduped = []
+        for e in entries:
+            key = to_unicode(e.name).lower()
+            if key not in seen_lower:
+                seen_lower[key] = e.name
+                deduped.append(e)
+        entries = deduped
+
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
         new_entry_count = 0
