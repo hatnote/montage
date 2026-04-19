@@ -10,19 +10,15 @@ import sys
 sys.path.insert(0, '.')
 from montage.utils import load_env_config
 from montage.rdb import Base
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 config = load_env_config()
 db_url = config['db_url']
 print('Database:', db_url.split('@')[-1])
 engine = create_engine(db_url)
-with engine.connect() as conn:
-    conn.execute(text('SET FOREIGN_KEY_CHECKS=0'))
-    conn.commit()
-print('Dropping all tables...')
-Base.metadata.drop_all(engine)
-with engine.connect() as conn:
-    conn.execute(text('SET FOREIGN_KEY_CHECKS=1'))
-    conn.commit()
+print('Dropping all tables in reverse FK order...')
+for table in reversed(Base.metadata.sorted_tables):
+    print(' drop:', table.name)
+    table.drop(engine, checkfirst=True)
 print('Recreating all tables...')
 Base.metadata.create_all(engine)
 print('Done.')
