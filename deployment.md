@@ -195,6 +195,8 @@ DESCRIBE entries;
 
 ##### Inspecting the SQLite database (legacy / dev only)
 
+Note: montage-beta originally used SQLite and the file (`tmp_montage.db`) may still exist alongside the MariaDB setup. It is no longer used by the running service once the config switches to `mysql+pymysql://`.
+
 There is no `sqlite3` CLI on Toolforge. Use Python instead:
 
 ```bash
