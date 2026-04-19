@@ -61,11 +61,11 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 
 ##### 7. Creating a virtual environment
 ```bash
-toolforge webservice python3.11 shell
+toolforge webservice python3.13 shell
 python3 -m venv $HOME/www/python/venv
 source $HOME/www/python/venv/bin/activate
 pip install --upgrade pip wheel
-pip install -r $HOME/www/python/src/requirements.txt
+pip install --prefer-binary -r $HOME/www/python/src/requirements.txt
 exit
 ```
 
@@ -130,7 +130,7 @@ exit
 ##### 5. (Optional) Install python packages
 If you added new python packages in changes then you have to install them in pod.
 ```bash
-toolforge webservice python3.11 shell
+toolforge webservice python3.13 shell
 source $HOME/www/python/venv/bin/activate
 pip install -r $HOME/www/python/src/requirements.txt
 exit
@@ -138,7 +138,7 @@ exit
 
 ##### 8. Restart the backend service
 ```bash
-toolforge webservice python3.11 restart
+toolforge webservice python3.13 restart
 ```
 
 ##### 9. Testing of deployment
