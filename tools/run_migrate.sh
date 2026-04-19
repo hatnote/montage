@@ -8,5 +8,6 @@ DB_USER=$(awk -F'[= ]+' '/^user/{print $2}' ~/replica.my.cnf | head -1)
 DB="${DB_USER}__montage_beta"
 echo "Running: $SQL"
 echo "Database: $DB"
-mysql --defaults-file=~/replica.my.cnf "$DB" < "$SQL"
+mysql --defaults-file=~/replica.my.cnf \
+    -h tools.db.svc.wikimedia.cloud "$DB" < "$SQL"
 echo "Done."
