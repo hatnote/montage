@@ -71,17 +71,24 @@ def check_performance(category):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--db_url', required=True, help='SQLAlchemy DB URL for the app database')
+    parser.add_argument('--db_url', default=None, help='SQLAlchemy DB URL (default: read from config)')
     parser.add_argument('--category', default='Images_from_Wiki_Loves_Monuments_2015_in_France', help='Commons category to query (no File: prefix)')
     args = parser.parse_args()
+
+    db_url = args.db_url
+    if not db_url:
+        from montage.utils import load_env_config
+        config = load_env_config()
+        db_url = config['db_url']
 
     print('=' * 60)
     print('Montage beta MariaDB verification — hatnote/montage#514')
     print('=' * 60)
+    print('DB URL:', db_url.split('@')[-1])  # print host/db only, not credentials
 
     print('\n## Schema state\n')
     try:
-        s = check_schema(args.db_url)
+        s = check_schema(db_url)
         print('MariaDB version :', s['mariadb_version'])
         if s['file_id_column']:
             col = s['file_id_column']
