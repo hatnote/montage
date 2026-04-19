@@ -33,9 +33,16 @@ exit
 This will build the vue prod bundle and put in backend's `template` and `static` directory.
 
 ##### 5. Create your database
-* Get the user name of database (`cat ~/replica.my.cnf`)
-* Open up MariaDB with `sql local`
-* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) (`create database <user>__<db name>;`), and remember the name for the config
+* Get the username and password from `cat ~/replica.my.cnf`
+* Connect to MariaDB:
+  ```bash
+  mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud
+  ```
+* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) with `utf8mb4` charset, and remember the name for the config:
+  ```sql
+  CREATE DATABASE `<user>__<db name>` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+  EXIT;
+  ```
 
 ##### 6. Set up the montage config
 * Make a copy of `config.default.yaml` for your environment
@@ -43,7 +50,7 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 * Add the `oauth_consumer_token` and `oauth_secret_token` 
 * Add a `cookie_secret: <your random secret>`
 * Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
-    * The format is: `mysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
+    * The format is: `mysql+pymysql://<user>:<password>@tools.db.svc.wikimedia.cloud/<db name>?charset=utf8mb4`
 * Add `api_log_path: /data/project/<project>/logs/montage_api.log`
 * Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
 * Add `labs_db: True`
@@ -61,12 +68,24 @@ pip install -r $HOME/www/python/src/requirements.txt
 exit
 ```
 
-##### 8. Start the backend service
+##### 8. Initialise the database schema
+```bash
+cd $HOME/www/python/src
+source $HOME/www/python/venv/bin/activate
+python3 montage/create_schema.py
+```
+
+If this is an upgrade of an existing deployment (not a fresh install), run the migration SQL instead:
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+```
+
+##### 9. Start the backend service
 ```bash
 toolforge webservice python3.9 start
 ```
 
-##### 9. Testing of deployment
+##### 10. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
 * In the top section, you should see that the service was restarted in the last few seconds/minutes.
 
@@ -160,7 +179,21 @@ Running `pip` on the bastion shell installs to a different venv and will not aff
 toolforge webservice python3.9 restart
 ```
 
-##### Inspecting the SQLite database (beta only)
+##### Inspecting the MariaDB database
+
+Always pass `-h tools.db.svc.wikimedia.cloud` explicitly — there is no local socket on the Toolforge bastion:
+
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name>
+```
+
+Example queries:
+```sql
+SELECT COUNT(*) FROM entries;
+DESCRIBE entries;
+```
+
+##### Inspecting the SQLite database (legacy / dev only)
 
 There is no `sqlite3` CLI on Toolforge. Use Python instead:
 
