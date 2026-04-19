@@ -102,7 +102,8 @@ def main():
         print('MariaDB version :', s['mariadb_version'])
         if s['file_id_column']:
             col = s['file_id_column']
-            print('file_id column  : PRESENT  (%s, nullable=%s)' % (col[1], col[2]))
+            detail = '(%s, nullable=%s)' % (col[1], col[2]) if len(col) > 2 else ''
+            print('file_id column  : PRESENT  %s' % detail)
         else:
             print('file_id column  : ABSENT')
         if s['file_id_index']:
