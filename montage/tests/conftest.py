@@ -74,7 +74,7 @@ SELECTED_FILE_INFO = {
     'img_user_text': 'TestUploader',
     'img_timestamp': '20140817120000',
     'oi_archive_name': '',  # empty string = not a reupload
-    'file_id': 99999,
+    'file_id': 1,  # below FIXTURE_FILE_INFOS range (1000+), never collides
 }
 
 REUPLOAD_FILE_INFO = {
@@ -90,7 +90,7 @@ REUPLOAD_FILE_INFO = {
     'rec_img_timestamp': '20160601120000',  # reupload date
     'rec_img_user': '2222',        # reuploading user
     'rec_img_text': 'ReuploadingUser',
-    'file_id': 88888,
+    'file_id': 2,  # below FIXTURE_FILE_INFOS range (1000+), never collides
 }
 
 CSV_FULL_COLS = [

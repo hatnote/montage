@@ -24,6 +24,8 @@ FILE_COLS = ['fr.fr_width AS img_width',
              'oi.fr_archive_name AS oi_archive_name',
              'file.file_id AS file_id']
 
+# Alias "oi" mirrors the old oldimage (oi) role; here it is the earliest
+# non-deleted filerevision for the file, not the oldimage table.
 _EARLIEST_REVISION_SUBQUERY = '''
     LEFT JOIN (
         SELECT fr2.fr_id, fr2.fr_file, fr2.fr_timestamp, fr2.fr_archive_name,

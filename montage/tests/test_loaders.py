@@ -101,7 +101,7 @@ def test_make_entry_reupload():
     entry = make_entry(REUPLOAD_FILE_INFO)
     assert entry.flags['reupload'] is True
     assert entry.flags['reupload_user_id'] == '2222'
-    assert entry.file_id == 88888
+    assert entry.file_id == 2
 
 
 @pytest.mark.xfail(

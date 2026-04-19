@@ -874,7 +874,7 @@ def test_get_files_info_by_name(api_client):
             {'names': [SELECTED_FILE_INFO['img_name']]},
         )
     assert len(resp['file_infos']) == 1
-    assert resp['file_infos'][0]['file_id'] == 99999
+    assert resp['file_infos'][0]['file_id'] == 1
 
 
 def test_import_entries_have_file_id(api_client, mock_external_apis):
