@@ -24,26 +24,36 @@ sys.path.insert(0, PROJ_PATH)
 def check_schema(db_url):
     from sqlalchemy import create_engine, text
     engine = create_engine(db_url, echo=False)
+    is_sqlite = db_url.startswith('sqlite')
     with engine.connect() as conn:
-        version = conn.execute(text('SELECT VERSION()')).scalar()
-
-        col = conn.execute(text(
-            "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE "
-            "FROM information_schema.COLUMNS "
-            "WHERE TABLE_SCHEMA = DATABASE() "
-            "  AND TABLE_NAME = 'entries' "
-            "  AND COLUMN_NAME = 'file_id'"
-        )).fetchone()
-
-        idx = conn.execute(text(
-            "SELECT INDEX_NAME FROM information_schema.STATISTICS "
-            "WHERE TABLE_SCHEMA = DATABASE() "
-            "  AND TABLE_NAME = 'entries' "
-            "  AND INDEX_NAME = 'ix_entries_file_id'"
-        )).fetchone()
+        if is_sqlite:
+            version = 'SQLite (schema checks skipped — switch to MariaDB first)'
+            col = idx = None
+            # SQLite pragma for column presence
+            cols = conn.execute(text("PRAGMA table_info(entries)")).fetchall()
+            col_names = [c[1] for c in cols]
+            col = ('file_id',) if 'file_id' in col_names else None
+            idx_rows = conn.execute(text("PRAGMA index_list(entries)")).fetchall()
+            idx = next((i for i in idx_rows if 'file_id' in i[1]), None)
+        else:
+            version = conn.execute(text('SELECT VERSION()')).scalar()
+            col = conn.execute(text(
+                "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE "
+                "FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() "
+                "  AND TABLE_NAME = 'entries' "
+                "  AND COLUMN_NAME = 'file_id'"
+            )).fetchone()
+            idx = conn.execute(text(
+                "SELECT INDEX_NAME FROM information_schema.STATISTICS "
+                "WHERE TABLE_SCHEMA = DATABASE() "
+                "  AND TABLE_NAME = 'entries' "
+                "  AND INDEX_NAME = 'ix_entries_file_id'"
+            )).fetchone()
 
         total = conn.execute(text('SELECT COUNT(*) FROM entries')).scalar()
-        with_file_id = conn.execute(text('SELECT COUNT(file_id) FROM entries')).scalar()
+        with_file_id = conn.execute(
+            text('SELECT COUNT(file_id) FROM entries')).scalar()
 
     return {
         'mariadb_version': version,
