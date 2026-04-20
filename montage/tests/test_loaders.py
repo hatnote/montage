@@ -42,6 +42,12 @@ def test_load_results():
         status=200,
         content_type='text/csv',
     )
+    responses.add(
+        responses.POST,
+        TOOLFORGE_FILE_URL,
+        json={'file_infos': FIXTURE_FILE_INFOS, 'no_info': []},
+        status=200,
+    )
     imgs, warnings = get_entries_from_gsheet(RESULTS, source='remote')
     assert len(imgs) == len(FIXTURE_FILE_INFOS)
 
@@ -77,6 +83,12 @@ def test_load_csv():
         body=FIXTURE_FULL_CSV,
         status=200,
         content_type='text/csv',
+    )
+    responses.add(
+        responses.POST,
+        TOOLFORGE_FILE_URL,
+        json={'file_infos': FIXTURE_FILE_INFOS, 'no_info': []},
+        status=200,
     )
     imgs, warnings = get_entries_from_gsheet(GENERIC_CSV, source='remote')
     assert len(imgs) == len(FIXTURE_FILE_INFOS)

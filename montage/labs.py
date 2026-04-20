@@ -119,6 +119,28 @@ def get_file_info(filename):
         return None
 
 
+def get_file_info_by_id(file_id):
+    query = '''
+        SELECT {cols}
+        FROM commonswiki_p.file AS file
+        JOIN commonswiki_p.filerevision AS fr ON fr.fr_id = file.file_latest
+          AND fr.fr_deleted = 0
+        LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
+        LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
+        {earliest_rev}
+        WHERE file.file_id = %s
+          AND file.file_deleted = 0
+    '''.format(cols=', '.join(FILE_COLS),
+               earliest_rev=_EARLIEST_REVISION_SUBQUERY)
+    params = (file_id,)
+    results = fetchall_from_commonswiki(query, params)
+    if results:
+        return results[0]
+    else:
+        return None
+
+
+
 def get_files_legacy(category_name):
     """Verbatim copy of the original get_files() using image/oldimage tables.
 
