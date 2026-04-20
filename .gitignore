@@ -96,6 +96,7 @@ celerybeat-schedule
 
 # virtualenv
 venv/
+.venv*/
 ENV/
 
 # Logs
@@ -150,3 +151,7 @@ cypress/screenshots/
 cypress/videos/
 
 .vscode/
+
+# Claude Code
+.claude/
+tmp/

@@ -34,9 +34,7 @@
             <user-avatar-with-name :coordinators="[juror]" />
             <div style="display: flex; flex-direction: column; margin-top: 8px">
               <p style="font-size: 26px" v-if="juror?.stats?.total_tasks">
-                {{
-                   (100 - juror.stats.percent_tasks_open).toFixed(1)
-                }}
+                {{ (100 - juror.stats.percent_tasks_open).toFixed(1) }}
                 %
               </p>
               <p style="font-size: 26px" v-else>N/A</p>
@@ -197,9 +195,10 @@ const pauseRound = () => {
 const finalizeRound = () => {
   const completionPercentage = Math.round(roundDetails.value?.is_closable || 0)
 
-  const confirmText = completionPercentage === 100
-    ? "All votes are done. Click OK to confirm finalize round."
-    : `Only ${completionPercentage}% of votes are complete. Click OK to finalize anyway.`
+  const confirmText =
+    completionPercentage === 100
+      ? 'All votes are done. Click OK to confirm finalize round.'
+      : `Only ${completionPercentage}% of votes are complete. Click OK to finalize anyway.`
 
   const shouldFinalize = confirm(confirmText)
 
@@ -224,11 +223,6 @@ function downloadResults() {
 
 function downloadEntries() {
   const url = adminService.downloadEntries(props.round.id)
-  window.open(url)
-}
-
-function downloadReviews() {
-  const url = adminService.downloadReviews(props.round.id)
   window.open(url)
 }
 

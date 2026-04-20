@@ -7,8 +7,13 @@
       </cdx-field>
       <div style="display: flex">
         <cdx-field>
-          <date-picker v-model:value="formData.deadline_date" type="date" format="YYYY-MM-DD" placeholder="YYYY-MM-DD"
-            value-type="format"></date-picker>
+          <date-picker
+            v-model:value="formData.deadline_date"
+            type="date"
+            format="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD"
+            value-type="format"
+          ></date-picker>
           <template #label>{{ $t('montage-round-deadline') }}</template>
         </cdx-field>
       </div>
@@ -17,8 +22,12 @@
         <template #label>{{ $t('montage-directions') }}</template>
       </cdx-field>
       <cdx-field>
-        <cdx-radio v-for="source in showStatsOptions" :key="'show_stats-' + source.value" v-model="formData.show_stats"
-          :input-value="source.value">
+        <cdx-radio
+          v-for="source in showStatsOptions"
+          :key="'show_stats-' + source.value"
+          v-model="formData.show_stats"
+          :input-value="source.value"
+        >
           {{ source.label }}
         </cdx-radio>
         <template #label>{{ $t('montage-label-round-stats') }}</template>
@@ -62,7 +71,12 @@
       <delete style="font-size: 6px" /> {{ $t('montage-round-delete') }}
     </cdx-button>
 
-    <cdx-button @click="saveRound" action="progressive" weight="primary" style="margin-left: auto; margin-right: 24px">
+    <cdx-button
+      @click="saveRound"
+      action="progressive"
+      weight="primary"
+      style="margin-left: auto; margin-right: 24px"
+    >
       <check style="font-size: 6px" /> {{ $t('montage-btn-save') }}
     </cdx-button>
 
@@ -111,17 +125,17 @@ const showStatsOptions = ref([
 ])
 
 const fileSettingsOptions = ref([
-  "allowed_filetypes",
-  "dq_by_filetype",
-  "dq_by_resolution",
-  "dq_by_upload_date",
-  "dq_by_uploader",
-  "dq_coords",
-  "dq_maintainers",
-  "dq_organizers",
-  "show_filename",
-  "show_link",
-  "show_resolution"
+  'allowed_filetypes',
+  'dq_by_filetype',
+  'dq_by_resolution',
+  'dq_by_upload_date',
+  'dq_by_uploader',
+  'dq_coords',
+  'dq_maintainers',
+  'dq_organizers',
+  'show_filename',
+  'show_link',
+  'show_resolution'
 ])
 
 function updateJurors(selectedUsers) {
@@ -139,8 +153,8 @@ const saveRound = () => {
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
-    });
-    return;
+    })
+    return
   }
 
   const round = {
@@ -162,7 +176,6 @@ const saveRound = () => {
 }
 
 const deleteRound = () => {
-
   dialogService().show({
     title: $t('montage-round-delete'),
     content: $t('montage-round-delete-confirm'),
@@ -171,7 +184,7 @@ const deleteRound = () => {
       actionType: 'destructive'
     },
     defaultAction: {
-      label: $t('montage-btn-cancel'),
+      label: $t('montage-btn-cancel')
     },
     onPrimary: () => {
       adminService
@@ -181,9 +194,7 @@ const deleteRound = () => {
           router.reload()
         })
         .catch(alertService.error)
-    },
+    }
   })
-
-
 }
 </script>
