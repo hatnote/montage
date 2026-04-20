@@ -1200,6 +1200,17 @@ class CoordinatorDAO(UserDAO):
             ret[name] = entry
         return ret
 
+    def get_entry_file_id_map(self, file_ids):
+        entries = self.query(Entry)\
+                      .filter(Entry.file_id.in_(file_ids))\
+                      .all()
+        ret = {}
+        for entry in entries:
+            file_id = entry.file_id
+            ret[file_id] = entry
+        return ret
+
+
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)
                            .filter_by(round_id=round_id)
@@ -1641,10 +1652,28 @@ class CoordinatorDAO(UserDAO):
 
         for entry_chunk in entry_chunks:
             entry_names = [to_unicode(e.name) for e in entry_chunk]
-            db_entries = self.get_entry_name_map(entry_names)
+            entry_file_ids = [e.file_id for e in entry_chunk if e.file_id]
+
+            db_entries_by_name = self.get_entry_name_map(entry_names)
+            db_entries_by_file_id = self.get_entry_file_id_map(entry_file_ids)
 
             for entry in entry_chunk:
-                db_entry = db_entries.get(to_unicode(entry.name))
+                db_entry = None
+
+                # 1. Try file_id match (stable identity)
+                if entry.file_id:
+                    db_entry = db_entries_by_file_id.get(entry.file_id)
+                    if db_entry and to_unicode(db_entry.name) != to_unicode(entry.name):
+                        # Rename detected! Update existing entry's name.
+                        db_entry.name = to_unicode(entry.name)
+
+                # 2. Try name match (fallback / backfill)
+                if not db_entry:
+                    db_entry = db_entries_by_name.get(to_unicode(entry.name))
+                    if db_entry and entry.file_id and not db_entry.file_id:
+                        # Success! Backfill file_id on existing name-match entry.
+                        db_entry.file_id = entry.file_id
+
                 if db_entry:
                     entry = db_entry
                 else:
@@ -1654,6 +1683,7 @@ class CoordinatorDAO(UserDAO):
                 ret.append(entry)
 
         return ret, new_entry_count
+
 
     def add_round_entries(self, round_id, entries, method, params):
         rnd = self.user_dao.get_round(round_id)
