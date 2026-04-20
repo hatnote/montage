@@ -12,7 +12,7 @@ from chert import hypertext as html_utils
 
 from .mw import public
 from .rdb import User, PublicDAO
-from .labs import get_files, get_file_info
+from .labs import get_files, get_file_info, get_file_info_by_id
 
 from .utils import get_env_name, DoesNotExist, InvalidAction
 
@@ -44,7 +44,8 @@ def get_public_routes():
            ('/campaign', get_all_reports),
            ('/raise', raise_error),
            ('/utils/category', get_file_info_by_category),
-           ('/utils/file', get_files_info_by_name)]
+           ('/utils/file', get_files_info_by_name),
+           ('/utils/file_id', get_files_info_by_id)]
     return api, ui
 
 
@@ -111,6 +112,24 @@ def get_files_info_by_name(request_dict):
         file_info = get_file_info(file_name)
         if not file_info:
             no_info.append(file_name)
+        else:
+            files.append(file_info)
+    return {'file_infos': files,
+            'no_info': no_info}
+
+
+@public
+def get_files_info_by_id(request_dict):
+    try:
+        file_ids = request_dict['ids']
+    except Exception:
+        raise InvalidAction('must provide a list of ids')
+    files = []
+    no_info = []
+    for file_id in file_ids:
+        file_info = get_file_info_by_id(file_id)
+        if not file_info:
+            no_info.append(file_id)
         else:
             files.append(file_info)
     return {'file_infos': files,
