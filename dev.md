@@ -101,7 +101,7 @@ log in to the local app in your browser, and then copy the value from the
 * (Optional) Add your username as the `superuser` in the config. (This will allow you to
 add `su_to=<any user>` to the backend, if you want to test submitting as another
 juror.)
-* Add your username to the list of maintainers in [rdb.py line 113](https://github.com/hatnote/montage/blob/master/montage/rdb.py#L113).
+* Add your username to the `MAINTAINERS` list near the top of `montage/rdb.py`.
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
