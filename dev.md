@@ -58,7 +58,7 @@ Edit the `.env` file to match your development environment. By default, it's con
 Montage uses MediaWiki OAuth for authentication. There are two modes for local development:
 
 **Default (dev/debug mode) -- no setup required:**
-The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely and you are automatically logged in as `Slaporte`. This is sufficient for most frontend and backend development.
+The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. You will be logged in as `Slaporte`. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
 
 **Real OAuth (optional) -- for testing the actual login flow:**
 If you need to test the real OAuth login/logout flow, you need to register an OAuth consumer:
