@@ -51,6 +51,7 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 * Add a `cookie_secret: <your random secret>`
 * Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
     * The format is: `mysql+pymysql://<user>:<password>@tools.db.svc.wikimedia.cloud/<db name>?charset=utf8mb4`
+* Create the log directory: `mkdir -p /data/project/<project>/logs`
 * Add `api_log_path: /data/project/<project>/logs/montage_api.log`
 * Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
 * Add `labs_db: True`
@@ -157,7 +158,7 @@ The uwsgi log is at:
 tail -50 /data/project/montage-beta/uwsgi.log
 ```
 
-Note: there is no `logs/` directory inside `src/` — the log is one level up.
+Note: the log directory is `/data/project/<project>/logs/`, not inside `src/`.
 
 ##### Running Python / pip commands
 
