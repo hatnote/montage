@@ -60,7 +60,7 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 
 ##### 7. Creating a virtual environment
 ```bash
-toolforge webservice python3.9 shell
+toolforge webservice python3.11 shell
 python3 -m venv $HOME/www/python/venv
 source $HOME/www/python/venv/bin/activate
 pip install --upgrade pip wheel
@@ -82,7 +82,7 @@ mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db nam
 
 ##### 9. Start the backend service
 ```bash
-toolforge webservice python3.9 start
+toolforge webservice python3.11 start
 ```
 
 ##### 10. Testing of deployment
@@ -129,7 +129,7 @@ exit
 ##### 5. (Optional) Install python packages
 If you added new python packages in changes then you have to install them in pod.
 ```bash
-toolforge webservice python3.9 shell
+toolforge webservice python3.11 shell
 source $HOME/www/python/venv/bin/activate
 pip install -r $HOME/www/python/src/requirements.txt
 exit
@@ -137,7 +137,7 @@ exit
 
 ##### 8. Restart the backend service
 ```bash
-toolforge webservice python3.9 restart
+toolforge webservice python3.11 restart
 ```
 
 ##### 9. Testing of deployment
@@ -164,7 +164,7 @@ Note: there is no `logs/` directory inside `src/` — the log is one level up.
 Always run `pip install` and Python diagnostics inside the webservice shell, not the bastion shell. The two environments use different venvs:
 
 ```bash
-toolforge webservice python3.9 shell
+toolforge webservice python3.11 shell
 # venv is activated automatically
 pip install -r ~/www/python/src/requirements.txt
 python3 -c "import montage.app"
@@ -176,7 +176,7 @@ Running `pip` on the bastion shell installs to a different venv and will not aff
 ##### Restarting the service
 
 ```bash
-toolforge webservice python3.9 restart
+toolforge webservice python3.11 restart
 ```
 
 ##### Inspecting the MariaDB database
