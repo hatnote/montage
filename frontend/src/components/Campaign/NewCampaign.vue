@@ -102,6 +102,15 @@
           />
         </cdx-field>
 
+        <cdx-field class="research-opt-in-field">
+          <cdx-checkbox v-model="formField.researchOptIn">
+            {{ $t('montage-label-research-opt-in') }}
+          </cdx-checkbox>
+          <template #description>
+            {{ $t('montage-description-research-opt-in') }}
+          </template>
+        </cdx-field>
+
         <cdx-button
           :disabled="isLoading"
           @click="submitForm"
@@ -126,7 +135,7 @@ import { useRouter } from 'vue-router'
 import { z } from 'zod'
 import adminService from '@/services/adminService'
 import alertService from '@/services/alertService'
-import { CdxTextInput, CdxButton, CdxCard, CdxField } from '@wikimedia/codex'
+import { CdxTextInput, CdxButton, CdxCard, CdxField, CdxCheckbox } from '@wikimedia/codex'
 import UserList from '@/components/UserList.vue'
 
 const router = useRouter()
@@ -141,7 +150,8 @@ const formField = ref({
   openTime: '',
   closeDate: '',
   closeTime: '',
-  coordinators: []
+  coordinators: [],
+  researchOptIn: false
 })
 
 const errors = ref({
@@ -189,7 +199,8 @@ const submitForm = () => {
     url: formField.value.url,
     open_date: `${formField.value.openDate} ${formField.value.openTime}`,
     close_date: `${formField.value.closeDate} ${formField.value.closeTime}`,
-    coordinators: formField.value.coordinators
+    coordinators: formField.value.coordinators,
+    research_opt_in: formField.value.researchOptIn
   }
 
   isLoading.value = true
@@ -242,5 +253,9 @@ const submitForm = () => {
 .create-button {
   margin-top: 16px;
   margin-right: 16px;
+}
+
+.research-opt-in-field {
+  margin-top: 16px;
 }
 </style>

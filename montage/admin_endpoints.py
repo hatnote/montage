@@ -53,6 +53,7 @@ def get_admin_routes():
                 remove_coordinator),
            POST('/admin/campaign/<campaign_id:int>/finalize', finalize_campaign),
            POST('/admin/campaign/<campaign_id:int>/reopen', reopen_campaign),
+           POST('/admin/campaign/<campaign_id:int>/set_research_opt_in',set_research_opt_in),
            POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
@@ -250,6 +251,8 @@ def create_campaign(user_dao, request_dict):
 
     series_id = request_dict.get('series_id', 1)
 
+    research_opt_in = request_dict.get('research_opt_in',False)
+
     coord_names = request_dict.get('coordinators')
 
     coords = [user_dao.user]  # Organizer is included as a coordinator by default
@@ -262,12 +265,29 @@ def create_campaign(user_dao, request_dict):
                                        close_date=close_date,
                                        series_id=series_id,
                                        url=url,
-                                       coords=set(coords))
+                                       coords=set(coords),
+                                       research_opt_in=research_opt_in)
     # TODO: need completion info for each round
     data = campaign.to_details_dict()
 
     return {'data': data}
 
+def set_research_opt_in(user_dao, campaign_id, request_dict):
+    """
+    Sets research opt-in status for a campaign
+    Request model: research_opt_int -> type: boolean
+    Response model: AdminCampaignDetails
+    """
+
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    campaign = coord_dao.campaign
+
+    research_opt_in = request_dict.get('research_opt_in',False)
+    campaign.research_opt_in = research_opt_in
+
+    data = campaign.to_details_dict()
+
+    return {'data': data}
 
 def get_campaign_report(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
@@ -439,6 +459,10 @@ def edit_campaign(user_dao, campaign_id, request_dict):
     is_archived = request_dict.get('is_archived')
     if is_archived is not None:
         edit_dict['is_archived'] = is_archived
+    
+    research_opt_in = request_dict.get('research_opt_in')
+    if research_opt_in is not None:
+        edit_dict['research_opt_in'] = research_opt_in
 
     open_date = request_dict.get('open_date')
     if open_date:

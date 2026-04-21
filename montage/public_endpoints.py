@@ -1,9 +1,11 @@
 
 from __future__ import absolute_import
 import os
+import io
 import datetime
 
-from clastic import redirect, render_basic
+import unicodecsv
+from clastic import redirect, render_basic, Response
 from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
 from markdown import Markdown
@@ -44,7 +46,9 @@ def get_public_routes():
            ('/campaign', get_all_reports),
            ('/raise', raise_error),
            ('/utils/category', get_file_info_by_category),
-           ('/utils/file', get_files_info_by_name)]
+           ('/utils/file', get_files_info_by_name),
+           ('/research/datasets',get_research_datasets),
+           ('/research/dataset/<campaign_id:int>/download',download_research_dataset)]
     return api, ui
 
 
@@ -247,5 +251,34 @@ def get_all_reports(rdb_session):
     reports = dao.get_all_reports()
     return {'data': [r.to_dict() for r in reports]}
 
+@public
+def get_research_datasets(rdb_session):
+    dao = PublicDAO(rdb_session)
+    campaigns = dao.get_research_campaigns()
+    return {'data':campaigns}
+
+@public
+def download_research_dataset(rdb_session,campaign_id):
+    dao = PublicDAO(rdb_session)
+    campaign, votes = dao.get_research_dataset(campaign_id)
+
+    output = io.BytesIO()
+    csv_fieldnames = ['filename','vote']
+    csv_writer = unicodecsv.DictWriter(output,fieldnames = csv_fieldnames)
+    csv_writer.writeheader()
+
+    for vote in votes:
+        csv_writer.writerow({
+            'filename': vote['filename'],
+            'vote': vote['value']
+        })
+
+    ret = output.getvalue()
+    output_name = 'research_dataset_%s.csv' % campaign_id
+    resp = Response(ret,mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % output_name
+
+    return resp
 
 PUBLIC_API_ROUTES, PUBLIC_UI_ROUTES = get_public_routes()

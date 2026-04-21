@@ -1,4 +1,4 @@
-import { apiCommons } from './api'
+import { apiCommons, apiBackend } from './api'
 
 const dataService = {
   async getImageInfo(images) {
@@ -70,6 +70,20 @@ const dataService = {
       console.error('Error searching for category:', error)
       throw error
     }
+  },
+
+  async getResearchDatasets() {
+    try {
+      const response = await apiBackend.get('research/datasets')
+      return response
+    } catch (error) {
+      console.error('Error fetching research datasets:', error)
+      throw error
+    }
+  },
+
+  getResearchDatasetDownloadUrl(campaignId) {
+    return `${apiBackend.defaults.baseURL}research/dataset/${campaignId}/download`
   }
 }
 
