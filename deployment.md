@@ -24,7 +24,7 @@ git clone https://github.com/hatnote/montage.git src
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node18 shell -m 2G
+toolforge webservice node20 shell -m 2G
 cd $HOME/www/python/src/frontend
 npm install
 npm run toolforge:build
@@ -119,7 +119,7 @@ git pull
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node18 shell -m 2G
+toolforge webservice node20 shell -m 2G
 cd $HOME/www/python/src/frontend
 npm install
 npm run toolforge:build
