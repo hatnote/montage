@@ -543,8 +543,7 @@ def get_round_results_preview(user_dao, round_id):
         data['ratings'] = coord_dao.get_round_average_rating_map(round_id)
         try:
             data['thresholds'] = get_threshold_map(data['ratings'])
-        except:
-            # import pdb;pdb.post_mortem()
+        except Exception:
             raise
     elif rnd.vote_method == 'ranking':
         completed_votes_count = round_counts.get('total_tasks', 0) - round_counts.get('total_open_tasks', 0)
@@ -552,7 +551,7 @@ def get_round_results_preview(user_dao, round_id):
             # TODO: What should this return for ranking rounds? The ranking
             # round is sorta an all-or-nothing deal, unlike the rating rounds
             # where you can take a peek at in-progress results
-            # import pdb;pdb.set_trace()
+            # ranking round: all-or-nothing, can't peek at partial results
             return {'status': 'failure',
                     '_status_code': 400,
                     'errors': ('cannot preview results of a ranking '

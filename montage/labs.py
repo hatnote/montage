@@ -112,4 +112,4 @@ def get_file_info(filename):
 
 if __name__ == '__main__':
     imgs = get_files('Images_from_Wiki_Loves_Monuments_2015_in_France')
-    import pdb; pdb.set_trace()
+    print('%d file(s) returned' % len(imgs))
