@@ -43,6 +43,8 @@ A PR is ready for review when:
 
 Do not open a PR to ask for direction or feedback on an approach — use the issue for that conversation first.
 
+When you are a new contributor to this codebase (e.g. not part of the maintainer team) we kindly ask you to make a screen recording of the platform with human voice-over that reproduces the issue locally, and shows the change after the implemented changes. Please also make sure to be explicit about your testing approach and the logic used. 
+
 ## Deployment
 
 Only maintainers have access to the three Toolforge environments:
