@@ -165,7 +165,7 @@ def api_client(montage_app):
     return api_client
 
 
-def test_home_client(base_client, api_client):
+def test_home_client(base_client, api_client, mock_external_apis):
 
     resp = base_client.fetch('organizer: home', '/')
     #resp = base_client.fetch('public: login', '/login')
@@ -821,7 +821,7 @@ def test_home_client(base_client, api_client):
     #resp = base_client.fetch('public: logout', '/logout')
 
 
-def test_multiple_jurors(api_client):
+def test_multiple_jurors(api_client, mock_external_apis):
     # This is copied from above. What's the best way to break up the tests into
     # various stages? Should I use a pytest.fixture?
     fetch = api_client.fetch

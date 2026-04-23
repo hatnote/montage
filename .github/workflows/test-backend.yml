@@ -21,7 +21,7 @@ jobs:
             -v "${{ github.workspace }}":/app \
             -e PYTHONPATH=/app \
             montage-ci \
-            python -m pytest montage/tests/test_web_basic.py \
+            python -m pytest montage/tests/ \
               -v --tb=short -p no:cacheprovider
 
       - name: Verify backend imports
