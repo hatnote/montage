@@ -43,7 +43,7 @@ To enable authentication, you must create an OAuth consumer on Meta-Wiki.
 
 2. Fill in the details:
    - **Application Name:** Montage Local Dev(example)  
-   - **Callback URL:** http://localhost:5000/callback  
+   - **Callback URL:** http://localhost:5001/callback  
 
 3. Select grants:
    - Basic identity  
@@ -63,7 +63,7 @@ Create or update your `config.dev.yaml` file:
 oauth:
   consumer_key: "your_key_here"
   consumer_secret: "your_secret_here"
-  callback_url: "http://localhost:5000/callback"
+  callback_url: "http://localhost:5001/callback"
 ```
 
 ### 4. Troubleshooting Common Setup Issues
