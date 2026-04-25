@@ -48,7 +48,9 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/add_round',
                 create_round),
             POST('/admin/campaign/<campaign_id:int>/create_round_combined',
-                create_round_combined),    
+                create_round_combined),
+            POST('/admin/campaign/<campaign_id:int>/create_round_combined',
+                create_round_combined),     
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
@@ -509,28 +511,29 @@ def create_round(user_dao, campaign_id, request_dict):
     return {'data': data}
 
 def create_round_combined(user_dao, campaign_id, request_dict):
-    with DBSession.begin():
 
-        # 1. create round using existing logic
-        response = create_round(user_dao, campaign_id, request_dict)
-        rnd = response['data']
+    # STEP 1: create round
+    response = create_round(user_dao, campaign_id, request_dict)
+    rnd = response['data']
 
-        round_id = rnd['id']
+    round_id = rnd['id']
 
-        # 2. import entries
-        entries = import_entries(round_id)
+    # STEP 2: import entries
+    import_response = import_entries(user_dao, round_id, request_dict)
 
-        # 3. rollback condition
-        if not entries:
-            raise InvalidAction("No entries found. Round not created.")
+    # FIX: extract count properly
+    entry_count = import_response.get('data', {}).get('total_round_entries', 0)
 
-        return {
-            "data": {
-                "round_id": round_id,
-                "entry_count": len(entries)
-            }
+    # STEP 3: rollback trigger
+    if entry_count == 0:
+        raise InvalidAction("No entries found. Round not created.")
+
+    return {
+        "data": {
+            "round_id": round_id,
+            "entry_count": entry_count
         }
-
+    }
 
 
 def edit_round(user_dao, round_id, request_dict):
