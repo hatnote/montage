@@ -47,6 +47,8 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
            POST('/admin/campaign/<campaign_id:int>/add_round',
                 create_round),
+            POST('/admin/campaign/<campaign_id:int>/create_round_combined',
+                create_round_combined),    
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
@@ -505,6 +507,30 @@ def create_round(user_dao, campaign_id, request_dict):
     data['progress'] = rnd.get_count_map()
 
     return {'data': data}
+
+def create_round_combined(user_dao, campaign_id, request_dict):
+    with DBSession.begin():
+
+        # 1. create round using existing logic
+        response = create_round(user_dao, campaign_id, request_dict)
+        rnd = response['data']
+
+        round_id = rnd['id']
+
+        # 2. import entries
+        entries = import_entries(round_id)
+
+        # 3. rollback condition
+        if not entries:
+            raise InvalidAction("No entries found. Round not created.")
+
+        return {
+            "data": {
+                "round_id": round_id,
+                "entry_count": len(entries)
+            }
+        }
+
 
 
 def edit_round(user_dao, round_id, request_dict):
