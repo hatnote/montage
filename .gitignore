@@ -130,6 +130,10 @@ coverage
 
 *.tsbuildinfo
 
+# Claude Code and local temp files
+.claude/
+tmp/
+
 # Spyder project settings
 .spyderproject
 
