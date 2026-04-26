@@ -29,7 +29,7 @@ Follow the setup instructions in [dev.md](dev.md), including installing pre-comm
 - Backend: read `montage/rdb.py` before writing queries — column names are authoritative there. Note that `.filter()` and `.order_by()` return new objects — always reassign
 - Backend: write code that works with both MySQL (production) and SQLite (tests) — no MySQL-only syntax
 - Frontend: use Composition API with `<script setup>` — no Options API
-- All user-facing strings must go in `frontend/src/i18n/en.json` and use `t('key')` — TranslateWiki handles other locales, do not edit them manually
+- All user-facing strings must go in `frontend/src/i18n/en.json` and use `t('key')` — see [frontend/src/i18n/README.md](frontend/src/i18n/README.md)
 
 ## When to open a PR for review
 
