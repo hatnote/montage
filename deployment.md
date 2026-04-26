@@ -24,7 +24,7 @@ git clone https://github.com/hatnote/montage.git src
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node18 shell -m 2G
+toolforge webservice node20 shell -m 2G
 cd $HOME/www/python/src/frontend
 npm install
 npm run toolforge:build
@@ -33,9 +33,16 @@ exit
 This will build the vue prod bundle and put in backend's `template` and `static` directory.
 
 ##### 5. Create your database
-* Get the user name of database (`cat ~/replica.my.cnf`)
-* Open up MariaDB with `sql local`
-* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) (`create database <user>__<db name>;`), and remember the name for the config
+* Get the username and password from `cat ~/replica.my.cnf`
+* Connect to MariaDB:
+  ```bash
+  mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud
+  ```
+* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) with `utf8mb4` charset, and remember the name for the config:
+  ```sql
+  CREATE DATABASE `<user>__<db name>` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+  EXIT;
+  ```
 
 ##### 6. Set up the montage config
 * Make a copy of `config.default.yaml` for your environment
@@ -43,7 +50,8 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 * Add the `oauth_consumer_token` and `oauth_secret_token` 
 * Add a `cookie_secret: <your random secret>`
 * Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
-    * The format is: `mysql://<user>:<password>@tools.labsdb/<db name>?charset=utf8`
+    * The format is: `mysql+pymysql://<user>:<password>@tools.db.svc.wikimedia.cloud/<db name>?charset=utf8mb4`
+* Create the log directory: `mkdir -p /data/project/<project>/logs`
 * Add `api_log_path: /data/project/<project>/logs/montage_api.log`
 * Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
 * Add `labs_db: True`
@@ -53,7 +61,7 @@ This will build the vue prod bundle and put in backend's `template` and `static`
 
 ##### 7. Creating a virtual environment
 ```bash
-toolforge webservice python3.9 shell
+toolforge webservice python3.11 shell
 python3 -m venv $HOME/www/python/venv
 source $HOME/www/python/venv/bin/activate
 pip install --upgrade pip wheel
@@ -61,12 +69,24 @@ pip install -r $HOME/www/python/src/requirements.txt
 exit
 ```
 
-##### 8. Start the backend service
+##### 8. Initialise the database schema
 ```bash
-toolforge webservice python3.9 start
+cd $HOME/www/python/src
+source $HOME/www/python/venv/bin/activate
+python3 montage/create_schema.py
 ```
 
-##### 9. Testing of deployment
+If this is an upgrade of an existing deployment (not a fresh install), run the migration SQL instead:
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+```
+
+##### 9. Start the backend service
+```bash
+toolforge webservice python3.11 start
+```
+
+##### 10. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
 * In the top section, you should see that the service was restarted in the last few seconds/minutes.
 
@@ -100,7 +120,7 @@ git pull
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node18 shell -m 2G
+toolforge webservice node20 shell -m 2G
 cd $HOME/www/python/src/frontend
 npm install
 npm run toolforge:build
@@ -110,7 +130,7 @@ exit
 ##### 5. (Optional) Install python packages
 If you added new python packages in changes then you have to install them in pod.
 ```bash
-toolforge webservice python3.9 shell
+toolforge webservice python3.11 shell
 source $HOME/www/python/venv/bin/activate
 pip install -r $HOME/www/python/src/requirements.txt
 exit
@@ -118,9 +138,68 @@ exit
 
 ##### 8. Restart the backend service
 ```bash
-toolforge webservice python3.9 restart
+toolforge webservice python3.11 restart
 ```
 
 ##### 9. Testing of deployment
 * Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
 * In the top section, you should see that the service was restarted in the last few seconds/minutes.
+
+
+---
+
+
+## Debugging
+
+##### Viewing logs
+
+The uwsgi log is at:
+```bash
+tail -50 /data/project/montage-beta/uwsgi.log
+```
+
+Note: the log directory is `/data/project/<project>/logs/`, not inside `src/`.
+
+##### Running Python / pip commands
+
+Always run `pip install` and Python diagnostics inside the webservice shell, not the bastion shell. The two environments use different venvs:
+
+```bash
+toolforge webservice python3.11 shell
+# venv is activated automatically
+pip install -r ~/www/python/src/requirements.txt
+python3 -c "import montage.app"
+exit
+```
+
+Running `pip` on the bastion shell installs to a different venv and will not affect the running service.
+
+##### Restarting the service
+
+```bash
+toolforge webservice python3.11 restart
+```
+
+##### Inspecting the MariaDB database
+
+Always pass `-h tools.db.svc.wikimedia.cloud` explicitly — there is no local socket on the Toolforge bastion:
+
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name>
+```
+
+Example queries:
+```sql
+SELECT COUNT(*) FROM entries;
+DESCRIBE entries;
+```
+
+##### Inspecting the SQLite database (legacy / dev only)
+
+Note: montage-beta originally used SQLite and the file (`tmp_montage.db`) may still exist alongside the MariaDB setup. It is no longer used by the running service once the config switches to `mysql+pymysql://`.
+
+There is no `sqlite3` CLI on Toolforge. Use Python instead:
+
+```bash
+python3 -c 'import sqlite3; c=sqlite3.connect("/data/project/montage-beta/www/python/src/tmp_montage.db"); print(c.execute("SELECT COUNT(*) FROM entries").fetchone())'
+```

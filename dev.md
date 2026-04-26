@@ -58,7 +58,7 @@ Edit the `.env` file to match your development environment. By default, it's con
 Montage uses MediaWiki OAuth for authentication. There are two modes for local development:
 
 **Default (dev/debug mode) -- no setup required:**
-The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely and you are automatically logged in as `Slaporte`. This is sufficient for most frontend and backend development.
+The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. You will be logged in as `Slaporte`. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
 
 **Real OAuth (optional) -- for testing the actual login flow:**
 If you need to test the real OAuth login/logout flow, you need to register an OAuth consumer:
@@ -101,7 +101,7 @@ log in to the local app in your browser, and then copy the value from the
 * (Optional) Add your username as the `superuser` in the config. (This will allow you to
 add `su_to=<any user>` to the backend, if you want to test submitting as another
 juror.)
-* Add your username to the list of maintainers in [rdb.py line 113](https://github.com/hatnote/montage/blob/master/montage/rdb.py#L113).
+* Add your username to the `MAINTAINERS` list near the top of `montage/rdb.py`.
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
