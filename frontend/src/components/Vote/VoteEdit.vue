@@ -87,7 +87,7 @@
 
       <cdx-button weight="quiet" action="default" @click="gobackToRound">
         <ArrowLeftThick />
-        <span>Back to Round</span>
+        <span>{{ $t('back-to-round') }}</span>
       </cdx-button>
     </div>
     <div class="image-grid" :class="'grid-size-' + gridSize" v-if="!isVoting('ranking')">
@@ -446,7 +446,7 @@ const gobackToRound = () => {
 
 onBeforeRouteLeave((to, from, next) => {
   if (edits.value.length) {
-    if (confirm('There are unsaved changes. Are you sure you want to leave?')) {
+    if (confirm($t('unsaved-changes-confirmation'))) {
       next()
     } else {
       next(false)

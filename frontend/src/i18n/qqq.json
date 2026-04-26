@@ -187,5 +187,7 @@
 	"montage-round-uploaders": "Label for the number of uploaders contributing files to a round.",
 	"permission-denied-title": "The title displayed on the Permission Denied page when the user is not authorized to access the requested page.",
 	"permission-denied-message": "A message explaining that the user does not have the required permissions to access the page.",
-	"permission-denied-home": "Text for the button that redirects the user to the home page if they are already authenticated."
+	"permission-denied-home": "Text for the button that redirects the user to the home page if they are already authenticated.",
+	"unsaved-changes-confirmation": "Message shown when the user attempts to leave a page with unsaved changes.",
+	"back-to-round": "Label for navigate back to the round page button"
 }
