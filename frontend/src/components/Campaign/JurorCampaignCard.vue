@@ -5,12 +5,27 @@
     </template>
     <div v-for="(round, index) in campaign" :key="index" class="juror-campaign-round-card">
       <div class="round-header">
-        <thumbs-up-down v-if="round.vote_method === 'yesno'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
-        <star-outline v-if="round.vote_method === 'rating'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
-        <sort v-if="round.vote_method === 'ranking'" class="juror-campaign-round-icon" :size="36" fillColor="white" />
+        <thumbs-up-down
+          v-if="round.vote_method === 'yesno'"
+          class="juror-campaign-round-icon"
+          :size="36"
+          fillColor="white"
+        />
+        <star-outline
+          v-if="round.vote_method === 'rating'"
+          class="juror-campaign-round-icon"
+          :size="36"
+          fillColor="white"
+        />
+        <sort
+          v-if="round.vote_method === 'ranking'"
+          class="juror-campaign-round-icon"
+          :size="36"
+          fillColor="white"
+        />
         <div class="round-info">
-              <p :class="{ 'strikethrough': round.status === 'cancelled' }">{{ round.name }}</p>
-          <p>({{ $t( getVotingName(round.vote_method) )}} · {{ round.status }})</p>
+          <p :class="{ strikethrough: round.status === 'cancelled' }">{{ round.name }}</p>
+          <p>({{ $t(getVotingName(round.vote_method)) }} · {{ round.status }})</p>
         </div>
       </div>
       <div class="card-container">
@@ -31,7 +46,7 @@
                   <strong>{{ $t('montage-your-progress') }}:</strong>
                   {{ (100 - round.percent_tasks_open).toFixed(1) }}% ({{
                     $t('montage-progress-status', [
-                      (round.total_tasks - round.total_open_tasks) ?? 0,
+                      round.total_tasks - round.total_open_tasks ?? 0,
                       round.total_tasks ?? 0
                     ])
                   }})

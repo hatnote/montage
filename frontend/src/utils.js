@@ -4,10 +4,10 @@ export function formatDate(dateString) {
 }
 
 export function getVotingName(voting) {
-  const types =  {
-    "yesno": "montage-round-yesno", 
-    "rating": "montage-round-rating",
-    "ranking": "montage-round-ranking",
+  const types = {
+    yesno: 'montage-round-yesno',
+    rating: 'montage-round-rating',
+    ranking: 'montage-round-ranking'
   }
 
   return types[voting]
@@ -64,14 +64,14 @@ function cutHex(h) {
 
 export function getCommonsImageUrl(image, width = 1280) {
   if (!image) return null
-  
+
   // Handle different data structures:
   // - image.entry.name (task/vote object with nested entry)
   // - image.name (direct entry object or task with top-level name)
   // - image (string filename)
   const imageName = image.entry?.name || image.name || image
   const encodedName = encodeURIComponent(imageName)
-  
+
   // Use Special:Redirect which works universally for all file types including TIFF
   // It handles redirects for moved files and performs automatic format conversion
   if (width) {

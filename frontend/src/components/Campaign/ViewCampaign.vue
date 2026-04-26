@@ -36,7 +36,11 @@
         <cdx-button
           v-if="!showAddRoundForm"
           action="progressive"
-          @click="campaignRounds.some(r => r.status == 'active' || r.status=='paused') ? (ActiveGoalAlert = true) : addRound()"
+          @click="
+            campaignRounds.some((r) => r.status == 'active' || r.status == 'paused')
+              ? (ActiveGoalAlert = true)
+              : addRound()
+          "
           :disabled="campaign.isArchived"
           icon
           class="add-round-button"
@@ -142,23 +146,22 @@
         />
       </cdx-field>
     </div>
-
   </div>
   <cdx-dialog
     v-model:open="ActiveGoalAlert"
-    title="Round already active" 
+    title="Round already active"
     :primary-action="primaryAction"
-    @primary="ActiveGoalAlert=false"
+    @primary="ActiveGoalAlert = false"
   >
     <p>
-      You already have an active round in this campaign. Please complete or close the current round before starting a new one.
+      You already have an active round in this campaign. Please complete or close the current round
+      before starting a new one.
     </p>
   </cdx-dialog>
-
 </template>
 
 <script setup>
-import { ref, onMounted, defineComponent } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/utils'
@@ -214,9 +217,9 @@ const errors = ref({
 })
 
 const primaryAction = {
-	label: 'Okay',
-	actionType: 'progressive'
-};
+  label: 'Okay',
+  actionType: 'progressive'
+}
 
 const schema = z.object({
   name: z.string().min(1, $t('montage-required-campaign-name')),
@@ -274,8 +277,12 @@ const saveEditCampaign = () => {
   const oldCords = campaign.value.coordinators.map((u) => u.username)
   const newCords = campaignFormField.value.coordinators
 
-  const added = newCords.filter((x) => oldCords.indexOf(x) < 0).map((name) => [adminService.addCoordinator, name])
-  const removed = oldCords.filter((x) => newCords.indexOf(x) < 0).map((name) => [adminService.removeCoordinator, name])
+  const added = newCords
+    .filter((x) => oldCords.indexOf(x) < 0)
+    .map((name) => [adminService.addCoordinator, name])
+  const removed = oldCords
+    .filter((x) => newCords.indexOf(x) < 0)
+    .map((name) => [adminService.removeCoordinator, name])
 
   adminService
     .editCampaign(campaignId, payload)
