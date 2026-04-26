@@ -191,7 +191,7 @@ const deleteRound = () => {
         .cancelRound(props.round.id)
         .then(() => {
           emit('update:isRoundEditing', false)
-          router.reload()
+          location.reload()
         })
         .catch(alertService.error)
     }
