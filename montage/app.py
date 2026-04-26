@@ -73,7 +73,7 @@ def create_app(env_name='prod', config=None):
     session_type.configure(bind=engine)
     tmp_rdb_session = session_type()
 
-    schema_errors = get_schema_errors(Base, session)
+    schema_errors = get_schema_errors(Base, tmp_rdb_session)
     if not schema_errors:
         print('++  schema validated ok')
     else:
