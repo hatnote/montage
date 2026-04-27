@@ -1,17 +1,31 @@
 #!/bin/bash
 set -e
+#
+# Build the Montage frontend and copy assets to montage/static/.
+#
+# KNOWN WORKAROUNDS
+# -----------------
+# 1. --ignore-scripts + explicit @esbuild/linux-x64 install [TEMPORARY]
+#    Root cause: package-lock.json is generated on macOS with npm 10+, but the
+#    Toolforge node20 image ships npm 9.2.0. npm 9 does not correctly install
+#    platform-specific optional binaries from a cross-platform lock file, so
+#    @esbuild/linux-x64 ends up at the wrong version. esbuild's post-install
+#    script (install.js) then catches the mismatch and aborts.
+#    Workaround: skip all post-install scripts (--ignore-scripts), then install
+#    the correct linux-x64 binary explicitly at the version from the lock file.
+#    Long-term fix: switch to --image node22, which ships npm 10+, OR regenerate
+#    package-lock.json on Linux and commit it. See: T393437.
+#
+# 2. VITE_API_ENDPOINT='' in frontend/.env.production [PERMANENT]
+#    Required so production builds use a relative base URL (/v1/) instead of
+#    the localhost URL from .env.default. This file must stay in the repo.
 
 FRONTEND="$HOME/www/python/src/frontend"
 TOOL=$(id -un | sed 's/^tools\.//')
 OUTLOG="/data/project/$TOOL/npm-build.out"
 ERRLOG="/data/project/$TOOL/npm-build.err"
-
-# Get the esbuild JS version from the lock file so we install a matching binary.
-# Workaround: the Toolforge node20 image ships npm 9.2.0, which does not install
-# the correct platform-specific optional binary when the lock file was generated
-# on macOS with npm 10+. We skip post-install scripts (--ignore-scripts) to
-# prevent esbuild's install.js from failing on the wrong binary, then install
-# the correct linux-x64 binary explicitly. Remove once node20 ships npm 10+.
+# Derive esbuild version dynamically so the explicit binary install stays in
+# sync whenever esbuild is upgraded in package-lock.json.
 ESBUILD_VERSION=$(python3 -c "
 import json
 d = json.load(open('$FRONTEND/package-lock.json'))
