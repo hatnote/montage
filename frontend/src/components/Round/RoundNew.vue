@@ -151,7 +151,7 @@
                 </template>
               </cdx-field>
             </div>
-            <div class="form-right" v-if="roundIndex === 0">
+            <div class="form-right">
               <p>{{ $t('montage-round-file-setting') }}</p>
               <cdx-field>
                 <cdx-checkbox
@@ -237,6 +237,7 @@ const campaignId = route.params.id.split('-')[0]
 
 const voteMethods = ['yesno', 'rating', 'ranking']
 const fileSettingsOptions = [
+  'dq_by_filetype',
   'dq_by_uploader',
   'dq_by_resolution',
   'dq_by_upload_date',
@@ -263,6 +264,38 @@ const thresholds = ref(null)
 const thresholdOptions = ref(null)
 const isLoading = ref(false)
 
+const defaultConfig = {
+  dq_by_filetype: true,
+  dq_by_resolution: false,
+  min_resolution: 2000000,
+  dq_by_uploader: false,
+  dq_by_upload_date: true,
+  dq_coords: true,
+  dq_maintainers: true,
+  dq_organizers: true,
+  show_filename: true,
+  show_link: true,
+  show_resolution: true
+}
+
+const isNonEmptyConfig = (config) =>
+  config && typeof config === 'object' && !Array.isArray(config) && Object.keys(config).length > 0
+
+const getInheritedRoundConfig = () => {
+  if (roundIndex === 0) {
+    return { ...defaultConfig }
+  }
+
+  const sourceRound = [...props.rounds]
+    .reverse()
+    .find((round) => isNonEmptyConfig(round.config))
+
+  return {
+    ...defaultConfig,
+    ...((sourceRound && sourceRound.config) || {})
+  }
+}
+
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
   vote_method: roundIndex !== 0 && roundIndex < 3 ? voteMethods[roundIndex] : 'yesno',
@@ -272,18 +305,7 @@ const formData = ref({
   threshold: null,
   jurors: roundIndex !== 0 ? prevRound.jurors.map((juror) => juror.username) : [],
   directions: '',
-  config: {
-    dq_by_resolution: false,
-    min_resolution: 2000000,
-    dq_by_uploader: true,
-    dq_by_upload_date: false,
-    dq_coords: false,
-    dq_maintainers: false,
-    dq_organizers: false,
-    show_filename: false,
-    show_link: false,
-    show_resolution: false
-  }
+  config: getInheritedRoundConfig()
 })
 
 // States for import source
@@ -368,11 +390,13 @@ const submitRound = () => {
         vote_method: formData.value.vote_method,
         quorum: formData.value.quorum,
         deadline_date: formData.value.deadline_date + 'T00:00:00',
-        jurors: formData.value.jurors
+        jurors: formData.value.jurors,
+        config: formData.value.config
       },
       threshold: formData.value.threshold
     }
 
+    isLoading.value = true
     adminService
       .advanceRound(prevRound.id, payload)
       .then(() => {
@@ -381,6 +405,7 @@ const submitRound = () => {
       })
       .catch(alertService.error)
       .finally(() => {
+        isLoading.value = false
         emit('reload-campaign-state')
         emit('update:showAddRoundForm', false)
       })
