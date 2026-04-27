@@ -21,9 +21,15 @@ set -e
 #    the localhost URL from .env.default. This file must stay in the repo.
 
 FRONTEND="$HOME/www/python/src/frontend"
+PROJECT=$(git rev-parse --show-toplevel)
 TOOL=$(id -un | sed 's/^tools\.//')
 OUTLOG="/data/project/$TOOL/npm-build.out"
 ERRLOG="/data/project/$TOOL/npm-build.err"
+
+# Restore package-lock.json to the repo version so npm install runs cleanly
+# regardless of local modifications left by previous npm runs in the container.
+git -C "$PROJECT" checkout -- frontend/package-lock.json
+
 # Derive esbuild version dynamically so the explicit binary install stays in
 # sync whenever esbuild is upgraded in package-lock.json.
 ESBUILD_VERSION=$(python3 -c "
