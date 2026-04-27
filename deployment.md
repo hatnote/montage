@@ -24,13 +24,12 @@ git clone https://github.com/hatnote/montage.git src
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node20 shell -m 2G
-cd $HOME/www/python/src/frontend
-npm install
-npm run toolforge:build
-exit
+cd $HOME/www/python/src
+bash tools/build_frontend.sh
 ```
-This will build the vue prod bundle and put in backend's `template` and `static` directory.
+This will build the Vue prod bundle and copy it into the backend's `static/` directory.
+The script uses a Toolforge job (node20, 4Gi) and waits for it to finish.
+See `tools/build_frontend.sh` for documented workarounds and known issues.
 
 ##### 5. Create your database
 * Get the username and password from `cat ~/replica.my.cnf`
@@ -120,11 +119,9 @@ git pull
 
 ##### 4. Make the frontend build
 ```bash
-toolforge webservice node20 shell -m 2G
-cd $HOME/www/python/src/frontend
-npm install
-npm run toolforge:build
-exit
+cd $HOME/www/python/src
+git pull
+bash tools/build_frontend.sh
 ```
 
 ##### 5. (Optional) Install python packages
