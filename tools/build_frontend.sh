@@ -1,47 +1,33 @@
 #!/bin/bash
 set -e
 
-echo "Script: $0"
-echo "Frontend: $HOME/www/python/src/frontend"
-echo ""
-
-toolforge jobs delete npm-build 2>/dev/null || true
-
 FRONTEND="$HOME/www/python/src/frontend"
 PROJECT=$(git rev-parse --show-toplevel)
 TOOL=$(id -un | sed 's/^tools\.//')
-
-# Restore the lock file to repo state so npm ci gets the correct binary versions
-git -C "$PROJECT" checkout -- frontend/package-lock.json
-
-toolforge jobs run npm-build --image node20 --mem 4Gi --command "bash -c 'cd $FRONTEND && rm -rf node_modules && npm ci && npm run toolforge:build'"
-
 OUTLOG="/data/project/$TOOL/npm-build.out"
 ERRLOG="/data/project/$TOOL/npm-build.err"
 
-echo "Job submitted. Waiting for it to start..."
-for i in $(seq 1 30); do
-    STATUS=$(toolforge jobs show npm-build 2>/dev/null | grep "Status:" | head -1)
-    echo "--- $STATUS"
-    if echo "$STATUS" | grep -qE "Running|Succeeded|Failed|Error"; then
-        break
-    fi
-    sleep 5
-done
+# Get the esbuild JS version from the lock file so we install a matching binary
+ESBUILD_VERSION=$(python3 -c "
+import json, sys
+d = json.load(open('$FRONTEND/package-lock.json'))
+print(d['packages']['node_modules/esbuild']['version'])
+")
+echo "esbuild version: $ESBUILD_VERSION"
+echo "Frontend: $FRONTEND"
+echo ""
+
+toolforge jobs delete npm-build 2>/dev/null || true
+# The explicit @esbuild/linux-x64 install works around a version mismatch caused by
+# the Toolforge node20 image shipping npm 9.2.0, while package-lock.json is generated
+# on macOS with npm 10+. npm 9 does not install the correct platform binary for
+# optional deps. Remove this step once the node20 image ships npm 10+.
+toolforge jobs run npm-build --image node20 --mem 4Gi --wait \
+  --command "bash -c 'cd $FRONTEND && npm install && npm install \"@esbuild/linux-x64@$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
 
 echo ""
 echo "--- stdout ---"
-tail -f "$OUTLOG" &
-TAIL_PID=$!
-
-while toolforge jobs show npm-build 2>/dev/null | grep -q "Running"; do
-    sleep 5
-done
-kill "$TAIL_PID" 2>/dev/null
-wait "$TAIL_PID" 2>/dev/null
-
+cat "$OUTLOG"
 echo ""
 echo "--- stderr ---"
 cat "$ERRLOG"
-echo ""
-toolforge jobs show npm-build | grep "Status:"
