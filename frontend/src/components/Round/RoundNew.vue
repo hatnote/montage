@@ -33,12 +33,18 @@
         <template #supporting-text>
           <div class="form-container">
             <div class="form-left">
-              <cdx-field>
+              <cdx-field
+                :status="errors.name ? 'error' : 'default'"
+                :messages="{ error: errors.name }"
+              >
                 <cdx-text-input v-model="formData.name" />
                 <template #label>{{ $t('montage-round-name') }}</template>
               </cdx-field>
               <div class="flex-row">
-                <cdx-field>
+                <cdx-field
+                  :status="errors.deadline ? 'error' : 'default'"
+                  :messages="{ error: errors.deadline }"
+                >
                   <date-picker
                     v-model:value="formData.deadline_date"
                     type="date"
@@ -83,7 +89,11 @@
                   </p>
                 </template>
               </cdx-field>
-              <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
+              <cdx-field
+                v-if="roundIndex === 0 && selectedImportSource === 'category'"
+                :status="errors.category ? 'error' : 'default'"
+                :messages="{ error: errors.category }"
+              >
                 <cdx-lookup
                   data-testid="montage-round-category"
                   v-model:selected="importSourceValue.category"
@@ -121,14 +131,20 @@
                   <p>{{ $t('montage-description-round-stats') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field>
+              <cdx-field
+                :status="errors.quorum ? 'error' : 'default'"
+                :messages="{ error: errors.quorum }"
+              >
                 <cdx-text-input v-model="formData.quorum" input-type="number" />
                 <template #label>{{ $t('montage-label-round-quorum') }}</template>
                 <template #description>
                   <p>{{ $t('montage-round-quorum-description') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field>
+              <cdx-field
+                :status="errors.jurors ? 'error' : 'default'"
+                :messages="{ error: errors.jurors }"
+              >
                 <UserList
                   :users="formData.jurors"
                   @update:selectedUsers="formData.jurors = $event"
@@ -170,7 +186,7 @@
           </div>
           <div class="button-group">
             <cdx-button
-              :disabled="isLoading"
+              :disabled="isLoading || !isFormValid"
               action="progressive"
               weight="primary"
               @click="submitRound()"
@@ -192,7 +208,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import alertService from '@/services/alertService'
 import dataService from '@/services/dataService'
@@ -230,7 +246,7 @@ const props = defineProps({
   rounds: Array
 })
 
-const emit = defineEmits(['update:showAddRoundForm', 'reloadCampaignState'])
+const emit = defineEmits(['update:showAddRoundForm', 'reload-campaign-state'])
 
 const route = useRoute()
 const campaignId = route.params.id.split('-')[0]
@@ -310,7 +326,67 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
+const errors = ref({
+  name: '',
+  deadline: '',
+  quorum: '',
+  jurors: '',
+  category: ''
+})
+
+const validateForm = () => {
+  if (touched.value.name && !formData.value.name?.trim()) {
+    errors.value.name = $t('Field is required')
+  } else {
+    errors.value.name = ''
+  }
+
+  if (touched.value.deadline && !formData.value.deadline_date) {
+    errors.value.deadline = $t('Deadline is required')
+  } else {
+    errors.value.deadline = ''
+  }
+
+  const quorum = Number(formData.value.quorum)
+  const jurorCount = formData.value.jurors.length
+
+  if (touched.value.jurors) {
+    if (jurorCount === 0) {
+      errors.value.jurors = $t('At least one juror is required')
+    } else if (quorum > jurorCount) {
+      errors.value.jurors = $t('Quorum cannot be greater than the number of jurors')
+    } else {
+      errors.value.jurors = ''
+    }
+  }
+
+  if (touched.value.quorum && quorum <= 0) {
+    errors.value.quorum = $t('Quorum must be greater than zero')
+  } else {
+    errors.value.quorum = ''
+  }
+
+  if (touched.value.category && roundIndex === 0 && !importSourceValue.value.category) {
+    errors.value.category = $t('Category is required')
+  } else {
+    errors.value.category = ''
+  }
+}
+
+const touched = ref({
+  name: false,
+  deadline: false,
+  quorum: false,
+  jurors: false,
+  category: false
+})
+
+const isFormValid = computed(() => !Object.values(errors.value).some(Boolean))
+
 const submitRound = () => {
+  Object.keys(touched.value).forEach((key) => (touched.value[key] = true))
+  validateForm()
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -318,7 +394,7 @@ const submitRound = () => {
     return
   }
 
-  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+  if (!isFormValid.value) {
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
@@ -437,6 +513,42 @@ const importCategory = (id) => {
       isLoading.value = false
     })
 }
+
+watch(
+  () => formData.value.name,
+  () => {
+    touched.value.name = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.deadline_date,
+  () => {
+    touched.value.deadline = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.quorum,
+  () => {
+    touched.value.quorum = true
+    validateForm()
+  }
+)
+watch(
+  () => formData.value.jurors.length,
+  () => {
+    touched.value.jurors = true
+    validateForm()
+  }
+)
+watch(
+  () => importSourceValue.value.category,
+  () => {
+    touched.value.category = true
+    validateForm()
+  }
+)
 
 watch(thresholds, (value) => {
   thresholdOptions.value = Object.entries(value).map(([key, value]) => ({
