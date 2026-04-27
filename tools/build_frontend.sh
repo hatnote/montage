@@ -2,32 +2,39 @@
 set -e
 
 FRONTEND="$HOME/www/python/src/frontend"
-PROJECT=$(git rev-parse --show-toplevel)
 TOOL=$(id -un | sed 's/^tools\.//')
 OUTLOG="/data/project/$TOOL/npm-build.out"
 ERRLOG="/data/project/$TOOL/npm-build.err"
 
-# Get the esbuild JS version from the lock file so we install a matching binary
+# Get the esbuild JS version from the lock file so we install a matching binary.
+# Workaround: the Toolforge node20 image ships npm 9.2.0, which does not install
+# the correct platform-specific optional binary when the lock file was generated
+# on macOS with npm 10+. We skip post-install scripts (--ignore-scripts) to
+# prevent esbuild's install.js from failing on the wrong binary, then install
+# the correct linux-x64 binary explicitly. Remove once node20 ships npm 10+.
 ESBUILD_VERSION=$(python3 -c "
-import json, sys
+import json
 d = json.load(open('$FRONTEND/package-lock.json'))
 print(d['packages']['node_modules/esbuild']['version'])
 ")
-echo "esbuild version: $ESBUILD_VERSION"
-echo "Frontend: $FRONTEND"
-echo ""
+
+echo "Building frontend (esbuild $ESBUILD_VERSION)..."
+
+# Clear logs from previous runs so output only reflects this run
+> "$OUTLOG"
+> "$ERRLOG"
 
 toolforge jobs delete npm-build 2>/dev/null || true
-# The explicit @esbuild/linux-x64 install works around a version mismatch caused by
-# the Toolforge node20 image shipping npm 9.2.0, while package-lock.json is generated
-# on macOS with npm 10+. npm 9 does not install the correct platform binary for
-# optional deps. Remove this step once the node20 image ships npm 10+.
 toolforge jobs run npm-build --image node20 --mem 4Gi --wait \
   --command "bash -c 'cd $FRONTEND && npm install --ignore-scripts && npm install \"@esbuild/linux-x64@$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
 
 echo ""
-echo "--- stdout ---"
 cat "$OUTLOG"
-echo ""
-echo "--- stderr ---"
-cat "$ERRLOG"
+
+# Show stderr only if there are real errors (ignore EBADENGINE npm engine warnings)
+ERRORS=$(grep -v "EBADENGINE\|WARN\|^$\|npm fund\|npm audit\|vulnerabilities\|packages are looking" "$ERRLOG" || true)
+if [ -n "$ERRORS" ]; then
+  echo ""
+  echo "--- errors ---"
+  echo "$ERRORS"
+fi
