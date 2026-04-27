@@ -23,7 +23,7 @@ toolforge jobs delete npm-build 2>/dev/null || true
 # on macOS with npm 10+. npm 9 does not install the correct platform binary for
 # optional deps. Remove this step once the node20 image ships npm 10+.
 toolforge jobs run npm-build --image node20 --mem 4Gi --wait \
-  --command "bash -c 'cd $FRONTEND && npm install && npm install \"@esbuild/linux-x64@$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
+  --command "bash -c 'cd $FRONTEND && npm install --ignore-scripts && npm install \"@esbuild/linux-x64@$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
 
 echo ""
 echo "--- stdout ---"
