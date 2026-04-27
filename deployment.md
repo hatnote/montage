@@ -111,18 +111,12 @@ become montage-beta
 ```
 Here, we are using `montage-beta` instance but it can be `montage` or `montage-dev` as well.
 
-##### 3. Get new changes from remote
+##### 3. Pull changes and rebuild the frontend
 ```bash
 cd $HOME/www/python/src
-git pull
+git pull && bash tools/build_frontend.sh
 ```
-
-##### 4. Make the frontend build
-```bash
-cd $HOME/www/python/src
-git pull
-bash tools/build_frontend.sh
-```
+The script restores `package-lock.json` from git automatically, so this command works cleanly on every deploy.
 
 ##### 5. (Optional) Install python packages
 If you added new python packages in changes then you have to install them in pod.
