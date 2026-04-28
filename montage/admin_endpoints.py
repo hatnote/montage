@@ -111,7 +111,13 @@ def download_round_entries_csv(user_dao, round_id):
     entry_infos = [e.to_export_dict() for e in entries]
     output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True).decode('ascii')
     output = io.BytesIO()
-    csv_fieldnames = sorted(entry_infos[0].keys())
+    # fallback for rounds w/ no entries yet -- entry_infos[0] crashes otherwise
+    if entry_infos:
+        csv_fieldnames = sorted(entry_infos[0].keys())
+    else:
+        csv_fieldnames = sorted(['img_id', 'img_name', 'img_major_mime',
+                                 'img_minor_mime', 'img_width', 'img_height',
+                                 'img_user', 'img_user_text', 'img_timestamp'])
     csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
     csv_writer.writeheader()
     csv_writer.writerows(entry_infos)
