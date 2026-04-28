@@ -108,7 +108,7 @@ def get_round_entries(user_dao, round_id):
     return {'file_infos': entry_infos}
 
 
-def download_round_entries_csv(user_dao, round_id):
+'''def download_round_entries_csv(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
     entries = coord_dao.get_round_entries(round_id)
@@ -123,7 +123,32 @@ def download_round_entries_csv(user_dao, round_id):
     resp = Response(ret, mimetype='text/csv')
     resp.mimetype_params['charset'] = 'utf-8'
     resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
+    return resp'''
+
+def download_round_entries_csv(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+
+    #handle empty entries without showing IndexError
+    if not entry_infos:
+        raise InvalidAction('No entries in this round. Cannot export CSV.')
+
+    output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True).decode('ascii')
+    output = io.BytesIO()
+
+    csv_fieldnames = sorted(entry_infos[0].keys())
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
+    csv_writer.writeheader()
+    csv_writer.writerows(entry_infos)
+
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
     return resp
+
 
 
 def disqualify_entry(user_dao, round_id, entry_id, request_dict):
