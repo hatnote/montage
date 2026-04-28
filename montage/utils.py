@@ -265,3 +265,38 @@ def process_weighted_choices(wcp):
 
 def fast_weighted_choice(nsw, values):
     return values[bisect.bisect(nsw, random.random()) - 1]
+
+def get_commons_description(filename):
+    """
+    Fetch the description of a file from Wikimedia Commons API
+    """
+    # clean up File: prefix if present
+    if filename.startswith('File:'):
+        filename = filename[5:]
+    
+    url = "https://commons.wikimedia.org/w/api.php"
+    params = {
+        'action': 'query',
+        'prop': 'imageinfo',
+        'iiprop': 'extmetadata',
+        'titles': 'File:' + filename,
+        'format': 'json'
+    }
+    
+    try:
+        resp = requests_get(url, params=params)
+        data = resp.json()
+        pages = data.get('query', {}).get('pages', {})
+        for page_id, page_info in pages.items():
+            if 'imageinfo' in page_info:
+                ext_meta = page_info['imageinfo'][0].get('extmetadata', {})
+                desc_obj = ext_meta.get('ImageDescription', {})
+                desc_val = desc_obj.get('value', '')
+                if desc_val:
+                    return desc_val
+    except Exception as e:
+        # hack to ignore API errors silently for now lol
+        pass
+    
+    return ''
+

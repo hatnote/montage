@@ -46,6 +46,7 @@ from .utils import (format_date,
                     DoesNotExist,
                     get_env_name,
                     load_default_series,
+                    get_commons_description,
                     js_isoparse)
 
 from .imgutils import make_mw_img_url
@@ -2203,10 +2204,13 @@ class CoordinatorDAO(UserDAO):
         winners = []
 
         for fer in ranking_list:
-            # TODO: get entry description from commons
             cur = {}
             cur['ranking'] = fer.rank
-            cur['entry'] = fer.entry.to_dict()  # TODO (need desc, etc.)
+            
+            # fix: replace broken to_dict() with to_details_dict() and fetch actual description from commons api
+            entry_dict = fer.entry.to_details_dict(with_uploader=True)
+            entry_dict['description'] = get_commons_description(entry_dict['name'])
+            cur['entry'] = entry_dict
 
             if not juror_alias_map:
                 jrm = fer.juror_ranking_map
