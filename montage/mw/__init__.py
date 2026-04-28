@@ -65,7 +65,6 @@ class MessageMiddleware(Middleware):
         except Exception as e:
             if self.debug_errors and not isinstance(e, MontageError):
                 import pdb; pdb.post_mortem()
-                import pdb;pdb.set_trace()
             if self.raise_errors:
                 raise
             ret = None
