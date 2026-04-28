@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "toolforge:build": "export SHELL=/bin/sh && npm run build && cp -r dist/* ../montage/static",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "lint:check": "eslint src/ --ext .vue,.js,.jsx,.cjs,.mjs",
+    "format:check": "prettier --check src/"
   },
   "dependencies": {
     "@wikimedia/codex": "^1.14.0",

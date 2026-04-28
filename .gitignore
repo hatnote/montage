@@ -96,6 +96,7 @@ celerybeat-schedule
 
 # virtualenv
 venv/
+.venv*/
 ENV/
 
 # Logs
@@ -129,6 +130,10 @@ coverage
 
 *.tsbuildinfo
 
+# Claude Code and local temp files
+.claude/
+tmp/
+
 # Spyder project settings
 .spyderproject
 
@@ -150,3 +155,7 @@ cypress/screenshots/
 cypress/videos/
 
 .vscode/
+
+# Claude Code
+.claude/
+tmp/
