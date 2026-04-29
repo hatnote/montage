@@ -108,7 +108,7 @@ def get_round_entries(user_dao, round_id):
     return {'file_infos': entry_infos}
 
 
-def download_round_entries_csv(user_dao, round_id):
+'''def download_round_entries_csv(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
     entries = coord_dao.get_round_entries(round_id)
@@ -123,6 +123,37 @@ def download_round_entries_csv(user_dao, round_id):
     resp = Response(ret, mimetype='text/csv')
     resp.mimetype_params['charset'] = 'utf-8'
     resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
+    return resp'''
+
+def download_round_entries_csv(user_dao, round_id):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    entries = coord_dao.get_round_entries(round_id)
+    entry_infos = [e.to_export_dict() for e in entries]
+
+    # Fix 1: handle empty entries
+    if not entry_infos:
+        raise InvalidAction('No entries in this round. Cannot export CSV.')
+
+    #Fix 2: handle None round name
+    round_name = rnd.name or "unnamed-round"
+
+    output_name = 'montage_entries-%s.csv' % (
+        slugify(round_name, ascii=True).decode('ascii')
+    )
+
+    output = io.BytesIO()
+    csv_fieldnames = sorted(entry_infos[0].keys())
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames)
+
+    csv_writer.writeheader()
+    csv_writer.writerows(entry_infos)
+
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
+
     return resp
 
 
@@ -787,7 +818,7 @@ def get_results(user_dao, round_id, request_dict):
     return {'data': results_by_name}
 
 
-def download_results_csv(user_dao, round_id, request_dict):
+''''def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
     now = datetime.datetime.now().isoformat()
@@ -814,6 +845,45 @@ def download_results_csv(user_dao, round_id, request_dict):
             ratings['average'] = sum(valid_ratings) / len(valid_ratings)
         else:
             ratings['average'] = 'na'
+        csv_row.update(ratings)
+        csv_writer.writerow(csv_row)
+
+    ret = output.getvalue()
+    resp = Response(ret, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % output_name
+    return resp'''
+
+def download_results_csv(user_dao, round_id, request_dict):
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    now = datetime.datetime.now().isoformat()
+
+    # handle NULL round name
+    round_name = rnd.name or "unnamed-round"
+
+    output_name = 'montage_results-%s-%s.csv' % (
+        slugify(round_name, ascii=True).decode('ascii'), now
+    )
+
+    results_by_name = coord_dao.make_vote_table(round_id)
+
+    output = io.BytesIO()
+    csv_fieldnames = ['filename', 'average'] + [r.username for r in rnd.jurors]
+    csv_writer = unicodecsv.DictWriter(output, fieldnames=csv_fieldnames,
+                                       restval=None)
+
+    csv_writer.writeheader()
+
+    for filename, ratings in results_by_name.items():
+        csv_row = {'filename': filename}
+        valid_ratings = [r for r in ratings.values() if type(r) is not str]
+
+        if valid_ratings:
+            ratings['average'] = sum(valid_ratings) / len(valid_ratings)
+        else:
+            ratings['average'] = 'na'
+
         csv_row.update(ratings)
         csv_writer.writerow(csv_row)
 
