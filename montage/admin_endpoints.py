@@ -761,8 +761,11 @@ def get_results(user_dao, round_id, request_dict):
 def download_results_csv(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-    now = datetime.datetime.now().isoformat()
-    output_name = 'montage_results-%s-%s.csv' % (slugify(rnd.name, ascii=True).decode('ascii'), now)
+    now = datetime.datetime.now().isoformat().replace(':', '-')
+    # guard for None name -- slugify() blows up with AttributeError otherwise
+    round_name = rnd.name or 'unnamed-round'
+    output_name = 'montage_results-%s-%s.csv' % (slugify(round_name, ascii=True).decode('ascii'), now)
+
 
     # TODO: Confirm round is finalized
     # raise DoesNotExist('round results not yet finalized')
