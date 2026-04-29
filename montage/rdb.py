@@ -1862,7 +1862,8 @@ class CoordinatorDAO(UserDAO):
         if threshold is None:
             raise ValueError('expected threshold or finalized round')
 
-        assert 0.0 <= threshold <= 1.0
+        if not (0.0 <= threshold <= 1.0):
+            raise InvalidAction('threshold must be between 0.0 and 1.0, not %r' % threshold)
 
         avg = func.avg(Vote.value).label('average')
 
