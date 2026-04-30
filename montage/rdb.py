@@ -1036,6 +1036,14 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator for round %s' % round_id)
         return rnd
 
+    def get_entry_by_name(self, name):
+        entry = (self.query(Entry)
+                     .filter_by(name=name)
+                     .one_or_none())
+        if not entry:
+            raise DoesNotExist('entry %s does not exist' % name)
+        return entry
+
     def get_or_create_user(self, user, role, **kw):
         # kw is for including round/round_id/campaign/campaign_id
         # which is used in the audit log if the user is created

@@ -50,7 +50,8 @@ def get_juror_routes():
            POST('/juror/round/<round_id:int>/<entry_id:int>/unfave',
                 remove_fave),
            POST('/juror/round/<round_id:int>/<entry_id:int>/flag', submit_flag),
-           GET('/juror/faves', get_faves)]
+           GET('/juror/faves', get_faves),
+           GET('/juror/entry_lookup', get_entry_lookup)]
     ui = []
     return api, ui
 
@@ -233,6 +234,26 @@ def get_faves(user_dao, request_dict):
     return {'data': [f.to_details_dict() for f in faves]}
 
 
+def get_entry_lookup(user_dao, request):
+    filename = request.values.get('filename')
+    if not filename:
+        return {'data': None,
+                'status': 'failure',
+                'errors': 'filename required'}
+    
+    # standardize filename
+    if filename.lower().startswith('file:'):
+        filename = filename[5:]
+    filename = filename.strip().replace(' ', '_')
+    if not filename:
+        return {'data': None,
+                'status': 'failure',
+                'errors': 'invalid filename'}
+
+    entry = user_dao.get_entry_by_name(filename)
+    return {'data': entry.to_details_dict(with_uploader=True)}
+
+
 def submit_ratings(user_dao, request_dict):
     """message format:
 
@@ -376,5 +397,4 @@ JUROR_API_ROUTES, JUROR_UI_ROUTES = get_juror_routes()
 
 # TODO: Cave -> key-value store
 # TODO: flag RoundEntries (only applicable on ratings rounds?)
-# TODO: entry ID lookup by filename (should also return uploader, etc.)
 # TODO: manual disqualificatin for coordinators
