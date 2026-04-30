@@ -1,13 +1,16 @@
----
 db_echo: True
 api_log_path: montage_api.log
 db_url: "sqlite:///tmp_montage.db"
 
 cookie_secret: ReplaceThisWithSomethingSomewhatSecret
-superuser: Slaporte
+superuser: Sanika06
 
-dev_local_cookie_value: "contact maintainers for details"
-dev_remote_cookie_value: "contact maintainers for details"
-oauth_secret_token: "see note below"
-oauth_consumer_token: "visit https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose to get valid OAuth tokens for local development, or contact the maintainers"
-...
+dev_local_cookie_value: "dev"
+dev_remote_cookie_value: "dev"
+
+oauth_consumer_token: "15f09c9d766dba3d4a24a3c39616be4d"
+oauth_secret_token: "03a93cb79fa0ffe5384bf96e167c0a6605a5a52f"
+
+
+dev_mode: true
+enable_dev_login: true
