@@ -2,6 +2,19 @@
 
 [TOC]
 
+## /v1/health
+A simple health check endpoint to verify database connectivity.
+
+  - Function: [get_health](https://github.com/hatnote/montage/blob/master/montage/public_endpoints.py)
+  - Method: GET
+
+### Parameters
+  - None
+
+### Response
+  - `status`: "healthy" or "unhealthy"
+  - `db`: "ok" or error message
+
 ## /v1/admin
 Return a list of campaigns available to the user
 
@@ -971,9 +984,27 @@ Returns a list of fave'd entries
   - `status`: success or failure
   - `errors`: description of the failure (if any)
 
-### Errors
   - 403: not a juror for this round
   - 404: no faves exist
+
+
+## /v1/juror/entry_lookup
+Look up an entry by its filename. Returns full details including uploader information.
+
+  - Function: [get_entry_lookup](https://github.com/hatnote/montage/blob/master/montage/juror_endpoints.py)
+  - Method: GET
+
+### Parameters
+  - `filename`: The name of the file (e.g., "File:Example.jpg" or just "Example.jpg"). The prefix "File:" is optional and spaces are automatically converted to underscores.
+
+### Response
+  - `data`: single [`entry details`](#entry-details) dictionary (including `upload_user_text`)
+  - `status`: success or failure
+  - `errors`: description of the failure (if any)
+
+### Errors
+  - 404: entry does not exist
+  - 400: filename required
 
 
 # Response schemas
@@ -1158,6 +1189,7 @@ Complete information about an entry (TODO: add descriptions)
   - `url_sm`: 
   - `url_med`: 
   - `resolution`: 
+  - `upload_user_text`: (optional) the username of the uploader
 
 ## entry ranking details
 Complete information about the entry ranking information at the end of a round:
