@@ -186,32 +186,20 @@ const deleteRound = () => {
     defaultAction: {
       label: $t('montage-btn-cancel')
     },
-fix-round-delete-reload-379
-   onPrimary: () => {
-  adminService
-    .cancelRound(props.round.id)
-    .then(() => {
-      emit('update:isRoundEditing', false)
-      
-      alertService.success('Round deleted successfully') 
-
-      setTimeout(() => {
-        window.location.reload()  
-      }, 1000)  // 1 second delay
-    })
-    .catch(alertService.error)
-},
-=======
     onPrimary: () => {
       adminService
         .cancelRound(props.round.id)
         .then(() => {
           emit('update:isRoundEditing', false)
-          router.reload()
+
+          alertService.success('Round deleted successfully')
+
+          setTimeout(() => {
+            window.location.reload()
+          }, 1000)
         })
         .catch(alertService.error)
     }
- master
   })
 }
 </script>
