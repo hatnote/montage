@@ -1,14 +1,18 @@
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
+from __future__ import annotations
+
 import os
 import datetime
+from typing import Any, Callable
 
-from clastic import redirect, render_basic
+from clastic import redirect, render_basic, Response
 from clastic.errors import BadRequest
 from mwoauth import Handshaker, RequestToken
 from markdown import Markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
 from chert import hypertext as html_utils
+from sqlalchemy import text
 
 from .mw import public
 from .rdb import User, PublicDAO
@@ -18,7 +22,7 @@ from .utils import get_env_name, DoesNotExist, InvalidAction
 
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-DOCS_PATH = CUR_PATH + '/docs'
+DOCS_PATH = os.path.join(CUR_PATH, 'docs')
 
 WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
 
@@ -30,7 +34,8 @@ MD_EXTENSIONS = ['markdown.extensions.def_list',
 
 env_name = get_env_name()
 
-def get_public_routes():
+
+def get_public_routes() -> tuple[list[Any], list[Any]]:
     ui = [('/', home),
           ('/login', login),
           ('/logout', logout),
@@ -41,36 +46,50 @@ def get_public_routes():
            ('/series/<series_id?int>', get_series),
            ('/series', get_series),
            ('/entry/<entry_name:str>', get_entry_info),
-           ('/campaign', get_all_reports),
            ('/raise', raise_error),
            ('/utils/category', get_file_info_by_category),
-           ('/utils/file', get_files_info_by_name)]
+           ('/utils/file', get_files_info_by_name),
+           ('/health', get_health)]
     return api, ui
 
 
 @public
-def raise_error():
+def raise_error() -> None:
     raise RuntimeError('testing')
 
 
 @public
-def get_doc(ashes_renderer, path):
+def get_health(rdb_session: Any) -> dict[str, str]:
+    """Basic health check to verify database connectivity."""
+    try:
+        rdb_session.execute(text('SELECT 1'))
+        return {'status': 'healthy', 'db': 'ok'}
+    except Exception as e:
+        return {'status': 'unhealthy', 'db': str(e)}
+
+
+@public
+def get_doc(ashes_renderer: Callable, path: list[str]) -> Response:
     if not path:
         path = ['index']
     render = ashes_renderer('docs/base.html')
     doc_rel_path = '/'.join(path)
-    doc_path = DOCS_PATH + '/' + doc_rel_path + '.md'
+    doc_path = os.path.join(DOCS_PATH, f'{doc_rel_path}.md')
     doc_path = os.path.normpath(doc_path)
+    
     if not doc_path.startswith(DOCS_PATH):
         raise BadRequest('invalid doc path: %r' % doc_path)
+    
     try:
-        doc_md = open(doc_path, 'r').read()
+        with open(doc_path, 'r', encoding='utf-8') as f:
+            doc_md = f.read()
     except OSError:
         raise BadRequest('could not open doc: %r' % doc_rel_path)
 
     lines = doc_md.splitlines()
     if not lines:
         raise BadRequest('empty doc: %r' % doc_rel_path)
+    
     title_line, body_md = lines[0], '\n'.join(lines[1:])
     _, sep, title = title_line.partition('#')
     if not sep or not title:
@@ -85,12 +104,11 @@ def get_doc(ashes_renderer, path):
     html_utils.add_toc(html_tree)
     body_html = html_utils.html_tree_to_text(html_tree)
 
-    # TODO: cached version
-    return render({'title': title, 'body': body_html})
+    return render({'title': title.strip(), 'body': body_html})
 
 
 @public
-def get_file_info_by_category(request_dict):
+def get_file_info_by_category(request_dict: dict[str, Any]) -> dict[str, list[Any]]:
     try:
         category_name = request_dict['name']
     except Exception:
@@ -100,7 +118,7 @@ def get_file_info_by_category(request_dict):
 
 
 @public
-def get_files_info_by_name(request_dict):
+def get_files_info_by_name(request_dict: dict[str, Any]) -> dict[str, list[Any]]:
     try:
         file_names = request_dict['names']
     except Exception:
@@ -118,7 +136,7 @@ def get_files_info_by_name(request_dict):
 
 
 @public
-def home(cookie, request):
+def home(cookie: dict[str, Any], request: Any) -> dict[str, Any]:
     headers = dict([(k, v) for k, v in
                     request.environ.items() if k.startswith('HTTP_')])
     return {'cookie': dict(cookie),
@@ -126,7 +144,7 @@ def home(cookie, request):
 
 
 @public
-def login(request, consumer_token, cookie, root_path):
+def login(request: Any, consumer_token: Any, cookie: dict[str, Any], root_path: str) -> Response:
     handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
 
     redirect_url, request_token = handshaker.initiate()
@@ -139,7 +157,7 @@ def login(request, consumer_token, cookie, root_path):
 
 
 @public
-def logout(request, cookie, root_path):
+def logout(request: Any, cookie: dict[str, Any], root_path: str) -> Response:
     cookie.pop('userid', None)
     cookie.pop('username', None)
 
@@ -151,9 +169,12 @@ def logout(request, cookie, root_path):
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log, config):
-    # TODO: Remove or standardize the DEBUG option
-    if config.get('debug'):
+def complete_login(request: Any, consumer_token: Any, cookie: dict[str, Any], rdb_session: Any, root_path: str, api_log: Any, config: dict[str, Any]) -> Response:
+    # Standardised debug impersonation: only allowed in dev and if explicitly enabled
+    is_dev = env_name == 'dev'
+    allow_impersonation = config.get('allow_impersonation', False)
+    
+    if is_dev and allow_impersonation:
         identity = {'sub': 6024474,
                     'username': 'Slaporte'}
     else:
@@ -164,8 +185,6 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
                 rt_key = cookie['request_token_key']
                 rt_secret = cookie['request_token_secret']
             except KeyError:
-                # in some rare cases, stale cookies are left behind
-                # and users have to click login again
                 act.failure('clearing stale cookie, redirecting to {}', root_path)
                 cookie.set_expires()
                 return redirect(root_path)
@@ -186,25 +205,15 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
     else:
         user.last_active_date = now
 
-    # These would be useful when we have oauth beyond simple ID, but
-    # they should be stored in the database along with expiration times.
-    # ID tokens only last 100 seconds or so
-    # cookie['access_token_key'] = access_token.key
-    # cookie['access_token_secret'] = access_token.secret
-
-    # identity['confirmed_email'] = True/False might be interesting
-    # for contactability through the username. Might want to assert
-    # that it is True.
-
     cookie['userid'] = identity['sub']
     cookie['username'] = identity['username']
 
     return_to_url = cookie.get('return_to_url')
-    # TODO: Clean up
-    if not config.get('debug'):
-        del cookie['request_token_key']
-        del cookie['request_token_secret']
-        del cookie['return_to_url']
+    
+    if not (is_dev and allow_impersonation):
+        cookie.pop('request_token_key', None)
+        cookie.pop('request_token_secret', None)
+        cookie.pop('return_to_url', None)
     else:
         return_to_url = '/'
 
@@ -215,7 +224,7 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
 
 
 @public
-def get_series(rdb_session, series_id=None):
+def get_series(rdb_session: Any, series_id: int | None = None) -> dict[str, list[Any]]:
     dao = PublicDAO(rdb_session)
     if series_id:
         series = dao.get_series(series_id)
@@ -223,15 +232,16 @@ def get_series(rdb_session, series_id=None):
         series = dao.get_all_series()
     return {'data': [s.to_details_dict() for s in series]}
 
+
 @public
-def get_entry_info(rdb_session, entry_name):
+def get_entry_info(rdb_session: Any, entry_name: str) -> dict[str, Any]:
     dao = PublicDAO(rdb_session)
     ret = dao.get_public_entry_info(entry_name)
     return {'data': ret}
 
 
 @public
-def get_report(rdb_session, campaign_id):
+def get_report(rdb_session: Any, campaign_id: int) -> dict[str, Any]:
     dao = PublicDAO(rdb_session)
     report = dao.get_report(campaign_id)
     if not report:
@@ -242,7 +252,7 @@ def get_report(rdb_session, campaign_id):
 
 
 @public
-def get_all_reports(rdb_session):
+def get_all_reports(rdb_session: Any) -> dict[str, list[Any]]:
     dao = PublicDAO(rdb_session)
     reports = dao.get_all_reports()
     return {'data': [r.to_dict() for r in reports]}
