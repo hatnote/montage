@@ -228,6 +228,30 @@ if [ -d "$SRC" ]; then
     rm -rf "$SRC" 2>/dev/null || true
 fi
 
+# If rm -rf wasn't enough (NFS lock), try file-by-file deletion
+if [ -d "$SRC" ]; then
+    echo "   Still exists — trying file-by-file deletion..."
+    find "$SRC" -type f -delete 2>/dev/null || true
+    find "$SRC" -mindepth 1 -type d | sort -r | xargs rmdir 2>/dev/null || true
+    rm -rf "$SRC" 2>/dev/null || true
+fi
+
+if [ -d "$SRC" ]; then
+    echo ""
+    echo "   ERROR: $SRC still exists (NFS lock — webservice pod may still be running)."
+    echo "   Wait ~1 minute for the pod to terminate, then in a new terminal run:"
+    echo ""
+    echo "     become $TOOL"
+    echo "     find $SRC -type f -delete"
+    echo "     find $SRC -mindepth 1 -type d | sort -r | xargs rmdir"
+    echo "     rm -rf $SRC"
+    echo "     git clone --branch $BRANCH $REPO $SRC"
+    echo "     bash $SRC/tools/reinstall.sh"
+    echo ""
+    echo "   Config is safe in $BACKUP — reinstall.sh will restore it automatically."
+    exit 1
+fi
+
 CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1)
 if [ $? -ne 0 ]; then
     echo ""
