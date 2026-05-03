@@ -191,17 +191,17 @@ confirm "Wipe everything listed above? This cannot be undone." || abort
 echo ""
 echo "── Wiping..."
 cd ~
-for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
-    rm -rf "$item" 2>/dev/null || rm -rf "$item" 2>/dev/null || true
+# Three passes — NFS sometimes needs retries for directories with open handles
+for pass in 1 2 3; do
+    for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
+        rm -rf "$item" 2>/dev/null || true
+    done
 done
-# NFS sometimes needs a second pass for directories with open handles
-for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
-    rm -rf "$item" 2>/dev/null || true
-done
-if ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -q .; then
+REMAINING=$(ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' || true)
+if [ -n "$REMAINING" ]; then
     echo "   WARNING: some items could not be removed (NFS lock):"
-    ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | sed 's/^/     /'
-    echo "   Try: rm -rf ~/www manually, then re-run from step 5."
+    echo "$REMAINING" | sed 's/^/     /'
+    echo "   Continuing — will retry during clone step."
 fi
 echo "   Done."
 
@@ -210,6 +210,12 @@ echo "   Done."
 echo ""
 echo "── Cloning $REPO (branch: $BRANCH)..."
 mkdir -p ~/www/python
+
+# Remove any leftover src directory from a failed previous wipe
+if [ -d "$SRC" ]; then
+    echo "   Removing leftover $SRC..."
+    rm -rf "$SRC" 2>/dev/null || true
+fi
 
 if ! git clone --branch "$BRANCH" "$REPO" "$SRC"; then
     echo ""
