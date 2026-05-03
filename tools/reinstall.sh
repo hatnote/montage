@@ -127,14 +127,23 @@ echo "── Backing up irreplaceable files to $BACKUP..."
 mkdir -p "$BACKUP"
 chmod 700 "$BACKUP"
 
-cp ~/replica.my.cnf "$BACKUP/"
-echo "   Backed up replica.my.cnf"
+if cmp -s ~/replica.my.cnf "$BACKUP/replica.my.cnf" 2>/dev/null; then
+    echo "   Skipped replica.my.cnf (backup already up to date)"
+else
+    cp ~/replica.my.cnf "$BACKUP/"
+    echo "   Backed up replica.my.cnf"
+fi
 
 CONFIG_COUNT=0
 for f in "$SRC"/config.*.yaml; do
     [ -f "$f" ] || continue
-    cp "$f" "$BACKUP/"
-    echo "   Backed up $(basename "$f")"
+    DEST="$BACKUP/$(basename "$f")"
+    if cmp -s "$f" "$DEST" 2>/dev/null; then
+        echo "   Skipped $(basename "$f") (backup already up to date)"
+    else
+        cp "$f" "$DEST"
+        echo "   Backed up $(basename "$f")"
+    fi
     CONFIG_COUNT=$((CONFIG_COUNT + 1))
 done
 
