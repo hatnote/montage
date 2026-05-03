@@ -106,7 +106,8 @@ echo ""
 echo "── Checking running services..."
 
 for pyver in python3.13 python3.12 python3.11; do
-    if toolforge webservice "$pyver" stop 2>/dev/null; then
+    OUTPUT=$(toolforge webservice "$pyver" stop 2>/dev/null)
+    if echo "$OUTPUT" | grep -qi "stopping"; then
         if [ "$pyver" != "python3.13" ]; then
             echo ""
             echo "   WARNING: service was running as $pyver (expected python3.13)."
@@ -181,8 +182,17 @@ echo ""
 echo "── Wiping..."
 cd ~
 for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
-    rm -rf "$item"
+    rm -rf "$item" 2>/dev/null || rm -rf "$item" 2>/dev/null || true
 done
+# NFS sometimes needs a second pass for directories with open handles
+for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
+    rm -rf "$item" 2>/dev/null || true
+done
+if ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -q .; then
+    echo "   WARNING: some items could not be removed (NFS lock):"
+    ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | sed 's/^/     /'
+    echo "   Try: rm -rf ~/www manually, then re-run from step 5."
+fi
 echo "   Done."
 
 # ── 5. clone ─────────────────────────────────────────────────────────────────
