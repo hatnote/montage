@@ -10,15 +10,30 @@ Instructions for deploying Montage on Toolforge.
 
 Skip this step if you are installing into a fresh tool account. Run it if you want to reset an existing tool to a known-good state before reinstalling.
 
-This preserves `~/replica.my.cnf` (your database credentials) and wipes everything else:
+First, back up irreplaceable files:
 
 ```bash
 # TODO: will be automated by tools/reinstall.sh
-cd ~
-for item in $(ls -A | grep -v '^replica\.my\.cnf$'); do rm -rf "$item"; done
+mkdir -p /tmp/montage-backup
+cp ~/replica.my.cnf /tmp/montage-backup/
+cp ~/www/python/src/config.*.yaml /tmp/montage-backup/ 2>/dev/null || true
 ```
 
-After wiping, continue from step 3 (the repo and venv are gone; OAuth credentials and the database itself are unaffected).
+Then wipe everything and restore:
+
+```bash
+cd ~
+for item in $(ls -A | grep -v '^replica\.my\.cnf$'); do rm -rf "$item"; done
+cp /tmp/montage-backup/config.*.yaml ~ 2>/dev/null || true
+```
+
+After wiping, continue from step 3. Move the config file back into place after cloning the repo in step 3:
+
+```bash
+cp ~/config.*.yaml ~/www/python/src/
+```
+
+The OAuth tokens, cookie secret, and database credentials are preserved. The database itself is unaffected.
 
 #### 1. Register OAuth credentials
 
