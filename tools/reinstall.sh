@@ -226,9 +226,12 @@ if [ -d "$SRC" ]; then
     rm -rf "$SRC" 2>/dev/null || true
 fi
 
-if ! git clone --branch "$BRANCH" "$REPO" "$SRC"; then
+CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1)
+if [ $? -ne 0 ]; then
     echo ""
-    echo "ERROR: git clone failed. Your home directory has been wiped."
+    echo "ERROR: git clone failed:"
+    echo "$CLONE_ERR"
+    echo ""
     echo "To recover manually:"
     echo "  git clone --branch $BRANCH $REPO $SRC"
     echo "  cp $BACKUP/config.*.yaml $SRC/"
