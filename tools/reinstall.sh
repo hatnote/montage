@@ -106,7 +106,7 @@ echo ""
 echo "── Checking running services..."
 
 for pyver in python3.13 python3.12 python3.11; do
-    OUTPUT=$(toolforge webservice "$pyver" stop 2>/dev/null)
+    OUTPUT=$(toolforge webservice "$pyver" stop 2>/dev/null || true)
     if echo "$OUTPUT" | grep -qi "stopping"; then
         if [ "$pyver" != "python3.13" ]; then
             echo ""
