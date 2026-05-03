@@ -21,7 +21,7 @@ set -e
 #    the localhost URL from .env.default. This file must stay in the repo.
 
 FRONTEND="$HOME/www/python/src/frontend"
-PROJECT=$(git rev-parse --show-toplevel)
+PROJECT="$HOME/www/python/src"
 TOOL=$(id -un | sed 's/^tools\.//')
 OUTLOG="/data/project/$TOOL/npm-build.out"
 ERRLOG="/data/project/$TOOL/npm-build.err"
