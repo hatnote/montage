@@ -159,3 +159,4 @@ cypress/videos/
 # Claude Code
 .claude/
 tmp/
+.envrc
