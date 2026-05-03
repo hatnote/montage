@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import datetime
+import json
 from typing import Any, Callable
 
 from clastic import redirect, render_basic, Response
@@ -59,13 +60,17 @@ def raise_error() -> None:
 
 
 @public
-def get_health(rdb_session: Any) -> dict[str, str]:
+def get_health(rdb_session: Any) -> dict[str, str] | Response:
     """Basic health check to verify database connectivity."""
     try:
         rdb_session.execute(text('SELECT 1'))
         return {'status': 'healthy', 'db': 'ok'}
     except Exception as e:
-        return {'status': 'unhealthy', 'db': str(e)}
+        return Response(
+            json.dumps({'status': 'unhealthy', 'db': str(e)}),
+            status=503,
+            mimetype='application/json'
+        )
 
 
 @public
