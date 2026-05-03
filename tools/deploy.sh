@@ -11,6 +11,17 @@
 
 set -e
 
+if ! command -v toolforge >/dev/null 2>&1; then
+    echo ""
+    echo "################################################################"
+    echo "#   ERROR: This script must run on Toolforge, not locally.    #"
+    echo "#   SSH to the bastion first:                                 #"
+    echo "#     ssh <user>@login.toolforge.org && become montage-dev    #"
+    echo "################################################################"
+    echo ""
+    exit 1
+fi
+
 SRC="$HOME/www/python/src"
 FRONTEND=1
 PIP_PROMPT=0
