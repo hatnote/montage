@@ -130,8 +130,8 @@ class UserMiddleware(Middleware):
             try:
                 userid = cookie['userid']
             except (KeyError, TypeError):
-                if config['__env__'] == 'devtest':
-                    # TODO: until github.com/pallets/werkzeug/issues/1060
+                if config.get('debug') or config['__env__'] == 'devtest':
+                    # auto-login in dev/devtest when no cookie is present
                     userid = 6024474
                 else:
                     if ep_is_public:
