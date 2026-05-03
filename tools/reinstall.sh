@@ -89,6 +89,25 @@ if [ "$TOOL" = "montage" ]; then
     exit 1
 fi
 
+# ── kubeconfig check ─────────────────────────────────────────────────────────
+# The frontend build uses 'toolforge jobs', which requires ~/.kube/config.
+# Check early so we don't fail halfway through after wiping the home directory.
+
+if [ ! -f "$HOME/.kube/config" ]; then
+    echo ""
+    echo "ERROR: ~/.kube/config not found."
+    echo "   The Toolforge kubeconfig is required for the frontend build."
+    echo "   Exit this account and re-run 'become $TOOL' to regenerate it."
+    exit 1
+fi
+
+if ! toolforge jobs list >/dev/null 2>&1; then
+    echo ""
+    echo "ERROR: 'toolforge jobs list' failed — kubeconfig exists but is invalid or expired."
+    echo "   Exit this account and re-run 'become $TOOL' to regenerate it."
+    exit 1
+fi
+
 # ── warning ──────────────────────────────────────────────────────────────────
 
 echo ""
