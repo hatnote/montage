@@ -52,7 +52,11 @@ def set_value(content, key, value):
         rf'^{re.escape(key)}:.*$', new_line, content, flags=re.MULTILINE
     )
     if count == 0:
-        new_content = content.rstrip('\n') + f'\n{new_line}\n'
+        # Insert before YAML document-end marker '...' if present, not after
+        if re.search(r'^\.\.\.$', content, re.MULTILINE):
+            new_content = re.sub(r'^\.\.\.$', f'{new_line}\n...', content, flags=re.MULTILINE)
+        else:
+            new_content = content.rstrip('\n') + f'\n{new_line}\n'
     return new_content
 
 # ── Auto-fix: fields that are always the same on Toolforge ───────────────────
