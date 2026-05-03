@@ -224,19 +224,15 @@ echo ""
 echo "── Cloning $REPO (branch: $BRANCH)..."
 mkdir -p ~/www/python
 
-# Remove any leftover src directory from a failed previous wipe
+# Remove any leftover src directory from a failed previous wipe.
+# Strategy: delete contents first (NFS allows this even when rm-rf on parent fails),
+# then rmdir the now-empty directory (rmdir succeeds on empty dirs even under NFS lock).
 if [ -d "$SRC" ]; then
     echo "   Removing leftover $SRC..."
-    rm -rf "$SRC" 2>/dev/null || true
-    echo "   rm done (exit $?)."
-fi
-
-# If rm -rf wasn't enough (NFS lock), try file-by-file deletion
-if [ -d "$SRC" ]; then
-    echo "   Still exists — trying file-by-file deletion..."
     find "$SRC" -type f -delete 2>/dev/null || true
     find "$SRC" -mindepth 1 -type d | sort -r | xargs rmdir 2>/dev/null || true
-    rm -rf "$SRC" 2>/dev/null || true
+    rmdir "$SRC" 2>/dev/null || rm -rf "$SRC" 2>/dev/null || true
+    echo "   Done (src exists: $([ -d "$SRC" ] && echo yes || echo no))."
 fi
 
 if [ -d "$SRC" ]; then
