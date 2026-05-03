@@ -217,8 +217,17 @@ done
 if [ "$RESTORED" -eq 0 ]; then
     echo ""
     echo "   WARNING: no config found in $BACKUP."
-    echo "   Create it now before starting the service (see step 6 of deployment.md)."
+    echo "   Creating a blank config from the default template..."
+    cp "$SRC/config.default.yaml" "$SRC/config.dev.yaml"
+    chmod 600 "$SRC/config.dev.yaml"
+    echo "   Created config.dev.yaml — you will be prompted to fill in required values."
 fi
+
+# ── validate / fill in config ─────────────────────────────────────────────────
+
+echo ""
+echo "── Checking config..."
+bash "$SRC/tools/steps/configure.sh"
 
 # ── 7. frontend ──────────────────────────────────────────────────────────────
 
