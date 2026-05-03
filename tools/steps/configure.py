@@ -65,6 +65,10 @@ ALWAYS_SET = {
 
 # ── Field definitions ─────────────────────────────────────────────────────────
 
+def tail(value, n=6):
+    """Return '...last_n_chars' for display without revealing full secrets."""
+    return f'...{value[-n:]}' if value and len(value) > n else value
+
 def build_fields(db_user, db_password):
     db_url_default = None
     if db_user and db_password:
@@ -80,6 +84,8 @@ def build_fields(db_user, db_password):
             'label': 'Database URL',
             'bad_values': ['sqlite://', 'tmp_montage.db'],
             'default': db_url_default,
+            'source': '~/replica.my.cnf',
+            'sensitive': True,
             'hint': f'mysql+pymysql://{db_user or "<user>"}:<password>@tools.db.svc.wikimedia.cloud/{db_user or "<user>"}__montage?charset=utf8mb4',
             'required': True,
         },
@@ -88,6 +94,7 @@ def build_fields(db_user, db_password):
             'label': 'Cookie secret',
             'bad_values': ['ReplaceThis', 'Secret'],
             'auto_generate': True,
+            'sensitive': True,
             'required': True,
         },
         {
@@ -95,6 +102,7 @@ def build_fields(db_user, db_password):
             'label': 'OAuth consumer token (from meta.wikimedia.org)',
             'bad_values': ['see note', 'visit https', 'contact maintainers'],
             'skip_if_debug': True,
+            'sensitive': True,
             'required': True,
         },
         {
@@ -102,6 +110,7 @@ def build_fields(db_user, db_password):
             'label': 'OAuth secret token',
             'bad_values': ['see note'],
             'skip_if_debug': True,
+            'sensitive': True,
             'required': True,
         },
         {
@@ -109,18 +118,23 @@ def build_fields(db_user, db_password):
             'label': 'API log path',
             'bad_values': ['montage_api.log'],
             'default': f'/data/project/{TOOL}/montage_api.log',
+            'source': 'tool account name',
+            'sensitive': False,
             'required': True,
         },
         {
             'key': 'replay_log_path',
             'label': 'Replay log path',
             'default': f'/data/project/{TOOL}/montage_replay.log',
+            'source': 'tool account name',
+            'sensitive': False,
             'required': False,
         },
         {
             'key': 'superuser',
             'label': 'Superuser (your Wikimedia username)',
             'bad_values': ['Slaporte'],
+            'sensitive': False,
             'required': False,
         },
     ]
@@ -194,11 +208,13 @@ def main():
         if is_bad(value, field):
             status = 'MISSING' if value is None else 'PLACEHOLDER'
             print(f'  {status:12s} {key}')
-            # Carry the current (bad) value so the prompt can show it
             field['_current'] = value
             issues.append(field)
         else:
-            display = value if len(value) < 50 else value[:47] + '...'
+            if field.get('sensitive'):
+                display = tail(value)
+            else:
+                display = value if len(value) < 60 else value[:57] + '...'
             print(f'  OK           {key}: {display}')
 
     if not issues:
@@ -235,20 +251,26 @@ def main():
         print()
         print(f'  {label}')
 
+        sensitive = field.get('sensitive', True)
+
         # cookie_secret: offer to auto-generate
         if field.get('auto_generate'):
             secret = generate_secret()
             if secret:
-                choice = input(f'  Auto-generate [{secret[:16]}...]? [Y/n] ').strip().lower()
+                choice = input('  Auto-generate? [Y/n] ').strip().lower()
                 if choice not in ('n', 'no'):
                     content = set_value(content, key, secret)
                     print('  Generated and saved.')
                     continue
 
-        # Show proposed value (from cnf / environment) for confirmation
+        # Proposed value (from cnf / environment): show source + tail
         if proposed:
-            display = proposed if len(proposed) < 70 else proposed[:67] + '...'
-            choice = input(f'  Proposed: {display}\n  Accept? [Y/n] ').strip().lower()
+            source = field.get('source', 'environment')
+            if sensitive:
+                preview = f'from {source} ({tail(proposed)})'
+            else:
+                preview = proposed
+            choice = input(f'  Proposed ({preview}) — Accept? [Y/n] ').strip().lower()
             if choice not in ('n', 'no'):
                 content = set_value(content, key, proposed)
                 print('  Saved.')
@@ -259,9 +281,12 @@ def main():
         if hint:
             print(f'  Example: {hint}')
 
-        # Show current (bad) value as editable default
+        # Prompt — for sensitive fields show only tail of current, for others show full
         if current and current not in ('None', ''):
-            prompt = f'  Value [{current}]: '
+            if sensitive:
+                prompt = f'  Value (current: {tail(current)}): '
+            else:
+                prompt = f'  Value [{current}]: '
         else:
             prompt = '  Value: '
 
