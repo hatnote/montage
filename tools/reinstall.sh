@@ -36,6 +36,18 @@ abort() {
     exit 0
 }
 
+parse_db_name() {
+    python3 -c "
+import re, sys
+try:
+    content = open(sys.argv[1]).read()
+    m = re.search(r'@[^/]+/([^?\"\\s]+)', content)
+    print(m.group(1) if m else '')
+except Exception:
+    print('')
+" "$1" 2>/dev/null
+}
+
 # ── production guard ─────────────────────────────────────────────────────────
 
 TOOL=$(id -un | sed 's/^tools\.//')
@@ -117,6 +129,26 @@ if [ "$CONFIG_COUNT" -eq 0 ]; then
     confirm "   Continue without a config backup?" || abort
 fi
 
+# Dump organizer usernames from database before the wipe
+CONFIG_FILE=$(ls "$SRC"/config.*.yaml 2>/dev/null | head -1)
+if [ -n "$CONFIG_FILE" ]; then
+    DB_NAME=$(parse_db_name "$CONFIG_FILE")
+    if [ -n "$DB_NAME" ]; then
+        if mariadb --defaults-file=~/replica.my.cnf \
+               -h tools.db.svc.wikimedia.cloud \
+               -N -e "SELECT username FROM users WHERE is_organizer=1;" \
+               "$DB_NAME" > "$BACKUP/organizers.txt" 2>/dev/null; then
+            ORGANIZER_COUNT=$(wc -l < "$BACKUP/organizers.txt" | tr -d ' ')
+            echo "   Backed up $ORGANIZER_COUNT organizer(s) to organizers.txt"
+        else
+            echo "   WARNING: could not dump organizers (DB may not exist or schema not initialised)"
+            rm -f "$BACKUP/organizers.txt"
+        fi
+    else
+        echo "   WARNING: could not parse db_url from config — skipping organizer backup"
+    fi
+fi
+
 # ── 3. confirm wipe ──────────────────────────────────────────────────────────
 
 echo ""
@@ -193,6 +225,27 @@ source "$HOME/www/python/venv/bin/activate" 2>/dev/null || {
 if [ -z "$SKIP_SCHEMA" ]; then
     python3 "$SRC/tools/create_schema.py"
     echo "   Schema initialised."
+
+    # Re-insert organizers
+    if [ -f "$BACKUP/organizers.txt" ] && [ -s "$BACKUP/organizers.txt" ]; then
+        CONFIG_FILE=$(ls "$SRC"/config.*.yaml 2>/dev/null | head -1)
+        DB_NAME=$([ -n "$CONFIG_FILE" ] && parse_db_name "$CONFIG_FILE" || echo "")
+        if [ -n "$DB_NAME" ]; then
+            echo ""
+            echo "── Restoring organizers..."
+            while IFS= read -r username; do
+                [ -z "$username" ] && continue
+                mariadb --defaults-file=~/replica.my.cnf \
+                    -h tools.db.svc.wikimedia.cloud \
+                    -e "INSERT INTO users (username, is_organizer) VALUES ('$username', 1) ON DUPLICATE KEY UPDATE is_organizer=1;" \
+                    "$DB_NAME" 2>/dev/null && echo "   Restored organizer: $username" \
+                    || echo "   WARNING: could not restore organizer: $username"
+            done < "$BACKUP/organizers.txt"
+        else
+            echo "   WARNING: could not parse db_url — organizers not restored"
+            echo "   They are saved in $BACKUP/organizers.txt for manual restore."
+        fi
+    fi
 fi
 
 # ── done ─────────────────────────────────────────────────────────────────────
