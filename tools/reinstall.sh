@@ -182,8 +182,17 @@ echo ""
 echo "── Wiping..."
 cd ~
 for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
-    rm -rf "$item"
+    rm -rf "$item" 2>/dev/null || rm -rf "$item" 2>/dev/null || true
 done
+# NFS sometimes needs a second pass for directories with open handles
+for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
+    rm -rf "$item" 2>/dev/null || true
+done
+if ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -q .; then
+    echo "   WARNING: some items could not be removed (NFS lock):"
+    ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | sed 's/^/     /'
+    echo "   Try: rm -rf ~/www manually, then re-run from step 5."
+fi
 echo "   Done."
 
 # ── 5. clone ─────────────────────────────────────────────────────────────────
