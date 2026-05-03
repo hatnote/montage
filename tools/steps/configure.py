@@ -116,7 +116,7 @@ def build_fields(db_user, db_password):
         {
             'key': 'api_log_path',
             'label': 'API log path',
-            'bad_values': ['montage_api.log'],
+            'must_be_absolute': True,
             'default': f'/data/project/{TOOL}/montage_api.log',
             'source': 'tool account name',
             'sensitive': False,
@@ -125,6 +125,7 @@ def build_fields(db_user, db_password):
         {
             'key': 'replay_log_path',
             'label': 'Replay log path',
+            'must_be_absolute': True,
             'default': f'/data/project/{TOOL}/montage_replay.log',
             'source': 'tool account name',
             'sensitive': False,
@@ -147,6 +148,8 @@ def is_bad(value, field):
     for bad in field.get('bad_values', []):
         if bad.lower() in value.lower():
             return True
+    if field.get('must_be_absolute') and not value.startswith('/'):
+        return True
     expected = field.get('expected')
     if expected is not None and value.strip("'\"") != expected.strip("'\""):
         return True
@@ -304,9 +307,28 @@ def main():
     with open(config_path, 'w') as f:
         f.write(content)
 
+    # Re-verify inline so the user can see the final state without re-running
     print()
-    print(f'Config written to {config_path}')
-    print('Run this script again to verify.')
+    print('── Final check:')
+    remaining = []
+    for field in build_fields(db_user, db_password):
+        key = field['key']
+        value = read_value(content, key)
+        if field.get('skip_if_debug') and debug_mode:
+            continue
+        if is_bad(value, field):
+            print(f'  STILL MISSING  {key}')
+            remaining.append(key)
+        else:
+            display = tail(value) if field.get('sensitive') else (value if len(value) < 60 else value[:57] + '...')
+            print(f'  OK             {key}: {display}')
+
+    print()
+    if remaining:
+        print(f'Still missing: {", ".join(remaining)}')
+        print('Re-run this script to fill them in.')
+    else:
+        print(f'Config complete: {config_path}')
 
 if __name__ == '__main__':
     main()
