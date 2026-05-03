@@ -192,29 +192,19 @@ def main():
             continue
 
         if is_bad(value, field):
-            # If we have a default, auto-set it
-            default = field.get('default')
-            if default:
-                content = set_value(content, key, default)
-                display = default if len(default) < 60 else default[:57] + '...'
-                print(f'  AUTO-SET     {key}: {display}')
-                changed = True
-            else:
-                status = 'MISSING' if value is None else 'PLACEHOLDER'
-                print(f'  {status:12s} {key}')
-                issues.append(field)
+            status = 'MISSING' if value is None else 'PLACEHOLDER'
+            print(f'  {status:12s} {key}')
+            # Carry the current (bad) value so the prompt can show it
+            field['_current'] = value
+            issues.append(field)
         else:
             display = value if len(value) < 50 else value[:47] + '...'
             print(f'  OK           {key}: {display}')
 
-    if changed and not issues:
-        with open(config_path, 'w') as f:
-            f.write(content)
-        print()
-        print('Config updated. All required fields are set.')
-        return
-
     if not issues:
+        if changed:
+            with open(config_path, 'w') as f:
+                f.write(content)
         print()
         print('All required fields look good.')
         return
@@ -240,27 +230,49 @@ def main():
     for field in issues:
         key = field['key']
         label = field['label']
+        current = field.get('_current')
+        proposed = field.get('default')
         print()
         print(f'  {label}')
 
+        # cookie_secret: offer to auto-generate
         if field.get('auto_generate'):
             secret = generate_secret()
             if secret:
-                choice = input('  Auto-generate? [Y/n] ').strip().lower()
+                choice = input(f'  Auto-generate [{secret[:16]}...]? [Y/n] ').strip().lower()
                 if choice not in ('n', 'no'):
                     content = set_value(content, key, secret)
                     print('  Generated and saved.')
                     continue
 
+        # Show proposed value (from cnf / environment) for confirmation
+        if proposed:
+            display = proposed if len(proposed) < 70 else proposed[:67] + '...'
+            choice = input(f'  Proposed: {display}\n  Accept? [Y/n] ').strip().lower()
+            if choice not in ('n', 'no'):
+                content = set_value(content, key, proposed)
+                print('  Saved.')
+                continue
+
+        # Show hint / example
         hint = field.get('hint')
         if hint:
             print(f'  Example: {hint}')
 
-        prompt = '  Value: '
+        # Show current (bad) value as editable default
+        if current and current not in ('None', ''):
+            prompt = f'  Value [{current}]: '
+        else:
+            prompt = '  Value: '
+
         new_value = input(prompt).strip()
-        if new_value:
+        if not new_value and current:
+            new_value = current  # keep current if user just pressed Enter
+        if new_value and new_value != current:
             content = set_value(content, key, new_value)
             print('  Saved.')
+        elif new_value == current:
+            print('  Kept existing value.')
         else:
             print('  Skipped.')
 
