@@ -13,6 +13,7 @@
 #   cd ~ && toolforge webservice python3.13 start
 
 set -e
+REINSTALL_VERSION="v3"
 
 # Re-exec from /tmp if running from NFS — avoids open file handles during wipe
 SELF=$(realpath "$0" 2>/dev/null || echo "$0")
@@ -102,6 +103,7 @@ echo "#     - Clone a fresh copy of the repo ($BRANCH)              #"
 echo "#     - Re-initialise an empty database schema                #"
 echo "#                                                              #"
 echo "#   Tool account : $TOOL                                       #"
+echo "#   Script version: $REINSTALL_VERSION                                    #"
 echo "#   replica.my.cnf and config YAML will be preserved.         #"
 echo "#                                                              #"
 echo "################################################################"
@@ -226,6 +228,7 @@ mkdir -p ~/www/python
 if [ -d "$SRC" ]; then
     echo "   Removing leftover $SRC..."
     rm -rf "$SRC" 2>/dev/null || true
+    echo "   rm done (exit $?)."
 fi
 
 # If rm -rf wasn't enough (NFS lock), try file-by-file deletion
@@ -252,6 +255,7 @@ if [ -d "$SRC" ]; then
     exit 1
 fi
 
+echo "   DEBUG: about to clone (src exists: $([ -d "$SRC" ] && echo yes || echo no))"
 # NOTE: must use || { } here — with set -e, $() exits on non-zero before if [$?] runs
 CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1) || {
     echo ""
