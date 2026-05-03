@@ -33,6 +33,21 @@ def read_cnf():
     password = cfg.get(section, 'password', fallback=None)
     return user, password
 
+# ── YAML structure repair ─────────────────────────────────────────────────────
+
+def fix_yaml_structure(content):
+    """Move any key: value lines that landed after the YAML '...' end marker
+    back above it. Returns (fixed_content, was_changed)."""
+    if not re.search(r'^\.\.\.$', content, re.MULTILINE):
+        return content, False
+    # Find lines after '...' that look like YAML key: value pairs
+    fixed = re.sub(
+        r'\n\.\.\.\n((?:[^\n]+\n)+)',
+        lambda m: '\n' + m.group(1).rstrip('\n') + '\n...\n',
+        content
+    )
+    return fixed, fixed != content
+
 # ── YAML helpers (no PyYAML dependency) ──────────────────────────────────────
 
 def read_value(content, key):
@@ -178,6 +193,13 @@ def main():
 
     with open(config_path) as f:
         content = f.read()
+
+    # ── Structural repairs ────────────────────────────────────────────────────
+    content, repaired = fix_yaml_structure(content)
+    if repaired:
+        with open(config_path, 'w') as f:
+            f.write(content)
+        print('  REPAIRED     keys found after YAML "..." marker — moved above it')
 
     # ── Pre-fill always-the-same fields silently ──────────────────────────────
     changed = False
