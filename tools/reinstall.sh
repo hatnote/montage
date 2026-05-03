@@ -224,59 +224,39 @@ echo ""
 echo "── Cloning $REPO (branch: $BRANCH)..."
 mkdir -p ~/www/python
 
-# Remove any leftover src directory from a failed previous wipe.
-# Strategy: delete contents first (NFS allows this even when rm-rf on parent fails),
-# then rmdir the now-empty directory (rmdir succeeds on empty dirs even under NFS lock).
+# Remove any leftover src directory.
 if [ -d "$SRC" ]; then
     echo "   Removing leftover $SRC..."
     find "$SRC" -type f -delete 2>/dev/null || true
     find "$SRC" -mindepth 1 -type d | sort -r | xargs rmdir 2>/dev/null || true
     rmdir "$SRC" 2>/dev/null || rm -rf "$SRC" 2>/dev/null || true
-    echo "   Done (src exists: $([ -d "$SRC" ] && echo yes || echo no))."
 fi
 
 if [ -d "$SRC" ]; then
-    echo ""
-    echo "   ERROR: $SRC still exists (NFS lock — webservice pod may still be running)."
-    echo "   Wait ~1 minute for the pod to terminate, then in a new terminal run:"
-    echo ""
-    echo "     become $TOOL"
-    echo "     find $SRC -type f -delete"
-    echo "     find $SRC -mindepth 1 -type d | sort -r | xargs rmdir"
-    echo "     rm -rf $SRC"
-    echo "     git clone --branch $BRANCH $REPO $SRC"
-    echo "     bash $SRC/tools/reinstall.sh"
-    echo ""
-    echo "   Config is safe in $BACKUP — reinstall.sh will restore it automatically."
-    exit 1
-fi
-
-echo "   DEBUG: about to clone (src exists: $([ -d "$SRC" ] && echo yes || echo no))"
-# NOTE: must use || { } here — with set -e, $() exits on non-zero before if [$?] runs
-CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1) || {
-    echo ""
-    echo "ERROR: git clone failed:"
-    echo "$CLONE_ERR"
-    echo ""
-    if echo "$CLONE_ERR" | grep -q "already exists"; then
-        echo "   $SRC still exists (NFS lock — webservice pod may still be running)."
-        echo "   Wait ~1 minute for the pod to terminate, then run:"
+    # NFS holds the directory open and won't release it.
+    # Workaround: git init in-place, then fetch + reset to get a clean tree.
+    echo "   NFS lock prevents removing $SRC — initialising repo in place..."
+    git -C "$SRC" init -q
+    git -C "$SRC" remote remove origin 2>/dev/null || true
+    git -C "$SRC" remote add origin "$REPO"
+    git -C "$SRC" fetch origin "$BRANCH"
+    git -C "$SRC" reset --hard "origin/$BRANCH"
+    git -C "$SRC" clean -fdx 2>/dev/null || true
+    echo "   Initialised $SRC from $BRANCH."
+else
+    # NOTE: must use || { } here — with set -e, $() exits on non-zero before if [$?] runs
+    CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1) || {
         echo ""
-        echo "     find $SRC -type f -delete"
-        echo "     find $SRC -mindepth 1 -type d | sort -r | xargs rmdir"
-        echo "     rm -rf $SRC"
-        echo "     git clone --branch $BRANCH $REPO $SRC"
-        echo "     bash $SRC/tools/reinstall.sh"
+        echo "ERROR: git clone failed:"
+        echo "$CLONE_ERR"
         echo ""
-        echo "   Config is safe in $BACKUP — reinstall.sh will restore it automatically."
-    else
         echo "To recover manually:"
         echo "  git clone --branch $BRANCH $REPO $SRC"
         echo "  cp $BACKUP/config.*.yaml $SRC/"
-    fi
-    exit 1
-}
-echo "   Cloned to $SRC"
+        exit 1
+    }
+    echo "   Cloned to $SRC"
+fi
 
 # ── 6. restore config ────────────────────────────────────────────────────────
 
