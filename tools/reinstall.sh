@@ -128,6 +128,8 @@ for pyver in python3.13 python3.12 python3.11; do
     fi
 done
 echo "   Service check done."
+echo "   Waiting 10s for pod to terminate..."
+sleep 10
 
 # ── 2. backup ────────────────────────────────────────────────────────────────
 
