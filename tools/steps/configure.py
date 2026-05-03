@@ -369,11 +369,17 @@ def check_and_init_schema(config_path, src):
         print('  SKIP  schema check (venv not found — run reinstall_venv.sh first)')
         return
 
-    print('  Connecting to database...', flush=True)
-    result = subprocess.run(
-        [venv_python, f'{src}/tools/check_schema.py'],
-        capture_output=True, text=True
-    )
+    print('  Connecting to database... (timeout 15s)', flush=True)
+    try:
+        result = subprocess.run(
+            [venv_python, f'{src}/tools/check_schema.py'],
+            capture_output=True, text=True, timeout=15
+        )
+    except subprocess.TimeoutExpired:
+        print('  TIMEOUT  schema check (DB unreachable or slow — skipping)')
+        print(f'  Run manually once the service is up: python3 {src}/tools/create_schema.py')
+        return
+
     if result.returncode == 0:
         print('  OK    schema')
         return
@@ -385,8 +391,12 @@ def check_and_init_schema(config_path, src):
 
     answer = input('  Initialise schema now? [Y/n] ').strip().lower()
     if answer not in ('n', 'no'):
-        init = subprocess.run([venv_python, f'{src}/tools/create_schema.py'],
-                              capture_output=True, text=True)
+        try:
+            init = subprocess.run([venv_python, f'{src}/tools/create_schema.py'],
+                                  capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            print('  TIMEOUT  schema init timed out')
+            return
         if init.returncode == 0:
             print('  Schema initialised.')
         else:
