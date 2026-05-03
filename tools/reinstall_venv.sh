@@ -8,8 +8,9 @@
 
 set -e
 
-if ! command -v toolforge >/dev/null 2>&1; then
-    echo "ERROR: This script must run inside the Toolforge webservice shell, not locally." >&2
+if ! hostname | grep -q '^shell-'; then
+    echo "ERROR: This script must run inside the Toolforge webservice shell." >&2
+    echo "   Run: toolforge webservice python3.13 shell" >&2
     exit 1
 fi
 
