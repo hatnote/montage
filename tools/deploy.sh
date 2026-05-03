@@ -23,6 +23,24 @@ if ! command -v toolforge >/dev/null 2>&1; then
 fi
 
 SRC="$HOME/www/python/src"
+
+# Verify config file exists for this tool account
+TOOL=$(id -un | sed 's/^tools\.//')
+TOOL_FULL="tools.$TOOL"
+ENV_NAME=$(python3 -c "
+import re
+content = open('$SRC/montage/utils.py').read()
+m = re.search(r\"'$TOOL_FULL'\\\\s*:\\\\s*'([^']+)'\", content)
+print(m.group(1) if m else 'default')
+" 2>/dev/null)
+CONFIG="$SRC/config.${ENV_NAME}.yaml"
+if [ ! -f "$CONFIG" ]; then
+    echo ""
+    echo "   ERROR: config file not found: $CONFIG"
+    echo "   Run: bash $SRC/tools/steps/configure.sh"
+    exit 1
+fi
+
 FRONTEND=1
 PIP_PROMPT=0
 
