@@ -252,6 +252,9 @@ def main():
                 f.write(content)
         print()
         print('All required fields look good.')
+        print()
+        print('── Checking database schema...')
+        check_and_init_schema(config_path, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         return
 
     print()
@@ -355,6 +358,41 @@ def main():
         print('Re-run this script to fill them in.')
     else:
         print(f'Config complete: {config_path}')
+        print()
+        print('── Checking database schema...')
+        check_and_init_schema(config_path, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def check_and_init_schema(config_path, src):
+    """Check if the database schema exists; offer to initialise it if not."""
+    venv_python = os.path.expanduser('~/www/python/venv/bin/python3')
+    if not os.path.exists(venv_python):
+        print('  SKIP  schema check (venv not found — run reinstall_venv.sh first)')
+        return
+
+    result = subprocess.run(
+        [venv_python, f'{src}/tools/check_schema.py'],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        print('  OK    schema')
+        return
+
+    print('  MISSING  database schema (tables not found)')
+    if not sys.stdin.isatty():
+        print(f'  Run: source ~/www/python/venv/bin/activate && python3 {src}/tools/create_schema.py')
+        return
+
+    answer = input('  Initialise schema now? [Y/n] ').strip().lower()
+    if answer not in ('n', 'no'):
+        init = subprocess.run([venv_python, f'{src}/tools/create_schema.py'],
+                              capture_output=True, text=True)
+        if init.returncode == 0:
+            print('  Schema initialised.')
+        else:
+            print(f'  ERROR: {init.stderr.strip()}')
+    else:
+        print(f'  Run manually: source ~/www/python/venv/bin/activate && python3 {src}/tools/create_schema.py')
+
 
 if __name__ == '__main__':
     main()
