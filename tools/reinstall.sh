@@ -125,6 +125,7 @@ echo "   Service check done."
 echo ""
 echo "── Backing up irreplaceable files to $BACKUP..."
 mkdir -p "$BACKUP"
+chmod 700 "$BACKUP"
 
 cp ~/replica.my.cnf "$BACKUP/"
 echo "   Backed up replica.my.cnf"
