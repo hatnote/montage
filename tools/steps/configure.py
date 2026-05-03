@@ -369,6 +369,7 @@ def check_and_init_schema(config_path, src):
         print('  SKIP  schema check (venv not found — run reinstall_venv.sh first)')
         return
 
+    print('  Connecting to database...', flush=True)
     result = subprocess.run(
         [venv_python, f'{src}/tools/check_schema.py'],
         capture_output=True, text=True
