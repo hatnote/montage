@@ -8,6 +8,11 @@
 
 set -e
 
+if ! command -v toolforge >/dev/null 2>&1; then
+    echo "ERROR: This script must run inside the Toolforge webservice shell, not locally." >&2
+    exit 1
+fi
+
 VENV="$HOME/www/python/venv"
 SRC="$HOME/www/python/src"
 

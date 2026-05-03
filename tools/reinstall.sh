@@ -14,6 +14,20 @@
 
 set -e
 
+if ! command -v toolforge >/dev/null 2>&1; then
+    echo ""
+    echo "################################################################"
+    echo "#                                                              #"
+    echo "#   ERROR: This script must run on Toolforge, not locally.    #"
+    echo "#   Running it on your local machine will wipe your home      #"
+    echo "#   directory. SSH to the bastion first:                      #"
+    echo "#     ssh <user>@login.toolforge.org && become montage-dev    #"
+    echo "#                                                              #"
+    echo "################################################################"
+    echo ""
+    exit 1
+fi
+
 SRC="$HOME/www/python/src"
 BACKUP="$HOME/backup"
 REPO="https://github.com/hatnote/montage.git"
