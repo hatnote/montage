@@ -30,23 +30,18 @@ ERRLOG="/data/project/$TOOL/npm-build.err"
 # regardless of local modifications left by previous npm runs in the container.
 git -C "$PROJECT" checkout -- frontend/package-lock.json
 
-# Derive esbuild version dynamically so the explicit binary install stays in
-# sync whenever esbuild is upgraded in package-lock.json.
-ESBUILD_VERSION=$(python3 -c "
-import json
-d = json.load(open('$FRONTEND/package-lock.json'))
-print(d['packages']['node_modules/esbuild']['version'])
-")
-
-echo "Building frontend (esbuild $ESBUILD_VERSION)..."
+echo "Building frontend..."
 
 # Clear logs from previous runs so output only reflects this run
 > "$OUTLOG"
 > "$ERRLOG"
 
 toolforge jobs delete npm-build 2>/dev/null || true
+# Read the esbuild version from the installed package INSIDE the job, not from the
+# lockfile beforehand. The lockfile version and the version npm actually installs can
+# diverge (e.g. cross-platform lockfile + npm 9), causing a host/binary mismatch.
 toolforge jobs run npm-build --image node20 --mem 4Gi --wait \
-  --command "bash -c 'cd $FRONTEND && npm install --ignore-scripts && npm install \"@esbuild/linux-x64@$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
+  --command "bash -c 'cd $FRONTEND && npm install --ignore-scripts && ESBUILD_VERSION=\$(node -e \"console.log(require(\\\"./node_modules/esbuild/package.json\\\").version)\") && echo \"esbuild \$ESBUILD_VERSION\" && npm install \"@esbuild/linux-x64@\$ESBUILD_VERSION\" --no-save && npm run toolforge:build'"
 
 echo ""
 cat "$OUTLOG"
