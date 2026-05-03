@@ -16,17 +16,27 @@ fi
 
 SRC="$HOME/www/python/src"
 
+# Derive the correct env name from USER_ENV_MAP in utils.py
+TOOL=$(id -un | sed 's/^tools\.//')
+TOOL_FULL="tools.$TOOL"
+ENV_NAME=$(python3 -c "
+import re
+content = open('$SRC/montage/utils.py').read()
+m = re.search(r\"'$TOOL_FULL'\\\\s*:\\\\s*'([^']+)'\", content)
+print(m.group(1) if m else 'default')
+" 2>/dev/null)
+
 # Use the provided path, or find the config automatically
 if [ -n "$1" ]; then
     CONFIG="$1"
 else
-    CONFIG=$(ls "$SRC"/config.*.yaml 2>/dev/null | grep -v 'config.default.yaml' | head -1)
-    if [ -z "$CONFIG" ]; then
-        echo "No config.*.yaml found in $SRC (excluding default)."
-        echo "Copy config.default.yaml first:"
-        echo "  cp $SRC/config.default.yaml $SRC/config.dev.yaml"
-        echo "  chmod 600 $SRC/config.dev.yaml"
-        exit 1
+    CONFIG="$SRC/config.${ENV_NAME}.yaml"
+    if [ ! -f "$CONFIG" ]; then
+        echo "Config not found: $CONFIG"
+        echo "Creating from default template..."
+        cp "$SRC/config.default.yaml" "$CONFIG"
+        chmod 600 "$CONFIG"
+        echo "Created $CONFIG"
     fi
 fi
 

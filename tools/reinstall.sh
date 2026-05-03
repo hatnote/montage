@@ -218,9 +218,17 @@ if [ "$RESTORED" -eq 0 ]; then
     echo ""
     echo "   WARNING: no config found in $BACKUP."
     echo "   Creating a blank config from the default template..."
-    cp "$SRC/config.default.yaml" "$SRC/config.dev.yaml"
-    chmod 600 "$SRC/config.dev.yaml"
-    echo "   Created config.dev.yaml — you will be prompted to fill in required values."
+    TOOL_FULL="tools.$TOOL"
+    ENV_NAME=$(python3 -c "
+import re
+content = open('$SRC/montage/utils.py').read()
+m = re.search(r\"'$TOOL_FULL'\\\\s*:\\\\s*'([^']+)'\", content)
+print(m.group(1) if m else 'default')
+" 2>/dev/null)
+    CONFIG_NEW="$SRC/config.${ENV_NAME}.yaml"
+    cp "$SRC/config.default.yaml" "$CONFIG_NEW"
+    chmod 600 "$CONFIG_NEW"
+    echo "   Created $(basename "$CONFIG_NEW") — you will be prompted to fill in required values."
 fi
 
 # ── validate / fill in config ─────────────────────────────────────────────────
