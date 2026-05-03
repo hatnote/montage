@@ -156,7 +156,7 @@ Note: the log directory is `/data/project/<project>/logs/`, not inside `src/`.
 Always run `pip install` and Python diagnostics inside the webservice shell, not the bastion shell. The two environments use different venvs:
 
 ```bash
-toolforge webservice python3.11 shell
+toolforge webservice python3.13 shell
 # venv is activated automatically
 pip install -r ~/www/python/src/requirements.txt
 python3 -c "import montage.app"
@@ -168,8 +168,24 @@ Running `pip` on the bastion shell installs to a different venv and will not aff
 ##### Restarting the service
 
 ```bash
-toolforge webservice python3.11 restart
+toolforge webservice python3.13 restart
 ```
+
+##### Rebuilding the venv from scratch
+
+If the venv is broken (e.g. `pip` is missing, wrong Python version, or packages are corrupted), wipe it and rebuild:
+
+```bash
+rm -rf ~/www/python/venv
+toolforge webservice python3.13 shell
+python3 -m venv ~/www/python/venv --without-pip
+curl -sS https://bootstrap.pypa.io/get-pip.py | ~/www/python/venv/bin/python3
+~/www/python/venv/bin/pip install -r ~/www/python/src/requirements.txt
+exit
+toolforge webservice python3.13 restart
+```
+
+Note: `python3 -m venv` with pip hangs in the webservice shell pod. Always use `--without-pip` and bootstrap pip via curl as shown above.
 
 ##### Inspecting the MariaDB database
 
