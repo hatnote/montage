@@ -14,6 +14,15 @@
 
 set -e
 
+# Re-exec from /tmp if running from NFS — avoids open file handles during wipe
+SELF=$(realpath "$0" 2>/dev/null || echo "$0")
+if [[ "$SELF" == /data/project/* ]]; then
+    TMP_SCRIPT=$(mktemp /tmp/reinstall_XXXXXX.sh)
+    cp "$SELF" "$TMP_SCRIPT"
+    chmod +x "$TMP_SCRIPT"
+    exec bash "$TMP_SCRIPT" "$@"
+fi
+
 if ! command -v toolforge >/dev/null 2>&1; then
     echo ""
     echo "################################################################"
