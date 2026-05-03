@@ -6,6 +6,20 @@ Instructions for deploying Montage on Toolforge.
 
 ## Fresh install
 
+#### 0. (Optional) Wipe to a clean slate
+
+Skip this step if you are installing into a fresh tool account. Run it if you want to reset an existing tool to a known-good state before reinstalling.
+
+This preserves `~/replica.my.cnf` (your database credentials) and wipes everything else:
+
+```bash
+# TODO: will be automated by tools/reinstall.sh
+cd ~
+for item in $(ls -A | grep -v '^replica\.my\.cnf$'); do rm -rf "$item"; done
+```
+
+After wiping, continue from step 3 (the repo and venv are gone; OAuth credentials and the database itself are unaffected).
+
 #### 1. Register OAuth credentials
 
 [Register your app](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) on Meta-Wiki. Save the consumer token and secret token — you will need them in step 6.
