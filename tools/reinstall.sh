@@ -252,17 +252,30 @@ if [ -d "$SRC" ]; then
     exit 1
 fi
 
-CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1)
-if [ $? -ne 0 ]; then
+# NOTE: must use || { } here — with set -e, $() exits on non-zero before if [$?] runs
+CLONE_ERR=$(git clone --branch "$BRANCH" "$REPO" "$SRC" 2>&1) || {
     echo ""
     echo "ERROR: git clone failed:"
     echo "$CLONE_ERR"
     echo ""
-    echo "To recover manually:"
-    echo "  git clone --branch $BRANCH $REPO $SRC"
-    echo "  cp $BACKUP/config.*.yaml $SRC/"
+    if echo "$CLONE_ERR" | grep -q "already exists"; then
+        echo "   $SRC still exists (NFS lock — webservice pod may still be running)."
+        echo "   Wait ~1 minute for the pod to terminate, then run:"
+        echo ""
+        echo "     find $SRC -type f -delete"
+        echo "     find $SRC -mindepth 1 -type d | sort -r | xargs rmdir"
+        echo "     rm -rf $SRC"
+        echo "     git clone --branch $BRANCH $REPO $SRC"
+        echo "     bash $SRC/tools/reinstall.sh"
+        echo ""
+        echo "   Config is safe in $BACKUP — reinstall.sh will restore it automatically."
+    else
+        echo "To recover manually:"
+        echo "  git clone --branch $BRANCH $REPO $SRC"
+        echo "  cp $BACKUP/config.*.yaml $SRC/"
+    fi
     exit 1
-fi
+}
 echo "   Cloned to $SRC"
 
 # ── 6. restore config ────────────────────────────────────────────────────────
