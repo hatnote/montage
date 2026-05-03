@@ -113,7 +113,7 @@ echo ""
 echo "── Verifying service (waiting 5s for startup)..."
 sleep 5
 META_URL="https://${TOOL}.toolforge.org/meta"
-HTTP_STATUS=$(curl -s -o /tmp/meta_response.json -w "%{http_code}" "$META_URL")
+HTTP_STATUS=$(curl -s -L -o /tmp/meta_response.json -w "%{http_code}" "$META_URL")
 if [ "$HTTP_STATUS" = "200" ]; then
     RESTART_TIME=$(python3 -c "import json; d=json.load(open('/tmp/meta_response.json')); print(d.get('restart_time','?'))" 2>/dev/null)
     echo "   OK — restart_time: $RESTART_TIME"
