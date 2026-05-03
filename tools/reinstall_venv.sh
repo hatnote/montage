@@ -28,8 +28,7 @@ echo "   pip installed."
 
 # Install dependencies
 echo "   Installing requirements..."
-"$VENV/bin/pip" install -r "$SRC/requirements.txt"
-echo "   Done."
+bash "$SRC/tools/steps/pip_install.sh"
 
 echo ""
 echo "Venv ready. You can now exit this shell and start the service:"
