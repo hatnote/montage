@@ -191,7 +191,7 @@ fi
 
 echo ""
 echo "── The following will be deleted from ~:"
-ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | sed 's/^/     /'
+ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -v '^\.kube$' | sed 's/^/     /'
 echo ""
 confirm "Wipe everything listed above? This cannot be undone." || abort
 
@@ -205,12 +205,13 @@ echo ""
 echo "── Wiping..."
 cd ~
 # Three passes — NFS sometimes needs retries for directories with open handles
+# .kube is preserved — it holds the Toolforge kubeconfig needed by toolforge jobs
 for pass in 1 2 3; do
-    for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$'); do
+    for item in $(ls -A | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -v '^\.kube$'); do
         rm -rf "$item" 2>/dev/null || true
     done
 done
-REMAINING=$(ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' || true)
+REMAINING=$(ls -A ~ | grep -v '^replica\.my\.cnf$' | grep -v '^backup$' | grep -v '^\.kube$' || true)
 if [ -n "$REMAINING" ]; then
     echo "   WARNING: some items could not be removed (NFS lock):"
     echo "$REMAINING" | sed 's/^/     /'

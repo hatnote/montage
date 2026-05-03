@@ -20,11 +20,23 @@ SRC="$HOME/www/python/src"
 TOOL=$(id -un | sed 's/^tools\.//')
 TOOL_FULL="tools.$TOOL"
 ENV_NAME=$(python3 -c "
-import re
-content = open('$SRC/montage/utils.py').read()
-m = re.search(r\"'$TOOL_FULL'\\\\s*:\\\\s*'([^']+)'\", content)
-print(m.group(1) if m else 'default')
+import sys, re
+sys.path.insert(0, '$SRC')
+try:
+    from montage.utils import USER_ENV_MAP
+    print(USER_ENV_MAP.get('$TOOL_FULL', 'dev'))
+except Exception:
+    content = open('$SRC/montage/utils.py').read()
+    m = re.search(r\"'$TOOL_FULL'\\\\s*:\\\\s*'([^']+)'\", content)
+    print(m.group(1) if m else 'dev')
 " 2>/dev/null)
+
+# Safety guard: config.default.yaml is the committed template and must never
+# be used as a real config (it would get overwritten with credentials).
+if [ "$ENV_NAME" = "default" ] || [ -z "$ENV_NAME" ]; then
+    echo "WARNING: could not determine env name for $TOOL_FULL — defaulting to 'dev'"
+    ENV_NAME="dev"
+fi
 
 # Use the provided path, or find the config automatically
 if [ -n "$1" ]; then
