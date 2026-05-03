@@ -62,7 +62,30 @@ if [ "$PIP_PROMPT" -eq 1 ]; then
     read -r -p "   Press Enter once pip install is done..."
 fi
 
-# ── 4. restart ────────────────────────────────────────────────────────────────
+# ── 4. venv health check ──────────────────────────────────────────────────────
+
+echo ""
+echo "── Checking venv..."
+VENV="$HOME/www/python/venv"
+if [ ! -f "$VENV/bin/python3" ]; then
+    echo "   ERROR: venv not found at $VENV."
+    echo "   Run inside the webservice shell:"
+    echo "     toolforge webservice python3.13 shell"
+    echo "     bash ~/www/python/src/tools/reinstall_venv.sh"
+    echo "     exit"
+    exit 1
+fi
+if ! "$VENV/bin/python3" -c "import urllib3" 2>/dev/null; then
+    echo "   ERROR: Python packages not installed (urllib3 missing)."
+    echo "   Run inside the webservice shell:"
+    echo "     toolforge webservice python3.13 shell"
+    echo "     bash ~/www/python/src/tools/steps/pip_install.sh"
+    echo "     exit"
+    exit 1
+fi
+echo "   OK."
+
+# ── 5. restart ────────────────────────────────────────────────────────────────
 
 echo ""
 echo "── Restarting service..."

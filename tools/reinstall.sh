@@ -271,6 +271,15 @@ if [ -z "$SKIP_SCHEMA" ]; then
     fi
 fi
 
+# ── 9. venv health check ─────────────────────────────────────────────────────
+
+VENV="$HOME/www/python/venv"
+if [ ! -f "$VENV/bin/python3" ] || ! "$VENV/bin/python3" -c "import urllib3" 2>/dev/null; then
+    echo ""
+    echo "   NOTE: venv not yet set up — this is expected."
+    echo "   Complete the install by running the step below."
+fi
+
 # ── done ─────────────────────────────────────────────────────────────────────
 
 echo ""
