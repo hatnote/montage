@@ -228,6 +228,22 @@ cd ~
 toolforge webservice python3.13 restart
 ```
 
+#### Regenerating `~/.kube/config` (if accidentally deleted)
+
+`~/.kube/config` holds the Toolforge Kubernetes credentials used by `toolforge jobs`
+(and therefore by `build_frontend.sh`). It is written once by the `maintain-kubeusers`
+daemon and is **not** recreated by `become` if deleted.
+
+If it is missing, ask a WMCS operator (via `#wikimedia-cloud` on Libera.Chat or a
+Phabricator task under Cloud-Services) to run:
+
+```bash
+kubectl sudo delete cm -n tool-<toolname> maintain-kubeusers
+```
+
+The daemon will reprovision the credentials and write a fresh `~/.kube/config` within
+a few minutes. You cannot do this yourself as the tool account.
+
 #### Rebuilding the venv from scratch
 
 If the venv is broken (e.g. `pip` is missing, wrong Python version, or packages are corrupted):
