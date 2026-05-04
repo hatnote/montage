@@ -244,9 +244,22 @@ kubectl sudo delete cm -n tool-<toolname> maintain-kubeusers
 The daemon will reprovision the credentials and write a fresh `~/.kube/config` within
 a few minutes. You cannot do this yourself as the tool account.
 
+#### Fixing broken pip (without rebuilding the venv)
+
+If `pip` fails with `ModuleNotFoundError: No module named 'pip'` but the venv itself is intact:
+
+```bash
+toolforge webservice python3.13 shell
+curl -sS https://bootstrap.pypa.io/get-pip.py | ~/www/python/venv/bin/python3
+~/www/python/venv/bin/pip install -r ~/www/python/src/requirements.txt
+exit
+cd ~
+toolforge webservice python3.13 restart
+```
+
 #### Rebuilding the venv from scratch
 
-If the venv is broken (e.g. `pip` is missing, wrong Python version, or packages are corrupted):
+If the venv is broken (e.g. wrong Python version, packages are corrupted, or pip bootstrap above fails):
 
 ```bash
 rm -rf ~/www/python/venv
