@@ -189,5 +189,6 @@
 	"permission-denied-message": "У вас недостаточно прав для доступа к этой странице.",
 	"permission-denied-home": "Перейти на главную",
 	"montage-required-voting-deadline": "Выберите действительный срок голосования",
-	"montage-required-fill-inputs": "Пожалуйста, заполните все поля"
+	"montage-required-fill-inputs": "Пожалуйста, заполните все поля",
+	"unsaved-changes-confirmation": "Есть несохраненные изменения. Вы уверены, что хотите уйти?"
 }

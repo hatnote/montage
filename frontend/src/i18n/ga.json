@@ -187,5 +187,7 @@
 	"permission-denied-message": "Níl na ceadanna riachtanacha agat chun rochtain a fháil ar an leathanach seo.",
 	"permission-denied-home": "Téigh go dtí an Baile",
 	"montage-required-voting-deadline": "Roghnaigh spriocdháta vótála bailí",
-	"montage-required-fill-inputs": "Líon na boscaí go léir le do thoil"
+	"montage-required-fill-inputs": "Líon na boscaí go léir le do thoil",
+	"unsaved-changes-confirmation": "Tá athruithe neamhshábháilte ann. An bhfuil tú cinnte gur mhaith leat imeacht?",
+	"back-to-round": "Ar ais go dtí an babhta"
 }
