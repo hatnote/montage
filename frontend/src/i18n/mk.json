@@ -187,5 +187,7 @@
 	"permission-denied-message": "Ги немате потребните дозволи за да пристапите до страницава.",
 	"permission-denied-home": "Оди на Почетна",
 	"montage-required-voting-deadline": "Изберете важечки рок за гласање",
-	"montage-required-fill-inputs": "Ve molime popolnete gi site polinja"
+	"montage-required-fill-inputs": "Ve molime popolnete gi site polinja",
+	"unsaved-changes-confirmation": "Има незачувани промени. Сигурно сакате да напуштите?",
+	"back-to-round": "Назад на кругот"
 }

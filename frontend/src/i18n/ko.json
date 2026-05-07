@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Tensama0415",
 			"Whatback11",
 			"Ykhwong"
 		]
@@ -25,9 +26,14 @@
 	"montage-btn-save": "저장",
 	"montage-btn-cancel": "취소",
 	"montage-edit-campaign": "캠페인 편집",
+	"montage-round-min-resolution": "최소 해상도",
 	"montage-round-show-filename": "파일 이름 표시",
 	"montage-round-show-link": "링크 표시",
+	"montage-round-show-resolution": "해상도 표시",
+	"montage-round-ranking": "순위",
+	"montage-round-rating": "평가",
 	"montage-round-yesno": "예/아니요",
+	"montage-round-file-info": "라운드 파일 정보",
 	"montage-round-file-type": "파일 유형",
 	"montage-round-activate": "활성화",
 	"montage-round-pause": "일시 정지",
