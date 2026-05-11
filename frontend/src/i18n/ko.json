@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Bisang",
 			"Tensama0415",
 			"Whatback11",
 			"Ykhwong"
@@ -73,5 +74,6 @@
 	"permission-denied-title": "권한이 없습니다",
 	"permission-denied-message": "이 문서에 접근하는 데 필요한 권한이 없습니다.",
 	"permission-denied-home": "홈으로 이동",
-	"montage-required-fill-inputs": "모든 상자를 채워주세요"
+	"montage-required-fill-inputs": "모든 상자를 채워주세요",
+	"unsaved-changes-confirmation": "저장되지 않은 변경 사항이 있습니다. 정말 나가시겠습니까?"
 }

@@ -190,5 +190,6 @@
 	"permission-denied-home": "Перейти на главную",
 	"montage-required-voting-deadline": "Выберите действительный срок голосования",
 	"montage-required-fill-inputs": "Пожалуйста, заполните все поля",
-	"unsaved-changes-confirmation": "Есть несохраненные изменения. Вы уверены, что хотите уйти?"
+	"unsaved-changes-confirmation": "Есть несохраненные изменения. Вы уверены, что хотите уйти?",
+	"back-to-round": "Вернуться к раунду"
 }
