@@ -1553,6 +1553,17 @@ class CoordinatorDAO(UserDAO):
 
         return
 
+    def finalize_round(self, round_id):
+        rnd = self.get_round(round_id)
+        rnd.close_date = datetime.datetime.utcnow()
+        rnd.status = FINALIZED_STATUS
+
+        msg = '%s finalized round "%s" (#%s)' % (self.user.username,
+                                                 rnd.name,
+                                                 rnd.id)
+        self.log_action('finalize_round', round=rnd, message=msg)
+        return rnd
+
     def add_entries_from_cat(self, round_id, cat_name):
         rnd = self.user_dao.get_round(round_id)
         if ENV_NAME == 'dev':

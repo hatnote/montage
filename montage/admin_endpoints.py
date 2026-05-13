@@ -14,8 +14,7 @@ from .utils import (format_date,
                    NotImplementedResponse,
                    js_isoparse)
 
-from .rdb import (FINALIZED_STATUS,
-                 CoordinatorDAO,
+from .rdb import (CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
 
@@ -417,8 +416,7 @@ def pause_round(user_dao, round_id, request_dict):
 
 def finalize_round(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    rnd = coord_dao.get_round(round_id)
-    rnd.status = FINALIZED_STATUS
+    coord_dao.finalize_round(round_id)
 
     return {'status': 'success'}
 
