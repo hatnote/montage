@@ -182,7 +182,6 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
     session_type = sessionmaker()
     session_type.configure(bind=engine)
 
-    # import pdb;pdb.set_trace()
 
     tmp_rdb_session = session_type()
     schema_errors = get_schema_errors(base_type, tmp_rdb_session)
