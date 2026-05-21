@@ -62,18 +62,10 @@ markdown==3.6
     # via chert
 markupsafe==2.1.5
     # via mako
-mwoauth==0.4.0
-    # via -r requirements.in
-oauthlib==3.2.2
-    # via
-    #   mwoauth
-    #   requests-oauthlib
 packaging==26.2
     # via gunicorn
 pycparser==2.22
     # via cffi
-pyjwt==2.8.0
-    # via mwoauth
 pymysql==1.1.1
     # via -r requirements.in
 python-dateutil==2.9.0.post0
@@ -87,11 +79,7 @@ python3-vote-core @ git+https://github.com/the-maldridge/python-vote-core.git@f0
 pyyaml==6.0.1
     # via chert
 requests==2.32.4
-    # via
-    #   mwoauth
-    #   requests-oauthlib
-requests-oauthlib==2.0.0
-    # via mwoauth
+    # via sentry-sdk
 secure-cookie==0.1.0
     # via clastic
 sentry-sdk==2.8.0

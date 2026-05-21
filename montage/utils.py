@@ -147,8 +147,9 @@ def get_env_name():
     return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
 
 
-DEVTEST_CONFIG = {'oauth_consumer_token': None,
-                  'oauth_secret_token': None,
+DEVTEST_CONFIG = {'oauth_client_id': None,
+                  'oauth_client_secret': None,
+                  'oauth_redirect_uri': None,
                   'cookie_secret': 'supertotallyrandomsecretcookiesecret8675309',
                   'api_log_path': 'montage_api.log',
                   'replay_log_path': 'montage_replay.log',
@@ -169,8 +170,9 @@ def _load_config_from_env(env_name):
         return val.lower() in ('1', 'true', 'yes') if val is not None else default
 
     required = {
-        'oauth_consumer_token': 'MONTAGE_OAUTH_CONSUMER_TOKEN',
-        'oauth_secret_token': 'MONTAGE_OAUTH_SECRET_TOKEN',
+        'oauth_client_id': 'MONTAGE_OAUTH_CLIENT_ID',
+        'oauth_client_secret': 'MONTAGE_OAUTH_CLIENT_SECRET',  # pragma: allowlist secret
+        'oauth_redirect_uri': 'MONTAGE_OAUTH_REDIRECT_URI',
         'cookie_secret': 'MONTAGE_COOKIE_SECRET',
         'db_url': 'MONTAGE_DB_URL',
     }
@@ -205,7 +207,7 @@ def load_env_config(env_name=None):
     elif env_name == 'devtest':
         return dict(DEVTEST_CONFIG)
 
-    if os.environ.get('MONTAGE_OAUTH_CONSUMER_TOKEN'):
+    if os.environ.get('MONTAGE_OAUTH_CLIENT_ID'):
         return _load_config_from_env(env_name)
 
     config_file_name = 'config.%s.yaml' % env_name

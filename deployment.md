@@ -27,8 +27,9 @@ would appear in `~/.bash_history` on the shared bastion).
 
 ```bash
 toolforge envvars create MONTAGE_ENV            # enter: devlabs / beta / prod
-toolforge envvars create MONTAGE_OAUTH_CONSUMER_TOKEN
-toolforge envvars create MONTAGE_OAUTH_SECRET_TOKEN
+toolforge envvars create MONTAGE_OAUTH_CLIENT_ID      # OAuth 2.0 client ID from Special:OAuthConsumerRegistration
+toolforge envvars create MONTAGE_OAUTH_CLIENT_SECRET  # OAuth 2.0 client secret
+toolforge envvars create MONTAGE_OAUTH_REDIRECT_URI   # e.g. https://montage-beta.toolforge.org/complete_login
 toolforge envvars create MONTAGE_COOKIE_SECRET  # generate with: openssl rand -hex 32
 toolforge envvars create MONTAGE_DB_URL         # mysql+pymysql://<user>:<pass>@tools.db.svc.wikimedia.cloud/<db>?charset=utf8mb4
 toolforge envvars create MONTAGE_SUPERUSERS     # comma-separated Wikimedia usernames, e.g. YourUsername

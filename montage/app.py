@@ -14,7 +14,6 @@ from clastic.render import AshesRenderFactory, render_basic
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from mwoauth import ConsumerToken
 
 from .mw import (UserMiddleware,
                 UserIPMiddleware,
@@ -145,11 +144,14 @@ def create_app(env_name='prod', config=None):
         replay_log_mw = ReplayLogMiddleware(replay_log_path)
         middlewares.append(replay_log_mw)
 
-    consumer_token = ConsumerToken(config['oauth_consumer_token'],
-                                   config['oauth_secret_token'])
+    oauth_config = {
+        'client_id': config.get('oauth_client_id'),
+        'client_secret': config.get('oauth_client_secret'),
+        'redirect_uri': config.get('oauth_redirect_uri'),
+    }
 
     resources = {'config': config,
-                 'consumer_token': consumer_token,
+                 'oauth_config': oauth_config,
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
