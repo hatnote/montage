@@ -2,15 +2,19 @@
 # Deploy Montage on Toolforge using the buildservice.
 # Run on the Toolforge bastion after `become <toolname>`.
 #
-# Usage:
-#   bash ~/www/python/src/tools/deploy.sh [--ref <branch-or-sha>]
+# One-time setup (first deploy only):
+#   git clone https://github.com/hatnote/montage.git ~/montage
 #
-# Defaults to the tools/buildservice branch. Pass --ref to override.
+# Usage:
+#   bash ~/montage/tools/deploy.sh [--ref <branch-or-sha>]
+#
+# Defaults to the master branch. Pass --ref to override.
 
 set -euo pipefail
 
 REPO="https://github.com/hatnote/montage.git"
-REF="tools/buildservice"
+REF="master"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POLL_INTERVAL=20   # seconds between build log checks
 MAX_WAIT=600       # timeout in seconds (10 min)
 
@@ -21,6 +25,13 @@ while [[ $# -gt 0 ]]; do
         *) echo "!! Unknown argument: $1"; exit 1 ;;
     esac
 done
+
+# ── 0. Self-update ───────────────────────────────────────────────────────────
+
+echo "==> Updating local repo ..."
+git -C "$SCRIPT_DIR/.." pull --ff-only || {
+    echo "!! git pull failed — continuing with local version."
+}
 
 # Derive tool name and URL from the current account
 TOOL_NAME=$(id -un | sed 's/^tools\.//')
