@@ -129,6 +129,12 @@ toolforge build start https://github.com/hatnote/montage.git --ref <branch>
 toolforge build logs  # wait for completion
 ```
 
+After the build completes, confirm it used the right commit and port before continuing:
+
+```bash
+toolforge build logs 2>&1 | grep -E "RESULT_SHA|gunicorn"
+```
+
 #### 4. Restart the service
 
 ```bash
@@ -142,6 +148,24 @@ Visit `/meta` and confirm the restart time is recent.
 ---
 
 ## Debugging
+
+#### Confirming which commit was built
+
+Before restarting, verify the build used the expected commit and port:
+
+```bash
+toolforge build logs 2>&1 | grep -E "RESULT_SHA|gunicorn"
+```
+
+The `[step-clone]` line should show the expected `RESULT_SHA=<sha>` and the
+`[step-build]` line should show `gunicorn --bind=0.0.0.0:8000`. If the SHA is wrong,
+trigger a new build before restarting.
+
+#### Diagnosing "no healthy upstream"
+
+This means the pod never passed the Toolforge startup probe, which checks port 8000. Most
+common cause: the running image binds to the wrong port. Use the build log check above to
+confirm the built image uses port 8000, then restart.
 
 #### Viewing logs
 
@@ -181,7 +205,7 @@ DESCRIBE entries;
 
 ```bash
 toolforge envvars create MONTAGE_SUPERUSERS  # overwrites existing value
-toolforge webservice buildservice restart
+toolforge webservice buildservice restart --mount all
 ```
 
 ---
