@@ -94,8 +94,11 @@ mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db nam
 #### 7. Start the service
 
 ```bash
-toolforge webservice buildservice start
+toolforge webservice buildservice start --mount all
 ```
+
+`--mount all` is required — Montage writes logs to NFS (`/data/project/<toolname>/`), so shared
+storage must be mounted.
 
 #### 8. Verify
 
@@ -129,7 +132,7 @@ toolforge build logs  # wait for completion
 #### 4. Restart the service
 
 ```bash
-toolforge webservice buildservice restart
+toolforge webservice buildservice restart --mount all
 ```
 
 #### 5. Verify
@@ -160,7 +163,7 @@ exit
 #### Restarting the service
 
 ```bash
-toolforge webservice buildservice restart
+toolforge webservice buildservice restart --mount all
 ```
 
 #### Inspecting the database
@@ -189,11 +192,11 @@ Each tool account (`montage-dev`, `montage-beta`, `montage`) builds from its own
 has its own `toolforge envvars` configuration. The build command is the only thing that
 differs:
 
-| Account | Branch |
-|---------|--------|
-| `montage-dev` | `montage-dev` |
-| `montage-beta` | `master` |
-| `montage` | release tag |
+| Account | Branch | URL |
+|---------|--------|-----|
+| `montage-dev` | `master` (or feature branch for testing) | https://montage-dev.toolforge.org |
+| `montage-beta` | `master` | https://montage-beta.toolforge.org |
+| `montage` | release tag | https://montage.toolforge.org |
 
 ---
 
