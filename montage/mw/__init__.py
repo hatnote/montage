@@ -130,9 +130,10 @@ class UserMiddleware(Middleware):
             try:
                 userid = cookie['userid']
             except (KeyError, TypeError):
-                if config.get('debug') or config['__env__'] == 'devtest':
-                    # auto-login in dev/devtest when no cookie is present
-                    userid = 6024474
+                if config['__env__'] == 'devtest':
+                    userid = 6024474  # test fixture user
+                elif config.get('debug'):
+                    userid = 0  # sentinel: no real user has id=0; fails loudly on any real DB
                 else:
                     if ep_is_public:
                         return next(user=None, user_dao=None)

@@ -190,6 +190,13 @@ def _load_config_from_env(env_name):
         'superusers': [u.strip() for u in superusers_raw.split(',') if u.strip()],
         'db_echo': _bool('MONTAGE_DB_ECHO'),
         'debug': _bool('MONTAGE_DEBUG'),
+    })
+    if config['debug'] and env_name in ('prod', 'beta', 'devlabs'):
+        raise ValueError(
+            'MONTAGE_DEBUG=true is not permitted in env %r. '
+            'Unset MONTAGE_DEBUG or change MONTAGE_ENV to dev.' % env_name
+        )
+    config.update({
         'labs_db': _bool('MONTAGE_LABS_DB', True),
         'root_path': os.environ.get('MONTAGE_ROOT_PATH', '/'),
         'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),

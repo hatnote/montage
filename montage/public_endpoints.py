@@ -173,8 +173,8 @@ def logout(request, cookie, root_path):
 def complete_login(request, oauth_config, cookie, rdb_session, root_path, api_log, config):
     if config.get('debug'):
         identity = {
-            'sub': config.get('debug_userid', 6024474),
-            'username': config.get('debug_username', 'Slaporte'),
+            'sub': config.get('debug_userid', 0),
+            'username': config.get('debug_username', '__montage_debug__'),
         }
     else:
         state = request.args.get('state', '')
