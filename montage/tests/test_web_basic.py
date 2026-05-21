@@ -750,7 +750,7 @@ def test_home_client(base_client, api_client, mock_external_apis):
 
     resp = fetch('juror: check archived campaign rounds shown',
                  '/juror', as_user='Slaporte')
-    assert len(resp['data']) == 1  # only active/paused rounds shown; rounds 1+2 are finalized
+    assert len(resp['data']) == 1  # only active rounds shown; rounds 1+2 are finalized
     assert glom(resp, 'data.0.campaign.is_archived') is False
 
 

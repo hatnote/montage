@@ -2708,7 +2708,7 @@ class JurorDAO(object):
             users_rounds_query = users_rounds_query.where(campaigns_t.c.status == 'active')
             users_rounds_query = users_rounds_query.where(campaigns_t.c.is_archived == False)
             users_rounds_query = users_rounds_query.where(
-                rounds_t.c.status.in_([ACTIVE_STATUS, PAUSED_STATUS])
+                rounds_t.c.status == ACTIVE_STATUS
             )
 
         users_rounds_query = users_rounds_query.group_by(
