@@ -298,7 +298,11 @@ class LoggingMiddleware(Middleware):
             with self.api_log.critical(act_name) as api_act:
                 # basic redacted url
                 api_act['path'] = request.path
-                api_act.data_map.update(list(request.args.items()))
+                _REDACT = frozenset({'code', 'state', 'access_token', 'token'})
+                api_act.data_map.update(
+                    {k: '<redacted>' if k in _REDACT else v
+                     for k, v in request.args.items()}
+                )
                 try:
                     ret = next(api_act=api_act, api_log=self.api_log)
                 except clastic.errors.BadRequest as br:

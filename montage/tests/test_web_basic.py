@@ -954,3 +954,99 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
     # get all the jurors that have open tasks in a round
     # get juror's tasks
     # submit random valid votes until there are no more tasks
+
+
+# ---------------------------------------------------------------------------
+# OAuth 2.0 + PKCE flow tests
+# ---------------------------------------------------------------------------
+
+import responses as responses_lib_oauth
+from urllib.parse import urlparse, parse_qs as _parse_qs
+
+from montage.public_endpoints import _MW_OAUTH2_TOKEN, _MW_OAUTH2_PROFILE
+
+
+@pytest.fixture
+def oauth_app(tmpdir):
+    """App with debug=False and stub OAuth config for testing the real OAuth flow."""
+    config = utils.load_env_config(env_name='devtest')
+    config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
+    config['debug'] = False
+    config['oauth_client_id'] = 'test_client_id'
+    config['oauth_client_secret'] = 'test_client_secret'  # pragma: allowlist secret
+    config['oauth_redirect_uri'] = 'http://localhost/complete_login'
+    _create_schema(db_url=config['db_url'])
+
+    index_path = STATIC_PATH + '/index.html'
+    if not os.path.exists(index_path):
+        mkdir_p(STATIC_PATH)
+        with open(index_path, 'w') as f:
+            f.write('<html><body>just for tests</body></html>')
+
+    return create_app('devtest', config=config)
+
+
+def _get_cookie_data(client, secret_key):
+    for cookie in client.cookie_jar:
+        if cookie.name == 'clastic_cookie':
+            return JSONCookie.unserialize(cookie.value, secret_key=secret_key)
+    return {}
+
+
+def test_oauth_login_redirects_with_pkce(oauth_app):
+    """GET /login redirects to Meta-Wiki with all required PKCE params."""
+    client = ClasticTestClient(oauth_app)
+    resp = client.get('/login')
+    assert resp.status_code == 302
+    location = resp.headers['Location']
+    assert 'meta.wikimedia.org' in location
+    params = _parse_qs(urlparse(location).query)
+    assert params['response_type'] == ['code']
+    assert params['code_challenge_method'] == ['S256']
+    assert len(params.get('code_challenge', [''])[0]) > 0
+    assert len(params.get('state', [''])[0]) > 0
+
+
+def test_oauth_state_mismatch_redirects_to_root(oauth_app):
+    """State mismatch on /complete_login redirects to root without setting auth."""
+    client = ClasticTestClient(oauth_app)
+    client.get('/login')
+    resp = client.get('/complete_login?code=testcode&state=wrongstate')
+    assert resp.status_code == 302
+    data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
+    assert 'userid' not in data
+
+
+def test_oauth_token_failure_redirects_to_root(oauth_app):
+    """Token exchange failure redirects to root without setting auth."""
+    client = ClasticTestClient(oauth_app)
+    resp = client.get('/login')
+    state = _parse_qs(urlparse(resp.headers['Location']).query)['state'][0]
+
+    with responses_lib_oauth.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(responses_lib_oauth.POST, _MW_OAUTH2_TOKEN,
+                 json={'error': 'invalid_grant'}, status=400)
+        resp = client.get('/complete_login?code=badcode&state=' + state)
+
+    assert resp.status_code == 302
+    data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
+    assert 'userid' not in data
+
+
+def test_oauth_complete_login_success(oauth_app):
+    """Successful OAuth flow sets userid/username in the session cookie."""
+    client = ClasticTestClient(oauth_app)
+    resp = client.get('/login')
+    state = _parse_qs(urlparse(resp.headers['Location']).query)['state'][0]
+
+    with responses_lib_oauth.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(responses_lib_oauth.POST, _MW_OAUTH2_TOKEN,
+                 json={'access_token': 'test_token_abc'}, status=200)
+        rsps.add(responses_lib_oauth.GET, _MW_OAUTH2_PROFILE,
+                 json={'sub': 12345, 'username': 'OAuthTestUser'}, status=200)
+        resp = client.get('/complete_login?code=testcode&state=' + state)
+
+    assert resp.status_code == 302
+    data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
+    assert data.get('userid') == 12345
+    assert data.get('username') == 'OAuthTestUser'

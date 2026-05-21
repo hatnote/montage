@@ -220,7 +220,9 @@ def complete_login(request, oauth_config, cookie, rdb_session, root_path, api_lo
             )
             profile_resp.raise_for_status()
             identity = profile_resp.json()
-        except Exception:
+        except Exception as e:
+            with api_log.debug('oauth_exchange_failed') as act:
+                act.failure('oauth exchange failed: {}', type(e).__name__)
             cookie.set_expires()
             return redirect(root_path)
 
