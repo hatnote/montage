@@ -123,28 +123,30 @@ ssh <shell-username>@login.toolforge.org
 become montage-beta
 ```
 
-#### 3. Rebuild the image
+#### 3. One-time setup (first deploy only)
+
+Clone the repo so the deploy script is available on the bastion:
 
 ```bash
-toolforge build start https://github.com/hatnote/montage.git --ref <branch>
-toolforge build logs  # wait for completion
+git clone --branch tools/buildservice https://github.com/hatnote/montage.git ~/www/python/src
 ```
 
-After the build completes, confirm it used the right commit and port before continuing:
+If the repo is already cloned, make sure the branch tracks the right remote:
 
 ```bash
-toolforge build logs 2>&1 | grep -E "RESULT_SHA|gunicorn"
+git -C ~/www/python/src fetch origin
+git -C ~/www/python/src checkout -b tools/buildservice origin/tools/buildservice
 ```
 
-#### 4. Restart the service
+#### 4. Run the deploy script
 
 ```bash
-toolforge webservice buildservice restart --mount all
+bash ~/www/python/src/tools/deploy.sh --ref <branch>
 ```
 
-#### 5. Verify
-
-Visit `/meta` and confirm the restart time is recent.
+The script will: pull the latest version of itself, start the build, wait for
+completion, verify the SHA and port, warn if the running image already matches,
+restart the service, and smoke-test `/meta/`.
 
 ---
 
