@@ -4,6 +4,7 @@
 			"شاه زمان پټان"
 		]
 	},
+	"montage-title": "مونتاژ",
 	"montage-about": "په اړه",
 	"montage-credit": "مونټ‌اېج ډلې له خوا",
 	"montage-source-code": "سرچينې کوډ",
@@ -79,7 +80,9 @@
 	"montage-round-dq-by-filetype": "دوتنې‌ډول له مخې ويستل شوي",
 	"montage-round-dq-by-resolution": "پرېکړې له مخې ويستل شوي",
 	"montage-round-dq-by-upload-date": "د راپورته کولو نېټې له مخې ويستل شوي",
+	"montage-round-show-filename": "دوتنې‌نوم ښودل",
 	"montage-round-show-link": "تړونی ښودل",
+	"montage-round-show-resolution": "ژورليدنه ښودل",
 	"montage-round-show-stats": "شمارنې ښودل",
 	"montage-round-vote-ending": "{0} ورځو کې",
 	"montage-round-no-direction-given": "هېڅ تگلارې نه دي چمتو شوې",
@@ -102,6 +105,8 @@
 	"montage-round-source-category": "ويکي‌رسنۍ خونديځ کې وېشنيزه",
 	"montage-round-source-csv": "د دوتنو لړليک وېبتړ",
 	"montage-round-source-filelist": "د دوتنې لړليک",
+	"montage-round-source-category-help": "په ويکي‌خونديځ کې هغه وېشنيزې چې د سيالۍ ټول انځورونه راټولوي. بېلگه: په گانا کې د ويکي‌مينې يادگارونه ۲۰۱۷ انځورونه.",
+	"montage-round-source-csv-help": "د هغه دوتنو لړليک چې د CSV په توگه خوندي شوي او د Google Sheet يا Gist په توگه راپورته شوي دي.",
 	"montage-round-category-placeholder": "وېشنيزه وردننه‌کول",
 	"montage-round-category-label": "وېشنيزه وردننه‌کول",
 	"montage-round-no-category": "هېڅ وېشنيزې ونه موندل شوې.",
