@@ -48,7 +48,9 @@ echo ""
 echo "==> Resolving ref $REF ..."
 EXPECTED_SHA=$(git ls-remote "$REPO" "$REF" 2>/dev/null | awk '{print $1}' | cut -c1-7)
 if [[ -z "$EXPECTED_SHA" ]]; then
-    EXPECTED_SHA=$(echo "$REF" | cut -c1-7)
+    echo "!! Could not resolve ref '$REF' from $REPO"
+    echo "   Check the branch name and your network connection."
+    exit 1
 fi
 echo "    Expected SHA: $EXPECTED_SHA"
 

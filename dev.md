@@ -58,7 +58,7 @@ Edit the `.env` file to match your development environment. By default, it's con
 Montage uses MediaWiki OAuth for authentication. There are two modes for local development:
 
 **Default (dev/debug mode) -- no setup required:**
-The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. You will be logged in as `Slaporte`. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
+The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. Set `debug_userid` and `debug_username` in `config.dev.yaml` to log in as a specific user; without those, the sentinel user (`__montage_debug__`, id 0) is used, which will fail most DB lookups. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
 
 **Real OAuth (optional) -- for testing the actual login flow:**
 If you need to test the real OAuth login/logout flow, you need to register an OAuth consumer:
@@ -68,12 +68,13 @@ If you need to test the real OAuth login/logout flow, you need to register an OA
    - **Application name**: Something like `Montage local dev (<your username>)`
    - **Callback URL**: `http://localhost:5001/complete_login`
    - **Applicable grants**: "Basic rights" is sufficient
-3. Save the **consumer token** and **consumer secret** you receive
+3. Save the **client ID** and **client secret** you receive
 4. Copy `config.default.yaml` to `config.dev.yaml` and set:
    ```yaml
    debug: False
-   oauth_consumer_token: "<your consumer token>"
-   oauth_secret_token: "<your consumer secret>"
+   oauth_client_id: "<your client ID>"
+   oauth_client_secret: "<your client secret>"
+   oauth_redirect_uri: "http://localhost:5001/complete_login"
    ```
 
 See the [MediaWiki OAuth developer guide](https://www.mediawiki.org/wiki/OAuth/For_Developers) for more details on the OAuth flow. For Toolforge-specific OAuth setup, see the [Toolforge documentation](https://wikitech.wikimedia.org/wiki/Help:Toolforge).

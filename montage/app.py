@@ -101,6 +101,8 @@ def create_app(env_name='prod', config=None):
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
+    if cookie_secret == 'ReplaceThisWithSomethingSomewhatSecret' or len(cookie_secret) < 32:  # pragma: allowlist secret
+        raise ValueError('cookie_secret is too weak or is the default placeholder — set a strong random value')
 
     root_path = config.get('root_path', '/')
 
