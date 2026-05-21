@@ -104,7 +104,11 @@ def create_app(env_name='prod', config=None):
 
     root_path = config.get('root_path', '/')
 
-    scm_secure = env_name == 'prod'  # https only in prod
+    known_envs = {'dev', 'devtest', 'devlabs', 'beta', 'prod'}
+    if env_name not in known_envs:
+        raise ValueError('Unknown MONTAGE_ENV %r. Must be one of: %s' % (env_name, ', '.join(sorted(known_envs))))
+
+    scm_secure = env_name not in ('dev', 'devtest')  # Secure on for all deployed envs
     scm_mw = SignedCookieMiddleware(secret_key=cookie_secret,
                                     path=root_path,
                                     http_only=True,
