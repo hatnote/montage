@@ -543,7 +543,7 @@ def get_round_results_preview(user_dao, round_id):
         data['ratings'] = coord_dao.get_round_average_rating_map(round_id)
         try:
             data['thresholds'] = get_threshold_map(data['ratings'])
-        except:
+        except Exception:
             # import pdb;pdb.post_mortem()
             raise
     elif rnd.vote_method == 'ranking':
