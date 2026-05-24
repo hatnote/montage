@@ -1,6 +1,7 @@
 {
   "name": "montage",
   "version": "1.0.0",
+  "description": "Root package.json required by the Toolforge buildservice Node.js buildpack (heroku/nodejs). The buildpack only runs 'npm ci && npm run build' if a package.json exists at the project root. See https://wikitech.wikimedia.org/wiki/Help:Toolforge/Building_container_images",
   "scripts": {
     "build": "cd frontend && npm ci && npm run toolforge:build"
   }
