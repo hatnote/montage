@@ -187,7 +187,6 @@ def _load_config_from_env(env_name):
 
     superusers_raw = os.environ.get('MONTAGE_SUPERUSERS', '')
     superusers = [u.strip() for u in superusers_raw.split(',') if u.strip()]
-    print('==  superusers: %r' % superusers)
     config.update({
         'superusers': superusers,
         'db_echo': _bool('MONTAGE_DB_ECHO'),
