@@ -133,12 +133,23 @@ def get_threshold_map(ratings_map):
 
 
 def get_env_name():
-    username = getpass.getuser()
+    env = os.environ.get('MONTAGE_ENV')
+    if env:
+        return env
+    try:
+        username = getpass.getuser()
+    except Exception:
+        raise RuntimeError(
+            'MONTAGE_ENV is not set and getpass.getuser() failed '
+            '(LDAP is unavailable in container environments). '
+            'Set MONTAGE_ENV via toolforge envvars.'
+        )
     return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
 
 
-DEVTEST_CONFIG = {'oauth_consumer_token': None,
-                  'oauth_secret_token': None,
+DEVTEST_CONFIG = {'oauth_client_id': None,
+                  'oauth_client_secret': None,
+                  'oauth_redirect_uri': None,
                   'cookie_secret': 'supertotallyrandomsecretcookiesecret8675309',
                   'api_log_path': 'montage_api.log',
                   'replay_log_path': 'montage_replay.log',
@@ -153,11 +164,59 @@ DEVTEST_CONFIG = {'oauth_consumer_token': None,
 }
 
 
+def _load_config_from_env(env_name):
+    def _bool(key, default=False):
+        val = os.environ.get(key)
+        return val.lower() in ('1', 'true', 'yes') if val is not None else default
+
+    required = {
+        'oauth_client_id': 'MONTAGE_OAUTH_CLIENT_ID',
+        'oauth_client_secret': 'MONTAGE_OAUTH_CLIENT_SECRET',  # pragma: allowlist secret
+        'oauth_redirect_uri': 'MONTAGE_OAUTH_REDIRECT_URI',
+        'cookie_secret': 'MONTAGE_COOKIE_SECRET',
+        'db_url': 'MONTAGE_DB_URL',
+    }
+    config = {}
+    missing = [envvar for key, envvar in required.items() if not os.environ.get(envvar)]
+    if missing:
+        raise ValueError(
+            'Missing required environment variables: ' + ', '.join(missing)
+        )
+    for key, envvar in required.items():
+        config[key] = os.environ[envvar]
+
+    superusers_raw = os.environ.get('MONTAGE_SUPERUSERS', '')
+    superusers = [u.strip() for u in superusers_raw.split(',') if u.strip()]
+    config.update({
+        'superusers': superusers,
+        'db_echo': _bool('MONTAGE_DB_ECHO'),
+        'debug': _bool('MONTAGE_DEBUG'),
+    })
+    if config['debug'] and env_name in ('prod', 'beta', 'devlabs'):
+        raise ValueError(
+            'MONTAGE_DEBUG=true is not permitted in env %r. '
+            'Unset MONTAGE_DEBUG or change MONTAGE_ENV to dev.' % env_name
+        )
+    config.update({
+        'labs_db': _bool('MONTAGE_LABS_DB', True),
+        'root_path': os.environ.get('MONTAGE_ROOT_PATH', '/'),
+        'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),
+        'replay_log_path': os.environ.get('MONTAGE_REPLAY_LOG_PATH'),
+        'feel_log_path': os.environ.get('MONTAGE_FEEL_LOG_PATH'),
+        '__env__': env_name,
+        '__file__': 'environment',
+    })
+    return config
+
+
 def load_env_config(env_name=None):
     if not env_name:
         env_name = get_env_name()
     elif env_name == 'devtest':
         return dict(DEVTEST_CONFIG)
+
+    if os.environ.get('MONTAGE_OAUTH_CLIENT_ID'):
+        return _load_config_from_env(env_name)
 
     config_file_name = 'config.%s.yaml' % env_name
     config_file_path = os.path.join(PROJ_PATH, config_file_name)

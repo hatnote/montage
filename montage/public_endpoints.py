@@ -1,11 +1,16 @@
 
 from __future__ import absolute_import
+import base64
+import hashlib
+import hmac
 import os
 import datetime
+import secrets
+from urllib.parse import urlencode
 
+import requests as http_requests
 from clastic import redirect, render_basic
 from clastic.errors import BadRequest
-from mwoauth import Handshaker, RequestToken
 from markdown import Markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
 from chert import hypertext as html_utils
@@ -20,7 +25,17 @@ from .utils import get_env_name, DoesNotExist, InvalidAction
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 DOCS_PATH = CUR_PATH + '/docs'
 
-WIKI_OAUTH_URL = "https://meta.wikimedia.org/w/index.php"
+
+def _safe_next(next_url, fallback):
+    if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        return next_url
+    return fallback
+
+_MW_BASE = 'https://meta.wikimedia.org/w'
+_MW_OAUTH2_AUTHORIZE = _MW_BASE + '/rest.php/oauth2/authorize'
+_MW_OAUTH2_TOKEN = _MW_BASE + '/rest.php/oauth2/access_token'
+_MW_OAUTH2_PROFILE = _MW_BASE + '/rest.php/oauth2/resource/profile'
+_MW_USER_AGENT = 'Montage/1.0 (Toolforge tool; https://github.com/hatnote/montage)'
 
 MD_EXTENSIONS = ['markdown.extensions.def_list',
                  'markdown.extensions.footnotes',
@@ -126,16 +141,27 @@ def home(cookie, request):
 
 
 @public
-def login(request, consumer_token, cookie, root_path):
-    handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
+def login(request, oauth_config, cookie, root_path):
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode()).digest()
+    ).rstrip(b'=').decode()
+    state = secrets.token_urlsafe(32)
 
-    redirect_url, request_token = handshaker.initiate()
+    cookie['oauth_state'] = state
+    cookie['oauth_code_verifier'] = code_verifier
+    cookie['return_to_url'] = _safe_next(request.args.get('next'), root_path)
 
-    cookie['request_token_key'] = request_token.key
-    cookie['request_token_secret'] = request_token.secret
-
-    cookie['return_to_url'] = request.args.get('next', root_path)
-    return redirect(redirect_url)
+    params = urlencode({
+        'response_type': 'code',
+        'client_id': oauth_config['client_id'],
+        'redirect_uri': oauth_config['redirect_uri'],
+        'scope': 'basic',
+        'state': state,
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256',
+    })
+    return redirect(_MW_OAUTH2_AUTHORIZE + '?' + params)
 
 
 @public
@@ -146,35 +172,60 @@ def logout(request, cookie, root_path):
     if env_name == 'dev':
         return redirect('http://localhost:5173')
 
-    return_to_url = request.args.get('next', root_path)
+    return_to_url = _safe_next(request.args.get('next'), root_path)
     return redirect(return_to_url)
 
 
 @public
-def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_log, config):
-    # TODO: Remove or standardize the DEBUG option
+def complete_login(request, oauth_config, cookie, rdb_session, root_path, api_log, config):
     if config.get('debug'):
-        identity = {'sub': 6024474,
-                    'username': 'Slaporte'}
+        identity = {
+            'sub': config.get('debug_userid', 0),
+            'username': config.get('debug_username', '__montage_debug__'),
+        }
     else:
-        handshaker = Handshaker(WIKI_OAUTH_URL, consumer_token)
-
-        with api_log.debug('load_login_cookie') as act:
-            try:
-                rt_key = cookie['request_token_key']
-                rt_secret = cookie['request_token_secret']
-            except KeyError:
-                # in some rare cases, stale cookies are left behind
-                # and users have to click login again
-                act.failure('clearing stale cookie, redirecting to {}', root_path)
+        state = request.args.get('state', '')
+        with api_log.debug('verify_oauth_state') as act:
+            if not state or not hmac.compare_digest(state, cookie.get('oauth_state', '')):
+                act.failure('state mismatch, clearing cookie and redirecting to {}', root_path)
                 cookie.set_expires()
                 return redirect(root_path)
 
-        req_token = RequestToken(rt_key, rt_secret)
+        code = request.args.get('code', '')
+        code_verifier = cookie.get('oauth_code_verifier', '')
 
-        access_token = handshaker.complete(req_token,
-                                           request.query_string)
-        identity = handshaker.identify(access_token)
+        try:
+            token_resp = http_requests.post(
+                _MW_OAUTH2_TOKEN,
+                data={
+                    'grant_type': 'authorization_code',
+                    'code': code,
+                    'redirect_uri': oauth_config['redirect_uri'],
+                    'client_id': oauth_config['client_id'],
+                    'client_secret': oauth_config['client_secret'],
+                    'code_verifier': code_verifier,
+                },
+                headers={'User-Agent': _MW_USER_AGENT},
+                timeout=10,
+            )
+            token_resp.raise_for_status()
+            access_token = token_resp.json()['access_token']
+
+            profile_resp = http_requests.get(
+                _MW_OAUTH2_PROFILE,
+                headers={
+                    'Authorization': 'Bearer ' + access_token,
+                    'User-Agent': _MW_USER_AGENT,
+                },
+                timeout=10,
+            )
+            profile_resp.raise_for_status()
+            identity = profile_resp.json()
+        except Exception as e:
+            with api_log.debug('oauth_exchange_failed') as act:
+                act.failure('oauth exchange failed: {}', type(e).__name__)
+            cookie.set_expires()
+            return redirect(root_path)
 
     userid = identity['sub']
     username = identity['username']
@@ -186,27 +237,12 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
     else:
         user.last_active_date = now
 
-    # These would be useful when we have oauth beyond simple ID, but
-    # they should be stored in the database along with expiration times.
-    # ID tokens only last 100 seconds or so
-    # cookie['access_token_key'] = access_token.key
-    # cookie['access_token_secret'] = access_token.secret
-
-    # identity['confirmed_email'] = True/False might be interesting
-    # for contactability through the username. Might want to assert
-    # that it is True.
-
     cookie['userid'] = identity['sub']
     cookie['username'] = identity['username']
 
-    return_to_url = cookie.get('return_to_url')
-    # TODO: Clean up
-    if not config.get('debug'):
-        del cookie['request_token_key']
-        del cookie['request_token_secret']
-        del cookie['return_to_url']
-    else:
-        return_to_url = '/'
+    return_to_url = _safe_next(cookie.get('return_to_url'), root_path)
+    for key in ('oauth_state', 'oauth_code_verifier', 'return_to_url'):
+        cookie.pop(key, None)
 
     if env_name == 'dev':
         return_to_url = 'http://localhost:5173'

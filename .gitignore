@@ -85,8 +85,7 @@ target/
 # IPython Notebook
 .ipynb_checkpoints
 
-# pyenv
-.python-version
+# pyenv (personal overrides — .python-version is committed for buildservice)
 
 # celery beat schedule file
 celerybeat-schedule

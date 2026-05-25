@@ -130,9 +130,10 @@ class UserMiddleware(Middleware):
             try:
                 userid = cookie['userid']
             except (KeyError, TypeError):
-                if config.get('debug') or config['__env__'] == 'devtest':
-                    # auto-login in dev/devtest when no cookie is present
-                    userid = 6024474
+                if config['__env__'] == 'devtest':
+                    userid = 6024474  # test fixture user
+                elif config.get('debug'):
+                    userid = 0  # sentinel: no real user has id=0; fails loudly on any real DB
                 else:
                     if ep_is_public:
                         return next(user=None, user_dao=None)
@@ -297,7 +298,11 @@ class LoggingMiddleware(Middleware):
             with self.api_log.critical(act_name) as api_act:
                 # basic redacted url
                 api_act['path'] = request.path
-                api_act.data_map.update(list(request.args.items()))
+                _REDACT = frozenset({'code', 'state', 'access_token', 'token'})
+                api_act.data_map.update(
+                    {k: '<redacted>' if k in _REDACT else v
+                     for k, v in request.args.items()}
+                )
                 try:
                     ret = next(api_act=api_act, api_log=self.api_log)
                 except clastic.errors.BadRequest as br:

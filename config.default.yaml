@@ -8,6 +8,7 @@ superuser: Slaporte
 
 dev_local_cookie_value: "contact maintainers for details"
 dev_remote_cookie_value: "contact maintainers for details"
-oauth_secret_token: "see note below"
-oauth_consumer_token: "visit https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose to get valid OAuth tokens for local development, or contact the maintainers"
+oauth_client_id: "register an OAuth 2.0 consumer at https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose"
+oauth_client_secret: "see note above"  # pragma: allowlist secret
+oauth_redirect_uri: "http://localhost:5001/complete_login"
 ...

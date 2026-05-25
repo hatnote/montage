@@ -14,7 +14,6 @@ from clastic.render import AshesRenderFactory, render_basic
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from mwoauth import ConsumerToken
 
 from .mw import (UserMiddleware,
                 UserIPMiddleware,
@@ -102,10 +101,16 @@ def create_app(env_name='prod', config=None):
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
+    if cookie_secret == 'ReplaceThisWithSomethingSomewhatSecret' or len(cookie_secret) < 32:  # pragma: allowlist secret
+        raise ValueError('cookie_secret is too weak or is the default placeholder — set a strong random value')
 
     root_path = config.get('root_path', '/')
 
-    scm_secure = env_name == 'prod'  # https only in prod
+    known_envs = {'dev', 'devtest', 'devlabs', 'beta', 'prod'}
+    if env_name not in known_envs:
+        raise ValueError('Unknown MONTAGE_ENV %r. Must be one of: %s' % (env_name, ', '.join(sorted(known_envs))))
+
+    scm_secure = env_name not in ('dev', 'devtest')  # Secure on for all deployed envs
     scm_mw = SignedCookieMiddleware(secret_key=cookie_secret,
                                     path=root_path,
                                     http_only=True,
@@ -145,11 +150,14 @@ def create_app(env_name='prod', config=None):
         replay_log_mw = ReplayLogMiddleware(replay_log_path)
         middlewares.append(replay_log_mw)
 
-    consumer_token = ConsumerToken(config['oauth_consumer_token'],
-                                   config['oauth_secret_token'])
+    oauth_config = {
+        'client_id': config.get('oauth_client_id'),
+        'client_secret': config.get('oauth_client_secret'),
+        'redirect_uri': config.get('oauth_redirect_uri'),
+    }
 
     resources = {'config': config,
-                 'consumer_token': consumer_token,
+                 'oauth_config': oauth_config,
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
