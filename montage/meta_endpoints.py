@@ -112,7 +112,7 @@ def post_frontend_error_log(user, config, request_dict):
     feel_path = config.get('feel_log_path', None)
     if not feel_path:
         return ['(no front-end error log configured)']
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     now_str = now.isoformat()
 
     username = user.username if user else '<nouser>'

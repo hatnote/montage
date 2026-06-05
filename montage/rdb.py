@@ -1337,7 +1337,7 @@ class CoordinatorDAO(UserDAO):
         if preview:
             return round_entries
 
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         for round_entry in round_entries:
             dq_reason = ('upload date %s is out of campaign date range %s - %s'
@@ -1347,7 +1347,7 @@ class CoordinatorDAO(UserDAO):
 
             for vote in round_entry.votes:
                 vote.status = CANCELLED_STATUS
-                vote.modified_date = datetime.datetime.utcnow()
+                vote.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = ('%s disqualified %s entries outside of date range %s - %s'
                % (self.user.username, len(round_entries), min_date, max_date))
@@ -1369,7 +1369,7 @@ class CoordinatorDAO(UserDAO):
                        .one_or_none())
         if not round_entry:
             raise InvalidAction('cannot disqualify this entry')
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         round_entry.dq_reason = ('specifically disqualified by %s (%s)'
                                  % (self.user.username, reason))
         round_entry.dq_user_id = self.user.id
@@ -1383,7 +1383,7 @@ class CoordinatorDAO(UserDAO):
 
     def requalify(self, round_id, entry_id, reason=None):
         rnd = self.get_round(round_id)
-        requalify_date = datetime.datetime.utcnow()
+        requalify_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         if rnd.status != PAUSED_STATUS:
             raise InvalidAction('round must be paused to requalify files')
         if not reason:
@@ -1420,7 +1420,7 @@ class CoordinatorDAO(UserDAO):
             return round_entries
 
         min_res_str = round(min_res / ONE_MEGAPIXEL, 2)
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         for r_ent in round_entries:
             entry_res_str = round(r_ent.entry.resolution / ONE_MEGAPIXEL, 2)
@@ -1431,7 +1431,7 @@ class CoordinatorDAO(UserDAO):
 
             for vote in r_ent.votes:
                 vote.status = CANCELLED_STATUS
-                vote.modified_date = datetime.datetime.utcnow()
+                vote.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = ('%s disqualified %s entries smaller than %s megapixels'
                % (self.user.username, len(round_entries), min_res_str))
@@ -1451,7 +1451,7 @@ class CoordinatorDAO(UserDAO):
         if preview:
             return round_entries
 
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         for r_ent in round_entries:
             dq_reason = ('mime %s is not in %s' % (r_ent.entry.mime_minor,
@@ -1461,7 +1461,7 @@ class CoordinatorDAO(UserDAO):
 
             for vote in r_ent.votes:
                 vote.status = CANCELLED_STATUS
-                vote.modified_date = datetime.datetime.utcnow()
+                vote.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = ('%s disqualified %s entries by filetype not in %s'
                % (self.user.username, len(round_entries), allowed_filetypes))
@@ -1506,7 +1506,7 @@ class CoordinatorDAO(UserDAO):
         if preview:
             return round_entries
 
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         for round_entry in round_entries:
             upload_user = round_entry.entry.upload_user_text
@@ -1517,7 +1517,7 @@ class CoordinatorDAO(UserDAO):
 
             for vote in round_entry.votes:
                 vote.status = CANCELLED_STATUS
-                vote.modified_date = datetime.datetime.utcnow()
+                vote.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = ('%s disqualified %s entries based on upload user'
                % (self.user.username, len(round_entries)))
@@ -1544,7 +1544,7 @@ class CoordinatorDAO(UserDAO):
                                 ' not %r' % (rnd.status,))
 
         tasks = create_initial_tasks(self.rdb_session, rnd)
-        rnd.open_date = datetime.datetime.utcnow()
+        rnd.open_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = ('%s opened round %s with %s tasks'
                % (self.user.username, rnd.name, len(tasks)))
@@ -1708,13 +1708,13 @@ class CoordinatorDAO(UserDAO):
                     .filter(RoundEntry.round_id == round_id,
                             Vote.status == 'active')\
                     .all()
-        cancel_date = datetime.datetime.utcnow()
+        cancel_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rnd.status = CANCELLED_STATUS
         rnd.close_date = cancel_date
 
         for vote in votes:
             vote.status = CANCELLED_STATUS
-            vote.modified_date = datetime.datetime.utcnow()
+            vote.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         msg = '%s cancelled round "%s" and %s votes' %\
               (self.user.username, rnd.name, len(votes))
@@ -1756,7 +1756,7 @@ class CoordinatorDAO(UserDAO):
         assert rnd.vote_method in ('rating', 'yesno')
         # TODO: assert all tasks complete
 
-        rnd.close_date = datetime.datetime.utcnow()
+        rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rnd.status = FINALIZED_STATUS
         rnd.config['final_threshold'] = threshold
 
@@ -1806,7 +1806,7 @@ class CoordinatorDAO(UserDAO):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
 
-        rnd.close_date = datetime.datetime.utcnow()
+        rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rnd.status = FINALIZED_STATUS
         # rnd.config['ranking_method'] = method
 
@@ -1825,7 +1825,7 @@ class CoordinatorDAO(UserDAO):
     def finalize_campaign(self):
         last_rnd = self.campaign.rounds[-1] if len(self.campaign.rounds) > 0 else None
         self.campaign.status = FINALIZED_STATUS
-        #self.campaign.close_date = datetime.datetime.utcnow() # TODO
+        #self.campaign.close_date = datetime.datetime.now(datetime.timezone.utc) # TODO
         if last_rnd:
             msg = ('%s finalized campaign %r (#%s) with %s round "%s"'
                    % (self.user.username, self.campaign.name, self.campaign.id,
@@ -2241,13 +2241,13 @@ class CoordinatorDAO(UserDAO):
 
         ret['winners'] = winners
 
-        ret['render_date'] = datetime.datetime.utcnow()
+        ret['render_date'] = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         ret['render_duration'] = time.time() - start_time
 
         return ret
 
     def update_report(self, report_dict):
-        report_dict['modified_date'] = datetime.datetime.utcnow()
+        report_dict['modified_date'] = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         ret = (self.query(RoundResultsSummary)
                .filter_by(campaign_id=self.campaign.id)
                .update(report_dict))
@@ -2807,7 +2807,7 @@ class JurorDAO(object):
             # belt and suspenders until server test covers the cross
             # complete case
             raise PermissionDenied()
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         review_stripped = review.strip()
         if len(review_stripped) > 8192:
             raise ValueError('review must be less than 8192 characters, not %r'
@@ -2822,7 +2822,7 @@ class JurorDAO(object):
     def edit_rating(self, task, value, review=''):
         if not task.user == self.user:
             raise PermissionDenied()
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rating = self.rdb_session.query(Vote)\
                                  .filter_by(id=task.id)\
                                  .first()
@@ -2875,7 +2875,7 @@ class JurorDAO(object):
         ballot can be in any order, with values representing
         ranks. ties are allowed.
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         for r_dict in ballot:
             vote = r_dict['vote']
             review = r_dict.get('review') or ''
@@ -2894,7 +2894,7 @@ class JurorDAO(object):
                                         user=self.user)
                              .first())  # there should be one
         if existing_fave:
-            existing_fave.modified_date = datetime.datetime.utcnow()
+            existing_fave.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             existing_fave.status = ACTIVE_STATUS
             return
 
@@ -2914,7 +2914,7 @@ class JurorDAO(object):
                        RoundEntry.round_id == round_id)
                .one())
         fave.status = CANCELLED_STATUS
-        fave.modified_date = datetime.datetime.utcnow()
+        fave.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     def flag(self, round_id, entry_id, reason=None):
         round_entry = self.get_round_entry(round_id, entry_id)
@@ -3093,7 +3093,7 @@ def reassign_ranking_tasks(session, rnd, new_jurors, strategy=None):
     removed_jurors = [j for j in old_jurors if j.id not in new_juror_id_set]
     added_jurors = [j for j in new_jurors if j.id not in old_juror_id_set]
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     votes_to_cancel = []
     if removed_jurors:

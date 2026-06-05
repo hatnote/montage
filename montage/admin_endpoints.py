@@ -235,7 +235,7 @@ def create_campaign(user_dao, request_dict):
     if not name:
         raise InvalidAction('name is required to create a campaign, got %r'
                             % name)
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
     open_date = request_dict.get('open_date', now)
 
     if open_date:

@@ -353,7 +353,7 @@ def apply_round_ratings(maint_dao, rdb_session, round_id, csv_path):
         user = rdb_session.query(User).filter_by(username=username).one()
         username_map[username] = user
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     new_tasks = []
     new_ratings = []
