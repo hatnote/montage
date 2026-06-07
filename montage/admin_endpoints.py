@@ -109,6 +109,8 @@ def download_round_entries_csv(user_dao, round_id):
     rnd = coord_dao.get_round(round_id)
     entries = coord_dao.get_round_entries(round_id)
     entry_infos = [e.to_export_dict() for e in entries]
+    if not entry_infos:
+        raise InvalidAction('no entries in round, cannot export CSV')
     output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True).decode('ascii')
     output = io.BytesIO()
     csv_fieldnames = sorted(entry_infos[0].keys())
