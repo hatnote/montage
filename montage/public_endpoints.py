@@ -179,7 +179,7 @@ def complete_login(request, consumer_token, cookie, rdb_session, root_path, api_
     userid = identity['sub']
     username = identity['username']
     user = rdb_session.query(User).filter(User.id == userid).first()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     if user is None:
         user = User(id=userid, username=username, last_active_date=now)
         rdb_session.add(user)

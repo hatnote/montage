@@ -160,7 +160,7 @@ class UserMiddleware(Middleware):
                 response_dict['errors'].append(err)
                 return {}
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         last_minute = now - datetime.timedelta(seconds=60)
         if not user.last_active_date or user.last_active_date < last_minute:
             # updates only up to once a minute
@@ -357,14 +357,14 @@ class ReplayLogMiddleware(Middleware):
     def __init__(self, log_path):
         self.log_path = os.path.abspath(log_path)
         self.log_file = open(self.log_path, 'a')
-        self.start_timestamp = datetime.datetime.utcnow().isoformat()
+        self.start_timestamp = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
         self.hostname = socket.gethostname()
 
     def endpoint(self, next, user, request_dict, request):
         cur_id = str(uuid.uuid4())
         log_file = self.log_file
         data = {'id': cur_id,
-                'timestamp': datetime.datetime.utcnow().isoformat(),
+                'timestamp': datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
                 'start_timestamp': self.start_timestamp,
                 'host': self.hostname,
                 'pid': os.getpid(),
