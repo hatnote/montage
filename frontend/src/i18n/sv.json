@@ -188,5 +188,7 @@
 	"permission-denied-message": "Du har inte de behörigheter som krävs för att komma åt den här sidan.",
 	"permission-denied-home": "Gå till startsidan",
 	"montage-required-voting-deadline": "Välj ett giltigt slutdatum för röstningen",
-	"montage-required-fill-inputs": "Vänligen fyll i alla rutor"
+	"montage-required-fill-inputs": "Vänligen fyll i alla rutor",
+	"unsaved-changes-confirmation": "Det finns osparade ändringar. Är du säker på att du vill lämna?",
+	"back-to-round": "Tillbaka till omgången"
 }
