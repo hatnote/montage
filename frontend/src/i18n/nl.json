@@ -43,7 +43,7 @@
 	"montage-placeholder-campaign-url": "Url van de campagne",
 	"montage-description-campaign-url": "Voer de url in van de landingspagina van de campagne, bijvoorbeeld op Commons of de lokale Wiki Loves.",
 	"montage-required-campaign-url": "Campagne-url is vereist",
-	"montage-invalid-campaign-url": "Ongeldige url",
+	"montage-invalid-campaign-url": "Incorrecte url",
 	"montage-label-date-range": "Datumreeks (UTC)",
 	"montage-description-date-range": "Zodra de afbeeldingen zijn geïmporteerd naar de eerste ronde, heeft het wijzigen van datum en tijd geen invloed op de afbeeldingen die uw jury kan bekijken. Echter, als u deze waarden wijzigt vóór de import naar ronde 1, zorgt u ervoor dat alleen foto's die zijn geüpload vóór de einddatum en -tijd zichtbaar zijn voor uw jury.",
 	"montage-label-open-date": "Startdatum",
