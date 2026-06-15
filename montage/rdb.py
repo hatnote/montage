@@ -6,6 +6,7 @@ from __future__ import print_function
 import json
 import time
 import random
+import string
 import datetime
 import itertools
 from collections import Counter, defaultdict
@@ -59,6 +60,10 @@ ONE_MEGAPIXEL = 1e6
 DEFAULT_MIN_RESOLUTION = 2 * ONE_MEGAPIXEL
 IMPORT_CHUNK_SIZE = 200
 UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+CAMPAIGN_REQUEST_PENDING = 'pending'
+CAMPAIGN_REQUEST_APPROVED = 'approved'
+CAMPAIGN_REQUEST_NEEDS_CLARIFICATION = 'needs_clarification'
 
 # By default, srounds will support all the file types allowed on
 # Wikimedia Commons -- see: Commons:Project_scope/Allowable_file_types
@@ -272,6 +277,162 @@ class CampaignCoord(Base):  # Coordinator, not Coordinate
         if campaign is not None:
             self.campaign = campaign
         self.user = coord
+
+class CampaignRequest(Base):
+    """
+    A pending proposal to create a Montage campaign.
+ 
+    Lifecycle:  pending  ->  approved          (campaign_id is set)
+                         ->  needs_clarification  ->  pending  (resubmit)
+    """
+    __tablename__ = 'campaign_requests'
+ 
+    id                        = Column(Integer,      primary_key=True)
+    request_id                = Column(String(16),   unique=True, index=True, nullable=False)
+    submitter_username        = Column(String(255),  nullable=False, index=True)
+    jury_coordinator_username = Column(String(255),  nullable=False)
+    commons_category          = Column(Text,         nullable=False)
+    campaign_name             = Column(String(255),  nullable=False)
+    open_date                 = Column(DateTime,     nullable=False)
+    close_date                = Column(DateTime,     nullable=False)
+    estimated_image_volume    = Column(Integer,      nullable=False)
+    purpose                   = Column(Text,         nullable=False)
+    status                    = Column(String(32),   nullable=False,
+                                       default=CAMPAIGN_REQUEST_PENDING, index=True)
+    create_date               = Column(TIMESTAMP,    server_default=func.now())
+    last_updated              = Column(TIMESTAMP,    server_default=func.now(),
+                                       onupdate=func.now())
+    # Set once the request is approved and the real campaign is created
+    campaign_id               = Column(Integer, ForeignKey('campaigns.id'), nullable=True)
+    # Coordinator's note sent back to the requester
+    clarification_note        = Column(Text,    nullable=True)
+    is_resubmission           = Column(Boolean, default=False)
+ 
+    campaign = relationship('Campaign', foreign_keys=[campaign_id])
+ 
+    def to_dict(self):
+        return {
+            'id':                        self.id,
+            'request_id':                self.request_id,
+            'submitter_username':        self.submitter_username,
+            'jury_coordinator_username': self.jury_coordinator_username,
+            'commons_category':          self.commons_category,
+            'campaign_name':             self.campaign_name,
+            'open_date':                 self.open_date.isoformat() if self.open_date else None,
+            'close_date':                self.close_date.isoformat() if self.close_date else None,
+            'estimated_image_volume':    self.estimated_image_volume,
+            'purpose':                   self.purpose,
+            'status':                    self.status,
+            'create_date':               self.create_date.isoformat() if self.create_date else None,
+            'last_updated':              self.last_updated.isoformat() if self.last_updated else None,
+            'campaign_id':               self.campaign_id,
+            'clarification_note':        self.clarification_note,
+            'is_resubmission':           self.is_resubmission,
+        }
+
+class CampaignRequestDAO(object):
+    """
+    Lifecycle: pending -> approved ( campaign_id is set)
+                        -> needs_clarification -> pending ( resubmit )
+ 
+    any authenticated user can submit a request.
+    Permission checks that are role-specific live in the worker functions in admin_endpoints.py.
+    """
+ 
+    def __init__(self, user_dao):
+        self.user        = user_dao.user
+        self.rdb_session = user_dao.rdb_session
+        self.query       = user_dao.query
+ 
+    def get_all(self, status=None):
+        q = self.query(CampaignRequest)
+        if status:
+            q = q.filter(CampaignRequest.status == status)
+        return q.order_by(CampaignRequest.create_date.desc()).all()
+ 
+    def get_by_request_id(self, request_id):
+        return (self.query(CampaignRequest)
+                    .filter(CampaignRequest.request_id == request_id)
+                    .first())
+ 
+    def get_by_submitter(self, username):
+        return (self.query(CampaignRequest)
+                    .filter(CampaignRequest.submitter_username == username)
+                    .order_by(CampaignRequest.create_date.desc())
+                    .all())
+ 
+    def create(self, submitter_username, data):
+        req = CampaignRequest(
+            request_id                = _generate_request_id(),
+            submitter_username        = submitter_username,
+            jury_coordinator_username = data['jury_coordinator_username'],
+            commons_category          = data['commons_category'],
+            campaign_name             = data['campaign_name'],
+            open_date                 = js_isoparse(data['open_date']),
+            close_date                = js_isoparse(data['close_date']),
+            estimated_image_volume    = int(data['estimated_image_volume']),
+            purpose                   = data['purpose'],
+            status                    = CAMPAIGN_REQUEST_PENDING,
+            is_resubmission           = bool(data.get('is_resubmission', False)),
+        )
+        self.rdb_session.add(req)
+        self.rdb_session.flush()
+        return req
+ 
+    def approve(self, request_id, campaign_id):
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        req.status      = CAMPAIGN_REQUEST_APPROVED
+        req.campaign_id = campaign_id
+        self.rdb_session.flush()
+        return req
+ 
+    def request_clarification(self, request_id, note):
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        req.status             = CAMPAIGN_REQUEST_NEEDS_CLARIFICATION
+        req.clarification_note = note
+        self.rdb_session.flush()
+        return req
+ 
+    def resubmit(self, request_id, data, submitter_username):
+        """
+        Requester edits a needs_clarification request and puts it back into the pending queue. 
+        Raises PermissionError or ValueError on invalid state;
+        """
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        if req.submitter_username != submitter_username:
+            raise PermissionError('Only the original submitter can resubmit.')
+        if req.status != CAMPAIGN_REQUEST_NEEDS_CLARIFICATION:
+            raise ValueError(
+                'Only requests with status needs_clarification can be resubmitted.'
+            )
+ 
+        # Only updating the fields that were actually provided
+        if data.get('jury_coordinator_username'):
+            req.jury_coordinator_username = data['jury_coordinator_username']
+        if data.get('commons_category'):
+            req.commons_category = data['commons_category']
+        if data.get('campaign_name'):
+            req.campaign_name = data['campaign_name']
+        if data.get('open_date'):
+            req.open_date = js_isoparse(data['open_date'])
+        if data.get('close_date'):
+            req.close_date = js_isoparse(data['close_date'])
+        if data.get('estimated_image_volume'):
+            req.estimated_image_volume = int(data['estimated_image_volume'])
+        if data.get('purpose'):
+            req.purpose = data['purpose']
+ 
+        req.status             = CAMPAIGN_REQUEST_PENDING
+        req.clarification_note = None
+        req.is_resubmission    = True
+        self.rdb_session.flush()
+        return req
 
 
 class Round(Base):
@@ -2434,6 +2595,111 @@ class MaintainerDAO(object):
             qs = qs.filter(Campaign.id > start_id)
         qs = qs.order_by(Campaign.id)
         return qs.first()
+    
+class CampaignRequestDAO(object):
+    """
+    Data access object for CampaignRequest records.
+ 
+    Unlike OrganizerDAO this does NOT require organizer/maintainer permissions on construction, any authenticated user can submit a request.
+    Permission checks that are role-specific live in the functions in admin_endpoints.py.
+    """
+ 
+    def __init__(self, user_dao):
+        self.user         = user_dao.user
+        self.rdb_session  = user_dao.rdb_session
+        self.query        = user_dao.query
+
+    def get_all(self, status=None):
+        q = self.query(CampaignRequest)
+        if status:
+            q = q.filter(CampaignRequest.status == status)
+        return q.order_by(CampaignRequest.create_date.desc()).all()
+ 
+    def get_by_request_id(self, request_id):
+        return (self.query(CampaignRequest)
+                    .filter(CampaignRequest.request_id == request_id)
+                    .first())
+ 
+    def get_by_submitter(self, username):
+        return (self.query(CampaignRequest)
+                    .filter(CampaignRequest.submitter_username == username)
+                    .order_by(CampaignRequest.create_date.desc())
+                    .all())
+
+    def create(self, submitter_username, data):
+        
+        req = CampaignRequest(
+            request_id                 = _generate_request_id(),
+            submitter_username         = submitter_username,
+            jury_coordinator_username  = data['jury_coordinator_username'],
+            commons_category           = data['commons_category'],
+            campaign_name              = data['campaign_name'],
+            open_date                  = js_isoparse(data['open_date']),
+            close_date                 = js_isoparse(data['close_date']),
+            estimated_image_volume     = int(data['estimated_image_volume']),
+            purpose                    = data['purpose'],
+            status                     = CAMPAIGN_REQUEST_PENDING,
+            is_resubmission            = bool(data.get('is_resubmission', False)),
+        )
+        self.rdb_session.add(req)
+        self.rdb_session.flush()
+        return req
+
+    def approve(self, request_id, campaign_id):
+        
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        req.status      = CAMPAIGN_REQUEST_APPROVED
+        req.campaign_id = campaign_id
+        self.rdb_session.flush()
+        return req
+    
+    def request_clarification(self, request_id, note):
+        
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        req.status             = CAMPAIGN_REQUEST_NEEDS_CLARIFICATION
+        req.clarification_note = note
+        self.rdb_session.flush()
+        return req
+
+    def resubmit(self, request_id, data, submitter_username):
+        """
+        Requester edits a needs_clarification request and puts it back into the pending queue.  Raises PermissionError or ValueError on invalid state so the functions can translate them to HTTP errors.
+        """
+        req = self.get_by_request_id(request_id)
+        if not req:
+            return None
+        if req.submitter_username != submitter_username:
+            raise PermissionError('Only the original submitter can resubmit.')
+        if req.status != CAMPAIGN_REQUEST_NEEDS_CLARIFICATION:
+            raise ValueError(
+                'Only requests with status needs_clarification can be resubmitted.'
+            )
+ 
+        # Update only the fields that were provided
+        if data.get('jury_coordinator_username'):
+            req.jury_coordinator_username = data['jury_coordinator_username']
+        if data.get('commons_category'):
+            req.commons_category = data['commons_category']
+        if data.get('campaign_name'):
+            req.campaign_name = data['campaign_name']
+        if data.get('open_date'):
+            req.open_date = js_isoparse(data['open_date'])
+        if data.get('close_date'):
+            req.close_date = js_isoparse(data['close_date'])
+        if data.get('estimated_image_volume'):
+            req.estimated_image_volume = int(data['estimated_image_volume'])
+        if data.get('purpose'):
+            req.purpose = data['purpose']
+ 
+        req.status             = CAMPAIGN_REQUEST_PENDING
+        req.clarification_note = None
+        req.is_resubmission    = True
+        self.rdb_session.flush()
+        return req
 
 
 def bootstrap_maintainers(rdb_session):
@@ -2923,6 +3189,9 @@ class JurorDAO(object):
                     reason=reason)
         self.rdb_session.add(flag)
 
+def _generate_request_id():
+    suffix = ''.join(random.choices(string.digits, k=4)) # MNTG - Monitoring
+    return f"MNTG-{suffix}"
 
 def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()

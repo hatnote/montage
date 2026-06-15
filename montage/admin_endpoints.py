@@ -5,19 +5,23 @@ import datetime
 
 
 from clastic import GET, POST, Response
-from clastic.errors import Forbidden
+from clastic.errors import Forbidden, NotFound
 from boltons.strutils import slugify
+import requests as http
 
 from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    NotImplementedResponse,
+                   DoesNotExist,
                    js_isoparse)
 
 from .rdb import (FINALIZED_STATUS,
-                 CoordinatorDAO,
-                 MaintainerDAO,
-                 OrganizerDAO)
+                  CAMPAIGN_REQUEST_APPROVED,
+                  CoordinatorDAO,
+                  MaintainerDAO,
+                  OrganizerDAO,
+                  CampaignRequestDAO)
 
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
@@ -56,6 +60,13 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/publish', publish_report),
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
+           GET('/admin/campaign_requests', get_campaign_requests),
+           GET('/admin/campaign_requests/validate_user', validate_wikimedia_user),
+           GET( '/admin/campaign_requests/<request_id>', get_campaign_request),
+           POST('/admin/campaign_requests/submit', submit_campaign_request),
+           POST('/admin/campaign_requests/<request_id>/approve',approve_campaign_request),
+           POST('/admin/campaign_requests/<request_id>/advise', advise_campaign_request),
+           POST('/admin/campaign_requests/<request_id>/resubmit',resubmit_campaign_request),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -302,6 +313,204 @@ def get_campaign_log(user_dao, campaign_id, request_dict):
                                          action=action)
     ret = [a.to_info_dict() for a in audit_logs]
     return {'data': ret}
+
+def get_campaign_requests(user_dao, request):
+    """
+    Summary: List campaign creation requests.
+    Maintainers see all requests; regular users see only their own.
+    """
+    cr_dao = CampaignRequestDAO(user_dao)
+    status = request.args.get('status')
+    if user_dao.user.is_maintainer:
+        items = cr_dao.get_all(status=status)
+    else:
+        items = cr_dao.get_by_submitter(user_dao.user.username)
+    return {'data': [r.to_dict() for r in items]}
+
+def get_campaign_request(user_dao, request_id):
+    """
+    Summary: Fetch a single campaign request by its  ID.
+    """
+    cr_dao = CampaignRequestDAO(user_dao)
+    req = cr_dao.get_by_request_id(request_id)
+    if not req:
+        raise DoesNotExist('Campaign request %r not found.' % request_id)
+    if not user_dao.user.is_maintainer:
+        if req.submitter_username != user_dao.user.username:
+            raise Forbidden('You may only view your own requests.')
+    data = req.to_dict()
+    data['low_volume_warning'] = req.estimated_image_volume < 30
+    return {'data': data}
+
+def submit_campaign_request(user_dao, request_dict):
+    """
+    Summary: Submit a new campaign creation request.
+    Request model:
+        jury_coordinator_username: string  (required)
+        commons_category: string  (required)
+        campaign_name: string  (required)
+        open_date: ISO-8601 UTC datetime string  (required)
+        close_date: ISO-8601 UTC datetime string  (required)
+        estimated_image_volume: integer  (required)
+        purpose: string  (required)
+        is_resubmission: bool    (optional, default false)
+    Response model: CampaignRequest dict + message string
+    """
+    required_fields = [
+        'jury_coordinator_username',
+        'commons_category',
+        'campaign_name',
+        'open_date',
+        'close_date',
+        'estimated_image_volume',
+        'purpose',
+    ]
+    missing = [f for f in required_fields if not request_dict.get(f)]
+    if missing:
+        raise InvalidAction('Missing required fields: %s' % ', '.join(missing))
+ 
+    #Checker against the Wikimedia Commons API.
+    coord_username = request_dict['jury_coordinator_username']
+    if not _wikimedia_user_exists(coord_username):
+        raise InvalidAction(
+            'Wikimedia account %r was not found on Commons. '
+            'Please verify the username and try again.' % coord_username
+        )
+ 
+    cr_dao = CampaignRequestDAO(user_dao)
+    req = cr_dao.create(
+        submitter_username=user_dao.user.username,
+        data=request_dict,
+    )
+    return {
+        'data': req.to_dict(),
+        'message': 'Request submitted. Your tracking ID is %s.' % req.request_id,
+    }
+
+
+def approve_campaign_request(user_dao, request_id, request_dict):
+    """
+    Summary: Approve a request and automatically create the campaign.
+    Response model: approved CampaignRequest dict + created Campaign dict
+    """
+
+    # if request_dict is None:
+    #     request_dict = {}
+        
+    if not user_dao.user.is_maintainer:
+        raise Forbidden('must have maintainer permissions')
+ 
+    cr_dao = CampaignRequestDAO(user_dao)
+    req = cr_dao.get_by_request_id(request_id)
+    if not req:
+        raise DoesNotExist('Campaign request %r not found.' % request_id)
+    if req.status == CAMPAIGN_REQUEST_APPROVED:
+        raise InvalidAction('Request %s has already been approved.' % request_id)
+
+    campaign_dict = {
+        'name':         req.campaign_name,
+        'open_date':    req.open_date.isoformat(),
+        'close_date':   req.close_date.isoformat(),
+        'url':          req.commons_category,
+        'series_id':    request_dict.get('series_id', 1),
+        'coordinators': [req.jury_coordinator_username],
+    }
+    result = create_campaign(user_dao, campaign_dict)
+    campaign_id = result['data']['id']
+ 
+    cr_dao.approve(request_id, campaign_id)
+ 
+    return {
+        'data': {
+            'request':  cr_dao.get_by_request_id(request_id).to_dict(),
+            'campaign': result['data'],
+        },
+        'message': 'Campaign created. Request %s is now approved.' % request_id,
+    }
+
+def advise_campaign_request(user_dao, request_id, request_dict):
+    """
+    Summary: Send a clarification note back to the requester.
+    Marks the request as needs_clarification.
+    Request model: note: string  (required)
+    Response model: updated CampaignRequest dict
+    """
+    if not user_dao.user.is_maintainer:
+        raise Forbidden('must have maintainer permissions')
+ 
+    note = (request_dict.get('note') or '').strip()
+    if not note:
+        raise InvalidAction('A clarification note is required.')
+ 
+    cr_dao = CampaignRequestDAO(user_dao)
+    req = cr_dao.request_clarification(request_id, note)
+    if not req:
+        raise DoesNotExist('Campaign request %r not found.' % request_id)
+    return {
+        'data': req.to_dict(),
+        'message': 'Request %s has been flagged for clarification.' % request_id,
+    }
+
+
+def resubmit_campaign_request(user_dao, request_id, request_dict):
+    """
+    Summary: Requester updates a needs_clarification request and resubmits it.
+    Only the original submitter may call this.
+    Request model: same optional fields as submit_campaign_request
+    Response model: updated CampaignRequest dict
+    """
+    cr_dao = CampaignRequestDAO(user_dao)
+    try:
+        req = cr_dao.resubmit(
+            request_id=request_id,
+            data=request_dict,
+            submitter_username=user_dao.user.username,
+        )
+    except PermissionError as exc:
+        raise Forbidden(str(exc))
+    except ValueError as exc:
+        raise InvalidAction(str(exc))
+    if not req:
+        raise DoesNotExist('Campaign request %r not found.' % request_id)
+    return {
+        'data': req.to_dict(),
+        'message': 'Request %s has been resubmitted.' % request_id,
+    }
+
+
+def validate_wikimedia_user(user_dao, request):
+    """
+    Summary: Check whether a Wikimedia username exists (live API call).
+    Used by the frontend form for instant feedback.
+    Query params:
+        username: string  (required)
+    Response model: { username, exists: bool }
+    """
+    username = (request.args.get('username') or '').strip()
+    if not username:
+        raise InvalidAction('username query parameter is required.')
+    return {'data': {'username': username, 'exists': _wikimedia_user_exists(username)}}
+
+def _wikimedia_user_exists(username):
+    """
+    Check the Wikimedia Commons API for a username.
+    """
+
+    try:
+        resp = http.get(
+            'https://commons.wikimedia.org/w/api.php',
+            params={
+                'action': 'query',
+                'list':   'users',
+                'ususers': username,
+                'format': 'json',
+            },
+            timeout=4,
+        )
+        users = resp.json().get('query', {}).get('users', [])
+        return bool(users) and 'missing' not in users[0]
+    except Exception:
+        return True 
 
 
 def import_entries(user_dao, round_id, request_dict):
