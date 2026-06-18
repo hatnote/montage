@@ -100,9 +100,7 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import alertService from '@/services/alertService'
 import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
 const { t: $t } = useI18n()
 const props = defineProps({
   round: Object,
