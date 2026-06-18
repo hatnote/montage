@@ -364,10 +364,7 @@ const submitRound = () => {
 
     // Check for "nothing selected" explicitly rather than falsiness: 0.0 is a
     // valid threshold (advance all), so `!threshold` would wrongly block it.
-    if (
-      thresholds.value &&
-      (formData.value.threshold == null || formData.value.threshold === '')
-    ) {
+    if (thresholds.value && (formData.value.threshold == null || formData.value.threshold === '')) {
       alertService.error({
         message: $t('montage-required-threshold')
       })
