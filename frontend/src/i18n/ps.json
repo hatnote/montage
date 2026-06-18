@@ -158,8 +158,10 @@
 	"montage-added-organizer": "مهاروونکی په برياليتوب  ورگډ شو",
 	"montage-at-least-one-user": "مهرباني وکړئ لږ تر لږه يو کارن  ورگډ کړئ",
 	"montage-only-one-user": "مهرباني وکړئ يوازې يو کارن  ورگډ کړئ",
+	"montage-round-quorum-per-photo": "{0} په هر انځور پلاوي",
 	"montage-round-open-task-percentage": "د پرانېستو چارو سلنه",
 	"montage-round-cancelled-tasks": "ناگاره شوې چارې",
+	"montage-round-disqualified-files": "له پړاوه ويستل شوې دوتنې",
 	"montage-round-open-tasks": "پرانېستې چارې",
 	"montage-round-files": "دوتنې",
 	"montage-round-tasks": "چارې",
@@ -168,5 +170,6 @@
 	"permission-denied-message": "تاسو دې مخ ته د لاسرسي لپاره اړينه اجازه نه لرئ.",
 	"permission-denied-home": "کور ته تلل",
 	"montage-required-voting-deadline": "د رايې ورکولو باوري نېټه وټاکئ",
-	"montage-required-fill-inputs": "مهرباني وکړئ ټول بکسونه ډک کړئ"
+	"montage-required-fill-inputs": "مهرباني وکړئ ټول بکسونه ډک کړئ",
+	"back-to-round": "بیرته پړاو ته"
 }
