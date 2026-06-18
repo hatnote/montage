@@ -13,178 +13,125 @@
   
       
       <div v-if="submitted" class="success-card">
-        <div class="success-icon"><i class="ti ti-circle-check" aria-hidden="true"></i></div>
-        <h2>{{ $t('campaign-request-submitted-title') }}</h2>
-        <p>{{ $t('campaign-request-submitted-body') }}</p>
-        <div class="request-id-pill">
-          <span class="label">{{ $t('campaign-request-tracking-id') }}</span>
-          <strong>{{ submittedRequestId }}</strong>
+        <div class="success-icon">
+          <i class="ti ti-circle-check" aria-hidden="true"></i>
         </div>
-        <button class="btn-secondary" @click="resetForm">
-          {{ $t('campaign-request-submit-another') }}
-        </button>
+
+        <h2>{{ $t('campaign-request-submitted-title') }}</h2>
+
+        <p>{{ $t('campaign-request-submitted-body') }}</p>
+
+        <div class="success-actions">
+          <div class="request-id-pill">
+            <span class="label">
+              {{ $t('campaign-request-tracking-id') }}
+            </span>
+            <strong>{{ submittedRequestId }}</strong>
+          </div>
+
+          <cdx-button weight="normal" @click="resetForm">
+            {{ $t('campaign-request-submit-another') }}
+          </cdx-button>
+        </div>
       </div>
   
       <form v-else class="request-form" @submit.prevent="handleSubmit" novalidate>
   
         <fieldset class="form-section">
           <legend>{{ $t('campaign-request-section-campaign') }}</legend>
-  
-          <div class="field">
-            <label for="campaign_name">
-              {{ $t('campaign-request-field-name') }}
-              <span class="required" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="campaign_name"
+
+          <cdx-field :status="errors.campaign_name ? 'error' : 'default'" :messages="{ error: errors.campaign_name }" class="field-margin">
+            <template #label>
+              {{ $t('campaign-request-field-name') }} <span class="required" aria-hidden="true">*</span>
+            </template>
+            <cdx-text-input
               v-model="form.campaign_name"
-              type="text"
               :placeholder="$t('campaign-request-field-name-placeholder')"
-              :class="{ error: errors.campaign_name }"
               @blur="validateField('campaign_name')"
             />
-            <p v-if="errors.campaign_name" class="field-error" role="alert">
-              {{ errors.campaign_name }}
-            </p>
-          </div>
-  
-          <div class="field">
-            <label for="commons_category">
-              {{ $t('campaign-request-field-commons') }}
-              <span class="required" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="commons_category"
+          </cdx-field>
+
+          <cdx-field :status="errors.commons_category ? 'error' : 'default'" :messages="{ error: errors.commons_category }" class="field-margin">
+            <template #label>
+              {{ $t('campaign-request-field-commons') }} <span class="required" aria-hidden="true">*</span>
+            </template>
+            <template #help-text>
+              {{ $t('campaign-request-field-commons-hint') }}
+            </template>
+            <cdx-text-input
               v-model="form.commons_category"
-              type="text"
               :placeholder="$t('campaign-request-field-commons-placeholder')"
-              :class="{ error: errors.commons_category }"
               @blur="validateField('commons_category')"
             />
-            <p class="field-hint">{{ $t('campaign-request-field-commons-hint') }}</p>
-            <p v-if="errors.commons_category" class="field-error" role="alert">
-              {{ errors.commons_category }}
-            </p>
-          </div>
-  
-          <div class="field">
-            <label for="purpose">
-              {{ $t('campaign-request-field-purpose') }}
-              <span class="required" aria-hidden="true">*</span>
-            </label>
-            <textarea
-              id="purpose"
+          </cdx-field>
+
+          <cdx-field :status="errors.purpose ? 'error' : 'default'" :messages="{ error: errors.purpose }" class="field-margin">
+            <template #label>
+              {{ $t('campaign-request-field-purpose') }} <span class="required" aria-hidden="true">*</span>
+            </template>
+            <cdx-text-area
               v-model="form.purpose"
-              rows="4"
               :placeholder="$t('campaign-request-field-purpose-placeholder')"
-              :class="{ error: errors.purpose }"
               @blur="validateField('purpose')"
-            ></textarea>
-            <p v-if="errors.purpose" class="field-error" role="alert">
-              {{ errors.purpose }}
-            </p>
-          </div>
+              rows="4"
+            />
+          </cdx-field>
         </fieldset>
-  
+
         <fieldset class="form-section">
           <legend>{{ $t('campaign-request-section-coordinator') }}</legend>
-  
-          <div class="field">
-            <label for="jury_coordinator_username">
-              {{ $t('campaign-request-field-coordinator') }}
-              <span class="required" aria-hidden="true">*</span>
-            </label>
-            <div class="input-with-badge">
-              <input
-                id="jury_coordinator_username"
-                v-model="form.jury_coordinator_username"
-                type="text"
-                :placeholder="$t('campaign-request-field-coordinator-placeholder')"
-                :class="{ error: errors.jury_coordinator_username }"
-                @blur="checkWikimediaUser"
-              />
-              <span
-                v-if="usernameStatus === 'checking'"
-                class="badge badge-neutral"
-              >
-                <i class="ti ti-loader-2 spin" aria-hidden="true"></i>
-                {{ $t('campaign-request-checking') }}
-              </span>
-              <span
-                v-else-if="usernameStatus === 'valid'"
-                class="badge badge-success"
-              >
-                <i class="ti ti-check" aria-hidden="true"></i>
-                {{ $t('campaign-request-user-found') }}
-              </span>
-              <span
-                v-else-if="usernameStatus === 'invalid'"
-                class="badge badge-danger"
-              >
-                <i class="ti ti-x" aria-hidden="true"></i>
-                {{ $t('campaign-request-user-not-found') }}
-              </span>
-            </div>
-            <p class="field-hint">{{ $t('campaign-request-field-coordinator-hint') }}</p>
-            <p v-if="errors.jury_coordinator_username" class="field-error" role="alert">
-              {{ errors.jury_coordinator_username }}
-            </p>
-          </div>
+
+          <cdx-field :status="errors.jury_coordinator_username ? 'error' : 'default'" :messages="{ error: errors.jury_coordinator_username }" class="field-margin">
+            <template #label>
+              {{ $t('campaign-request-field-coordinator') }} <span class="required" aria-hidden="true">*</span>
+            </template>
+            <template #description>
+              {{ $t('campaign-request-field-coordinator-hint') }}
+            </template>
+            <UserList
+              :users="coordinatorUsers"
+              @update:selectedUsers="onCoordinatorSelect"
+            />
+          </cdx-field>
         </fieldset>
-  
+
         <fieldset class="form-section">
           <legend>
             {{ $t('campaign-request-section-timeline') }}
-            <span class="utc-badge">
-              <i class="ti ti-world" aria-hidden="true"></i>
-              UTC
-            </span>
           </legend>
-  
+
           <div class="utc-notice">
             <i class="ti ti-clock-exclamation" aria-hidden="true"></i>
-            <strong>{{ $t('campaign-request-utc-notice-title') }}</strong>
-            {{ $t('campaign-request-utc-notice-body') }}
+            <div>
+                <strong>{{ $t('campaign-request-utc-notice-title') }}</strong>
+                {{ $t('campaign-request-utc-notice-body') }}
+            </div>
           </div>
-  
-          <div class="field-row">
-            <div class="field">
-              <label for="open_date">
-                {{ $t('campaign-request-field-open-date') }}
-                <span class="required" aria-hidden="true">*</span>
-                <span class="utc-label">UTC</span>
-              </label>
-              <input
-                id="open_date"
+
+          <div class="field-row field-margin">
+            <cdx-field :status="errors.open_date ? 'error' : 'default'" :messages="{ error: errors.open_date }">
+              <template #label>
+                {{ $t('campaign-request-field-open-date') }} <span class="required" aria-hidden="true">*</span>
+              </template>
+              <cdx-text-input
+                input-type="datetime-local"
                 v-model="form.open_date"
-                type="datetime-local"
-                :class="{ error: errors.open_date }"
-                @change="validateField('open_date'); updateTzPreview()"
+                @blur="validateField('open_date'); updateTzPreview()"
               />
-              <p v-if="errors.open_date" class="field-error" role="alert">
-                {{ errors.open_date }}
-              </p>
-            </div>
-  
-            <div class="field">
-              <label for="close_date">
-                {{ $t('campaign-request-field-close-date') }}
-                <span class="required" aria-hidden="true">*</span>
-                <span class="utc-label">UTC</span>
-              </label>
-              <input
-                id="close_date"
+            </cdx-field>
+
+            <cdx-field :status="errors.close_date ? 'error' : 'default'" :messages="{ error: errors.close_date }">
+              <template #label>
+                {{ $t('campaign-request-field-close-date') }} <span class="required" aria-hidden="true">*</span>
+              </template>
+              <cdx-text-input
+                input-type="datetime-local"
                 v-model="form.close_date"
-                type="datetime-local"
-                :class="{ error: errors.close_date }"
-                @change="validateField('close_date'); updateTzPreview()"
+                @blur="validateField('close_date'); updateTzPreview()"
               />
-              <p v-if="errors.close_date" class="field-error" role="alert">
-                {{ errors.close_date }}
-              </p>
-            </div>
+            </cdx-field>
           </div>
-  
+
           <div v-if="tzPreview.open || tzPreview.close" class="tz-assistant">
             <p class="tz-assistant-title">
               <i class="ti ti-map-pin" aria-hidden="true"></i>
@@ -208,59 +155,49 @@
             </table>
           </div>
         </fieldset>
-  
+
         <fieldset class="form-section">
           <legend>{{ $t('campaign-request-section-volume') }}</legend>
-  
-          <div class="field">
-            <label for="estimated_image_volume">
-              {{ $t('campaign-request-field-volume') }}
-              <span class="required" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="estimated_image_volume"
+
+          <cdx-field :status="errors.estimated_image_volume ? 'error' : 'default'" :messages="{ error: errors.estimated_image_volume }" class="field-margin">
+            <template #label>
+              {{ $t('campaign-request-field-volume') }} <span class="required" aria-hidden="true">*</span>
+            </template>
+            <cdx-text-input
+              input-type="number"
               v-model.number="form.estimated_image_volume"
-              type="number"
               min="1"
               :placeholder="$t('campaign-request-field-volume-placeholder')"
-              :class="{ error: errors.estimated_image_volume }"
               @blur="validateField('estimated_image_volume')"
             />
-            <p v-if="errors.estimated_image_volume" class="field-error" role="alert">
-              {{ errors.estimated_image_volume }}
-            </p>
-            <div
-              v-if="form.estimated_image_volume > 0 && form.estimated_image_volume < 30"
-              class="volume-warning"
-              role="note"
-            >
-              <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+            
+            <cdx-message v-if="form.estimated_image_volume > 0 && form.estimated_image_volume < 30" type="warning" inline class="margin-top-1">
               {{ $t('campaign-request-volume-low-warning') }}
-            </div>
-          </div>
+            </cdx-message>
+          </cdx-field>
         </fieldset>
-  
-        <div v-if="submitError" class="global-error" role="alert">
-          <i class="ti ti-circle-x" aria-hidden="true"></i>
+
+        <cdx-message v-if="submitError" type="error" class="field-margin">
           {{ submitError }}
-        </div>
-  
+        </cdx-message>
+
         <div class="form-actions">
-          <button type="submit" class="btn-primary" :disabled="submitting">
+          <cdx-button action="progressive" weight="primary" type="submit" :disabled="submitting">
             <i v-if="submitting" class="ti ti-loader-2 spin" aria-hidden="true"></i>
             <i v-else class="ti ti-send" aria-hidden="true"></i>
             {{ submitting ? $t('campaign-request-submitting') : $t('campaign-request-submit') }}
-          </button>
+          </cdx-button>
         </div>
       </form>
     </div>
   </template>
   
   <script setup>
-  import { ref, reactive, computed } from 'vue'
+  import { ref, reactive, computed, onMounted } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { CdxButton, CdxTextInput, CdxTextArea, CdxField, CdxMessage } from '@wikimedia/codex'
+  import UserList from '@/components/UserList.vue'
   import adminService from '@/services/adminService'
-  import { onMounted } from 'vue'
   import { useRoute } from 'vue-router'
   
   const { t } = useI18n()
@@ -302,8 +239,17 @@
   const submitting = ref(false)
   const submitted = ref(false)
   const submittedRequestId = ref('')
-  const usernameStatus = ref('')
+  // const usernameStatus = ref('')
   const tzPreview = reactive({ open: false, close: false })
+
+  const coordinatorUsers = ref(form.jury_coordinator_username ? [form.jury_coordinator_username] : [])
+
+  function onCoordinatorSelect(selected) {
+    const latest = selected.length ? [selected[selected.length - 1]] : []
+    coordinatorUsers.value = latest
+    form.jury_coordinator_username = latest[0] || ''
+    validateField('jury_coordinator_username')
+  }
 
   onMounted(async () => {
   if (!isResubmission.value) return
@@ -320,6 +266,7 @@
       close_date: existing.close_date ? existing.close_date.slice(0, 16) : '',
       estimated_image_volume: existing.estimated_image_volume,
     })
+    coordinatorUsers.value = existing.jury_coordinator_username ? [existing.jury_coordinator_username] : []
     updateTzPreview()
   } catch {
 
@@ -370,31 +317,31 @@
   
   // wikimedia username checker
   
-  let usernameDebounceTimer = null
-  async function checkWikimediaUser() {
-    validateField('jury_coordinator_username')
-    const username = form.jury_coordinator_username.trim()
-    if (!username) return
+  // let usernameDebounceTimer = null
+  // async function checkWikimediaUser() {
+  //   validateField('jury_coordinator_username')
+  //   const username = form.jury_coordinator_username.trim()
+  //   if (!username) return
   
-    clearTimeout(usernameDebounceTimer)
-    usernameDebounceTimer = setTimeout(async () => {
-      usernameStatus.value = 'checking'
-      try {
-        const res = await adminService.validateWikimediaUser(username)
-        usernameStatus.value = res.data.data.exists ? 'valid' : 'invalid'
-        if (!res.data.data.exists) {
-          errors.jury_coordinator_username = t('campaign-request-user-not-found-error')
-        }
-      } catch {
-        usernameStatus.value = ''
-      }
-    }, 500)
-  }
+  //   clearTimeout(usernameDebounceTimer)
+  //   usernameDebounceTimer = setTimeout(async () => {
+  //     usernameStatus.value = 'checking'
+  //     try {
+  //       const res = await adminService.validateWikimediaUser(username)
+  //       usernameStatus.value = res.data.data.exists ? 'valid' : 'invalid'
+  //       if (!res.data.data.exists) {
+  //         errors.jury_coordinator_username = t('campaign-request-user-not-found-error')
+  //       }
+  //     } catch {
+  //       usernameStatus.value = ''
+  //     }
+  //   }, 500)
+  // }
     
   function formatInTz(isoLocal, tzId) {
     if (!isoLocal) return '—'
     try {
-      const dt = new Date(isoLocal + 'Z')  // treat input as UTC
+      const dt = new Date(isoLocal + 'Z')
       return new Intl.DateTimeFormat('en-GB', {
         timeZone: tzId,
         dateStyle: 'medium',
@@ -445,66 +392,45 @@
     Object.keys(errors).forEach(k => (errors[k] = ''))
     submitted.value = false
     submittedRequestId.value = ''
-    usernameStatus.value = ''
+    coordinatorUsers.value = []
   }
   </script>
   
   <style scoped>
   .request-form-page {
     max-width: 720px;
+    width: 100%;
     margin: 0 auto;
     padding: 2rem 1rem;
+    box-sizing: border-box;
   }
   
   .page-header { margin-bottom: 2rem; }
-  .page-header h1 { font-size: 22px; font-weight: 500; margin: 0 0 0.4rem; }
-  .subtitle { font-size: 14px; color: var(--color-text-secondary); margin: 0; }
-  
-  .resubmit-banner {
-    background: var(--color-background-info);
-    color: var(--color-text-info);
-    border: 0.5px solid var(--color-border-info);
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.5rem;
-    font-size: 14px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-  }
+  .page-header h1 { font-size: 32px; font-weight: bold; margin: 0 0 0.4rem; }
+  .subtitle { font-size: 14px; color: #72777d; margin: 0; }
   
   .form-section {
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-lg);
+    border: 1px solid #c8ccd1;
+    border-radius: 8px;
     padding: 1.25rem 1.5rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .form-section legend {
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: #72777d;
     padding: 0 0.5rem;
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  
-  .utc-badge {
-    background: var(--color-background-warning);
-    color: var(--color-text-warning);
-    border: 0.5px solid var(--color-border-warning);
-    border-radius: var(--border-radius-md);
-    font-size: 11px;
-    padding: 2px 8px;
-    font-weight: 500;
-  }
-  
+
   .utc-notice {
-    background: var(--color-background-warning);
-    color: var(--color-text-warning);
-    border-radius: var(--border-radius-md);
-    border: 0.5px solid var(--color-border-warning);
+    background: #a2a9b1;
+    color: black;
+    border-radius: 4px;
+    border: 1px;
     padding: 0.75rem 1rem;
     font-size: 13px;
     margin-bottom: 1.25rem;
@@ -513,110 +439,42 @@
     align-items: flex-start;
     line-height: 1.5;
   }
-  
-  .utc-notice i { flex-shrink: 0; margin-top: 1px; }
-  
-  .field { margin-bottom: 1.25rem; }
-  .field:last-child { margin-bottom: 0; }
-  
-  .field label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    color: var(--color-text-primary);
-  }
-  
+
   .utc-label {
     display: inline-block;
     font-size: 10px;
     font-weight: 500;
-    background: var(--color-background-warning);
-    color: var(--color-text-warning);
+    background: #fdf2d5;
+    color: #ac6600;
     border-radius: 4px;
     padding: 1px 5px;
     margin-left: 6px;
     vertical-align: middle;
   }
   
-  .required { color: var(--color-text-danger); margin-left: 2px; }
-  
-  input[type="text"],
-  input[type="number"],
-  input[type="datetime-local"],
-  textarea {
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  input.error, textarea.error {
-    border-color: var(--color-border-danger);
-  }
-  
-  .field-hint {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    margin: 4px 0 0;
-  }
-  
-  .field-error {
-    font-size: 12px;
-    color: var(--color-text-danger);
-    margin: 4px 0 0;
-  }
-  
-  .input-with-badge {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .input-with-badge input { flex: 1; min-width: 0; }
-  
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: var(--border-radius-md);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  
-  .badge-neutral {
-    background: var(--color-background-secondary);
-    color: var(--color-text-secondary);
-  }
-  
-  .badge-success {
-    background: var(--color-background-success);
-    color: var(--color-text-success);
-  }
-  
-  .badge-danger {
-    background: var(--color-background-danger);
-    color: var(--color-text-danger);
-  }
+  .utc-notice i { flex-shrink: 0; margin-top: 1px; }
+    
+  .required { color: #d73333; margin-left: 2px; }
   
   .field-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
+    align-items: start;
   }
   
   .tz-assistant {
     margin-top: 1rem;
-    background: var(--color-background-secondary);
-    border-radius: var(--border-radius-md);
-    border: 0.5px solid var(--color-border-tertiary);
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #c8ccd1;
     padding: 0.75rem 1rem;
   }
-  
+
   .tz-assistant-title {
     font-size: 12px;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: #72777d;
     margin: 0 0 0.5rem;
     display: flex;
     align-items: center;
@@ -631,105 +489,56 @@
   
   .tz-table th {
     text-align: left;
-    color: var(--color-text-secondary);
+    color: #72777d;
     font-weight: 500;
     padding: 4px 8px 4px 0;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
+    border-bottom: 1px solid #c8ccd1;
   }
-  
+
   .tz-table td {
     padding: 5px 8px 5px 0;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
-    color: var(--color-text-primary);
+    border-bottom: 1px solid #c8ccd1;
+    color: #202122;
   }
   
-  .tz-name { color: var(--color-text-secondary); }
-  
-  .volume-warning {
-    background: var(--color-background-warning);
-    color: var(--color-text-warning);
-    border: 0.5px solid var(--color-border-warning);
-    border-radius: var(--border-radius-md);
-    padding: 0.6rem 0.75rem;
-    font-size: 13px;
-    margin-top: 8px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-  }
-  
-  .global-error {
-    background: var(--color-background-danger);
-    color: var(--color-text-danger);
-    border: 0.5px solid var(--color-border-danger);
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    font-size: 14px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-  }
+  .tz-name { color: #72777d; }
   
   .form-actions {
     display: flex;
     justify-content: flex-end;
   }
   
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.55rem 1.25rem;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--color-text-primary);
-  }
-  
-  .btn-primary:hover { background: var(--color-background-secondary); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.5rem 1.1rem;
-    background: transparent;
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-  }
-  
   .success-card {
-    border: 0.5px solid var(--color-border-success);
-    background: var(--color-background-success);
-    border-radius: var(--border-radius-lg);
-    padding: 2.5rem;
+    border: 1px solid #a3e3d3;     
+    background: #259948;            
+    border-radius: 4px;
+    padding: 2rem;
     text-align: center;
+  }
+
+  .success-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
   }
   
   .success-icon {
     font-size: 40px;
-    color: var(--color-text-success);
+    color: black;
     margin-bottom: 1rem;
   }
   
   .success-card h2 {
     font-size: 18px;
     font-weight: 500;
-    color: var(--color-text-success);
+    color: black;
     margin: 0 0 0.5rem;
   }
   
   .success-card p {
     font-size: 14px;
-    color: var(--color-text-success);
+    color: #202122;
     margin: 0 0 1.5rem;
   }
   
@@ -737,19 +546,27 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-success);
-    border-radius: var(--border-radius-md);
+    background: #ffffff;
+    border: 1px solid #c8ccd1;        
+    border-radius: 4px;
     padding: 0.5rem 1rem;
-    margin-bottom: 1.5rem;
     font-size: 14px;
   }
   
-  .request-id-pill .label { color: var(--color-text-secondary); }
+  .request-id-pill .label { 
+    color: #72777d;
+  }
   
   .spin {
     animation: spin 1s linear infinite;
     display: inline-block;
+  }
+
+  .field-margin {
+    margin-bottom: 1.25rem;
+  }
+  .margin-top-1 {
+    margin-top: 0.5rem;
   }
   
   @keyframes spin { to { transform: rotate(360deg); } }

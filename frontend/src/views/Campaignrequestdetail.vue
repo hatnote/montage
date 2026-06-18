@@ -1,18 +1,17 @@
 <template>
     <div class="detail-page">
   
-      <button class="back-btn" @click="$router.back()">
-        <i class="ti ti-arrow-left" aria-hidden="true"></i>
+      <cdx-button action="progressive" weight="quiet" @click="$router.back()" style="margin-bottom: 1.5rem;">
+        <cdx-icon :icon="cdxIconArrowPrevious" style="padding-right: 5px;" />
         {{ $t('back') }}
-      </button>
+      </cdx-button>
   
       <div v-if="loading" class="state-placeholder">
-        <i class="ti ti-loader-2 spin" aria-hidden="true"></i>
+        <clip-loader size="40px" />
       </div>
   
-      <div v-else-if="loadError" class="state-placeholder state-error">
-        <i class="ti ti-circle-x" aria-hidden="true"></i>
-        {{ loadError }}
+      <div v-else-if="loadError" class="state-placeholder">
+        <cdx-message type="error" inline>{{ loadError }}</cdx-message>
       </div>
   
       <template v-else-if="req">
@@ -29,40 +28,29 @@
           </div>
           <StatusBadge :status="req.status" size="lg" />
         </div>
-  
-        <div
-          v-if="req.status === 'needs_clarification' && req.clarification_note" 
-          class="clarification-banner"
-          role="note"
-        > <!--add !isSuperUser on v-if lster-->
-          <div class="banner-title">
+
+        <div v-if="req.status === 'needs_clarification' && req.clarification_note" class="clarification-banner" role="note">
+          <!--add !isSuperUser on v-if lster-->
+          <p class="banner-title">
             <i class="ti ti-message-circle" aria-hidden="true"></i>
-            {{ $t('campaign-request-clarification-note') }}
-          </div>
+            <strong>{{ $t('campaign-request-clarification-note') }}</strong>
+          </p>
           <p>{{ req.clarification_note }}</p>
-          <router-link
-            :to="`/requests/${req.request_id}/resubmit`"
-            class="btn-primary"
-          >
-            <i class="ti ti-edit" aria-hidden="true"></i>
-            {{ $t('campaign-request-resubmit') }}
+          <router-link :to="`/requests/${req.request_id}/resubmit`">
+            <cdx-button action="progressive" weight="normal">
+              <i class="ti ti-edit" aria-hidden="true"></i>
+              {{ $t('campaign-request-resubmit') }}
+            </cdx-button>
           </router-link>
         </div>
   
-        <div v-if="req.status === 'approved'" class="approved-banner">
-          <i class="ti ti-circle-check" aria-hidden="true"></i>
+        <cdx-message v-if="req.status === 'approved'" type="success" style="margin-bottom: 1.5rem;">
           {{ $t('campaign-request-approved-notice') }}
-          
-          <router-link
-            v-if="req.campaign_id"
-            :to="`/campaign/${req.campaign_id}`"
-            class="campaign-link"
-          >
+          <router-link v-if="req.campaign_id" :to="`/campaign/${req.campaign_id}`" class="campaign-link">
             {{ $t('campaign-request-view-campaign') }}
             <i class="ti ti-arrow-right" aria-hidden="true"></i>
           </router-link>
-      </div>
-
+        </cdx-message>
   
         <div class="details-grid">
   
@@ -153,47 +141,36 @@
           <h2>{{ $t('campaign-request-actions-title') }}</h2>
   
           <div class="action-tabs" role="tablist">
-            <button
-              role="tab"
-              class="tab-btn"
-              :class="{ active: activeAction === 'approve' }"
-              :aria-selected="activeAction === 'approve'"
+            <cdx-button
+              :action="activeAction === 'approve' ? 'progressive' : 'default'"
+              :weight="activeAction === 'approve' ? 'primary' : 'normal'"
               @click="activeAction = 'approve'"
             >
               <i class="ti ti-circle-check" aria-hidden="true"></i>
               {{ $t('campaign-request-action-approve') }}
-            </button>
-            <button
-              role="tab"
-              class="tab-btn"
-              :class="{ active: activeAction === 'advise' }"
-              :aria-selected="activeAction === 'advise'"
+            </cdx-button>
+            <cdx-button
+              :action="activeAction === 'advise' ? 'progressive' : 'default'"
+              :weight="activeAction === 'advise' ? 'primary' : 'normal'"
               @click="activeAction = 'advise'"
             >
               <i class="ti ti-message-circle" aria-hidden="true"></i>
               {{ $t('campaign-request-action-advise') }}
-            </button>
+            </cdx-button>
           </div>
   
           <div v-if="activeAction === 'approve'" class="action-panel" role="tabpanel">
-            <div v-if="req.estimated_image_volume < 30" class="action-warning">
-              <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-              <div>
-                <strong>{{ $t('campaign-request-low-volume-header') }}</strong>
-                <p>{{ $t('campaign-request-low-volume-advice') }}</p>
-              </div>
-            </div>
+            <cdx-message v-if="req.estimated_image_volume < 30" type="warning" style="margin-bottom: 1rem;">
+              <strong>{{ $t('campaign-request-low-volume-header') }}</strong>
+              <p style="margin: 4px 0 0; font-size: 13px;">{{ $t('campaign-request-low-volume-advice') }}</p>
+            </cdx-message>
             <p class="action-description">{{ $t('campaign-request-approve-description') }}</p>
             <div class="action-row">
-              <button
-                class="btn-approve"
-                :disabled="approving"
-                @click="approveRequest"
-              >
+              <cdx-button action="progressive" weight="primary" :disabled="approving" @click="approveRequest">
                 <i v-if="approving" class="ti ti-loader-2 spin" aria-hidden="true"></i>
                 <i v-else class="ti ti-circle-check" aria-hidden="true"></i>
                 {{ approving ? $t('campaign-request-approving') : $t('campaign-request-action-approve') }}
-              </button>
+              </cdx-button>
             </div>
             <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
           </div>
@@ -213,32 +190,25 @@
               </button>
             </div>
   
-            <textarea
-              v-model="adviseNote"
-              :placeholder="$t('campaign-request-advise-placeholder')"
-              rows="5"
-            ></textarea>
-            <p class="field-hint">{{ $t('campaign-request-advise-hint') }}</p>
-  
+            <cdx-field style="margin-bottom: 0.75rem;">
+              <cdx-text-area v-model="adviseNote" :placeholder="$t('campaign-request-advise-placeholder')" :autosize="true" />
+              <template #help-text>{{ $t('campaign-request-advise-hint') }}</template>
+            </cdx-field>
+
             <div class="action-row">
-              <button
-                class="btn-advise"
-                :disabled="advising || !adviseNote.trim()"
-                @click="sendAdvice"
-              >
+              <cdx-button action="progressive" weight="normal" :disabled="advising || !adviseNote.trim()" @click="sendAdvice">
                 <i v-if="advising" class="ti ti-loader-2 spin" aria-hidden="true"></i>
                 <i v-else class="ti ti-send" aria-hidden="true"></i>
                 {{ advising ? $t('campaign-request-sending') : $t('campaign-request-action-send-note') }}
-              </button>
+              </cdx-button>
             </div>
-            <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
+            <cdx-message v-if="actionError" type="error" inline style="margin-top: 8px;">{{ actionError }}</cdx-message>
           </div>
         </div>
   
-        <div v-if="actionSuccess" class="action-success" role="status">
-          <i class="ti ti-circle-check" aria-hidden="true"></i>
+        <cdx-message v-if="actionSuccess" type="success" style="margin-top: 1rem;">
           {{ actionSuccess }}
-        </div>
+        </cdx-message>
   
       </template>
     </div>
@@ -248,6 +218,9 @@
   import { ref, onMounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n'
+  import { CdxButton, CdxMessage, CdxTextArea, CdxField, CdxIcon } from '@wikimedia/codex'
+  import { cdxIconArrowPrevious } from '@wikimedia/codex-icons'
+  import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
   import dayjs from 'dayjs'
   import relativeTime from 'dayjs/plugin/relativeTime'
   import adminService from '@/services/adminService'
@@ -375,21 +348,6 @@
     padding: 2rem 1rem;
   }
   
-  .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    margin-bottom: 1.5rem;
-  }
-  
-  .back-btn:hover { color: var(--color-text-primary); }
-  
   .detail-header {
     display: flex;
     justify-content: space-between;
@@ -415,12 +373,12 @@
   .submitter { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
   
   .clarification-banner {
-    background: var(--color-background-warning);
-    border: 0.5px solid var(--color-border-warning);
-    border-radius: var(--border-radius-lg);
+    background: #fdf2d5;
+    border: 1px solid #f0c533;
+    border-radius: 8px;
     padding: 1.25rem;
     margin-bottom: 1.5rem;
-    color: var(--color-text-warning);
+    color: #ac6600;
   }
   
   .banner-title {
@@ -434,26 +392,12 @@
   
   .clarification-banner p { margin: 0 0 1rem; font-size: 14px; line-height: 1.6; }
   
-  .approved-banner {
-    background: var(--color-background-success);
-    border: 0.5px solid var(--color-border-success);
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.5rem;
-    font-size: 14px;
-    color: var(--color-text-success);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  
   .campaign-link {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     font-size: 13px;
-    color: var(--color-text-success);
+    color: #14866d;
     text-decoration: underline;
   }
   
@@ -589,50 +533,11 @@
   
   .action-tabs {
     display: flex;
-    gap: 0;
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-md);
-    overflow: hidden;
+    gap: 8px;
     margin-bottom: 1.25rem;
-    width: fit-content;
-  }
-  
-  .tab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 18px;
-    background: transparent;
-    border: none;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-  }
-  
-  .tab-btn + .tab-btn { border-left: 0.5px solid var(--color-border-tertiary); }
-  .tab-btn.active {
-    background: var(--color-background-secondary);
-    color: var(--color-text-primary);
-    font-weight: 500;
   }
   
   .action-panel { padding: 0; }
-  
-  .action-warning {
-    background: var(--color-background-warning);
-    color: var(--color-text-warning);
-    border: 0.5px solid var(--color-border-warning);
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    font-size: 13px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  
-  .action-warning i { flex-shrink: 0; margin-top: 1px; }
-  .action-warning p { margin: 4px 0 0; }
   
   .action-description {
     font-size: 14px;
@@ -662,78 +567,8 @@
   }
   
   .chip:hover { color: var(--color-text-primary); border-color: var(--color-border-secondary); }
-  
-  .field-hint { font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 1rem; }
-  
+    
   .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
-  
-  .btn-approve {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.55rem 1.25rem;
-    background: var(--color-background-success);
-    color: var(--color-text-success);
-    border: 0.5px solid var(--color-border-success);
-    border-radius: var(--border-radius-md);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  
-  .btn-approve:hover { opacity: 0.85; }
-  .btn-approve:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  .btn-advise {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.55rem 1.25rem;
-    background: var(--color-background-primary);
-    color: var(--color-text-primary);
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  
-  .btn-advise:hover { background: var(--color-background-secondary); }
-  .btn-advise:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0.5rem 1.1rem;
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    background: var(--color-background-primary);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--color-text-primary);
-    text-decoration: none;
-  }
-  
-  .action-error {
-    font-size: 13px;
-    color: var(--color-text-danger);
-    margin: 8px 0 0;
-  }
-  
-  .action-success {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--color-background-success);
-    color: var(--color-text-success);
-    border: 0.5px solid var(--color-border-success);
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
-    font-size: 14px;
-    margin-top: 1rem;
-  }
   
   .state-placeholder {
     text-align: center;
@@ -742,8 +577,4 @@
     font-size: 32px;
   }
   
-  .state-error { color: var(--color-text-danger); font-size: 14px; }
-  
-  .spin { animation: spin 1s linear infinite; display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   </style>
