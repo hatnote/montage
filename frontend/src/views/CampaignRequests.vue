@@ -103,7 +103,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CdxButton, CdxToggleButtonGroup, CdxMessage, CdxIcon } from '@wikimedia/codex'
+import { CdxButton, CdxMessage, CdxIcon } from '@wikimedia/codex'
 import {
   cdxIconAdd,
   cdxIconUserAvatar,
@@ -115,16 +115,16 @@ import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
-import StatusBadge from '@/views/Statusbadge.vue'
+import StatusBadge from '@/views/StatusBadge.vue'
 
 dayjs.extend(relativeTime)
 
 const { t } = useI18n()
 const router = useRouter()
 
-const props = defineProps({
-  isSuperuser: { type: Boolean, default: false }
-})
+// const props = defineProps({
+//   isSuperuser: { type: Boolean, default: false }
+// })
 
 const STATUS_FILTERS = [
   { value: null, labelKey: 'status-all' },

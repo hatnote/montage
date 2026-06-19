@@ -250,7 +250,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CdxButton, CdxMessage, CdxTextArea, CdxField, CdxIcon } from '@wikimedia/codex'
 import { cdxIconArrowPrevious } from '@wikimedia/codex-icons'
@@ -258,18 +258,17 @@ import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
-import StatusBadge from '@/views/Statusbadge.vue'
+import StatusBadge from '@/views/StatusBadge.vue'
 
 dayjs.extend(relativeTime)
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 
-const props = defineProps({
-  isSuperuser: { type: Boolean, default: false }
-})
-const isSuperuser = true
+// const props = defineProps({
+//   isSuperuser: { type: Boolean, default: false }
+// })
+// const isSuperuser = true
 
 const COMMON_TIMEZONES = [
   { id: 'America/New_York', label: 'ET (New York)' },

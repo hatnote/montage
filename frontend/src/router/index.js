@@ -11,9 +11,9 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
-import CampaignRequestform from '@/views/CampaignRequestform.vue'
-import Campaignrequestdetail from '@/views/Campaignrequestdetail.vue'
-import Campaignrequests from '@/views/Campaignrequests.vue'
+import CampaignRequestform from '@/views/CampaignRequestForm.vue'
+import Campaignrequestdetail from '@/views/CampaignRequestDetail.vue'
+import Campaignrequests from '@/views/CampaignRequests.vue'
 
 const routes = [
   {

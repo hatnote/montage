@@ -141,10 +141,7 @@
             <cdx-text-input
               input-type="datetime-local"
               v-model="form.open_date"
-              @blur="
-                validateField('open_date')
-                updateTzPreview()
-              "
+              @blur="handleCloseDateBlur"
             />
           </cdx-field>
 
@@ -159,10 +156,7 @@
             <cdx-text-input
               input-type="datetime-local"
               v-model="form.close_date"
-              @blur="
-                validateField('close_date')
-                updateTzPreview()
-              "
+              @blur="handleCloseDateBlur"
             />
           </cdx-field>
         </div>
@@ -323,7 +317,8 @@ onMounted(async () => {
     })
     coordinatorUsers.value = jurors
     updateTzPreview()
-  } catch {
+  } catch (error) {
+    console.log(error)
   } finally {
     prefillLoaded.value = true
   }
@@ -393,6 +388,11 @@ function formatInTz(isoLocal, tzId) {
 function updateTzPreview() {
   tzPreview.open = !!form.open_date
   tzPreview.close = !!form.close_date
+}
+
+function handleCloseDateBlur() {
+  validateField('close_date')
+  updateTzPreview()
 }
 
 async function handleSubmit() {
