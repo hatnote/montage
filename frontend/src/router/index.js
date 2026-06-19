@@ -60,7 +60,7 @@ const routes = [
     path: '/requests/new',
     name: 'request-new',
     component: CampaignRequestform,
-    meta: {requiresAuth: true}
+    meta: { requiresAuth: true }
   },
   {
     path: '/requests',
