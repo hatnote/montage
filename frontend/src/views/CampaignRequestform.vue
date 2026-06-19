@@ -89,6 +89,8 @@
               {{ $t('campaign-request-field-coordinator-hint') }}
             </template>
             <UserList
+              v-if="prefillLoaded"
+              :key="isResubmission ? 'prefilled' : 'new'"
               :users="coordinatorUsers"
               @update:selectedUsers="onCoordinatorSelect"
             />
@@ -227,11 +229,16 @@
     campaign_name: '',
     commons_category: '',
     purpose: '',
-    jury_coordinator_username: '',
+    jury_coordinator_username: [],
     open_date: '',
     close_date: '',
     estimated_image_volume: null,
   })
+
+  function normalizeJurors(value) {
+    if (Array.isArray(value)) return [...value]
+    return value? [value]: []
+  }
   
   const form = reactive(props.prefillData ? { ...defaultForm(), ...props.prefillData } : defaultForm())
   const errors = reactive({})
@@ -241,13 +248,14 @@
   const submittedRequestId = ref('')
   // const usernameStatus = ref('')
   const tzPreview = reactive({ open: false, close: false })
+  const prefillLoaded = ref(!isResubmission.value)
 
-  const coordinatorUsers = ref(form.jury_coordinator_username ? [form.jury_coordinator_username] : [])
+  const coordinatorUsers = ref(normalizeJurors(form.jury_coordinator_username))
 
   function onCoordinatorSelect(selected) {
-    const latest = selected.length ? [selected[selected.length - 1]] : []
-    coordinatorUsers.value = latest
-    form.jury_coordinator_username = latest[0] || ''
+    // const latest = selected.length ? [selected[selected.length - 1]] : []
+    coordinatorUsers.value = selected
+    form.jury_coordinator_username = selected
     validateField('jury_coordinator_username')
   }
 
@@ -256,20 +264,23 @@
   try {
     const res = await adminService.getCampaignRequest(route.params.request_id)
     const existing = res.data.data
+    const jurors = normalizeJurors(existing.jury_coordinator_username)
     
     Object.assign(form, {
       campaign_name: existing.campaign_name,
       commons_category: existing.commons_category,
       purpose: existing.purpose,
-      jury_coordinator_username: existing.jury_coordinator_username,
+      jury_coordinator_username: jurors,
       open_date: existing.open_date ? existing.open_date.slice(0, 16) : '',
       close_date: existing.close_date ? existing.close_date.slice(0, 16) : '',
       estimated_image_volume: existing.estimated_image_volume,
     })
-    coordinatorUsers.value = existing.jury_coordinator_username ? [existing.jury_coordinator_username] : []
+    coordinatorUsers.value = jurors
     updateTzPreview()
   } catch {
 
+  } finally {
+    prefillLoaded.value = true
   }
 })
     
@@ -286,7 +297,7 @@
         if (!form.purpose.trim()) errors.purpose = t('validation-required')
         break
       case 'jury_coordinator_username':
-        if (!form.jury_coordinator_username.trim())
+        if (!form.jury_coordinator_username || form.jury_coordinator_username.length === 0)
           errors.jury_coordinator_username = t('validation-required')
         break
       case 'open_date':
@@ -314,29 +325,6 @@
     fields.forEach(validateField)
     return !Object.values(errors).some(Boolean)
   }
-  
-  // wikimedia username checker
-  
-  // let usernameDebounceTimer = null
-  // async function checkWikimediaUser() {
-  //   validateField('jury_coordinator_username')
-  //   const username = form.jury_coordinator_username.trim()
-  //   if (!username) return
-  
-  //   clearTimeout(usernameDebounceTimer)
-  //   usernameDebounceTimer = setTimeout(async () => {
-  //     usernameStatus.value = 'checking'
-  //     try {
-  //       const res = await adminService.validateWikimediaUser(username)
-  //       usernameStatus.value = res.data.data.exists ? 'valid' : 'invalid'
-  //       if (!res.data.data.exists) {
-  //         errors.jury_coordinator_username = t('campaign-request-user-not-found-error')
-  //       }
-  //     } catch {
-  //       usernameStatus.value = ''
-  //     }
-  //   }, 500)
-  // }
     
   function formatInTz(isoLocal, tzId) {
     if (!isoLocal) return '—'
@@ -460,7 +448,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    align-items: start;
+    align-items: end;
   }
   
   .tz-assistant {

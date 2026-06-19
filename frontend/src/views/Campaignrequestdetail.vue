@@ -52,23 +52,23 @@
           </router-link>
         </cdx-message>
   
-        <div class="details-grid">
-  
           <div class="detail-card">
             <p class="card-label">{{ $t('campaign-request-field-coordinator') }}</p>
-            <p class="card-value">
-              <i class="ti ti-user" aria-hidden="true"></i>
-              {{ req.jury_coordinator_username }}
-              <a
-                :href="`https://commons.wikimedia.org/wiki/User:${req.jury_coordinator_username}`"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="ext-link"
-                :aria-label="`View ${req.jury_coordinator_username} on Wikimedia Commons`"
-              >
-                <i class="ti ti-external-link" aria-hidden="true"></i>
-              </a>
-            </p>
+            <ul class="juror-list">
+              <li v-for="juror in jurorList" :key="juror" class="juror-item">
+                <i class="ti ti-user" aria-hidden="true"></i>
+                {{ juror }}
+                <a
+                  :href="`https://commons.wikimedia.org/wiki/User:${juror}`"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ext-link"
+                  :aria-label="`View ${juror} on Wikimedia Commons`"
+                >
+                  <i class="ti ti-external-link" aria-hidden="true"></i>
+                </a>
+              </li>
+            </ul>
           </div>
   
           <div class="detail-card">
@@ -133,8 +133,6 @@
             <p class="card-label">{{ $t('campaign-request-field-purpose') }}</p>
             <p class="card-value text-wrap">{{ req.purpose }}</p>
           </div>
-  
-        </div>
   
         <!-- Maintainers action, -->
         <div v-if="isSuperuser " class="action-section">
@@ -215,7 +213,7 @@
   </template>
   
   <script setup>
-  import { ref, onMounted } from 'vue'
+  import { ref, computed ,onMounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n'
   import { CdxButton, CdxMessage, CdxTextArea, CdxField, CdxIcon } from '@wikimedia/codex'
@@ -265,6 +263,12 @@
   const advising = ref(false)
   const actionError = ref('')
   const actionSuccess = ref('')
+
+  const jurorList = computed(() => {
+  const jurors = req.value?.jury_coordinator_username
+    if (Array.isArray(jurors)) return jurors
+    return jurors ? [jurors] : []
+  })
     
   async function loadRequest() {
     loading.value = true

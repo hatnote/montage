@@ -346,7 +346,7 @@ def submit_campaign_request(user_dao, request_dict):
     """
     Summary: Submit a new campaign creation request.
     Request model:
-        jury_coordinator_username: string  (required)
+        jury_coordinator_username: List of string  (required)
         commons_category: string  (required)
         campaign_name: string  (required)
         open_date: ISO-8601 UTC datetime string  (required)
@@ -370,11 +370,15 @@ def submit_campaign_request(user_dao, request_dict):
         raise InvalidAction('Missing required fields: %s' % ', '.join(missing))
  
     #Checker against the Wikimedia Commons API.
-    coord_username = request_dict['jury_coordinator_username']
-    if not _wikimedia_user_exists(coord_username):
+    coord_usernames = request_dict['jury_coordinator_username']
+    if isinstance(coord_usernames, str):
+        coord_usernames = [coord_usernames]
+
+    invalid_usernames = [u for u in coord_usernames if not _wikimedia_user_exists(u)]
+    if invalid_usernames:
         raise InvalidAction(
-            'Wikimedia account %r was not found on Commons. '
-            'Please verify the username and try again.' % coord_username
+            'Wikimedia account(s) %s were not found on Commons. '
+            'Please verify the username(s) and try again.' % ', '.join(repr(u) for u in invalid_usernames)
         )
  
     cr_dao = CampaignRequestDAO(user_dao)
@@ -413,7 +417,7 @@ def approve_campaign_request(user_dao, request_id, request_dict):
         'close_date':   req.close_date.isoformat(),
         'url':          req.commons_category,
         'series_id':    request_dict.get('series_id', 1),
-        'coordinators': [req.jury_coordinator_username],
+        'coordinators': req._parse_jurors(),
     }
     result = create_campaign(user_dao, campaign_dict)
     campaign_id = result['data']['id']

@@ -66,7 +66,7 @@
             <p class="campaign-meta">
               <span class="meta-group">
                 <cdx-icon :icon="cdxIconUserAvatar" size="small" />
-                {{ req.jury_coordinator_username }}
+                {{ req.submitter_username }}
               </span>
 
               <span class="meta-group">

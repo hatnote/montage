@@ -290,7 +290,7 @@ class CampaignRequest(Base):
     id                        = Column(Integer,      primary_key=True)
     request_id                = Column(String(16),   unique=True, index=True, nullable=False)
     submitter_username        = Column(String(255),  nullable=False, index=True)
-    jury_coordinator_username = Column(String(255),  nullable=False)
+    jury_coordinator_username = Column(Text,  nullable=False)
     commons_category          = Column(Text,         nullable=False)
     campaign_name             = Column(String(255),  nullable=False)
     open_date                 = Column(DateTime,     nullable=False)
@@ -315,7 +315,7 @@ class CampaignRequest(Base):
             'id':                        self.id,
             'request_id':                self.request_id,
             'submitter_username':        self.submitter_username,
-            'jury_coordinator_username': self.jury_coordinator_username,
+            'jury_coordinator_username': self._parse_jurors(),
             'commons_category':          self.commons_category,
             'campaign_name':             self.campaign_name,
             'open_date':                 self.open_date.isoformat() if self.open_date else None,
@@ -329,6 +329,17 @@ class CampaignRequest(Base):
             'clarification_note':        self.clarification_note,
             'is_resubmission':           self.is_resubmission,
         }
+
+    def _parse_jurors(self):
+        """Returns jury_coordinator_username as a list, tolerating legacy single-string rows."""
+        raw = self.jury_coordinator_username
+        if not raw:
+            return []
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, list) else [parsed]
+        except (ValueError, TypeError):
+            return [raw]
 
 class CampaignRequestDAO(object):
     """
@@ -365,7 +376,7 @@ class CampaignRequestDAO(object):
         req = CampaignRequest(
             request_id                = _generate_request_id(),
             submitter_username        = submitter_username,
-            jury_coordinator_username = data['jury_coordinator_username'],
+            jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username']),
             commons_category          = data['commons_category'],
             campaign_name             = data['campaign_name'],
             open_date                 = js_isoparse(data['open_date']),
@@ -414,7 +425,7 @@ class CampaignRequestDAO(object):
  
         # Only updating the fields that were actually provided
         if data.get('jury_coordinator_username'):
-            req.jury_coordinator_username = data['jury_coordinator_username']
+            req.jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username'])
         if data.get('commons_category'):
             req.commons_category = data['commons_category']
         if data.get('campaign_name'):
@@ -2631,7 +2642,7 @@ class CampaignRequestDAO(object):
         req = CampaignRequest(
             request_id                 = _generate_request_id(),
             submitter_username         = submitter_username,
-            jury_coordinator_username  = data['jury_coordinator_username'],
+            jury_coordinator_username  = _serialize_jurors(data['jury_coordinator_username']),
             commons_category           = data['commons_category'],
             campaign_name              = data['campaign_name'],
             open_date                  = js_isoparse(data['open_date']),
@@ -2681,7 +2692,7 @@ class CampaignRequestDAO(object):
  
         # Update only the fields that were provided
         if data.get('jury_coordinator_username'):
-            req.jury_coordinator_username = data['jury_coordinator_username']
+            req.jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username'])
         if data.get('commons_category'):
             req.commons_category = data['commons_category']
         if data.get('campaign_name'):
@@ -3192,6 +3203,11 @@ class JurorDAO(object):
 def _generate_request_id():
     suffix = ''.join(random.choices(string.digits, k=4)) # MNTG - Monitoring
     return f"MNTG-{suffix}"
+
+def _serialize_jurors(value):
+    if isinstance(value, str):
+        value = [value]
+    return json.dumps(list(value))
 
 def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()
