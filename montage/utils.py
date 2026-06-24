@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import annotations
+
 import sys
 import bisect
 import random
 import getpass
 import os.path
 import datetime
-from six.moves.urllib.parse import urlencode
-
+from urllib.parse import urlencode
+from typing import Any, Generator, Sequence, TypeVar, Union
 
 import yaml
 import requests
@@ -19,15 +19,8 @@ from sqlalchemy.orm import sessionmaker
 from boltons.timeutils import isoparse
 
 from .check_rdb import get_schema_errors
-import six
 
-try:
-    unicode = unicode
-    basestring = basestring
-except NameError:
-    unicode = str
-    basestring = str
-
+T = TypeVar('T')
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
@@ -39,14 +32,14 @@ DEFAULT_ENV_NAME = 'dev'
 USER_AGENT = 'montage/25.0 (https://github.com/hatnote/montage; mahmoud@hatnote.com)'
 
 
-def requests_get(url, **kwargs):
+def requests_get(url: str, **kwargs: Any) -> requests.Response:
     """Wrapper for requests.get that adds User-Agent header"""
     headers = kwargs.pop('headers', {})
     headers.setdefault('User-Agent', USER_AGENT)
     return requests.get(url, headers=headers, **kwargs)
 
 
-def requests_post(url, **kwargs):
+def requests_post(url: str, **kwargs: Any) -> requests.Response:
     """Wrapper for requests.post that adds User-Agent header"""
     headers = kwargs.pop('headers', {})
     headers.setdefault('User-Agent', USER_AGENT)
@@ -78,14 +71,11 @@ DEFAULT_SERIES = {'name': 'Unofficial',
                   'url': 'TODO add docs url'}  # TODO: status is always active
 
 
-def to_unicode(obj):
-    try:
-        return unicode(obj)
-    except UnicodeDecodeError:
-        return unicode(obj, encoding='utf8')
+def to_unicode(obj: Any) -> str:
+    return str(obj)
 
 
-def encode_dict_to_bytes(query):
+def encode_dict_to_bytes(query: Union[dict, list]) -> Generator[tuple[bytes, Any], None, None]:
     if hasattr(query, 'items'):
         query = list(query.items())
 
@@ -95,13 +85,13 @@ def encode_dict_to_bytes(query):
         yield (encode_value_to_bytes(key), encode_value_to_bytes(value))
 
 
-def encode_value_to_bytes(value):
-    if not isinstance(value, unicode):
-        return str(value)
+def encode_value_to_bytes(value: Any) -> bytes:
+    if not isinstance(value, str):
+        return str(value).encode('utf8')
     return value.encode('utf8')
 
 
-def get_mw_userid(username):
+def get_mw_userid(username: str) -> int:
     # Look up the central/global userid based on the username
     api_url = 'https://commons.wikimedia.org/w/api.php?'
     params = {'action': 'query',
@@ -119,20 +109,20 @@ def get_mw_userid(username):
     return user_id
 
 
-def get_threshold_map(ratings_map):
+def get_threshold_map(ratings_map: dict[Union[str, float], Union[str, int]]) -> dict[float, int]:
     thresh_counts = {}
     # coerce some types
-    ratings_map = dict([(float(k), int(v)) for k, v in ratings_map.items()])
-    ratings_map[0.0] = ratings_map.get(0.0, 0)
-    ratings_map[1.0] = ratings_map.get(1.0, 0)
-    for rating in sorted(ratings_map.keys()):
-        total_gte = sum([v for k, v in ratings_map.items() if k >= rating])
+    typed_ratings_map = dict([(float(k), int(v)) for k, v in ratings_map.items()])
+    typed_ratings_map[0.0] = typed_ratings_map.get(0.0, 0)
+    typed_ratings_map[1.0] = typed_ratings_map.get(1.0, 0)
+    for rating in sorted(typed_ratings_map.keys()):
+        total_gte = sum([v for k, v in typed_ratings_map.items() if k >= rating])
         rating_key = int(rating * 1000) / 1000.0
         thresh_counts[rating_key] = total_gte
     return thresh_counts
 
 
-def get_env_name():
+def get_env_name() -> str:
     username = getpass.getuser()
     return USER_ENV_MAP.get(username, DEFAULT_ENV_NAME)
 
@@ -153,7 +143,7 @@ DEVTEST_CONFIG = {'oauth_consumer_token': None,
 }
 
 
-def load_env_config(env_name=None):
+def load_env_config(env_name: str | None = None) -> dict[str, Any]:
     if not env_name:
         env_name = get_env_name()
     elif env_name == 'devtest':
@@ -173,11 +163,11 @@ def load_env_config(env_name=None):
     return config
 
 
-def load_default_series():
+def load_default_series() -> dict[str, str]:
     return DEFAULT_SERIES
 
 
-def check_schema(db_url, base_type, echo=False, autoexit=False):
+def check_schema(db_url: str, base_type: Any, echo: bool = False, autoexit: bool = False) -> list[str]:
     engine = create_engine(db_url, echo=echo)
     session_type = sessionmaker()
     session_type.configure(bind=engine)
@@ -197,13 +187,13 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
     return schema_errors
 
 
-def format_date(date):
+def format_date(date: datetime.datetime | str | None) -> str | None:
     if isinstance(date, datetime.datetime):
         date = date.isoformat()
     return date
 
 
-def js_isoparse(date_str):
+def js_isoparse(date_str: str) -> datetime.datetime:
     try:
         ret = isoparse(date_str)
     except ValueError:
@@ -214,7 +204,7 @@ def js_isoparse(date_str):
     return ret
 
 
-def json_serial(obj):
+def json_serial(obj: Any) -> str | list[Any]:
     if isinstance(obj, (datetime.datetime, datetime.date)):
         serial = obj.isoformat()
         return serial
@@ -223,7 +213,7 @@ def json_serial(obj):
     raise TypeError("type %s not serializable" % type(obj))
 
 
-def parse_date(date):
+def parse_date(date: str | None) -> datetime.datetime | None:
     if date is None:
         return None
     return isoparse(date)
@@ -231,26 +221,26 @@ def parse_date(date):
 
 # The following is almost ready to go to boltons
 
-def weighted_choice(weighted_choices):
+def weighted_choice(weighted_choices: Sequence[tuple[float, T]] | dict[float, T]) -> T:
     nsw_list, vals = process_weighted_choices(weighted_choices)
     if len(vals) == 1:
         return vals[0]
     return fast_weighted_choice(nsw_list, vals)
 
 
-def process_weighted_choices(wcp):
+def process_weighted_choices(wcp: Sequence[tuple[float, T]] | dict[float, T]) -> tuple[Sequence[float], Sequence[T]]:
     if not wcp:
         raise ValueError('expected weight-choice list or map, not %r' % wcp)
     if isinstance(wcp, dict):
-        wcp = list(wcp.items())
+        wcp_list = list(wcp.items())
     else:
-        wcp = list(wcp)
-    if any([p[0] < 0 for p in wcp]):
+        wcp_list = list(wcp)
+    if any([p[0] < 0 for p in wcp_list]):
         raise ValueError('weight cannot be less than 0')
-    total = float(sum([p[0] for p in wcp], 0.0))
+    total = float(sum([p[0] for p in wcp_list], 0.0))
     if not total:
         raise ValueError()
-    norm_pairs = [(k / total, v) for k, v in wcp]
+    norm_pairs = [(k / total, v) for k, v in wcp_list]
     norm_pairs.sort(key=lambda x: x[0], reverse=True)
 
     summed_pairs = []
@@ -263,5 +253,5 @@ def process_weighted_choices(wcp):
     return (summed_sorted_weights, vals)
 
 
-def fast_weighted_choice(nsw, values):
+def fast_weighted_choice(nsw: Sequence[float], values: Sequence[T]) -> T:
     return values[bisect.bisect(nsw, random.random()) - 1]
