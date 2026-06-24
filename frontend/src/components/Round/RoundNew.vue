@@ -223,6 +223,26 @@ import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
+const isDirty = ref(false)
+watch(
+  [formData, importSourceValue],
+  () => {
+    isDirty.value = true
+  },
+  { deep: true }
+)
+const beforeUnloadHandler = (event) => {
+  if (isDirty.value) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', beforeUnloadHandler)
+})
+
+
 const { t: $t } = useI18n()
 
 const props = defineProps({
@@ -307,23 +327,57 @@ function searchCategory(name) {
 }
 
 const cancelRound = () => {
+  isDirty.value = false
+  window.removeEventListener('beforeunload', beforeUnloadHandler)
   emit('update:showAddRoundForm', false)
 }
 
-const submitRound = () => {
+
+
+ const submitRound = () => {
+  //  Validation
   if (!formData.value.deadline_date) {
+    alertService.error({ message: $t('montage-required-voting-deadline') })
+    return
+  }
+  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+    alertService.error({ message: $t('montage-required-fill-inputs') })
+    return
+  }
+  if (!formData.value.deadline_date) {
+    alertService.error({ message: $t('montage-required-voting-deadline') })
+
     alertService.error({
       message: $t('montage-required-voting-deadline')
     })
+
     return
   }
 
   if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
+      alertService.error({ message: $t('montage-required-fill-inputs') })
+
     alertService.error({
       message: $t('montage-required-fill-inputs')
     })
     return
   }
+
+  
+  if (formData.value.quorum > formData.value.jurors.length) {
+    alertService.error({ message: 'Quorum cannot be greater than number of jurors' })
+    return
+  }
+
+ 
+  if (roundIndex === 0) {
+    if (selectedImportSource.value === 'category' && !importSourceValue.value.category) {
+      alertService.error({ message: 'Please select a category before creating the round' })
+      return
+    }
+  }
+
+  isLoading.value = true
 
   // Check if the round is the first round
   if (roundIndex === 0) {
@@ -339,7 +393,7 @@ const submitRound = () => {
     }
 
     isLoading.value = true
-    adminService
+   adminService
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
@@ -350,17 +404,26 @@ const submitRound = () => {
             .filter((elem) => elem)
         }
 
-        importCategory(resp.data.id)
+        // Import files/categories
+        return importCategory(resp.data.id)
+      })
+      .then(() => {
+        //  Hide the form only after successful import
+        emit('reload-campaign-state')
+        emit('update:showAddRoundForm', false)
       })
       .catch(alertService.error)
       .finally(() => {
         isLoading.value = false
       })
   } else {
-    if (!prevRound.id) {
+    // Subsequent rounds
+    if (!prevRound?.id) {
       alertService.error($t('montage-something-went-wrong'))
+      isLoading.value = false
       return
     }
+
 
     const payload = {
       next_round: {
@@ -388,54 +451,39 @@ const submitRound = () => {
 }
 
 const importCategory = (id) => {
-  const payload = {
-    import_method: selectedImportSource.value
-  }
+  return new Promise((resolve, reject) => {
+    const payload = { import_method: selectedImportSource.value }
 
-  if (selectedImportSource.value === 'category') {
-    payload.category = importSourceValue.value.category
-  } else if (selectedImportSource.value === 'csv') {
-    payload.csv_url = importSourceValue.value.csv_url
-  } else if (selectedImportSource.value === 'selected') {
-    payload.file_names = importSourceValue.value.file_names
-  }
+    if (selectedImportSource.value === 'category') payload.category = importSourceValue.value.category
+    else if (selectedImportSource.value === 'csv') payload.csv_url = importSourceValue.value.csv_url
+    else if (selectedImportSource.value === 'selected') payload.file_names = importSourceValue.value.file_names
 
-  isLoading.value = true
-  adminService
-    .populateRound(id, payload)
-    .then((response) => {
-      if (response.data && response.data.warnings && response.data.warnings.length) {
-        const { warnings = [], disqualified = [] } = response.data
-
-        const warningsList = warnings.map((warning) => Object.values(warning).pop())
-        const filesList = disqualified
-          .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
-          .filter((value, index, array) => array.indexOf(value) === index)
-          .join('\n')
-
-        const text = `${warningsList.join('\n\n')}\n\n${filesList}`
-
-        dialogService().show({
-          title: 'Import Warning',
-          content: text,
-          primaryAction: {
-            label: 'OK',
-            actionType: 'progressive'
-          },
-          onPrimary: () => {
-            emit('reload-campaign-state')
-            emit('update:showAddRoundForm', false)
-          }
-        })
-      } else {
-        emit('reload-campaign-state')
-        emit('update:showAddRoundForm', false)
-      }
-    })
-    .catch(alertService.error)
-    .finally(() => {
-      isLoading.value = false
-    })
+    adminService
+      .populateRound(id, payload)
+      .then((response) => {
+        if (response.data?.warnings?.length || response.data?.disqualified?.length) {
+          const { warnings = [], disqualified = [] } = response.data
+          const warningsList = warnings.map((w) => Object.values(w).pop())
+          const filesList = disqualified
+            .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
+            .filter((v, i, arr) => arr.indexOf(v) === i)
+            .join('\n')
+          const text = `${warningsList.join('\n\n')}\n\n${filesList}`
+          dialogService().show({
+            title: 'Import Warning',
+            content: text,
+            primaryAction: { label: 'OK', actionType: 'progressive' },
+            onPrimary: () => resolve() // resolve after user clicks OK
+          })
+        } else {
+          resolve()
+        }
+      })
+      .catch((err) => {
+        alertService.error(err)
+        reject(err)
+      })
+  })
 }
 
 watch(thresholds, (value) => {
