@@ -131,12 +131,14 @@ def get_tasks_from_round(user_dao, round_id, request):
     juror_dao = JurorDAO(user_dao)
     juror_dao.confirm_active(round_id)
     rnd = juror_dao.get_round(round_id)
+    stats = juror_dao.get_round_task_counts(round_id)
     if rnd.vote_method == 'ranking':
-        count = MAX_RATINGS_SUBMIT  # TODO: better constant
+        # Ranking submissions must include all open tasks in one request.
+        # Use open task count instead of a fixed cap to avoid impossible submits.
+        count = stats['total_open_tasks']
     tasks = juror_dao.get_tasks_from_round(round_id,
                                            num=count,
                                            offset=offset)
-    stats = juror_dao.get_round_task_counts(round_id)
     data = {'stats': stats,
             'tasks': []}
 
@@ -247,10 +249,7 @@ def submit_ratings(user_dao, request_dict):
 
     r_dicts = request_dict['ratings']
 
-    if len(r_dicts) > MAX_RATINGS_SUBMIT:
-        raise InvalidAction('can submit up to 100 ratings at once, not %r'
-                            % len(r_dicts))
-    elif not r_dicts:
+    if not r_dicts:
         return {}  # submitting no ratings = immediate return
 
     review_map = {}
@@ -283,6 +282,10 @@ def submit_ratings(user_dao, request_dict):
     rnd = juror_dao.get_round(round_id)
     rnd.confirm_active()
     style = rnd.vote_method
+
+    if style in ('rating', 'yesno') and len(r_dicts) > MAX_RATINGS_SUBMIT:
+        raise InvalidAction('can submit up to 100 ratings at once, not %r'
+                            % len(r_dicts))
 
     # validation
     if style == 'rating':
