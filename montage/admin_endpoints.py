@@ -47,6 +47,8 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/cancel', cancel_campaign),
            POST('/admin/campaign/<campaign_id:int>/add_round',
                 create_round),
+           POST('/admin/campaign/<campaign_id:int>/create_round_combined',
+                create_round_combined),
            POST('/admin/campaign/<campaign_id:int>/add_coordinator',
                 add_coordinator),
            POST('/admin/campaign/<campaign_id:int>/remove_coordinator',
@@ -507,6 +509,51 @@ def create_round(user_dao, campaign_id, request_dict):
     data['progress'] = rnd.get_count_map()
 
     return {'data': data}
+
+
+def create_round_combined(user_dao, campaign_id, request_dict):
+    """
+    Combined round creation endpoint that returns a structured response
+    distinguishing success from failure clearly, so frontends don't have
+    to parse error messages to figure out what went wrong.
+
+    Response shape is always:
+      { "status": "created" | "failed", "round": {...} | null, "reason": null | str }
+    """
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+
+    # already have an active/paused round -- catch this before trying anything
+    if coord_dao.campaign.active_round:
+        return {
+            'data': {
+                'status': 'failed',
+                'round': None,
+                'reason': 'a round is already active or paused for this campaign'
+            }
+        }
+
+    try:
+        rnd_params = _prepare_round_params(coord_dao, request_dict)
+    except InvalidAction as e:
+        return {
+            'data': {
+                'status': 'failed',
+                'round': None,
+                'reason': str(e)
+            }
+        }
+
+    rnd = coord_dao.create_round(**rnd_params)
+    rnd_dict = rnd.to_details_dict()
+    rnd_dict['progress'] = rnd.get_count_map()
+
+    return {
+        'data': {
+            'status': 'created',
+            'round': rnd_dict,
+            'reason': None
+        }
+    }
 
 
 def edit_round(user_dao, round_id, request_dict):
