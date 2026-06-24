@@ -4,6 +4,10 @@
     <clip-loader class="loading-bar" size="85px" />
   </div>
 
+  <div v-else-if="round && round.status === 'paused'" class="paused-container">
+    <p>{{ $t('montage-round-paused') }}</p>
+  </div>
+
   <template v-else>
     <vote-yes-no v-if="round.vote_method === 'yesno'" :round="round" :tasks="tasks" />
     <vote-rating v-else-if="round.vote_method === 'rating'" :round="round" :tasks="tasks" />
