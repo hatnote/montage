@@ -2998,6 +2998,10 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
             vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
             ret.append(vote)
 
+    # bulk assign tasks to prevent db timeouts on huge campaigns
+    if ret:
+        rdb_session.bulk_save_objects(ret)
+        
     return ret
 
 
@@ -3052,9 +3056,13 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
         if entry is None:
             break
 
-        # TODO: bulk_save_objects
+        # bulk save optimization implementation 
         vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
         ret.append(vote)
+        
+    if ret:
+        rdb_session.bulk_save_objects(ret)
+        
     return ret
 
 
