@@ -13,6 +13,7 @@
             format="YYYY-MM-DD"
             placeholder="YYYY-MM-DD"
             value-type="format"
+            :default-value="new Date()"
           ></date-picker>
           <template #label>{{ $t('montage-round-deadline') }}</template>
         </cdx-field>
