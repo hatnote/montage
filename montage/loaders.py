@@ -10,7 +10,7 @@ from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
 
 import montage.rdb  # TODO: circular import
-from .labs import get_files, get_file_info
+from .labs import get_files, get_file_info, get_file_info_by_id
 from .utils import unicode, requests_get, requests_post
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
@@ -78,12 +78,12 @@ def make_entry(edict):
 
 
 def load_full_csv(csv_file_obj, source='remote'):
-    # TODO: streaming this for big CSVs is an unnecessary headache
-
-    ret = []
-    warnings = []
-
     dr = DictReader(csv_file_obj)
+
+    if 'file_id' in dr.fieldnames:
+        file_ids = [int(r['file_id']) for r in dr if r.get('file_id')]
+        if file_ids:
+            return load_id_list(file_ids, source=source)
 
     if 'filename' in dr.fieldnames:
         return load_partial_csv(dr, source=source)
@@ -92,7 +92,48 @@ def load_full_csv(csv_file_obj, source='remote'):
         if key not in dr.fieldnames:
             raise ValueError('missing required column "%s" in csv file' % key)
 
-    for edict in dr:
+    file_names = [r['img_name'] for r in dr if r.get('img_name')]
+    if not file_names or isinstance(file_names[0], unicode):
+        file_names_obj = StringIO('\n'.join(file_names))
+    else:
+        file_names_obj = BytesIO(b'\n'.join(file_names))
+
+    return load_name_list(file_names_obj, source=source)
+
+
+def load_partial_csv(dr, source='remote'):
+    if 'file_id' in dr.fieldnames:
+        file_ids = [int(r['file_id']) for r in dr if r.get('file_id')]
+        if file_ids:
+            return load_id_list(file_ids, source=source)
+
+    file_names = [r['filename'] for r in dr if r.get('filename')]
+    if not file_names or isinstance(file_names[0], unicode):
+        file_names_obj = StringIO('\n'.join(file_names))
+    else:
+        file_names_obj = BytesIO(b'\n'.join(file_names))
+
+    return load_name_list(file_names_obj, source=source)
+
+
+def load_id_list(file_ids, source='local'):
+    """ Just the file IDs, and we'll look up the rest"""
+    ret = []
+    warnings = []
+    edicts = []
+
+    if source == 'remote':
+        edicts, set_warnings = get_by_file_id_remote(file_ids)
+        warnings.extend(set_warnings)
+    else:
+        for file_id in file_ids:
+            file_info = get_file_info_by_id(file_id)
+            if file_info is not None:
+                edicts.append(file_info)
+            else:
+                warnings.append('file_id "%s" does not exist' % file_id)
+
+    for edict in edicts:
         try:
             entry = make_entry(edict)
         except TypeError as e:
@@ -101,18 +142,6 @@ def load_full_csv(csv_file_obj, source='remote'):
             ret.append(entry)
 
     return ret, warnings
-
-
-def load_partial_csv(dr, source='remote'):
-    ret = []
-    warnings = []
-    file_names = [r['filename'] for r in dr]
-    if not file_names or isinstance(file_names[0], unicode):
-        file_names_obj = StringIO('\n'.join(file_names))
-    else:
-        file_names_obj = BytesIO(b'\n'.join(file_names))
-
-    return load_name_list(file_names_obj, source=source)
 
 
 def load_name_list(file_obj, source='local'):
@@ -185,9 +214,10 @@ def get_entries_from_gsheet(raw_url, source='local'):
     try:
         ret, warnings = load_full_csv(BytesIO(resp.content), source=source)
     except ValueError:
-        try:
-            ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
-        except (ValueError, TypeError):
+        dr = DictReader(BytesIO(resp.content))
+        if 'filename' in dr.fieldnames or 'file_id' in dr.fieldnames:
+            ret, warnings = load_partial_csv(dr, source=source)
+        else:
             resp_content = resp.content.decode('utf8')
             file_names = [fn.strip('\"') for fn in resp_content.split('\n')]
             file_names_obj = StringIO('\n'.join(file_names))
@@ -253,6 +283,19 @@ def get_by_filename_remote(filenames, chunk_size=200):
     for filenames_chunk in chunked_iter(filenames, chunk_size):
         params = {'names': filenames_chunk}
         url = REMOTE_UTILS_URL + '/file'
+        resp, no_infos = get_from_remote(url, params)
+        if no_infos:
+            warnings += no_infos
+        file_infos += resp
+    return file_infos, warnings
+
+
+def get_by_file_id_remote(file_ids, chunk_size=200):
+    file_infos = []
+    warnings = []
+    for ids_chunk in chunked_iter(file_ids, chunk_size):
+        params = {'ids': ids_chunk}
+        url = REMOTE_UTILS_URL + '/file_id'
         resp, no_infos = get_from_remote(url, params)
         if no_infos:
             warnings += no_infos
