@@ -266,8 +266,8 @@ dayjs.extend(relativeTime)
 const { t } = useI18n()
 const route = useRoute()
 
-const userStore = useUserStore();
-const isMaintainer = computed(()=> userStore.user?.is_maintainer == true)
+const userStore = useUserStore()
+const isMaintainer = computed(() => userStore.user?.is_maintainer == true)
 
 const COMMON_TIMEZONES = [
   { id: 'America/New_York', label: 'ET (New York)' },
