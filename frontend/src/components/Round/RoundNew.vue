@@ -163,8 +163,16 @@
                 </cdx-checkbox>
               </cdx-field>
               <cdx-field v-if="formData.config.dq_by_resolution">
-                <cdx-text-input v-model="formData.config.min_resolution" input-type="number" />
+                <cdx-text-input 
+                  v-model="formData.config.min_resolution" 
+                  input-type="number"
+                  :min="100000"
+                  :step="100000"
+                  placeholder="2000000" />
                 <template #label>{{ $t('montage-round-min-resolution') }}</template>
+                <template #help-text>
+                  <p>{{ $t('montage-round-min-resolution-help') }}</p>
+                </template>
               </cdx-field>
             </div>
           </div>
