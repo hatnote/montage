@@ -104,7 +104,7 @@
           </div>
         </div>
         <!-- Maintainer or Superuser ? -->
-        <div v-if="isSuperuser" class="tz-preview">
+        <div v-if="isMaintainer" class="tz-preview">
           <p class="tz-preview-label">
             <i class="ti ti-map-pin" aria-hidden="true"></i>
             {{ $t('campaign-request-tz-assistant-title') }}
@@ -146,7 +146,7 @@
       </div>
 
       <!-- Maintainers action, -->
-      <div v-if="isSuperuser" class="action-section">
+      <div v-if="isMaintainer" class="action-section">
         <h2>{{ $t('campaign-request-actions-title') }}</h2>
 
         <div class="action-tabs" role="tablist">
@@ -259,16 +259,15 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
 import StatusBadge from '@/views/StatusBadge.vue'
+import { useUserStore } from '@/stores/user'
 
 dayjs.extend(relativeTime)
 
 const { t } = useI18n()
 const route = useRoute()
 
-// const props = defineProps({
-//   isSuperuser: { type: Boolean, default: false }
-// })
-// const isSuperuser = true
+const userStore = useUserStore();
+const isMaintainer = computed(()=> userStore.user?.is_maintainer == true)
 
 const COMMON_TIMEZONES = [
   { id: 'America/New_York', label: 'ET (New York)' },
@@ -316,13 +315,10 @@ const jurorList = computed(() => {
 async function loadRequest() {
   loading.value = true
   loadError.value = ''
-  console.log(route.params)
-  console.log('the request id is (outer try)', route.params.requestId) // To-do: Change it back to requestId
 
   try {
     const res = await adminService.getCampaignRequest(route.params.requestId)
     req.value = res.data.data || res.data || null
-    console.log('the request id is', route.params.requestId)
   } catch (err) {
     loadError.value = err?.response?.data?.description || t('load-error')
   } finally {

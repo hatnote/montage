@@ -513,7 +513,7 @@ def _wikimedia_user_exists(username):
         )
         users = resp.json().get('query', {}).get('users', [])
         return bool(users) and 'missing' not in users[0]
-    except Exception:
+    except http.exceptions.RequestException:
         return True 
 
 

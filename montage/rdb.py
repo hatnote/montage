@@ -6,6 +6,7 @@ from __future__ import print_function
 import json
 import time
 import random
+import uuid
 import string
 import datetime
 import itertools
@@ -340,111 +341,6 @@ class CampaignRequest(Base):
             return parsed if isinstance(parsed, list) else [parsed]
         except (ValueError, TypeError):
             return [raw]
-
-class CampaignRequestDAO(object):
-    """
-    Lifecycle: pending -> approved ( campaign_id is set)
-                        -> needs_clarification -> pending ( resubmit )
- 
-    any authenticated user can submit a request.
-    Permission checks that are role-specific live in the worker functions in admin_endpoints.py.
-    """
- 
-    def __init__(self, user_dao):
-        self.user        = user_dao.user
-        self.rdb_session = user_dao.rdb_session
-        self.query       = user_dao.query
- 
-    def get_all(self, status=None):
-        q = self.query(CampaignRequest)
-        if status:
-            q = q.filter(CampaignRequest.status == status)
-        return q.order_by(CampaignRequest.create_date.desc()).all()
- 
-    def get_by_request_id(self, request_id):
-        return (self.query(CampaignRequest)
-                    .filter(CampaignRequest.request_id == request_id)
-                    .first())
- 
-    def get_by_submitter(self, username):
-        return (self.query(CampaignRequest)
-                    .filter(CampaignRequest.submitter_username == username)
-                    .order_by(CampaignRequest.create_date.desc())
-                    .all())
- 
-    def create(self, submitter_username, data):
-        req = CampaignRequest(
-            request_id                = _generate_request_id(),
-            submitter_username        = submitter_username,
-            jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username']),
-            commons_category          = data['commons_category'],
-            campaign_name             = data['campaign_name'],
-            open_date                 = js_isoparse(data['open_date']),
-            close_date                = js_isoparse(data['close_date']),
-            estimated_image_volume    = int(data['estimated_image_volume']),
-            purpose                   = data['purpose'],
-            status                    = CAMPAIGN_REQUEST_PENDING,
-            is_resubmission           = bool(data.get('is_resubmission', False)),
-        )
-        self.rdb_session.add(req)
-        self.rdb_session.flush()
-        return req
- 
-    def approve(self, request_id, campaign_id):
-        req = self.get_by_request_id(request_id)
-        if not req:
-            return None
-        req.status      = CAMPAIGN_REQUEST_APPROVED
-        req.campaign_id = campaign_id
-        self.rdb_session.flush()
-        return req
- 
-    def request_clarification(self, request_id, note):
-        req = self.get_by_request_id(request_id)
-        if not req:
-            return None
-        req.status             = CAMPAIGN_REQUEST_NEEDS_CLARIFICATION
-        req.clarification_note = note
-        self.rdb_session.flush()
-        return req
- 
-    def resubmit(self, request_id, data, submitter_username):
-        """
-        Requester edits a needs_clarification request and puts it back into the pending queue. 
-        Raises PermissionError or ValueError on invalid state;
-        """
-        req = self.get_by_request_id(request_id)
-        if not req:
-            return None
-        if req.submitter_username != submitter_username:
-            raise PermissionError('Only the original submitter can resubmit.')
-        if req.status != CAMPAIGN_REQUEST_NEEDS_CLARIFICATION:
-            raise ValueError(
-                'Only requests with status needs_clarification can be resubmitted.'
-            )
- 
-        # Only updating the fields that were actually provided
-        if data.get('jury_coordinator_username'):
-            req.jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username'])
-        if data.get('commons_category'):
-            req.commons_category = data['commons_category']
-        if data.get('campaign_name'):
-            req.campaign_name = data['campaign_name']
-        if data.get('open_date'):
-            req.open_date = js_isoparse(data['open_date'])
-        if data.get('close_date'):
-            req.close_date = js_isoparse(data['close_date'])
-        if data.get('estimated_image_volume'):
-            req.estimated_image_volume = int(data['estimated_image_volume'])
-        if data.get('purpose'):
-            req.purpose = data['purpose']
- 
-        req.status             = CAMPAIGN_REQUEST_PENDING
-        req.clarification_note = None
-        req.is_resubmission    = True
-        self.rdb_session.flush()
-        return req
-
 
 class Round(Base):
     """The "directions" field is for coordinators to communicate
@@ -2636,11 +2532,12 @@ class CampaignRequestDAO(object):
                     .filter(CampaignRequest.submitter_username == username)
                     .order_by(CampaignRequest.create_date.desc())
                     .all())
+    
 
     def create(self, submitter_username, data):
         
         req = CampaignRequest(
-            request_id                 = _generate_request_id(),
+            request_id                 =  "MNTG-PENDING-%s" % uuid.uuid4().hex[:12],
             submitter_username         = submitter_username,
             jury_coordinator_username  = _serialize_jurors(data['jury_coordinator_username']),
             commons_category           = data['commons_category'],
@@ -2653,6 +2550,9 @@ class CampaignRequestDAO(object):
             is_resubmission            = bool(data.get('is_resubmission', False)),
         )
         self.rdb_session.add(req)
+        self.rdb_session.flush()
+
+        req.request_id = _generate_request_id(req.id)
         self.rdb_session.flush()
         return req
 
@@ -3200,9 +3100,8 @@ class JurorDAO(object):
                     reason=reason)
         self.rdb_session.add(flag)
 
-def _generate_request_id():
-    suffix = ''.join(random.choices(string.digits, k=4)) # MNTG - Monitoring
-    return f"MNTG-{suffix}"
+def _generate_request_id(seq_id):
+    return f"MNTG-{seq_id:04d}" #MNTG - Monitoring
 
 def _serialize_jurors(value):
     if isinstance(value, str):
