@@ -52,7 +52,7 @@ const routes = [
   {
     path: '/permission-denied',
     name: 'permission-denied',
-    component: PermissionDenied,
+    component: PermissionDenied
   },
   {
     path: '/round/:roundId/disqualify',

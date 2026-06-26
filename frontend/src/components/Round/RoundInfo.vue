@@ -235,7 +235,7 @@ function downloadEntries() {
 }
 
 function manageDisqualifications() {
-  router.push({name: 'round-disqualify',params: {roundId: props.round.id}})
+  router.push({ name: 'round-disqualify', params: { roundId: props.round.id } })
 }
 
 function getRoundDetails(round) {
