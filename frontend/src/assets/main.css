@@ -1,6 +1,4 @@
-/* ============================================================
-   CSS Custom Properties — Light mode (default)
-   ============================================================ */
+/* CSS Custom Properties: Light mode */
 :root {
   --bg-page: #fafafa;
   --bg-surface: #ffffff;
@@ -27,9 +25,7 @@
   --icon-color: #202122;
 }
 
-/* ============================================================
-   CSS Custom Properties — Dark mode overrides
-   ============================================================ */
+/* CSS Custom Properties: Dark mode overrides */
 [data-theme='dark'] {
   --bg-page: #1c1c1c;
   --bg-surface: #272727;
@@ -64,9 +60,7 @@
   --mix-blend-mode-blend: normal;
 }
 
-/* ============================================================
-   Global base reset
-   ============================================================ */
+/* Global base reset  */
 * {
   margin: 0;
   padding: 0;
@@ -164,14 +158,10 @@ div {
   min-width: 120px;
 }
 
-/* Highlight key info in cards */
 .information-card strong {
   color: var(--link-color);
 }
 
-/* ============================================================
-   Custom Toggle Switch
-   ============================================================ */
 .theme-switch-wrapper {
   display: flex;
   align-items: center;
@@ -223,11 +213,7 @@ input:checked + .slider::before {
   transform: translateX(22px);
 }
 
-/* ============================================================
-   Codex Component Overrides for Dark Mode
-   ============================================================ */
-
-/* --- Cards & Accordions --- */
+/* Cards & Accordions  */
 [data-theme='dark'] .cdx-card {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
@@ -276,7 +262,7 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* --- Text Inputs, Text Areas --- */
+/* Text Inputs, Text Areas  */
 [data-theme='dark'] .cdx-text-input__input,
 [data-theme='dark'] .cdx-text-area__textarea {
   background-color: var(--bg-surface-alt) !important;
@@ -289,7 +275,7 @@ input:checked + .slider::before {
   color: var(--text-muted) !important;
 }
 
-/* --- Labels & Fields --- */
+/* Labels & Fields */
 [data-theme='dark'] .cdx-label {
   color: var(--text-secondary) !important;
 }
@@ -302,7 +288,7 @@ input:checked + .slider::before {
   color: var(--text-muted) !important;
 }
 
-/* --- Select / Dropdowns --- */
+/* Select / Dropdowns */
 [data-theme='dark'] .cdx-select-vue__handle {
   background-color: var(--btn-normal-bg) !important;
   color: var(--text-primary) !important;
@@ -352,7 +338,7 @@ input:checked + .slider::before {
   color: inherit !important;
 }
 
-/* --- Buttons --- */
+/* Buttons */
 
 /* Quiet buttons — neutral by default.
    Only the action-specific rules below (progressive / destructive) add an accent
@@ -457,7 +443,7 @@ input:checked + .slider::before {
   color: #fff !important;
 }
 
-/* --- All SVGs/Icons inside Codex components --- */
+/* All SVGs/Icons inside Codex components */
 [data-theme='dark'] .cdx-button svg {
   fill: currentColor !important;
 }
@@ -471,7 +457,7 @@ input:checked + .slider::before {
   fill: currentColor !important;
 }
 
-/* --- Radio buttons & Checkboxes --- */
+/* Radio buttons & Checkboxes */
 [data-theme='dark'] .cdx-radio__label,
 [data-theme='dark'] .cdx-checkbox__label {
   color: var(--text-primary) !important;
@@ -486,7 +472,7 @@ input:checked + .slider::before {
   border-color: var(--link-color) !important;
 }
 
-/* --- CdxMultiselectLookup (Coordinator/Juror selection) --- */
+/* CdxMultiselectLookup (Coordinator/Juror selection) */
 [data-theme='dark'] .cdx-chip-input,
 [data-theme='dark'] .cdx-chip-input__chips,
 [data-theme='dark'] .cdx-multiselect-lookup {
@@ -522,7 +508,7 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* --- Dialog / Modal --- */
+/* Dialog / Modal */
 [data-theme='dark'] .cdx-dialog,
 [data-theme='dark'] .cdx-dialog__body {
   background-color: var(--bg-surface) !important;
@@ -543,13 +529,13 @@ input:checked + .slider::before {
   border-top-color: var(--border-footer) !important;
 }
 
-/* --- Tooltip --- */
+/*  Tooltip  */
 [data-theme='dark'] .cdx-tooltip {
   background-color: #555 !important;
   color: #fff !important;
 }
 
-/* --- Date Picker (vue-datepicker-next) --- */
+/* Date Picker (vue-datepicker-next) */
 
 /* The calendar/time icon inside the input */
 [data-theme='dark'] .mx-icon-calendar,
@@ -702,13 +688,13 @@ input:checked + .slider::before {
   border-color: var(--border-footer) !important;
 }
 
-/* --- CdxField description text --- */
+/* CdxField description text */
 [data-theme='dark'] .cdx-field .cdx-field__control,
 [data-theme='dark'] .cdx-field__help-text {
   color: var(--text-muted) !important;
 }
 
-/* --- Toast notifications --- */
+/* Toast notifications */
 /* Intentionally NOT themed. Each toast is an opaque coloured card from
    vue-toastification (success = green #4caf50, error = red #ff5252, info and
    warning too) with white text, legible on the dark page. Overriding the shared
@@ -716,7 +702,7 @@ input:checked + .slider::before {
    carry no !important) and flatten every toast to one grey, losing the
    success/error distinction. */
 
-/* --- Progress bar --- */
+/* Progress bar */
 [data-theme='dark'] .cdx-progress-bar {
   background-color: var(--bg-surface-alt) !important;
 }
@@ -725,7 +711,7 @@ input:checked + .slider::before {
   background-color: var(--link-color) !important;
 }
 
-/* --- Lookup Loading State Fix --- */
+/* Lookup Loading State Fix */
 [data-theme='dark']
   .cdx-multiselect-lookup--pending
   .cdx-chip-input:not(.cdx-chip-input--has-separate-input)
@@ -748,6 +734,7 @@ input:checked + .slider::before {
   ) !important;
   background-size: 40px 40px !important;
 }
+
 /* Absolute fallback for all quiet buttons (handles empty string actions) */
 [data-theme='dark'] .cdx-button--weight-quiet:hover,
 [data-theme='dark'] .cdx-button--weight-quiet:enabled:hover {
