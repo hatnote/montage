@@ -2906,30 +2906,42 @@ class JurorDAO(object):
         return
 
     def fave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        campaign_id = round_entry.round.campaign.id
+
+        # scope the lookup to this campaign to avoid cross-campaign collision
+        # (same image can appear in multiple campaigns -- see issue #526)
         existing_fave = (self.query(Favorite)
                              .filter_by(entry_id=entry_id,
+                                        campaign_id=campaign_id,
                                         user=self.user)
-                             .first())  # there should be one
+                             .first())
         if existing_fave:
             existing_fave.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             existing_fave.status = ACTIVE_STATUS
             return
 
-        round_entry = self.get_round_entry(round_id, entry_id)
         fave = Favorite(entry_id=round_entry.entry.id,
-                       round_entry_id = round_entry.id,
-                       campaign_id=round_entry.round.campaign.id,
+                       round_entry_id=round_entry.id,
+                       campaign_id=campaign_id,
                        user=self.user,
                        status=ACTIVE_STATUS)
         self.rdb_session.add(fave)
 
     def unfave(self, round_id, entry_id):
+        round_entry = self.get_round_entry(round_id, entry_id)
+        campaign_id = round_entry.round.campaign.id
+
+        # scope to this campaign + round to avoid cross-campaign match (#526/#527)
         fave = (self.query(Favorite)
                .join(RoundEntry, RoundEntry.id == Favorite.round_entry_id)
                .filter(Favorite.entry_id == entry_id,
+                       Favorite.campaign_id == campaign_id,
                        Favorite.user == self.user,
                        RoundEntry.round_id == round_id)
-               .one())
+               .one_or_none())
+        if fave is None:
+            return  # already unfaved or never faved, nothing to do
         fave.status = CANCELLED_STATUS
         fave.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
