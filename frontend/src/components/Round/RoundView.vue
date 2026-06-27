@@ -87,7 +87,7 @@ const toggleEditing = () => {
 }
 
 .juror-campaign-round-icon {
-  background-color: blue;
+  background-color: var(--icon-round-bg);
   height: 56px;
   padding: 10px;
   border-radius: 50%;
