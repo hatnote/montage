@@ -188,6 +188,7 @@
   "permission-denied-home": "Go to Home",
   "montage-required-voting-deadline": "Choose a valid voting deadline",
   "montage-required-fill-inputs": "Please fill all the boxes",
+  "montage-required-threshold": "Please select a threshold before continuing",
   "unsaved-changes-confirmation": "There are unsaved changes. Are you sure you want to leave?",
   "back-to-round": "Back to round"
 }
