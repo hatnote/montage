@@ -122,7 +122,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders', 'MalavikaM05'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders'
 ]
 
 """

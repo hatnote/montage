@@ -28,21 +28,6 @@ SELECTED_METHOD = 'selected'
 # These are populated at the bottom of the module
 ADMIN_API_ROUTES, ADMIN_UI_ROUTES = None, None
 
-def get_aggregate_results(user_dao, campaign_id, rdb_session):
-    from .rdb import RoundResultsSummary, PRIVATE_STATUS
-    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    summary = (rdb_session.query(RoundResultsSummary)
-               .filter_by(campaign_id=campaign_id)
-               .filter(RoundResultsSummary.status.in_([PREVIEW_STATUS, PRIVATE_STATUS]))
-               .order_by(RoundResultsSummary.create_date.desc())
-               .first())
-    if not summary:
-        return {'data': None}
-    return {'data': {
-        'status': summary.status,
-        'summary': summary.summary
-    }}
-
 def get_admin_routes():
     """
     /role/(object/id/object/id/...)verb is the guiding principle
@@ -683,6 +668,21 @@ def commit_aggregate(request_dict, campaign_id, user_dao):
     max_length = request_dict.get('max_length')
     summary = coord_dao.commit_aggregate(name, source_round_ids, max_length)
     return {'data': summary.to_dict()}
+
+def get_aggregate_results(user_dao, campaign_id, rdb_session):
+    from .rdb import RoundResultsSummary, PRIVATE_STATUS
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    summary = (rdb_session.query(RoundResultsSummary)
+               .filter_by(campaign_id=campaign_id)
+               .filter(RoundResultsSummary.status.in_([PREVIEW_STATUS, PRIVATE_STATUS]))
+               .order_by(RoundResultsSummary.create_date.desc())
+               .first())
+    if not summary:
+        return {'data': None}
+    return {'data': {
+        'status': summary.status,
+        'summary': summary.summary
+    }}
 
 def reopen_campaign(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
