@@ -12,7 +12,7 @@
         </cdx-button>
       </router-link>
     </div>
-    <!-- Add v-if="isSuperuser" clause for this div later -->
+
     <div class="filters" role="group" aria-label="Filter by status">
       <cdx-button
         v-for="f in STATUS_FILTERS"
@@ -38,9 +38,9 @@
     </div>
 
     <div v-else-if="filteredRequests.length === 0" class="state-placeholder">
-      <cdx-message type="notice" inline>
+      <p>
         {{ $t('campaign-requests-empty') }}
-      </cdx-message>
+      </p>
       <router-link to="/requests/new">
         <cdx-button action="progressive" weight="normal">
           {{ $t('campaign-request-new') }}
@@ -350,6 +350,13 @@ onMounted(loadRequests)
 .state-placeholder i {
   font-size: 32px;
   opacity: 0.5;
+}
+
+.state-placeholder p {
+  font-size: 35px;
+  width: 100%;
+  max-width: 500px;
+  padding-bottom: 10px;
 }
 
 .state-error {
