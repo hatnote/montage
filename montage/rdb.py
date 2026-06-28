@@ -4,6 +4,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import json
+from os import name
 import time
 import random
 import datetime
@@ -11,6 +12,7 @@ import itertools
 from collections import Counter, defaultdict
 from math import ceil
 from itertools import zip_longest
+from unittest import result
 
 from py3votecore.schulze_npr import SchulzeNPR
 
@@ -87,10 +89,11 @@ FINALIZED_STATUS = 'finalized'
 COMPLETED_STATUS = 'completed'
 PUBLISHED_STATUS = 'published'
 PRIVATE_STATUS = 'private'
+PREVIEW_STATUS = 'preview'
 
 VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
-                PRIVATE_STATUS]
+                PRIVATE_STATUS, PREVIEW_STATUS]
 
 ENV_NAME = get_env_name()
 
@@ -119,7 +122,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders', 'MalavikaM05'
 ]
 
 """
@@ -1954,32 +1957,155 @@ class CoordinatorDAO(UserDAO):
         snpr = SchulzeNPR(all_inputs, ballot_notation=notation_style)
 
         snpr_res = snpr.as_dict()
+        # Make tie-breaking deterministic: sort tied entries by entry_id
+        # so results are reproducible across re-runs
+        order = sorted(snpr_res['order'], key=lambda entry_id: entry_id)
 
         ret = []
 
-        for i, entry_id in enumerate(snpr_res['order']):
+        for i, entry_id in enumerate(order):
             entry = self.query(Entry).get(entry_id)
             ranking_map = entry_rank_user_map[entry_id]
             review_map = entry_user_review_map[entry_id]
             fer = FinalEntryRanking(i, entry, ranking_map, review_map)
             ret.append(fer)
         return ret
+    
+    def compute_aggregate_results(self, source_round_ids, max_length=None):
+        from collections import defaultdict
+
+        score_map = {}          # entry_id -> aggregate score (lower = better for ranking)
+        entry_obj_map = {}      # entry_id -> Entry object
+        excluded = []           # entries excluded (DQ or zero votes)
+
+        for round_id in source_round_ids:
+            rnd = self.get_round(round_id)
+            if rnd.status != FINALIZED_STATUS:
+                raise InvalidAction('round %s is not finalized' % round_id)
+
+            if rnd.vote_method == 'ranking':
+                ranking_list = self.get_round_ranking_list(round_id)
+                for fer in ranking_list:
+                    entry_obj_map[fer.entry.id] = fer.entry
+                    # Lower rank = better; accumulate rank position
+                    score_map.setdefault(fer.entry.id, 0)
+                    score_map[fer.entry.id] += fer.rank
+
+            elif rnd.vote_method in ('rating', 'yesno'):
+                votes = self.get_all_ratings(round_id)
+                by_entry = defaultdict(list)
+                for vote in votes:
+                    entry = vote.round_entry.entry
+                    entry_obj_map[entry.id] = entry
+                    by_entry[entry.id].append(vote.value)
+
+                for entry_id, values in by_entry.items():
+                    avg = sum(values) / len(values)
+                    score_map.setdefault(entry_id, 0)
+                    # Negate so higher rating = lower aggregate score (better rank)
+                    score_map[entry_id] -= avg
+
+        if not score_map:
+            return {'ranked': [], 'excluded_count': 0}
+
+        # Sort by score ascending (lower = better rank), break ties by entry_id
+        sorted_entries = sorted(score_map.items(), key=lambda x: (-x[1], x[0]))
+
+        ranked = []
+        for rank, (entry_id, score) in enumerate(sorted_entries):
+            ranked.append({
+            'rank': rank,
+            'entry': entry_obj_map[entry_id].to_details_dict(),
+            'score': score,
+        })
+
+        if max_length:
+            # Include full tied group at the cut boundary
+            cut_score = ranked[max_length - 1]['score'] if max_length <= len(ranked) else None
+            if cut_score is not None:
+                ranked = [r for r in ranked if r['score'] <= cut_score]
+
+        return {
+            'ranked': ranked,
+            'excluded_count': len(excluded),
+            'total_entries': len(score_map),
+        }
+    
+    def preview_aggregate(self, name, source_round_ids, max_length=None):
+        result = self.compute_aggregate_results(
+            source_round_ids,
+            max_length=max_length
+        )
+
+        summary_data = {
+            'name': name,
+            'aggregate_source_round_ids': source_round_ids,
+            'max_length': max_length,
+            'results': result,
+        }
+
+        preview_summary = (
+            self.rdb_session.query(RoundResultsSummary)
+            .filter_by(
+                campaign_id=self.campaign.id,
+                status=PREVIEW_STATUS
+            )
+            .first()
+        )
+
+        if preview_summary:
+            preview_summary.summary = summary_data
+            preview_summary.modified_date = datetime.datetime.utcnow()
+        else:
+            preview_summary = RoundResultsSummary(
+                campaign_id=self.campaign.id,
+                summary=summary_data,
+                status=PREVIEW_STATUS
+            )
+            self.rdb_session.add(preview_summary)
+
+        self.rdb_session.flush()
+
+        return result
+    
+    def commit_aggregate(self, name, source_round_ids, max_length):
+        result = self.compute_aggregate_results(source_round_ids, max_length)
+
+        preview = (
+            self.rdb_session.query(RoundResultsSummary)
+            .filter_by(
+                campaign_id=self.campaign.id,
+                status=PREVIEW_STATUS
+            )
+            .first()
+        )
+        if preview:
+            self.rdb_session.delete(preview)
+
+        summary_data = {
+            'name': name,
+            'aggregate_source_round_ids': source_round_ids,
+            'max_length': max_length,
+            'results': result,
+        }
+
+        result_summary = RoundResultsSummary(campaign_id=self.campaign.id,
+                                             summary=summary_data,
+                                             status=PRIVATE_STATUS)
+        self.rdb_session.add(result_summary)
+        self.rdb_session.flush()
+        msg = ('%s committed aggregate results summary %s for campaign "%s" (#%s), '
+               '%s entries ranked' % (self.user.username, result_summary.id, self.campaign.name, 
+                                      self.campaign.id, len(result['ranked'])))
+
+        self.log_action('commit_aggregate', campaign=self.campaign, message=msg)
+        return result_summary
 
     def get_all_ratings(self, round_id):
         results = self.query(Vote)\
                       .join(RoundEntry)\
                       .join(Entry)\
-                      .filter(RoundEntry.round_id == round_id,
-                              RoundEntry.dq_user_id == None,
-                              Vote.status == COMPLETED_STATUS)\
-                      .all()
-        return results
-
-    # do we need this?
-    def get_all_rankings(self, round_id):
-        results = self.query(Vote)\
-                      .join(RoundEntry)\
-                      .join(Entry)\
+                      .options(joinedload('round_entry'). joinedload('entry'))\
                       .filter(RoundEntry.round_id == round_id,
                               RoundEntry.dq_user_id == None,
                               Vote.status == COMPLETED_STATUS)\

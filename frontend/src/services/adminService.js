@@ -51,6 +51,12 @@ const adminService = {
 
   finalizeRound: (id) => apiBackend.post(`/admin/round/${id}/finalize`),
 
+  previewAggregate: (id, data) => apiBackend.post(`admin/campaign/${id}/aggregate/preview`, data),
+
+  commitAggregate: (id, data) => apiBackend.post(`admin/campaign/${id}/aggregate/commit`, data),
+  
+  getAggregateResults: (id) => apiBackend.get(`admin/campaign/${id}/aggregate`),
+
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,

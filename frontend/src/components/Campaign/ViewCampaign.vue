@@ -34,7 +34,7 @@
           <round-view v-for="round in campaignRounds" :key="round.id" :round="round" />
         </div>
         <cdx-button
-          v-if="!showAddRoundForm"
+          v-if="!showAddRoundForm && !showAggregateForm"
           action="progressive"
           @click="
             campaignRounds.some((r) => r.status == 'active' || r.status == 'paused')
@@ -47,11 +47,30 @@
         >
           <plus class="icon-small" /> {{ $t('montage-round-add') }}
         </cdx-button>
+
+        <cdx-button
+          v-if="!showAddRoundForm && !showAggregateForm"
+          action = "progressive"
+          weight = "quiet"
+          :disabled="campaign.isArchived || !campaignRounds.some(r => r.status == 'finalized')"
+          class="add-round-button"
+          @click="showAggregateForm = true"
+        >
+          <table-merge-cells class="icon-small" /> {{$t('Aggregate')}}
+        </cdx-button>
+        
         <round-new
           :rounds="campaignRounds"
           v-if="showAddRoundForm"
           v-model:showAddRoundForm="showAddRoundForm"
           @reloadCampaignState="reloadState"
+        />
+        <aggregate-round
+          v-if="showAggregateForm"
+          :rounds="campaignRounds"
+          :campaign-id="campaignId"
+          @cancel="showAggregateForm = false"
+          @committed="showAggregateForm = false; reloadState()"
         />
       </div>
     </div>
@@ -161,6 +180,8 @@
 </template>
 
 <script setup>
+import AggregateRound from '@/components/Round/AggregateRound.vue'
+import TableMergeCells from 'vue-material-design-icons/TableMergeCells.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -193,6 +214,7 @@ const campaignId = route.params.id.split('-')[0]
 
 const campaignEditMode = ref(false)
 const showAddRoundForm = ref(false)
+const showAggregateForm = ref(false)
 const canCloseCampaign = ref(false)
 const ActiveGoalAlert = ref(false)
 

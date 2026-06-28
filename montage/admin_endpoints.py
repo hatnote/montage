@@ -14,7 +14,8 @@ from .utils import (format_date,
                    NotImplementedResponse,
                    js_isoparse)
 
-from .rdb import (FINALIZED_STATUS,
+from .rdb import (FINALIZED_STATUS, 
+                  PREVIEW_STATUS,
                  CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO)
@@ -27,6 +28,20 @@ SELECTED_METHOD = 'selected'
 # These are populated at the bottom of the module
 ADMIN_API_ROUTES, ADMIN_UI_ROUTES = None, None
 
+def get_aggregate_results(user_dao, campaign_id, rdb_session):
+    from .rdb import RoundResultsSummary, PRIVATE_STATUS
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    summary = (rdb_session.query(RoundResultsSummary)
+               .filter_by(campaign_id=campaign_id)
+               .filter(RoundResultsSummary.status.in_([PREVIEW_STATUS, PRIVATE_STATUS]))
+               .order_by(RoundResultsSummary.create_date.desc())
+               .first())
+    if not summary:
+        return {'data': None}
+    return {'data': {
+        'status': summary.status,
+        'summary': summary.summary
+    }}
 
 def get_admin_routes():
     """
@@ -82,7 +97,11 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/entries', get_round_entries),
            GET('/admin/round/<round_id:int>/entries/download', download_round_entries_csv),
            GET('/admin/round/<round_id:int>/reviews', get_round_reviews),
-           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report_raw)]
+           GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report_raw),
+           POST('/admin/campaign/<campaign_id:int>/aggregate/preview', preview_aggregate),
+           POST('/admin/campaign/<campaign_id:int>/aggregate/commit', commit_aggregate),
+           GET('/admin/campaign/<campaign_id:int>/aggregate', get_aggregate_results),
+           ]
     ui = [GET('/admin/campaign/<campaign_id:int>/report', get_campaign_report,
               'report.html')]
     # TODO: arguably download URLs should go into "ui" as well,
@@ -642,6 +661,28 @@ def finalize_campaign(user_dao, campaign_id):
     coord_dao.finalize_campaign()
     return campaign_summary
 
+def preview_aggregate(request_dict, campaign_id, user_dao):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+
+    name = request_dict.get('name')
+    source_round_ids = request_dict.get('source_round_ids')
+    max_length = request_dict.get('max_length')
+
+    result = coord_dao.preview_aggregate(
+        name,
+        source_round_ids,
+        max_length
+    )
+
+    return {'data': result}
+
+def commit_aggregate(request_dict, campaign_id, user_dao):
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    name = request_dict.get('name', 'Aggregate Results')
+    source_round_ids = request_dict.get('source_round_ids')
+    max_length = request_dict.get('max_length')
+    summary = coord_dao.commit_aggregate(name, source_round_ids, max_length)
+    return {'data': summary.to_dict()}
 
 def reopen_campaign(user_dao, campaign_id):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
