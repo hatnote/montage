@@ -1,4 +1,3 @@
-/* CSS Custom Properties: Light mode */
 :root {
   --bg-page: #fafafa;
   --bg-surface: #ffffff;
@@ -25,7 +24,6 @@
   --icon-color: #202122;
 }
 
-/* CSS Custom Properties: Dark mode overrides */
 [data-theme='dark'] {
   --bg-page: #1c1c1c;
   --bg-surface: #272727;
@@ -50,17 +48,9 @@
   --btn-normal-text: #e0e0e0;
   --btn-normal-border: #555;
   --icon-color: #ccc;
-
-  /* Codex internal token. Codex applies `mix-blend-mode: multiply` to quiet
-     buttons (Logout, Accept, Decline, Save, …) and framed tabs on hover via
-     `var(--mix-blend-mode-blend, multiply)`. Multiply is tuned for light
-     backgrounds; over the dark page it blends a hovered button — background,
-     text and icon — toward black until it disappears. Neutralising the blend
-     here restores the hover state for every Codex component at once. */
   --mix-blend-mode-blend: normal;
 }
 
-/* Global base reset  */
 * {
   margin: 0;
   padding: 0;
@@ -213,7 +203,6 @@ input:checked + .slider::before {
   transform: translateX(22px);
 }
 
-/* Cards & Accordions  */
 [data-theme='dark'] .cdx-card {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
@@ -262,7 +251,6 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* Text Inputs, Text Areas  */
 [data-theme='dark'] .cdx-text-input__input,
 [data-theme='dark'] .cdx-text-area__textarea {
   background-color: var(--bg-surface-alt) !important;
@@ -275,7 +263,6 @@ input:checked + .slider::before {
   color: var(--text-muted) !important;
 }
 
-/* Labels & Fields */
 [data-theme='dark'] .cdx-label {
   color: var(--text-secondary) !important;
 }
@@ -288,7 +275,6 @@ input:checked + .slider::before {
   color: var(--text-muted) !important;
 }
 
-/* Select / Dropdowns */
 [data-theme='dark'] .cdx-select-vue__handle {
   background-color: var(--btn-normal-bg) !important;
   color: var(--text-primary) !important;
@@ -300,7 +286,6 @@ input:checked + .slider::before {
   border-color: var(--link-color) !important;
 }
 
-/* Fix the dropdown arrow icon and menu indicators */
 [data-theme='dark'] .cdx-select-vue__handle .cdx-icon svg,
 [data-theme='dark'] .cdx-select-vue__indicator svg,
 [data-theme='dark'] .cdx-select-vue__handle svg,
@@ -309,7 +294,6 @@ input:checked + .slider::before {
   color: var(--icon-color) !important;
 }
 
-/* Menu / Dropdown popup */
 [data-theme='dark'] .cdx-menu {
   background-color: var(--bg-surface) !important;
   border-color: var(--border-color) !important;
@@ -338,15 +322,6 @@ input:checked + .slider::before {
   color: inherit !important;
 }
 
-/* Buttons */
-
-/* Quiet buttons — neutral by default.
-   Only the action-specific rules below (progressive / destructive) add an accent
-   colour. Painting every quiet button with --link-color here would also highlight
-   empty-action toggles (e.g. an unselected Accept/Decline or gallery-size button,
-   whose `:action` resolves to ''), making both options look selected. Codex does
-   the same in light mode: a quiet button stays neutral until it gets a
-   progressive/destructive action. */
 [data-theme='dark'] .cdx-button--weight-quiet {
   color: var(--text-primary) !important;
 }
@@ -356,7 +331,6 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* Normal weight buttons — the main issue */
 [data-theme='dark'] .cdx-button--weight-normal {
   background-color: var(--btn-normal-bg) !important;
   color: var(--btn-normal-text) !important;
@@ -368,7 +342,6 @@ input:checked + .slider::before {
   color: #fff !important;
 }
 
-/* Progressive primary buttons */
 [data-theme='dark'] .cdx-button--action-progressive.cdx-button--weight-primary {
   background-color: #3366cc !important;
   color: #fff !important;
@@ -380,7 +353,6 @@ input:checked + .slider::before {
   border-color: #447ff5 !important;
 }
 
-/* Destructive primary buttons */
 [data-theme='dark'] .cdx-button--action-destructive.cdx-button--weight-primary {
   background-color: #d33 !important;
   color: #fff !important;
@@ -393,7 +365,6 @@ input:checked + .slider::before {
   border-color: #ff4d4d !important;
 }
 
-/* Progressive normal buttons */
 [data-theme='dark'] .cdx-button--action-progressive.cdx-button--weight-normal {
   background-color: rgba(51, 102, 204, 0.15) !important;
   color: var(--link-color) !important;
@@ -406,7 +377,6 @@ input:checked + .slider::before {
   color: #fff !important;
 }
 
-/* Destructive quiet buttons (e.g. Logout) */
 [data-theme='dark'] .cdx-button--action-destructive.cdx-button--weight-quiet {
   color: #ff6b6b !important;
 }
@@ -417,7 +387,6 @@ input:checked + .slider::before {
   color: #ff8a8a !important;
 }
 
-/* Default action quiet buttons (and buttons lacking an action class) */
 [data-theme='dark'] .cdx-button--action-default.cdx-button--weight-quiet,
 [data-theme='dark'] .cdx-button--weight-quiet:not([class*='--action-']) {
   color: var(--text-primary) !important;
@@ -431,7 +400,6 @@ input:checked + .slider::before {
   color: #ffffff !important;
 }
 
-/* Progressive quiet buttons (e.g. Accept selected) */
 [data-theme='dark'] .cdx-button--action-progressive.cdx-button--weight-quiet {
   background-color: transparent !important;
   color: var(--link-color) !important;
@@ -443,7 +411,6 @@ input:checked + .slider::before {
   color: #fff !important;
 }
 
-/* All SVGs/Icons inside Codex components */
 [data-theme='dark'] .cdx-button svg {
   fill: currentColor !important;
 }
@@ -452,12 +419,10 @@ input:checked + .slider::before {
   fill: var(--icon-color) !important;
 }
 
-/* Material design icons inside dark mode */
 [data-theme='dark'] .material-design-icon svg {
   fill: currentColor !important;
 }
 
-/* Radio buttons & Checkboxes */
 [data-theme='dark'] .cdx-radio__label,
 [data-theme='dark'] .cdx-checkbox__label {
   color: var(--text-primary) !important;
@@ -472,7 +437,6 @@ input:checked + .slider::before {
   border-color: var(--link-color) !important;
 }
 
-/* CdxMultiselectLookup (Coordinator/Juror selection) */
 [data-theme='dark'] .cdx-chip-input,
 [data-theme='dark'] .cdx-chip-input__chips,
 [data-theme='dark'] .cdx-multiselect-lookup {
@@ -508,7 +472,6 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* Dialog / Modal */
 [data-theme='dark'] .cdx-dialog,
 [data-theme='dark'] .cdx-dialog__body {
   background-color: var(--bg-surface) !important;
@@ -529,15 +492,11 @@ input:checked + .slider::before {
   border-top-color: var(--border-footer) !important;
 }
 
-/*  Tooltip  */
 [data-theme='dark'] .cdx-tooltip {
   background-color: #555 !important;
   color: #fff !important;
 }
 
-/* Date Picker (vue-datepicker-next) */
-
-/* The calendar/time icon inside the input */
 [data-theme='dark'] .mx-icon-calendar,
 [data-theme='dark'] .mx-icon-clear {
   color: var(--text-muted) !important;
@@ -547,7 +506,6 @@ input:checked + .slider::before {
   color: var(--text-header) !important;
 }
 
-/* Date picker input field */
 [data-theme='dark'] .mx-input {
   background-color: var(--bg-surface-alt) !important;
   color: var(--text-primary) !important;
@@ -560,7 +518,6 @@ input:checked + .slider::before {
   border-color: var(--link-color) !important;
 }
 
-/* Date picker popup/calendar */
 [data-theme='dark'] .mx-datepicker-main {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
@@ -576,7 +533,6 @@ input:checked + .slider::before {
   border-color: var(--border-footer) !important;
 }
 
-/* Calendar navigation buttons */
 [data-theme='dark'] .mx-btn {
   color: var(--text-secondary) !important;
   border-color: var(--border-color) !important;
@@ -591,7 +547,6 @@ input:checked + .slider::before {
   color: var(--text-primary) !important;
 }
 
-/* Calendar header arrows (border-based icons) */
 [data-theme='dark'] .mx-icon-left::before,
 [data-theme='dark'] .mx-icon-right::before,
 [data-theme='dark'] .mx-icon-double-left::before,
@@ -601,17 +556,14 @@ input:checked + .slider::before {
   border-color: var(--text-secondary) !important;
 }
 
-/* Calendar header labels */
 [data-theme='dark'] .mx-calendar-header-label {
   color: var(--text-primary) !important;
 }
 
-/* Table header (day names) */
 [data-theme='dark'] .mx-table th {
   color: var(--text-muted) !important;
 }
 
-/* Calendar day cells */
 [data-theme='dark'] .mx-calendar-content .cell {
   color: var(--text-primary) !important;
 }
@@ -640,7 +592,6 @@ input:checked + .slider::before {
   color: var(--link-color) !important;
 }
 
-/* Time picker */
 [data-theme='dark'] .mx-time {
   background-color: var(--bg-surface) !important;
 }
@@ -683,26 +634,15 @@ input:checked + .slider::before {
   color: var(--link-color) !important;
 }
 
-/* Calendar adjacent borders */
 [data-theme='dark'] .mx-calendar + .mx-calendar {
   border-color: var(--border-footer) !important;
 }
 
-/* CdxField description text */
 [data-theme='dark'] .cdx-field .cdx-field__control,
 [data-theme='dark'] .cdx-field__help-text {
   color: var(--text-muted) !important;
 }
 
-/* Toast notifications */
-/* Intentionally NOT themed. Each toast is an opaque coloured card from
-   vue-toastification (success = green #4caf50, error = red #ff5252, info and
-   warning too) with white text, legible on the dark page. Overriding the shared
-   `.Vue-Toastification__toast` background would beat the per-type colours (they
-   carry no !important) and flatten every toast to one grey, losing the
-   success/error distinction. */
-
-/* Progress bar */
 [data-theme='dark'] .cdx-progress-bar {
   background-color: var(--bg-surface-alt) !important;
 }
@@ -711,7 +651,6 @@ input:checked + .slider::before {
   background-color: var(--link-color) !important;
 }
 
-/* Lookup Loading State Fix */
 [data-theme='dark']
   .cdx-multiselect-lookup--pending
   .cdx-chip-input:not(.cdx-chip-input--has-separate-input)
@@ -735,14 +674,12 @@ input:checked + .slider::before {
   background-size: 40px 40px !important;
 }
 
-/* Absolute fallback for all quiet buttons (handles empty string actions) */
 [data-theme='dark'] .cdx-button--weight-quiet:hover,
 [data-theme='dark'] .cdx-button--weight-quiet:enabled:hover {
   background-color: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
 }
 
-/* Redefine specific quiet button hovers after the fallback so they win */
 [data-theme='dark'] .cdx-button--action-progressive.cdx-button--weight-quiet:hover,
 [data-theme='dark'] .cdx-button--action-progressive.cdx-button--weight-quiet:enabled:hover {
   background-color: rgba(51, 102, 204, 0.2) !important;
