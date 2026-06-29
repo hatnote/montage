@@ -158,4 +158,5 @@ cypress/videos/
 
 # Claude Code
 .claude/
-tmp/
+tmp/*
+!tmp/seed_dev_db.py
