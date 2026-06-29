@@ -127,7 +127,6 @@
 	"montage-round-no-category": "Message displayed when no categories are found.",
 	"montage-round-file-url": "Label for the file URL input field.",
 	"montage-round-file-list": "Label for the file list input field.",
-	"montage-required-threshold": "Error shown when the user tries to advance a round without selecting a threshold percentage.",
 	"montage-round-threshold": "Label for the threshold setting in a round.",
 	"montage-round-vote-method": "Label for the vote method setting in a round.",
 	"montage-round-threshold-description": "Description for the threshold setting, explaining its purpose.",
@@ -189,6 +188,7 @@
 	"permission-denied-title": "The title displayed on the Permission Denied page when the user is not authorized to access the requested page.",
 	"permission-denied-message": "A message explaining that the user does not have the required permissions to access the page.",
 	"permission-denied-home": "Text for the button that redirects the user to the home page if they are already authenticated.",
+	"montage-required-threshold": "Error shown when the user tries to advance a round without selecting a threshold percentage.",
 	"unsaved-changes-confirmation": "Message shown when the user attempts to leave a page with unsaved changes.",
 	"back-to-round": "Label for navigate back to the round page button"
 }

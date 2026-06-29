@@ -92,6 +92,7 @@
 	"montage-round-dq-organizers": "Дисквалификувај приредувачи",
 	"montage-round-final-threshold": "Конечен праг",
 	"montage-round-min-resolution": "Мин. разделност",
+	"montage-round-min-resolution-help": "Најмала разделност во пиксели. Сликите со помала разделност може автоматски да бидат дисквалификувани. По основно: 2.000.000 пиксели (2 мегапиксели).",
 	"montage-round-show-filename": "Прикажи имиња на податотеките",
 	"montage-round-show-link": "Прикажи врска",
 	"montage-round-show-resolution": "Прикажи разделност",
@@ -188,6 +189,7 @@
 	"permission-denied-home": "Оди на Почетна",
 	"montage-required-voting-deadline": "Изберете важечки рок за гласање",
 	"montage-required-fill-inputs": "Ve molime popolnete gi site polinja",
+	"montage-required-threshold": "Задајте праг пред да продолжите",
 	"unsaved-changes-confirmation": "Има незачувани промени. Сигурно сакате да напуштите?",
 	"back-to-round": "Назад на кругот"
 }

@@ -93,6 +93,7 @@
 	"montage-round-dq-organizers": "Diskvalifikovať organizátorov",
 	"montage-round-final-threshold": "Konečný prah",
 	"montage-round-min-resolution": "Min. rozlíšenie",
+	"montage-round-min-resolution-help": "Minimálne rozlíšenie obrázka v pixeloch. Obrázky pod týmto rozlíšením budú automaticky vylúčené. Predvolené rozlíšenie je 2 000 000 pixelov (2 megapixely).",
 	"montage-round-show-filename": "Zobraziť názov súboru",
 	"montage-round-show-link": "Zobraziť odkaz",
 	"montage-round-show-resolution": "Zobraziť rozlíšenie",
@@ -189,6 +190,7 @@
 	"permission-denied-home": "Prejsť na domovskú stránku",
 	"montage-required-voting-deadline": "Vyberte platný termín hlasovania",
 	"montage-required-fill-inputs": "Vyplňte všetky polia",
+	"montage-required-threshold": "Pred pokračovaním vyberte prahovú hodnotu",
 	"unsaved-changes-confirmation": "Máte neuložené zmeny. Naozaj chcete odísť?",
 	"back-to-round": "Späť na kolo"
 }

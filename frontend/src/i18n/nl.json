@@ -96,6 +96,7 @@
 	"montage-round-dq-organizers": "Organisatoren diskwalificeren",
 	"montage-round-final-threshold": "Einddrempel",
 	"montage-round-min-resolution": "Min. resolutie",
+	"montage-round-min-resolution-help": "Minimumresolutie afbeelding in pixels. Afbeeldingen met een lagere resolutie worden automatisch gediskwalificeerd. De standaardwaarde is 2.000.000 pixels (2 megapixels).",
 	"montage-round-show-filename": "Bestandsnaam weergeven",
 	"montage-round-show-link": "Koppeling weergeven",
 	"montage-round-show-resolution": "Resolutie weergeven",
@@ -192,6 +193,7 @@
 	"permission-denied-home": "Naar de startpagina",
 	"montage-required-voting-deadline": "Kies een geldige stemdeadline",
 	"montage-required-fill-inputs": "Vul alle vakjes in",
+	"montage-required-threshold": "Kies een drempelwaarde voordat u verdergaat",
 	"unsaved-changes-confirmation": "Er zijn niet-opgeslagen wijzigingen. Weet is zeker dat u deze pagina wilt verlaten?",
 	"back-to-round": "Terug naar rond"
 }

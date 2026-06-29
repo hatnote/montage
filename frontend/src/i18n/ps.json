@@ -70,6 +70,7 @@
 	"montage-round-name": "پړاو نوم",
 	"montage-round-deadline": "رايې ورکولو وروستۍ نېټه",
 	"montage-label-round-stats": "خپلې شمارنې ښودل (ازمايښتي)",
+	"montage-label-round-quorum": "نصاب",
 	"montage-round-stats": "خپلې شمارنې ښودل (ازمېښتي)",
 	"montage-round-file-setting": "پړاو دوتنې اوڼنې",
 	"montage-round-delete": "پړاو ړنگول",
@@ -171,5 +172,6 @@
 	"permission-denied-home": "کور ته تلل",
 	"montage-required-voting-deadline": "د رايې ورکولو باوري نېټه وټاکئ",
 	"montage-required-fill-inputs": "مهرباني وکړئ ټول بکسونه ډک کړئ",
+	"unsaved-changes-confirmation": "بدلونونونه خوندي‌شوې نه دي. ايا تاسو ډاډه ياست چې دا پرېښودل غواړئ؟",
 	"back-to-round": "بیرته پړاو ته"
 }
