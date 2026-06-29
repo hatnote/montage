@@ -115,7 +115,27 @@ This will build the docker image for the montage backend and start the container
 * `make logs` : Stream the backend container logs in real-time.
 * `make restart` : Restart the backend container
 
-### 7. Access the Application
+### 7. Logs
+
+When running locally (via `make start`), the backend writes log files to the repo root:
+
+| File | What it captures |
+|------|-----------------|
+| `montage_api.log` | Every API request — method, path, user, timing, result |
+| `montage_api.exc.log` | Full tracebacks for 5xx errors |
+| `montage_replay.log` | Raw request replay data |
+| `montage_feel.log` | Juror experience events |
+
+These paths come from the `DEVTEST_CONFIG` defaults in `montage/utils.py` and can be
+overridden in `config.dev.yaml` (keys `api_log_path`, `replay_log_path`, `feel_log_path`).
+
+To stream the Docker container's stdout/stderr in real-time instead:
+
+```bash
+make logs
+```
+
+### 8. Access the Application
 * With development server: Open http://localhost:5173 in your browser (frontend)
 * With backend serving frontend: Open http://localhost:5001 in your browser
 
