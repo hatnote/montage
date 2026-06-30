@@ -11,6 +11,9 @@ import VoteView from '@/views/VoteView.vue'
 import VoteEditView from '@/views/VoteEditView.vue'
 import AllCampaignView from '@/views/AllCampaignView.vue'
 import PermissionDenied from '@/views/PermissionDenied.vue'
+import CampaignRequestform from '@/views/CampaignRequestForm.vue'
+import Campaignrequestdetail from '@/views/CampaignRequestDetail.vue'
+import Campaignrequests from '@/views/CampaignRequests.vue'
 
 const routes = [
   {
@@ -52,6 +55,30 @@ const routes = [
     path: '/permission-denied',
     name: 'permission-denied',
     component: PermissionDenied
+  },
+  {
+    path: '/requests/new',
+    name: 'request-new',
+    component: CampaignRequestform,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/requests',
+    name: 'requests',
+    component: Campaignrequests,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/requests/:requestId',
+    name: 'request-detail',
+    component: Campaignrequestdetail,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/requests/:requestId/resubmit',
+    name: 'request-resubmit',
+    component: CampaignRequestform,
+    meta: { requiresAuth: true }
   }
 ]
 
