@@ -110,7 +110,7 @@ defineExpose({ saveImageData })
   max-width: 50%;
   max-height: 100%;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--bg-image-dialog);
 }
 
 .vote-image-review-dialog-image {
@@ -132,7 +132,7 @@ defineExpose({ saveImageData })
 
 .vote-image-review-dialog-review p {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--text-secondary);
   margin-top: 8px;
 }
 
@@ -144,7 +144,7 @@ defineExpose({ saveImageData })
 }
 
 .vote-commons-button {
-  color: rgb(51, 102, 204);
+  color: var(--link-color);
 }
 
 .vote-details {
@@ -176,8 +176,9 @@ defineExpose({ saveImageData })
   overflow: hidden;
 }
 
-.vote-details-list-item-text h3 {
-  color: rgba(0, 0, 0, 0.87);
+.vote-details-list-item-text h3,
+.vote-details-list-item-text h4 {
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -194,7 +195,7 @@ defineExpose({ saveImageData })
   letter-spacing: 0.01em;
   margin: 0 0 0 0;
   line-height: 1.6em;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--text-secondary);
 }
 
 .vote-details-icon {

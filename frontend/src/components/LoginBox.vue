@@ -47,7 +47,8 @@ const redirectToLogin = () => {
   max-width: 400px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #fff;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
@@ -57,12 +58,13 @@ const redirectToLogin = () => {
   font-weight: bold;
   margin-bottom: 36px;
   text-align: center;
+  color: var(--text-header);
 }
 
 .login-description,
 .account-instructions {
   font-size: 14px;
-  color: #666;
+  color: var(--text-muted);
   margin-bottom: 24px;
 }
 
