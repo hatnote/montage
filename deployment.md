@@ -31,6 +31,19 @@ Toolforge stores these as Kubernetes Secrets, injected into every pod on start. 
 **interactive prompt** for secret values — never pass them as command-line arguments (they
 would appear in `~/.bash_history` on the shared bastion).
 
+`toolforge envvars create VARNAME` waits for the value on the **next line** — run each one
+individually and type/paste only the value, or the following shell command gets swallowed as the
+value. For non-secret vars (env name, redirect URI, log paths) you can pipe or redirect instead,
+which avoids that mistake:
+
+```bash
+echo "prod" | toolforge envvars create MONTAGE_ENV        # scriptable; fine for non-secrets
+toolforge envvars create MONTAGE_ENV < value.txt          # from a file
+```
+
+Keep secrets (`*_SECRET`, `*_DB_URL`, cookie secret) on the **interactive** prompt — `echo "…" |`
+still lands the value in shell history. Verify a value with `toolforge envvars show VARNAME`.
+
 ```bash
 toolforge envvars create MONTAGE_ENV            # enter: devlabs / beta / prod
 toolforge envvars create MONTAGE_OAUTH_CLIENT_ID      # OAuth 2.0 client ID from Special:OAuthConsumerRegistration
