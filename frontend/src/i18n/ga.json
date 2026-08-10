@@ -92,6 +92,7 @@
 	"montage-round-dq-organizers": "Eagraithe a dhícháiliú",
 	"montage-round-final-threshold": "Tairseach deiridh",
 	"montage-round-min-resolution": "Íosrún",
+	"montage-round-min-resolution-help": "Íosmhéid taifeach íomhá i bpicteilíní. Dícháileofar íomhánna faoi bhun an taifigh seo go huathoibríoch. Is é 2,000,000 picteilín (2 megapixel) an réamhshocrú.",
 	"montage-round-show-filename": "Taispeáin ainm comhaid",
 	"montage-round-show-link": "Taispeáin nasc",
 	"montage-round-show-resolution": "Taispeáin an rún",
@@ -188,6 +189,7 @@
 	"permission-denied-home": "Téigh go dtí an Baile",
 	"montage-required-voting-deadline": "Roghnaigh spriocdháta vótála bailí",
 	"montage-required-fill-inputs": "Líon na boscaí go léir le do thoil",
+	"montage-required-threshold": "Roghnaigh tairseach le do thoil sula leanann tú ar aghaidh",
 	"unsaved-changes-confirmation": "Tá athruithe neamhshábháilte ann. An bhfuil tú cinnte gur mhaith leat imeacht?",
 	"back-to-round": "Ar ais go dtí an babhta"
 }
