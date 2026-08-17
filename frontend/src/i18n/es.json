@@ -94,6 +94,7 @@
 	"montage-round-dq-organizers": "Descalificar a los organizadores",
 	"montage-round-final-threshold": "Umbral final",
 	"montage-round-min-resolution": "Resolución mínima",
+	"montage-round-min-resolution-help": "Resolución mínima de imagen en píxeles. Las imágenes por debajo de esta resolución serán automáticamente descalificadas. El valor predeterminado es de 2.000.000 píxeles (2 mega píxeles).",
 	"montage-round-show-filename": "Mostrar nombre de archivo",
 	"montage-round-show-link": "Mostrar enlace",
 	"montage-round-show-resolution": "Mostrar resolución",
@@ -189,5 +190,8 @@
 	"permission-denied-message": "No tienes los permisos necesarios para acceder a esta página.",
 	"permission-denied-home": "Ir a Inicio",
 	"montage-required-voting-deadline": "Elija una fecha límite de votación válida",
-	"montage-required-fill-inputs": "Por favor, rellene todas las casillas"
+	"montage-required-fill-inputs": "Por favor, rellene todas las casillas",
+	"montage-required-threshold": "Seleccione un umbral antes de continuar",
+	"unsaved-changes-confirmation": "Hay cambios sin guardar. ¿Estás seguro de que quieres salir?",
+	"back-to-round": "Volver a la ronda"
 }
