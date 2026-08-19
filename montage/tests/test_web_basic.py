@@ -376,16 +376,121 @@ def test_home_client(base_client, api_client, mock_external_apis):
                                       u'Jimbo Wales']},
                  as_user='LilyOfTheWest')
 
+    resp = fetch('coordinator: get round stats before quorum raise',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    stats = resp['data']['stats']
+    entry_count = (resp['data']['total_entries']
+                   - stats['total_disqualified_entries'])
+    total_tasks_before = stats['total_tasks']
+
     resp = fetch('coordinator: raise quorum value',
                  '/admin/round/%s/edit' % round_id,
                  {'quorum': 4},
                  as_user='LilyOfTheWest')
 
-    resp = fetch('coordinator: try to reduce quorum (not supported)',
+    # regression (bug: quorum raise created zero tasks mid-round, since
+    # create_initial_rating_tasks only covers entries with no votes at all)
+    resp = fetch('coordinator: get round stats after quorum raise',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    stats = resp['data']['stats']
+    assert stats['total_tasks'] == total_tasks_before + entry_count
+    assert resp['data']['quorum'] == 4
+
+    # combined-edit rollback: raising quorum beyond the shrunken juror
+    # list must 400 and leave quorum, jurors, and tasks untouched
+    resp = fetch('coordinator: conflicting quorum raise and juror shrink',
                  '/admin/round/%s/edit' % round_id,
-                 {'quorum': 1},
+                 {'quorum': 5,
+                  'new_jurors': [u'Slaporte',
+                                 u'MahmoudHashemi',
+                                 u'Jean-Frédéric']},
                  as_user='LilyOfTheWest',
                  error_code=400)
+
+    resp = fetch('coordinator: confirm rollback of failed combined edit',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['quorum'] == 4
+    assert len([j for j in resp['data']['jurors'] if j['is_active']]) == 5
+    assert resp['data']['stats']['total_tasks'] == total_tasks_before + entry_count
+
+    # combined lower-quorum + juror shrink in a single save: the new jury
+    # (4) is smaller than the old quorum (4 would still fit, so drop to a
+    # 4-juror roster with quorum 2); quorum must apply before the juror edit
+    resp = fetch('coordinator: lower quorum and shrink jury in one save',
+                 '/admin/round/%s/edit' % round_id,
+                 {'quorum': 2,
+                  'new_jurors': [u'Slaporte',
+                                 u'MahmoudHashemi',
+                                 u'Jean-Frédéric',
+                                 u'Jimbo Wales']},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: get round stats after combined edit',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['quorum'] == 2
+    jd_map = {jd['username']: jd for jd in resp['data']['jurors']}
+    assert not jd_map['Effeietsanders']['is_active']
+    assert jd_map['Effeietsanders']['stats']['total_open_tasks'] == 0
+    stats = resp['data']['stats']
+    assert stats['total_open_tasks'] == 2 * entry_count
+    assert stats['total_tasks'] == 2 * entry_count  # no completed votes yet
+
+    resp = fetch('coordinator: restore the full juror roster',
+                 '/admin/round/%s/edit' % round_id,
+                 data={'new_jurors': [u'Slaporte',
+                                      u'MahmoudHashemi',
+                                      u'Effeietsanders',
+                                      u'Jean-Frédéric',
+                                      u'Jimbo Wales']},
+                 as_user='LilyOfTheWest')
+
+    # quorum-only decrease (used to be pinned as an unsupported 400)
+    resp = fetch('coordinator: reduce quorum by itself',
+                 '/admin/round/%s/edit' % round_id,
+                 {'quorum': 1},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: get round stats after quorum-only decrease',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['quorum'] == 1
+    assert resp['data']['stats']['total_open_tasks'] == entry_count
+
+    # regression (bug: a same-size edit replacing two or more jurors
+    # swapped only one arbitrary pair, stranding the other removed
+    # juror's open tasks and giving the other new juror none)
+    resp = fetch('coordinator: swap out two jurors at once',
+                 '/admin/round/%s/edit' % round_id,
+                 data={'new_jurors': [u'Slaporte',
+                                      u'MahmoudHashemi',
+                                      u'Jean-Frédéric',
+                                      u'Zack Aeon',
+                                      u'Zora Bellal']},
+                 as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: check both jurors were swapped',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    jd_map = {jd['username']: jd for jd in resp['data']['jurors']}
+    for username in ('Effeietsanders', 'Jimbo Wales'):
+        assert not jd_map[username]['is_active']
+        assert jd_map[username]['stats']['total_open_tasks'] == 0
+    for username in ('Zack Aeon', 'Zora Bellal'):
+        assert jd_map[username]['is_active']
+        assert jd_map[username]['stats']['total_open_tasks'] > 0
+
+    resp = fetch('coordinator: swap the original two jurors back in',
+                 '/admin/round/%s/edit' % round_id,
+                 data={'new_jurors': [u'Slaporte',
+                                      u'MahmoudHashemi',
+                                      u'Effeietsanders',
+                                      u'Jean-Frédéric',
+                                      u'Jimbo Wales']},
+                 as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: reactivate our round',
                  '/admin/round/%s/activate' % round_id,
@@ -592,6 +697,86 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  '/admin/round/%s/activate' % rnd_2_id,
                  {'post': True}, as_user='LilyOfTheWest')
 
+    # remove_juror requires a paused round
+    resp = fetch('coordinator: remove_juror fails on an active round',
+                 '/admin/round/%s/remove_juror' % rnd_2_id,
+                 {'username': u'Effeietsanders'},
+                 as_user='LilyOfTheWest',
+                 error_code=400)
+
+    # give Jean-Frédéric some completed votes to exercise the
+    # keep-vs-discard behaviors below
+    resp = fetch('juror: JF fetches tasks before leaving',
+                 '/juror/round/%s/tasks?count=5' % rnd_2_id,
+                 as_user=u'Jean-Frédéric')
+    jf_ratings = [{'vote_id': t['id'], 'value': 0.75}
+                  for t in resp['data']['tasks']]
+    assert jf_ratings
+    resp = fetch('juror: JF submits some ratings before leaving',
+                 '/juror/round/%s/tasks/submit' % rnd_2_id,
+                 {'ratings': jf_ratings},
+                 as_user=u'Jean-Frédéric')
+
+    resp = fetch('coordinator: pause round 2 to remove jurors',
+                 '/admin/round/%s/pause' % rnd_2_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
+    resp = fetch('coordinator: remove_juror rejects a non-juror',
+                 '/admin/round/%s/remove_juror' % rnd_2_id,
+                 {'username': u'Not A Juror'},
+                 as_user='LilyOfTheWest',
+                 error_code=400)
+
+    # remove a juror, keeping their completed votes (the default); the
+    # jury drops 4 -> 3, which still meets the quorum of 3
+    resp = fetch('coordinator: remove a juror, keeping completed votes',
+                 '/admin/round/%s/remove_juror' % rnd_2_id,
+                 {'username': u'Effeietsanders'},
+                 as_user='LilyOfTheWest')
+    summary = resp['data']
+    assert summary['removed_juror'] == u'Effeietsanders'
+    assert summary['cancelled_active_count'] > 0
+    assert summary['discarded_completed_count'] == 0
+    # every entry they were due to see is re-covered by the one
+    # remaining juror who has not seen it yet
+    assert summary['created_task_count'] == summary['cancelled_active_count']
+    assert summary['uncoverable_entry_count'] == 0
+    assert summary['quorum'] == 3
+
+    # remove another juror, discarding their completed votes; the jury
+    # drops 3 -> 2, so the quorum implicitly lowers to 2
+    resp = fetch('coordinator: remove a juror, discarding their votes',
+                 '/admin/round/%s/remove_juror' % rnd_2_id,
+                 {'username': u'Jean-Frédéric', 'discard_completed': True},
+                 as_user='LilyOfTheWest')
+    summary = resp['data']
+    assert summary['removed_juror'] == u'Jean-Frédéric'
+    assert summary['discarded_completed_count'] == len(jf_ratings)
+    # with 3 jurors and quorum 3, every entry had one vote per juror;
+    # dropping to quorum 2 leaves the remaining pair covering everything
+    assert summary['created_task_count'] == 0
+    assert summary['uncoverable_entry_count'] == 0
+    assert summary['quorum'] == 2
+
+    resp = fetch('coordinator: check round 2 state after removals',
+                 '/admin/round/%s' % rnd_2_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['quorum'] == 2
+    jd_map = {jd['username']: jd for jd in resp['data']['jurors']}
+    for username in (u'Effeietsanders', u'Jean-Frédéric'):
+        assert not jd_map[username]['is_active']
+        assert jd_map[username]['stats']['total_open_tasks'] == 0
+
+    resp = fetch('coordinator: remove_juror rejects an oversized new_quorum',
+                 '/admin/round/%s/remove_juror' % rnd_2_id,
+                 {'username': u'Slaporte', 'new_quorum': 5},
+                 as_user='LilyOfTheWest',
+                 error_code=400)
+
+    resp = fetch('coordinator: reactivate round 2 after removals',
+                 '/admin/round/%s/activate' % rnd_2_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+
     submit_ratings(api_client, rnd_2_id)
 
     resp = fetch('juror: get votes stats for rating round',
@@ -607,6 +792,14 @@ def test_home_client(base_client, api_client, mock_external_apis):
     resp = fetch('coordinator: preview results from second round',
                  '/admin/round/%s/preview_results' % rnd_2_id,
                  as_user='LilyOfTheWest')
+
+    # the damped (Bayesian) mean is shown alongside the plain mean for
+    # rating rounds; every damped value sits between the plain extremes
+    assert resp['data']['damped_ratings']
+    plain, damped = resp['data']['ratings'], resp['data']['damped_ratings']
+    assert sum(damped.values()) == sum(plain.values())
+    lo, hi = min(map(float, plain)), max(map(float, plain))
+    assert all(lo <= float(v) <= hi for v in damped)
 
     thresh_map = resp['data']['thresholds']  # TODO
     cur_thresh = [t for t, c in sorted(thresh_map.items()) if 0 < c <= 20][-1]
@@ -712,6 +905,8 @@ def test_home_client(base_client, api_client, mock_external_apis):
     resp = fetch('coordinator: preview round 3 results',
                  '/admin/round/%s/preview_results' % rnd_3_id,
                  as_user='LilyOfTheWest')
+    # ranking rounds have no quorum, so no damped ratings either
+    assert 'damped_ratings' not in resp['data']
 
     resp = fetch('coordinator: read round 3 reviews',
                  '/admin/round/%s/reviews' % rnd_3_id,
@@ -862,6 +1057,22 @@ def test_multiple_jurors(api_client, mock_external_apis):
                  '/admin/campaign/%s/add_round' % campaign_id,
                  rnd_data,
                  as_user='LilyOfTheWest')
+
+    round_id = resp['data']['id']
+
+    # a freshly-created round is paused, so jurors can be removed;
+    # removing the second-to-last juror works, the last is refused
+    resp = fetch('coordinator: remove a juror from a fresh round',
+                 '/admin/round/%s/remove_juror' % round_id,
+                 {'username': u'Haylad'},
+                 as_user='LilyOfTheWest')
+    assert resp['data']['removed_juror'] == u'Haylad'
+
+    resp = fetch('coordinator: removing the last juror fails',
+                 '/admin/round/%s/remove_juror' % round_id,
+                 {'username': u'Slaporte'},
+                 as_user='LilyOfTheWest',
+                 error_code=400)
 
 
 def test_get_files_info_by_name(api_client):
