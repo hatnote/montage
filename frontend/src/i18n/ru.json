@@ -94,6 +94,7 @@
 	"montage-round-dq-organizers": "Дисквалифицировать организаторов",
 	"montage-round-final-threshold": "Окончательный порог",
 	"montage-round-min-resolution": "Мин. разрешение",
+	"montage-round-min-resolution-help": "Минимальное разрешение изображения в пикселях. Изображения с разрешением ниже этого значения будут автоматически дисквалифицированы. По умолчанию — 2 000 000 пикселей (2 мегапикселя).",
 	"montage-round-show-filename": "Показать имя файла",
 	"montage-round-show-link": "Показать ссылку",
 	"montage-round-show-resolution": "Показать разрешение",
@@ -190,6 +191,7 @@
 	"permission-denied-home": "Перейти на главную",
 	"montage-required-voting-deadline": "Выберите действительный срок голосования",
 	"montage-required-fill-inputs": "Пожалуйста, заполните все поля",
+	"montage-required-threshold": "Пожалуйста, выберите пороговое значение, прежде чем продолжить",
 	"unsaved-changes-confirmation": "Есть несохраненные изменения. Вы уверены, что хотите уйти?",
 	"back-to-round": "Вернуться к раунду"
 }
