@@ -445,6 +445,7 @@ class Round(Base):
                'status': self.status,
                'config': self.config,
                'show_stats': self.show_stats,
+               'quorum': self.quorum,
                'round_sources': []}
         return ret
 
@@ -452,7 +453,6 @@ class Round(Base):
         ret = self.to_info_dict()
         ret['is_closable'] = self.check_closability()
         ret['campaign'] = self.campaign.to_info_dict()
-        ret['quorum'] = self.quorum
         ret['total_round_entries'] = len(self.round_entries)
         ret['stats'] = self.get_count_map()
         ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors]
