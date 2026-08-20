@@ -7,6 +7,7 @@ const dataService = {
 
     for (let i = 0; i < parts; i++) {
       const part = images.slice(50 * i, 50 * i + 50)
+
       promises.push(
         apiCommons({
           method: 'GET',
@@ -45,6 +46,7 @@ const dataService = {
           origin: '*'
         }
       })
+
       return response
     } catch (error) {
       console.error('Error searching for user:', error)
@@ -65,9 +67,30 @@ const dataService = {
           origin: '*'
         }
       })
+
       return response
     } catch (error) {
       console.error('Error searching for category:', error)
+      throw error
+    }
+  },
+
+  async getCategoryInfo(category) {
+    try {
+      const response = await apiCommons({
+        method: 'GET',
+        params: {
+          action: 'query',
+          prop: 'categoryinfo',
+          titles: `Category:${category}`,
+          format: 'json',
+          origin: '*'
+        }
+      })
+
+      return response
+    } catch (error) {
+      console.error('Error fetching category info:', error)
       throw error
     }
   }
