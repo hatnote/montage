@@ -93,6 +93,7 @@
 	"montage-round-dq-organizers": "Diskvalificera arrangörer",
 	"montage-round-final-threshold": "Slutgräns",
 	"montage-round-min-resolution": "Minsta upplösning",
+	"montage-round-min-resolution-help": "Minsta bildupplösning i pixlar. Bilder under denna upplösning kommer automatiskt att diskvalificeras. Standardinställningen är 2 000 000 pixlar (2 megapixlar).",
 	"montage-round-show-filename": "Visa filnamn",
 	"montage-round-show-link": "Visa länk",
 	"montage-round-show-resolution": "Visa upplösning",
@@ -189,6 +190,7 @@
 	"permission-denied-home": "Gå till startsidan",
 	"montage-required-voting-deadline": "Välj ett giltigt slutdatum för röstningen",
 	"montage-required-fill-inputs": "Vänligen fyll i alla rutor",
+	"montage-required-threshold": "Välj ett tröskelvärde innan du fortsätter",
 	"unsaved-changes-confirmation": "Det finns osparade ändringar. Är du säker på att du vill lämna?",
 	"back-to-round": "Tillbaka till omgången"
 }
