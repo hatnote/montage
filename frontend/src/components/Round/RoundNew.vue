@@ -91,43 +91,27 @@
                 </template>
 
                 <template #help-text>
-                  <p
-                    v-if="selectedImportSource === 'category'"
-                    class="help-text"
-                  >
+                  <p v-if="selectedImportSource === 'category'" class="help-text">
                     {{ $t('montage-round-source-category-help') }}
                   </p>
 
-                  <p
-                    v-if="selectedImportSource === 'csv'"
-                    class="help-text"
-                  >
+                  <p v-if="selectedImportSource === 'csv'" class="help-text">
                     {{ $t('montage-round-source-csv-help') }}
                   </p>
 
-                  <p
-                    v-if="selectedImportSource === 'selected'"
-                    class="help-text"
-                  >
+                  <p v-if="selectedImportSource === 'selected'" class="help-text">
                     {{ $t('montage-round-source-selected-help') }}
                   </p>
                 </template>
               </cdx-field>
 
               <!-- CATEGORY FIELD -->
-              <cdx-field
-                v-if="
-                  roundIndex === 0 &&
-                  selectedImportSource === 'category'
-                "
-              >
+              <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'category'">
                 <cdx-lookup
                   data-testid="montage-round-category"
                   v-model:selected="importSourceValue.category"
                   :menu-items="categoryOptions"
-                  :placeholder="
-                    $t('montage-round-category-placeholder')
-                  "
+                  :placeholder="$t('montage-round-category-placeholder')"
                   @input="searchCategory"
                   @update:selected="getCategoryFileCount"
                 >
@@ -141,41 +125,22 @@
                 </cdx-lookup>
 
                 <!-- CATEGORY FILE COUNT -->
-                  <!-- CATEGORY FILE COUNT -->
-                   <p
-                   v-if="categoryFileCount !== null"
-                   class="category-file-count"
-                   >
-                   {{ $t('montage-round-category-file-count', [categoryFileCount]) }}
-                  </p>
+                <!-- CATEGORY FILE COUNT -->
+                <p v-if="categoryFileCount !== null" class="category-file-count">
+                  {{ $t('montage-round-category-file-count', [categoryFileCount]) }}
+                </p>
               </cdx-field>
 
-              <cdx-field
-                v-if="
-                  roundIndex === 0 &&
-                  selectedImportSource === 'csv'
-                "
-              >
-                <cdx-text-input
-                  input-type="url"
-                  v-model="importSourceValue.csv_url"
-                />
+              <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'csv'">
+                <cdx-text-input input-type="url" v-model="importSourceValue.csv_url" />
 
                 <template #label>
                   {{ $t('montage-round-file-url') }}
                 </template>
               </cdx-field>
 
-              <cdx-field
-                v-if="
-                  roundIndex === 0 &&
-                  selectedImportSource === 'selected'
-                "
-              >
-                <cdx-text-area
-                  v-model="importSourceValue.file_names"
-                  rows="5"
-                />
+              <cdx-field v-if="roundIndex === 0 && selectedImportSource === 'selected'">
+                <cdx-text-area v-model="importSourceValue.file_names" rows="5" />
 
                 <template #label>
                   {{ $t('montage-round-file-list') }}
@@ -183,10 +148,7 @@
               </cdx-field>
 
               <cdx-field v-if="roundIndex === 0">
-                <cdx-text-area
-                  v-model="formData.directions"
-                  rows="3"
-                />
+                <cdx-text-area v-model="formData.directions" rows="3" />
 
                 <template #label>
                   {{ $t('montage-directions') }}
@@ -215,10 +177,7 @@
               </cdx-field>
 
               <cdx-field>
-                <cdx-text-input
-                  v-model="formData.quorum"
-                  input-type="number"
-                />
+                <cdx-text-input v-model="formData.quorum" input-type="number" />
 
                 <template #label>
                   {{ $t('montage-label-round-quorum') }}
@@ -253,9 +212,7 @@
                 <cdx-select
                   v-model:selected="formData.threshold"
                   :menu-items="thresholdOptions"
-                  :default-label="
-                    $t('montage-round-threshold-default')
-                  "
+                  :default-label="$t('montage-round-threshold-default')"
                 />
 
                 <template #label>
@@ -270,10 +227,7 @@
               </cdx-field>
             </div>
 
-            <div
-              class="form-right"
-              v-if="roundIndex === 0"
-            >
+            <div class="form-right" v-if="roundIndex === 0">
               <p>
                 {{ $t('montage-round-file-setting') }}
               </p>
@@ -284,18 +238,11 @@
                   :key="key"
                   v-model="formData.config[key]"
                 >
-                  {{
-                    $t(
-                      'montage-round-' +
-                        key.replaceAll('_', '-')
-                    )
-                  }}
+                  {{ $t('montage-round-' + key.replaceAll('_', '-')) }}
                 </cdx-checkbox>
               </cdx-field>
 
-              <cdx-field
-                v-if="formData.config.dq_by_resolution"
-              >
+              <cdx-field v-if="formData.config.dq_by_resolution">
                 <cdx-text-input
                   v-model="formData.config.min_resolution"
                   input-type="number"
@@ -310,11 +257,7 @@
 
                 <template #help-text>
                   <p>
-                    {{
-                      $t(
-                        'montage-round-min-resolution-help'
-                      )
-                    }}
+                    {{ $t('montage-round-min-resolution-help') }}
                   </p>
                 </template>
               </cdx-field>
@@ -323,10 +266,7 @@
 
           <div class="button-group">
             <cdx-button
-              :disabled="
-                isLoading ||
-                (roundIndex !== 0 && !thresholds)
-              "
+              :disabled="isLoading || (roundIndex !== 0 && !thresholds)"
               action="progressive"
               weight="primary"
               @click="submitRound()"
@@ -391,19 +331,12 @@ const props = defineProps({
   rounds: Array
 })
 
-const emit = defineEmits([
-  'update:showAddRoundForm',
-  'reloadCampaignState'
-])
+const emit = defineEmits(['update:showAddRoundForm', 'reloadCampaignState'])
 
 const route = useRoute()
 const campaignId = route.params.id.split('-')[0]
 
-const voteMethods = [
-  'yesno',
-  'rating',
-  'ranking'
-]
+const voteMethods = ['yesno', 'rating', 'ranking']
 
 const fileSettingsOptions = [
   'dq_by_uploader',
@@ -444,10 +377,7 @@ const importSourceMethods = [
 ]
 
 const roundIndex = props.rounds.length
-const prevRound =
-  roundIndex
-    ? props.rounds[roundIndex - 1]
-    : null
+const prevRound = roundIndex ? props.rounds[roundIndex - 1] : null
 
 const thresholds = ref(null)
 const thresholdOptions = ref(null)
@@ -456,10 +386,7 @@ const isLoading = ref(false)
 const formData = ref({
   name: `Round ${roundIndex + 1}`,
 
-  vote_method:
-    roundIndex !== 0 && roundIndex < 3
-      ? voteMethods[roundIndex]
-      : 'yesno',
+  vote_method: roundIndex !== 0 && roundIndex < 3 ? voteMethods[roundIndex] : 'yesno',
 
   deadline_date: null,
 
@@ -469,12 +396,7 @@ const formData = ref({
 
   threshold: null,
 
-  jurors:
-    roundIndex !== 0
-      ? prevRound.jurors.map(
-          (juror) => juror.username
-        )
-      : [],
+  jurors: roundIndex !== 0 ? prevRound.jurors.map((juror) => juror.username) : [],
 
   directions: '',
 
@@ -514,17 +436,12 @@ function searchCategory(name) {
   }
 
   dataService.searchCategory(name).then((response) => {
-    const cats =
-      response[1]?.map(
-        (element) => element.substring(9)
-      )
+    const cats = response[1]?.map((element) => element.substring(9))
 
-    categoryOptions.value = cats.map(
-      (cat) => ({
-        label: cat,
-        value: cat
-      })
-    )
+    categoryOptions.value = cats.map((cat) => ({
+      label: cat,
+      value: cat
+    }))
   })
 }
 
@@ -536,62 +453,40 @@ async function getCategoryFileCount(category) {
   }
 
   try {
-    const response =
-      await dataService.getCategoryInfo(
-        category
-      )
+    const response = await dataService.getCategoryInfo(category)
 
-    const pages =
-      response.query?.pages
+    const pages = response.query?.pages
 
     if (pages) {
-      const page =
-        Object.values(pages)[0]
+      const page = Object.values(pages)[0]
 
-      categoryFileCount.value =
-        page.categoryinfo?.files ?? 0
+      categoryFileCount.value = page.categoryinfo?.files ?? 0
     } else {
       categoryFileCount.value = 0
     }
   } catch (error) {
-    console.error(
-      'Error fetching category file count:',
-      error
-    )
+    console.error('Error fetching category file count:', error)
 
     categoryFileCount.value = null
   }
 }
 
 const cancelRound = () => {
-  emit(
-    'update:showAddRoundForm',
-    false
-  )
+  emit('update:showAddRoundForm', false)
 }
 
 const submitRound = () => {
   if (!formData.value.deadline_date) {
     alertService.error({
-      message: $t(
-        'montage-required-voting-deadline'
-      )
+      message: $t('montage-required-voting-deadline')
     })
 
     return
   }
 
-  if (
-    !formData.value.name ||
-    (
-      formData.value.quorum > 0 &&
-      formData.value.jurors.length === 0
-    )
-  ) {
+  if (!formData.value.name || (formData.value.quorum > 0 && formData.value.jurors.length === 0)) {
     alertService.error({
-      message: $t(
-        'montage-required-fill-inputs'
-      )
+      message: $t('montage-required-fill-inputs')
     })
 
     return
@@ -602,27 +497,19 @@ const submitRound = () => {
     const payload = {
       name: formData.value.name,
 
-      vote_method:
-        formData.value.vote_method,
+      vote_method: formData.value.vote_method,
 
-      deadline_date:
-        formData.value.deadline_date +
-        'T00:00:00',
+      deadline_date: formData.value.deadline_date + 'T00:00:00',
 
-      show_stats:
-        formData.value.show_stats,
+      show_stats: formData.value.show_stats,
 
-      quorum:
-        formData.value.quorum,
+      quorum: formData.value.quorum,
 
-      jurors:
-        formData.value.jurors,
+      jurors: formData.value.jurors,
 
-      directions:
-        formData.value.directions,
+      directions: formData.value.directions,
 
-      config:
-        formData.value.config
+      config: formData.value.config
     }
 
     isLoading.value = true
@@ -630,20 +517,12 @@ const submitRound = () => {
     adminService
       .addRound(campaignId, payload)
       .then((resp) => {
-        alertService.success(
-          $t('montage-round-added')
-        )
+        alertService.success($t('montage-round-added'))
 
-        if (
-          selectedImportSource.value ===
-          'selected'
-        ) {
-          importSourceValue.value.file_names =
-            importSourceValue.value.file_names
-              .split('\n')
-              .filter(
-                (elem) => elem
-              )
+        if (selectedImportSource.value === 'selected') {
+          importSourceValue.value.file_names = importSourceValue.value.file_names
+            .split('\n')
+            .filter((elem) => elem)
         }
 
         importCategory(resp.data.id)
@@ -654,21 +533,14 @@ const submitRound = () => {
       })
   } else {
     if (!prevRound.id) {
-      alertService.error(
-        $t('montage-something-went-wrong')
-      )
+      alertService.error($t('montage-something-went-wrong'))
 
       return
     }
 
-    if (
-      thresholds.value &&
-      !formData.value.threshold
-    ) {
+    if (thresholds.value && !formData.value.threshold) {
       alertService.error({
-        message: $t(
-          'montage-required-threshold'
-        )
+        message: $t('montage-required-threshold')
       })
 
       return
@@ -676,163 +548,86 @@ const submitRound = () => {
 
     const payload = {
       next_round: {
-        name:
-          formData.value.name,
+        name: formData.value.name,
 
-        vote_method:
-          formData.value.vote_method,
+        vote_method: formData.value.vote_method,
 
-        quorum:
-          formData.value.quorum,
+        quorum: formData.value.quorum,
 
-        deadline_date:
-          formData.value.deadline_date +
-          'T00:00:00',
+        deadline_date: formData.value.deadline_date + 'T00:00:00',
 
-        jurors:
-          formData.value.jurors
+        jurors: formData.value.jurors
       },
 
-      threshold:
-        formData.value.threshold
+      threshold: formData.value.threshold
     }
 
     adminService
-      .advanceRound(
-        prevRound.id,
-        payload
-      )
+      .advanceRound(prevRound.id, payload)
       .then(() => {
-        alertService.success(
-          $t('montage-round-added')
-        )
+        alertService.success($t('montage-round-added'))
 
-        console.log(
-          'Round created successfully'
-        )
+        console.log('Round created successfully')
       })
       .catch(alertService.error)
       .finally(() => {
-        emit(
-          'reload-campaign-state'
-        )
+        emit('reload-campaign-state')
 
-        emit(
-          'update:showAddRoundForm',
-          false
-        )
+        emit('update:showAddRoundForm', false)
       })
   }
 }
 
 const importCategory = (id) => {
   const payload = {
-    import_method:
-      selectedImportSource.value
+    import_method: selectedImportSource.value
   }
 
-  if (
-    selectedImportSource.value ===
-    'category'
-  ) {
-    payload.category =
-      importSourceValue.value.category
-  } else if (
-    selectedImportSource.value ===
-    'csv'
-  ) {
-    payload.csv_url =
-      importSourceValue.value.csv_url
-  } else if (
-    selectedImportSource.value ===
-    'selected'
-  ) {
-    payload.file_names =
-      importSourceValue.value.file_names
+  if (selectedImportSource.value === 'category') {
+    payload.category = importSourceValue.value.category
+  } else if (selectedImportSource.value === 'csv') {
+    payload.csv_url = importSourceValue.value.csv_url
+  } else if (selectedImportSource.value === 'selected') {
+    payload.file_names = importSourceValue.value.file_names
   }
 
   isLoading.value = true
 
   adminService
-    .populateRound(
-      id,
-      payload
-    )
+    .populateRound(id, payload)
     .then((response) => {
-      if (
-        response.data &&
-        response.data.warnings &&
-        response.data.warnings.length
-      ) {
-        const {
-          warnings = [],
-          disqualified = []
-        } = response.data
+      if (response.data && response.data.warnings && response.data.warnings.length) {
+        const { warnings = [], disqualified = [] } = response.data
 
-        const warningsList =
-          warnings.map(
-            (warning) =>
-              Object.values(
-                warning
-              ).pop()
-          )
+        const warningsList = warnings.map((warning) => Object.values(warning).pop())
 
-        const filesList =
-          disqualified
-            .map(
-              (image) =>
-                `${image.entry.name} – ${image.dq_reason}`.trim()
-            )
-            .filter(
-              (
-                value,
-                index,
-                array
-              ) =>
-                array.indexOf(
-                  value
-                ) === index
-            )
-            .join('\n')
+        const filesList = disqualified
+          .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
+          .filter((value, index, array) => array.indexOf(value) === index)
+          .join('\n')
 
-        const text =
-          `${warningsList.join(
-            '\n\n'
-          )}\n\n${filesList}`
+        const text = `${warningsList.join('\n\n')}\n\n${filesList}`
 
         dialogService().show({
-          title:
-            'Import Warning',
+          title: 'Import Warning',
 
-          content:
-            text,
+          content: text,
 
           primaryAction: {
             label: 'OK',
-            actionType:
-              'progressive'
+            actionType: 'progressive'
           },
 
           onPrimary: () => {
-            emit(
-              'reload-campaign-state'
-            )
+            emit('reload-campaign-state')
 
-            emit(
-              'update:showAddRoundForm',
-              false
-            )
+            emit('update:showAddRoundForm', false)
           }
         })
       } else {
-        emit(
-          'reload-campaign-state'
-        )
+        emit('reload-campaign-state')
 
-        emit(
-          'update:showAddRoundForm',
-          false
-        )
+        emit('update:showAddRoundForm', false)
       }
     })
     .catch(alertService.error)
@@ -841,42 +636,25 @@ const importCategory = (id) => {
     })
 }
 
-watch(
-  thresholds,
-  (value) => {
-    if (!value) {
-      thresholdOptions.value = null
-      return
-    }
-
-    thresholdOptions.value =
-      Object.entries(value).map(
-        ([key, value]) => ({
-          label: `${(
-            key * 10
-          ).toFixed(
-            2
-          )} / 10 (${value} images total)`,
-
-          value: key
-        })
-      )
+watch(thresholds, (value) => {
+  if (!value) {
+    thresholdOptions.value = null
+    return
   }
-)
+
+  thresholdOptions.value = Object.entries(value).map(([key, value]) => ({
+    label: `${(key * 10).toFixed(2)} / 10 (${value} images total)`,
+
+    value: key
+  }))
+})
 
 onMounted(() => {
-  if (
-    prevRound &&
-    prevRound.vote_method !==
-      'ranking'
-  ) {
+  if (prevRound && prevRound.vote_method !== 'ranking') {
     adminService
-      .previewRound(
-        prevRound.id
-      )
+      .previewRound(prevRound.id)
       .then((resp) => {
-        thresholds.value =
-          resp.data.thresholds
+        thresholds.value = resp.data.thresholds
       })
       .catch(() => {
         thresholds.value = null
