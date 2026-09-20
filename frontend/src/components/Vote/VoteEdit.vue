@@ -100,6 +100,9 @@
         <div class="gallery-image-fav" v-if="image.is_fave">
           <heart />
         </div>
+        <div class="vote-gallery-expand-icon" @click="openImage(image)">
+          <arrow-expand-all />
+        </div>
         <div class="gallery-image-container">
           <CommonsImage :image="image" :width="640" />
         </div>
