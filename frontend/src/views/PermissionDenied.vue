@@ -23,7 +23,7 @@ import { CdxButton } from '@wikimedia/codex'
   align-items: center;
   text-align: center;
   min-height: calc(100vh - 116.5px);
-  background-color: #f8f9fa;
+  background-color: var(--bg-page);
   padding: 20px;
 }
 
@@ -36,6 +36,6 @@ import { CdxButton } from '@wikimedia/codex'
 .permission-denied p {
   font-size: 1.25rem;
   margin-bottom: 40px;
-  color: #6c757d;
+  color: var(--text-muted);
 }
 </style>

@@ -377,6 +377,12 @@ onMounted(() => {
 
 .campaign-title {
   font-size: 36px;
+  color: var(--text-header);
+}
+
+.campaign-dates {
+  color: var(--text-muted);
+  font-size: 14px;
 }
 
 .campaign-button-group {

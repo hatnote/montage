@@ -30,8 +30,9 @@ const envName = import.meta.env.DEV ? 'DEV' : 'PROD'
   align-items: center;
   padding: 20px;
   font-size: 14px;
-  color: #666;
-  border-top: 1px solid #e0e0e0;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-footer);
+  background-color: var(--bg-surface);
 }
 
 .footer-left {
@@ -41,7 +42,7 @@ const envName = import.meta.env.DEV ? 'DEV' : 'PROD'
 
 .footer-link {
   margin-left: 12px;
-  color: #006cb6;
+  color: var(--link-color);
   text-decoration: none;
 }
 
@@ -51,6 +52,6 @@ const envName = import.meta.env.DEV ? 'DEV' : 'PROD'
 
 .env-label {
   font-weight: bold;
-  color: #006cb6;
+  color: var(--link-color);
 }
 </style>

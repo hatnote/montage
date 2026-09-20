@@ -4,7 +4,7 @@
       <div>
         <h3>{{ $t('montage-round-deadline') }}</h3>
         <p>
-          <span style="color: black">{{ round.deadline_date.split('T')[0] }}</span> ·
+          <span class="text-primary">{{ round.deadline_date.split('T')[0] }}</span> ·
           {{ $t('montage-round-vote-ending', [remainingDays]) }}
         </p>
       </div>
@@ -38,7 +38,7 @@
                 %
               </p>
               <p style="font-size: 26px" v-else>N/A</p>
-              <p style="color: black">
+              <p class="text-primary">
                 {{
                   $t('montage-progress-status', [
                     juror.stats.total_tasks - juror.stats.total_open_tasks,
@@ -257,7 +257,7 @@ onMounted(() => {
 }
 
 .juror-campaign-round-icon {
-  background-color: blue;
+  background-color: var(--icon-round-bg);
   height: 56px;
   padding: 10px;
   border-radius: 50%;
