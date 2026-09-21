@@ -131,6 +131,7 @@
 	"montage-round-vote-method": "Label for the vote method setting in a round.",
 	"montage-round-threshold-description": "Description for the threshold setting, explaining its purpose.",
 	"montage-round-threshold-default": "Placeholder text for the threshold setting.",
+	"montage-required-threshold": "Validation error shown when a coordinator tries to advance a round without selecting a threshold value.",
 	"montage-round-jurors-description": "Description for the jurors input field, explaining its purpose.",
 	"montage-round-quorum-description": "Description for the quorum input field, explaining its purpose.",
 	"montage-no-results": "Message displayed when no results are found.",

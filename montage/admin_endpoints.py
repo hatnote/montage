@@ -592,7 +592,7 @@ def advance_round(user_dao, round_id, request_dict):
         raise NotImplementedResponse()  # see docstring above
     try:
         threshold = float(request_dict['threshold'])
-    except KeyError:
+    except (KeyError, TypeError, ValueError):
         raise InvalidAction('unset threshold. set the threshold and try again.')
     _next_round_params = request_dict['next_round']
     nrp = _prepare_round_params(coord_dao, _next_round_params)
