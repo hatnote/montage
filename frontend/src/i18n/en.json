@@ -79,6 +79,7 @@
   "montage-round-file-setting": "Round file settings",
   "montage-round-delete": "Delete round",
   "montage-round-edit": "Edit round",
+  "montage-round-edit-active-warning": "Please pause the round to make edits.",
   "montage-round-save": "Save Round",
   "montage-round-delete-confirm": "Are you sure you want to delete this round?",
   "montage-round-allowed-filetypes": "Allowed filetypes",
