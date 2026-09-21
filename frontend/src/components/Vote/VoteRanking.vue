@@ -83,10 +83,12 @@
       <h3>{{ $t('montage-vote-all-done') }}</h3>
       <p class="greyed">{{ $t('montage-vote-no-images') }}</p>
       <p class="greyed">{{ $t('montage-vote-no-images-warning') }}</p>
-      <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
-        <pencil class="icon-small" />
-        {{ $t('montage-edit-previous-vote') }}
-      </cdx-button>
+      <a :href="router.resolve({ name: 'vote-edit', params: { id: roundLink } }).href">
+        <cdx-button class="edit-voting-btn" @click="editPreviousVotes">
+          <pencil class="icon-small" />
+          {{ $t('montage-edit-previous-vote') }}
+        </cdx-button>
+      </a>
     </div>
   </div>
 
