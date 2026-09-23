@@ -43,7 +43,7 @@ from .utils import (format_date,
                     to_unicode,
                     get_mw_userid,
                     weighted_choice,
-                    PermissionDenied, InvalidAction, NotImplementedResponse,
+                    PermissionDenied, InvalidAction,
                     DoesNotExist,
                     get_env_name,
                     load_default_series,
@@ -445,6 +445,7 @@ class Round(Base):
                'status': self.status,
                'config': self.config,
                'show_stats': self.show_stats,
+               'quorum': self.quorum,
                'round_sources': []}
         return ret
 
@@ -452,10 +453,9 @@ class Round(Base):
         ret = self.to_info_dict()
         ret['is_closable'] = self.check_closability()
         ret['campaign'] = self.campaign.to_info_dict()
-        ret['quorum'] = self.quorum
         ret['total_round_entries'] = len(self.round_entries)
         ret['stats'] = self.get_count_map()
-        ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors],
+        ret['juror_details'] = [rj.to_details_dict() for rj in self.round_jurors]
         return ret
 
     def confirm_active(self):
@@ -1285,6 +1285,16 @@ class CoordinatorDAO(UserDAO):
         # if round_dict ...:
         #     raise InvalidAction('unable to modify round attributes: %r'
         #                         % request_dict.keys())
+        # quorum applies before jurors, so a single save can lower the
+        # quorum and shrink the jury together (the juror-edit guard
+        # checks the new roster against the already-updated quorum)
+        new_quorum = round_dict.get('quorum')
+        if new_quorum and new_quorum != rnd.quorum:
+            if rnd.status != PAUSED_STATUS:
+                raise InvalidAction('round must be paused to edit quorum')
+            else:
+                new_juror_stats = self.modify_quorum(round_id, new_quorum)
+                new_val_map['quorum'] = new_quorum
         new_juror_names = round_dict.get('new_jurors')
         cur_jurors = self.get_active_jurors(round_id)
         cur_juror_names = [u.username for u in cur_jurors]
@@ -1296,13 +1306,6 @@ class CoordinatorDAO(UserDAO):
                     raise InvalidAction('new_jurors must be a list of strings')
                 new_juror_stats = self.modify_jurors(round_id, new_juror_names)
                 new_val_map['new_jurors'] = new_juror_names
-        new_quorum = round_dict.get('quorum')
-        if new_quorum and new_quorum != rnd.quorum:
-            if rnd.status != PAUSED_STATUS:
-                raise InvalidAction('round must be paused to edit quorum')
-            else:
-                new_juror_stats = self.modify_quorum(round_id, new_quorum)
-                new_val_map['quorum'] = new_quorum
         show_stats = round_dict.get('show_stats')
         if show_stats is not None:
             rnd.show_stats = show_stats
@@ -1888,6 +1891,7 @@ class CoordinatorDAO(UserDAO):
                       .options(joinedload('entry'))\
                       .filter_by(dq_user_id=None, round_id=round_id)\
                       .join(Vote)\
+                      .filter(Vote.status == COMPLETED_STATUS)\
                       .group_by(Vote.round_entry_id)\
                       .having(avg >= threshold)\
                       .all()
@@ -1908,6 +1912,36 @@ class CoordinatorDAO(UserDAO):
         rating_ctr = Counter([r[1] for r in results])
 
         return dict(rating_ctr)
+
+    def get_round_damped_rating_map(self, round_id):
+        """Same shape as get_round_average_rating_map, but each entry's
+        average is damped toward the round's overall mean C with prior
+        weight m = quorum (a Bayesian average):
+
+            damped = (n * avg + m * C) / (n + m)
+
+        Entries whose plain average rests on few completed votes get
+        pulled toward C, so coordinators can spot scores that are still
+        unstable (e.g. after a quorum decrease or juror removal).
+        """
+        rnd = self.get_round(round_id)
+        results = self.query(func.avg(Vote.value), func.count(Vote.id))\
+                      .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
+                      .filter(RoundEntry.round_id == round_id,
+                              Vote.status == COMPLETED_STATUS)\
+                      .group_by(Vote.round_entry_id)\
+                      .all()
+        if not results:
+            return {}
+
+        total_count = sum([count for _, count in results])
+        overall_mean = sum([avg * count for avg, count in results]) / total_count
+        m = rnd.quorum or 1
+
+        damped_ctr = Counter([round((count * avg + m * overall_mean)
+                                    / (count + m), 3)
+                              for avg, count in results])
+        return dict(damped_ctr)
 
     def get_round_ranking_list(self, round_id, notation=None):
         res = (self.query(Vote)
@@ -2067,9 +2101,10 @@ class CoordinatorDAO(UserDAO):
         if rnd.vote_method == 'ranking':
             rnd.quorum = len(new_jurors)
         elif rnd.quorum > len(new_jurors):
-            raise InvalidAction('expected at least %s jurors to make quorum'
-                                ' (%s) for round #%s'
-                                % (len(new_jurors), rnd.quorum, rnd.id))
+            raise InvalidAction('round #%s has quorum %s, which requires at'
+                                ' least %s jurors; lower the quorum first (or'
+                                ' in the same edit), or use the remove_juror'
+                                ' endpoint' % (rnd.id, rnd.quorum, rnd.quorum))
         new_juror_names = sorted([nj.username for nj in new_jurors])
         old_jurors = self.get_active_jurors(rnd.id)
         old_juror_names = sorted([oj.username for oj in old_jurors])
@@ -2077,10 +2112,11 @@ class CoordinatorDAO(UserDAO):
         if new_juror_names == old_juror_names:
             raise InvalidAction('new jurors must differ from current jurors')
 
-        if len(new_jurors) == len(old_jurors) and not force_balance:
-            added_juror = list(set(new_jurors) - set(old_jurors))[0]
-            removed_juror = list(set(old_jurors) - set(new_jurors))[0]
-            res = swap_tasks(self.rdb_session, rnd, added_juror, removed_juror)
+        added = list(set(new_jurors) - set(old_jurors))
+        removed = list(set(old_jurors) - set(new_jurors))
+        if (len(added) == 1 and len(removed) == 1
+                and len(new_jurors) == len(old_jurors) and not force_balance):
+            res = swap_tasks(self.rdb_session, rnd, added[0], removed[0])
         else:
             res = reassign_tasks(self.rdb_session, rnd, new_jurors)
 
@@ -2102,47 +2138,184 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_jurors', round=rnd, message=msg)
         return res
 
-    def modify_quorum(self, round_id, new_quorum, strategy=None):
-        # This only supports increasing the quorum. Decreaseing the
-        # quorum would require handling some completed tasks (eg,
-        # whose vote do you discard? Randomly choose?)
+    def remove_juror(self, round_id, username,
+                     discard_completed=False, new_quorum=None):
+        """Remove a single juror from a paused round, cancelling their
+        not-yet-cast tasks. Their completed votes are kept unless
+        *discard_completed* is set (discarded votes flip to cancelled,
+        values retained on the rows for audit, and affected entries are
+        re-covered by the remaining jurors where possible).
 
+        For yesno/rating rounds the quorum drops to *new_quorum* when
+        given, else to the remaining jury size when that is smaller
+        than the current quorum.
+        """
         rnd = self.get_round(round_id)
+        if rnd.status != PAUSED_STATUS:
+            raise InvalidAction('round must be paused to remove a juror')
 
+        removed_rj = None
+        for rj in rnd.round_jurors:
+            if rj.user.username == username and rj.is_active:
+                removed_rj = rj
+                break
+        if removed_rj is None:
+            raise InvalidAction('user %r is not an active juror of round #%s'
+                                % (username, rnd.id))
+        removed_user = removed_rj.user
+
+        remaining = [rj.user for rj in rnd.round_jurors
+                     if rj.is_active and rj.user.id != removed_user.id]
+        if not remaining:
+            raise InvalidAction('cannot remove the last juror')
+
+        session = self.rdb_session
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         old_quorum = rnd.quorum
 
-        if not new_quorum:
-            raise InvalidAction('must specify new quorum')
+        # discard first, so the excess-task cancellation below sees the
+        # true per-entry coverage and does not cancel tasks it would
+        # then have to recreate
+        discarded_completed_count = 0
+        if discard_completed:
+            completed_votes = (session.query(Vote)
+                               .filter_by(status=COMPLETED_STATUS,
+                                          user=removed_user)
+                               .join(RoundEntry)
+                               .filter_by(round=rnd)
+                               .all())
+            # values stay on the rows for audit; scoring only reads
+            # completed votes, so cancelled rows drop out of results
+            for vote in completed_votes:
+                vote.status = CANCELLED_STATUS
+                vote.modified_date = now
+            discarded_completed_count = len(completed_votes)
 
-        if new_quorum <= old_quorum:
-            raise NotImplementedResponse('currently we do not support quorum '
-                                         'decreases. current quorum is %r, got %r'
-                                         % (old_quorum, new_quorum))
+        if rnd.vote_method == 'ranking':
+            if new_quorum is not None:
+                raise InvalidAction('no quorum for a ranking round')
+            cancelled_active_count = (session.query(Vote)
+                                      .filter_by(status=ACTIVE_STATUS,
+                                                 user=removed_user)
+                                      .join(RoundEntry)
+                                      .filter_by(round=rnd)
+                                      .count())
+            res = self.modify_jurors(round_id,
+                                     [u.username for u in remaining])
+            created_task_count, uncoverable_entry_count = 0, 0
+        else:
+            if new_quorum is not None:
+                if not 1 <= new_quorum <= len(remaining):
+                    raise InvalidAction('new quorum must be between 1 and'
+                                        ' the number of remaining jurors'
+                                        ' (%s), got %r'
+                                        % (len(remaining), new_quorum))
+                target_quorum = new_quorum
+            else:
+                target_quorum = min(rnd.quorum, len(remaining))
 
-        jurors = self.get_active_jurors(rnd.id)
-        session = self.rdb_session
+            active_votes = (session.query(Vote)
+                            .filter_by(status=ACTIVE_STATUS,
+                                       user=removed_user)
+                            .join(RoundEntry)
+                            .filter_by(round=rnd)
+                            .all())
+            for vote in active_votes:
+                vote.status = CANCELLED_STATUS
+                vote.modified_date = now
+            cancelled_active_count = len(active_votes)
 
-        rnd_stats = rnd.to_details_dict()
-        if not rnd_stats['stats']['total_tasks']:
-            create_initial_tasks(session, rnd)
+            removed_rj.is_active = 0
 
-        rnd.quorum = new_quorum
+            if target_quorum < rnd.quorum:
+                cancel_excess_rating_tasks(session, rnd, target_quorum)
+            rnd.quorum = target_quorum
+
+            # re-cover entries the cancellations/discards pushed below
+            # quorum, where remaining jurors who never saw them exist;
+            # unavoidable shortfalls are counted, not fatal (the mean
+            # stays defined for any completed count)
+            created_votes, uncoverable_entry_count = \
+                create_rating_tasks_for_coverage(
+                    session, rnd, target_per_entry=rnd.quorum)
+            created_task_count = len(created_votes)
+            res = reassign_rating_tasks(session, rnd, remaining)
+
+        msg = ('%s removed juror %s from round #%s (discard_completed=%r,'
+               ' quorum %r -> %r): cancelled %s open tasks, discarded %s'
+               ' completed votes, created %s replacement tasks'
+               % (self.user.username, username, rnd.id, discard_completed,
+                  old_quorum, rnd.quorum, cancelled_active_count,
+                  discarded_completed_count, created_task_count))
+        self.log_action('remove_juror', round=rnd, message=msg)
+
+        return {'removed_juror': username,
+                'cancelled_active_count': cancelled_active_count,
+                'discarded_completed_count': discarded_completed_count,
+                'created_task_count': created_task_count,
+                'uncoverable_entry_count': uncoverable_entry_count,
+                'quorum': rnd.quorum,
+                'task_count_mean': res['task_count_mean']}
+
+    def modify_quorum(self, round_id, new_quorum, strategy=None):
+        """Change the quorum of a yesno/rating round mid-round.
+
+        Increases create just enough new tasks to bring every entry up
+        to the new quorum. Decreases cancel excess not-yet-cast tasks;
+        completed votes are never discarded (quorum is a coverage
+        floor, so entries may keep more completed votes than quorum).
+        """
+        rnd = self.get_round(round_id)
+        old_quorum = rnd.quorum
 
         if rnd.vote_method == 'ranking':
             raise InvalidAction('no quorum for a ranking round')
-        elif rnd.vote_method in ('yesno', 'rating'):
-            new_tpe = new_quorum - old_quorum
-            # I'm pretty sure this will fairly distribute tasks
-            created_tasks = create_initial_rating_tasks(session, rnd,
-                                                        tasks_per_entry=new_tpe)
-            ret = reassign_rating_tasks(session, rnd, jurors,
-                                        strategy=strategy, reassign_all=True)
-        else:
+        if rnd.vote_method not in ('yesno', 'rating'):
             raise ValueError('invalid vote method: %r' % rnd.vote_method)
+        if not new_quorum or new_quorum < 1:
+            raise InvalidAction('must specify a positive quorum')
+        if new_quorum == old_quorum:
+            raise InvalidAction('new quorum matches current quorum (%r)'
+                                % old_quorum)
 
-        msg = ('%s changed round #%s quorum (%r -> %r), reassigned %s tasks'
-               ' (average juror task queue is now at %s)'
+        jurors = self.get_active_jurors(rnd.id)
+        if new_quorum > len(jurors):
+            raise InvalidAction('quorum cannot be greater than the number'
+                                ' of jurors')
+
+        session = self.rdb_session
+
+        if not rnd._get_task_count():
+            create_initial_tasks(session, rnd)
+
+        created_task_count, cancelled_task_count = 0, 0
+        if new_quorum > old_quorum:
+            created_votes, _ = create_rating_tasks_for_coverage(
+                session, rnd, target_per_entry=new_quorum)
+            created_task_count = len(created_votes)
+            rnd.quorum = new_quorum
+            ret = reassign_rating_tasks(session, rnd, jurors,
+                                        strategy=strategy,
+                                        reassign_all=True)
+        else:
+            cancel_stats = cancel_excess_rating_tasks(
+                session, rnd, target_per_entry=new_quorum)
+            cancelled_task_count = cancel_stats['cancelled_task_count']
+            rnd.quorum = new_quorum
+            # no reassign_all: jurors keep the tasks they hold, only
+            # over-full queues shed tasks (less juror churn)
+            ret = reassign_rating_tasks(session, rnd, jurors,
+                                        strategy=strategy)
+
+        ret['created_task_count'] = created_task_count
+        ret['cancelled_task_count'] = (cancelled_task_count
+                                       + ret.get('cancelled_task_count', 0))
+
+        msg = ('%s changed round #%s quorum (%r -> %r), created %s and'
+               ' cancelled %s tasks, reassigned %s (average juror task'
+               ' queue is now at %s)'
                % (self.user.username, rnd.id, old_quorum, new_quorum,
+                  ret['created_task_count'], ret['cancelled_task_count'],
                   ret['reassigned_task_count'], ret['task_count_mean']))
 
         self.log_action('modify_quorum', round=rnd, message=msg)
@@ -3009,12 +3182,13 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     if not tasks_per_entry:
         tasks_per_entry = rnd.quorum
 
-    if tasks_per_entry > len(rnd.round_jurors):
-        raise InvalidAction('quorum cannot be greater than the number of jurors')
-
     jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
     if not jurors:
         raise InvalidAction('expected round with active jurors')
+
+    if tasks_per_entry > len(jurors):
+        raise InvalidAction('quorum cannot be greater than the number of jurors')
+
     random.shuffle(jurors)
 
     rdb_type = rdb_session.bind.dialect.name
@@ -3056,6 +3230,135 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
         vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
         ret.append(vote)
     return ret
+
+
+def create_rating_tasks_for_coverage(session, rnd, target_per_entry):
+    """Bring every non-disqualified entry of *rnd* up to
+    *target_per_entry* total non-cancelled (active or completed) votes.
+
+    Unlike create_initial_rating_tasks, this covers entries that
+    already have votes, so it works mid-round (quorum increases,
+    re-covering entries after a juror's completed votes are
+    discarded).
+
+    Each new task goes to the eligible active juror with the fewest
+    open tasks in the round (ties broken by user id, for determinism).
+    A juror is eligible for an entry if they have no active or
+    completed vote on it; a cancelled vote does not disqualify.
+
+    Returns ``(created_votes, shortfall_entry_count)``, the latter
+    counting entries with fewer eligible jurors than needed tasks
+    (they get as many as possible; the entry mean stays defined for
+    any completed count).
+    """
+    jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
+
+    round_entries = (session.query(RoundEntry)
+                            .filter(RoundEntry.round_id == rnd.id,
+                                    RoundEntry.dq_user_id == None)
+                            .all())
+
+    votes = (session.query(Vote)
+                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                    .filter(RoundEntry.round_id == rnd.id,
+                            Vote.status.in_((ACTIVE_STATUS,
+                                             COMPLETED_STATUS)))
+                    .all())
+
+    have_map = defaultdict(list)  # round_entry_id -> [Vote, ...]
+    open_count_map = dict([(j.id, 0) for j in jurors])
+    for vote in votes:
+        have_map[vote.round_entry_id].append(vote)
+        if vote.status == ACTIVE_STATUS and vote.user_id in open_count_map:
+            open_count_map[vote.user_id] += 1
+
+    juror_map = dict([(j.id, j) for j in jurors])
+
+    created_votes = []
+    shortfall_entry_count = 0
+    for round_entry in round_entries:
+        cur_votes = have_map[round_entry.id]
+        needed = target_per_entry - len(cur_votes)
+        if needed <= 0:
+            continue
+        seen_ids = set([v.user_id for v in cur_votes])
+        elig_ids = [j_id for j_id in juror_map if j_id not in seen_ids]
+        if len(elig_ids) < needed:
+            shortfall_entry_count += 1
+        for _ in range(min(needed, len(elig_ids))):
+            j_id = min(elig_ids, key=lambda j: (open_count_map[j], j))
+            elig_ids.remove(j_id)
+            vote = Vote(user=juror_map[j_id], round_entry=round_entry,
+                        status=ACTIVE_STATUS)
+            session.add(vote)
+            created_votes.append(vote)
+            open_count_map[j_id] += 1
+
+    return created_votes, shortfall_entry_count
+
+
+def cancel_excess_rating_tasks(session, rnd, target_per_entry):
+    """Cancel not-yet-cast (active) votes in excess of
+    *target_per_entry* per entry. Completed votes are never touched:
+    an entry with more completed votes than the target simply keeps
+    them all (quorum is a coverage floor, not an exact count).
+
+    Excess tasks are cancelled from the jurors with the most open
+    tasks in the round first (running counts; ties broken by vote id,
+    newest first), evening out juror queues while entry coverage stays
+    at or above the target by construction.
+
+    Returns a dict with ``cancelled_task_count`` and
+    ``entries_below_target`` (informational: entries whose total
+    non-cancelled votes are under the target, only possible via prior
+    discards, never via this function).
+    """
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+    round_entries = (session.query(RoundEntry)
+                            .filter(RoundEntry.round_id == rnd.id,
+                                    RoundEntry.dq_user_id == None)
+                            .all())
+
+    votes = (session.query(Vote)
+                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                    .filter(RoundEntry.round_id == rnd.id,
+                            RoundEntry.dq_user_id == None,
+                            Vote.status.in_((ACTIVE_STATUS,
+                                             COMPLETED_STATUS)))
+                    .all())
+
+    entry_vote_map = defaultdict(list)
+    open_count_map = defaultdict(int)
+    for vote in votes:
+        entry_vote_map[vote.round_entry_id].append(vote)
+        if vote.status == ACTIVE_STATUS:
+            open_count_map[vote.user_id] += 1
+
+    cancelled_task_count = 0
+    entries_below_target = 0
+    for round_entry in round_entries:
+        re_votes = entry_vote_map[round_entry.id]
+        if len(re_votes) < target_per_entry:
+            entries_below_target += 1
+            continue
+        completed_count = len([v for v in re_votes
+                               if v.status == COMPLETED_STATUS])
+        active = [v for v in re_votes if v.status == ACTIVE_STATUS]
+        keep_active = max(0, target_per_entry - completed_count)
+        for _ in range(len(active) - keep_active):
+            vote = max(active,
+                       key=lambda v: (open_count_map[v.user_id], v.id))
+            active.remove(vote)
+            vote.status = CANCELLED_STATUS
+            vote.modified_date = now
+            open_count_map[vote.user_id] -= 1
+            cancelled_task_count += 1
+
+    return {'cancelled_task_count': cancelled_task_count,
+            'entries_below_target': entries_below_target}
 
 
 def reassign_tasks(session, rnd, new_jurors, strategy=None):
@@ -3106,7 +3409,7 @@ def reassign_ranking_tasks(session, rnd, new_jurors, strategy=None):
     old_juror_id_set = set([j.id for j in old_jurors])
     new_juror_id_set = set([j.id for j in new_jurors])
     if new_juror_id_set == old_juror_id_set:
-        return
+        return {'reassigned_task_count': 0, 'task_count_mean': -1}
     removed_jurors = [j for j in old_jurors if j.id not in new_juror_id_set]
     added_jurors = [j for j in new_jurors if j.id not in old_juror_id_set]
 
@@ -3218,16 +3521,29 @@ def reassign_rating_tasks(session, rnd, new_jurors, strategy=None,
 
         return weighted_choice(wcp)
 
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    cancelled_votes = []
+
     while reassg_queue:
         vote = reassg_queue.pop()
-        vote.user = choose_eligible(elig_map[vote.round_entry])
-        elig_map[vote.round_entry].remove(vote.user)
+        eligible = elig_map[vote.round_entry]
+        if not eligible:
+            # every juror in new_jurors has already completed this
+            # entry: the orphaned task is unfulfillable and the entry's
+            # coverage is already met, so cancel it
+            vote.status = CANCELLED_STATUS
+            vote.modified_date = now
+            cancelled_votes.append(vote)
+            continue
+        vote.user = choose_eligible(eligible)
+        eligible.remove(vote.user)
         target_work_map[vote.user].append(vote)
 
     vote_count_map = dict([(u, len(t)) for u, t in target_work_map.items()])
 
     return {'incomplete_task_count': len(incomp_votes),
-            'reassigned_task_count': len(reassg_votes),
+            'reassigned_task_count': len(reassg_votes) - len(cancelled_votes),
+            'cancelled_task_count': len(cancelled_votes),
             'task_count_map': vote_count_map,
             'task_count_mean': mean(list(vote_count_map.values()))}
 

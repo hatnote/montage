@@ -62,6 +62,7 @@ def get_admin_routes():
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
            GET('/admin/round/<round_id:int>', get_round),
            POST('/admin/round/<round_id:int>/edit', edit_round),
+           POST('/admin/round/<round_id:int>/remove_juror', remove_juror),
            POST('/admin/round/<round_id:int>/cancel', cancel_round),
            GET('/admin/round/<round_id:int>/preview_results',
                get_round_results_preview),
@@ -523,6 +524,36 @@ def edit_round(user_dao, round_id, request_dict):
     return {'data': new_val_map}
 
 
+def remove_juror(user_dao, round_id, request_dict):
+    """
+    Summary: Remove a juror from a paused round, cancelling their open
+             tasks. Their completed votes are kept unless
+             discard_completed is set. For yesno/rating rounds the
+             quorum drops to new_quorum (or to the remaining jury size
+             when that is smaller than the current quorum).
+
+    Request model:
+        username:
+            type: string
+        discard_completed:
+            type: boolean
+        new_quorum:
+            type: int64
+
+    Response model: RemoveJurorSummary
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    username = request_dict.get('username')
+    if not username or not isinstance(username, str):
+        raise InvalidAction('expected a username')
+    discard_completed = bool(request_dict.get('discard_completed', False))
+    new_quorum = request_dict.get('new_quorum')
+    summary = coord_dao.remove_juror(round_id, username,
+                                     discard_completed=discard_completed,
+                                     new_quorum=new_quorum)
+    return {'data': summary}
+
+
 def cancel_round(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.cancel_round(round_id)
@@ -543,6 +574,7 @@ def get_round_results_preview(user_dao, round_id):
 
     if rnd.vote_method in ('yesno', 'rating'):
         data['ratings'] = coord_dao.get_round_average_rating_map(round_id)
+        data['damped_ratings'] = coord_dao.get_round_damped_rating_map(round_id)
         try:
             data['thresholds'] = get_threshold_map(data['ratings'])
         except:
