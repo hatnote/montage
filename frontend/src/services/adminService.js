@@ -33,6 +33,10 @@ const adminService = {
 
   populateRound: (id, data) => apiBackend.post(`admin/round/${id}/import`, data),
 
+  getImportJobs: (id) => apiBackend.get(`admin/round/${id}/imports`),
+
+  getImportJob: (id, jobId) => apiBackend.get(`admin/round/${id}/import/${jobId}`),
+
   editCampaign: (id, data) => apiBackend.post(`admin/campaign/${id}/edit`, data),
 
   editRound: (id, data) => apiBackend.post(`admin/round/${id}/edit`, data),

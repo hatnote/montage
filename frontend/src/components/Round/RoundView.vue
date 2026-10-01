@@ -30,7 +30,7 @@
                   ? $t('montage-round-rating')
                   : $t('montage-round-ranking')
             }}
-            . {{ round.status }}
+            . {{ round.status }}<span v-if="importBadgeKey"> · {{ $t(importBadgeKey) }}</span>
           </p>
         </div>
         <div style="margin-left: auto">
@@ -54,7 +54,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { getImportBadgeKey } from '@/utils'
 
 // Components
 import { CdxCard, CdxButton } from '@wikimedia/codex'
@@ -69,9 +70,11 @@ import Sort from 'vue-material-design-icons/Sort.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 
-defineProps({
+const props = defineProps({
   round: Object
 })
+
+const importBadgeKey = computed(() => getImportBadgeKey(props.round?.import_state))
 
 const isRoundEditing = ref(false)
 
