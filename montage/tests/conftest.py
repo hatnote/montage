@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 import json
 import re
+import zlib
 
 import pytest
 import responses as responses_lib
@@ -134,6 +135,26 @@ FIXTURE_FILENAME_CSV = build_filename_csv()
 def _disable_pdb(monkeypatch):
     monkeypatch.setattr('pdb.set_trace', lambda *a, **kw: None)
     monkeypatch.setattr('pdb.post_mortem', lambda *a, **kw: None)
+
+
+# ---------------------------------------------------------------------------
+# Wikimedia user-id lookups stay offline.  create_app() bootstraps the
+# maintainers via get_mw_userid() before any ``responses`` mock is active, so
+# without this every app created in a test called the live Commons API, and
+# CI started failing once Commons throttled the runner.  Slaporte keeps their
+# real id because the test session cookie (devtest dev_local_cookie_value,
+# base_client) carries userid 6024474.
+# ---------------------------------------------------------------------------
+KNOWN_MW_USERIDS = {'Slaporte': 6024474}
+
+
+def _offline_mw_userid(username):
+    return KNOWN_MW_USERIDS.get(username, zlib.crc32(username.encode('utf8')) % 10**8)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_mw_userid(monkeypatch):
+    monkeypatch.setattr('montage.rdb.get_mw_userid', _offline_mw_userid)
 
 # ---------------------------------------------------------------------------
 # Wikimedia API callback -- returns a plausible user record for any username
