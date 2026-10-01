@@ -346,6 +346,8 @@ def main(argv=None):
     # exits 2 if a model table/column is missing (e.g. import_jobs)
     check_schema(db_url, Base, autoexit=True)
     engine = make_engine(config)
+    # db_echo would log every 5-second poll; the worker logs its own lines
+    engine.echo = False
     worker_id = default_worker_id()
     log.info('import worker %s starting (env %s)', worker_id,
              config.get('__env__'))
