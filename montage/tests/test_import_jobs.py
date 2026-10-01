@@ -1433,3 +1433,164 @@ def test_activate_lock_error_at_final_insert_is_busy_400(
                      deadlock_on_activate_audit)
     assert 'the server is busy, please retry' in error_text(resp)
     assert get_round(coord_client, round_id)['status'] == 'paused'
+
+
+# ---------------------------------------------------------------------------
+# PR check C (feat/import-worker): M1-M3, C14, C16/L3
+# ---------------------------------------------------------------------------
+
+def test_retry_of_survives_worker_success(montage_app, coord_client,
+                                          mock_external_apis):
+    """M1: the worker's success UPDATE merges flags instead of replacing
+    them, so retry_of is kept (as in sync mode)."""
+    round_id = new_round(coord_client, 'retry flags')
+    job = failed_category_job(montage_app, coord_client, round_id)
+    new_job = retry(coord_client, round_id, job['id'])['data']['job']
+    assert run_import_jobs(montage_app) == [(new_job['id'], 'succeeded')]
+    details = get_job(coord_client, round_id, new_job['id'])
+    assert details['retry_of'] == job['id']
+    # the import's own flags are still written
+    assert details['disqualified_sample'] == []
+    assert details['new_round_entry_count'] == 20
+
+
+def test_shutdown_does_not_wait_long_for_a_stuck_heartbeat(
+        montage_app, coord_client, engine, mock_external_apis):
+    """M2: on shutdown the heartbeat is joined once, for at most
+    SHUTDOWN_JOIN_TIMEOUT, so the job is released within the pod's grace
+    period even if a heartbeat UPDATE hangs."""
+    import threading
+    import time as time_mod
+    round_id = new_round(coord_client, 'stuck heartbeat')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    tick_started = threading.Event()
+    unblock_tick = threading.Event()
+    joins = []
+    real_join = threading.Thread.join
+
+    def stuck_tick(*a, **kw):
+        tick_started.set()
+        unblock_tick.wait(10)
+        return 'ok'
+
+    def fetch_then_sigterm(*a, **kw):
+        assert tick_started.wait(5)
+        import_worker._on_shutdown_signal(15, None)
+
+    def counting_join(self, timeout=None):
+        if self.name.startswith('heartbeat-job-'):
+            joins.append(timeout)
+        return real_join(self, timeout)
+
+    started = time_mod.monotonic()
+    try:
+        with patch.object(import_worker, 'heartbeat_tick', stuck_tick), \
+                patch.object(import_worker, 'load_import_entries',
+                             fetch_then_sigterm), \
+                patch.object(threading.Thread, 'join', counting_join), \
+                pytest.raises(import_worker.WorkerShutdown):
+            import_worker.process_job(engine, claim, heartbeat_interval=0.01)
+        elapsed = time_mod.monotonic() - started
+    finally:
+        unblock_tick.set()
+    # well inside a 30 s termination grace period (Kubernetes default)
+    assert import_worker.SHUTDOWN_JOIN_TIMEOUT <= 5
+    assert elapsed < 5
+    assert joins == [import_worker.SHUTDOWN_JOIN_TIMEOUT]
+    assert job_row(montage_app, job['id'])['status'] == 'queued'
+
+
+@pytest.mark.parametrize('heartbeat_result', ['expired', 'lost'])
+def test_claim_lost_during_fetch_skips_the_import(
+        montage_app, coord_client, engine, mock_external_apis,
+        heartbeat_result):
+    """M3: if the heartbeat reports the claim expired or lost while the
+    files were fetched, the worker does not start the write phase."""
+    round_id = new_round(coord_client, 'lost during fetch')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    heartbeats = []
+    imports = []
+    real_load = import_worker.load_import_entries
+
+    class StubHeartbeat(object):
+        def __init__(self, engine, claim, interval):
+            self.result = None
+            heartbeats.append(self)
+
+        def start(self):
+            return self
+
+        def stop(self, timeout=None):
+            pass
+
+    def fetch_while_claim_goes(*a, **kw):
+        ret = real_load(*a, **kw)
+        heartbeats[0].result = heartbeat_result
+        return ret
+
+    def recording_run_import(*a, **kw):
+        imports.append(1)
+        raise AssertionError('must not import after losing the claim')
+
+    with patch.object(import_worker, 'Heartbeat', StubHeartbeat), \
+            patch.object(import_worker, 'load_import_entries',
+                         fetch_while_claim_goes), \
+            patch.object(import_worker, 'run_import', recording_run_import):
+        assert import_worker.process_job(engine, claim,
+                                         heartbeat_interval=30) == 'lost'
+    assert imports == []
+    assert round_entry_count(montage_app, round_id) == 0
+    row = job_row(montage_app, job['id'])
+    # untouched: the heartbeat (or another worker) owns the outcome
+    assert (row['status'], row['claim_token']) == ('running', claim.token)
+
+
+@pytest.mark.parametrize('result', ['lost', 'expired'])
+def test_heartbeat_thread_stops_after_claim_lost(result):
+    """C14: once a tick reports the claim lost/expired, the thread stops
+    ticking and records the result."""
+    import time as time_mod
+    ticks = []
+
+    def tick(*a, **kw):
+        ticks.append(1)
+        return result
+
+    claim = import_worker.Claim(id=1, token='t', round_id=1, user_id=1,
+                                method='category', params={})
+    with patch.object(import_worker, 'heartbeat_tick', tick):
+        hb = import_worker.Heartbeat(None, claim, interval=0.01).start()
+        time_mod.sleep(0.3)
+        alive = hb._thread.is_alive()
+        hb.stop()
+    assert ticks == [1]
+    assert alive is False
+    assert hb.result == result
+
+
+def test_recovery_with_null_heartbeat_and_token(montage_app, coord_client,
+                                                engine):
+    """C16/L3: a running row without heartbeat_date and claim_token (manual
+    SQL, legacy) is recovered on start_date / create_date."""
+    now = import_worker._utcnow()
+    long_ago = now - datetime.timedelta(minutes=30)
+    round_a = new_round(coord_client, 'null heartbeat a')
+    round_b = new_round(coord_client, 'null heartbeat b')
+    round_c = new_round(coord_client, 'null heartbeat c')
+    by_start = seed_job(montage_app, round_a, 'running', attempts=1,
+                        start_date=long_ago)
+    by_create = seed_job(montage_app, round_b, 'running', attempts=2,
+                         create_date=long_ago)
+    recent = seed_job(montage_app, round_c, 'running', attempts=1,
+                      start_date=now)
+    for job_id in (by_start, by_create, recent):
+        row = job_row(montage_app, job_id)
+        assert (row['heartbeat_date'], row['claim_token']) == (None, None)
+
+    assert import_worker.recover_stale_jobs(engine, now=now) == (
+        [by_start], [by_create])
+    assert job_row(montage_app, by_start)['status'] == 'queued'
+    assert job_row(montage_app, by_create)['status'] == 'failed'
+    assert job_row(montage_app, recent)['status'] == 'running'

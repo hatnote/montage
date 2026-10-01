@@ -90,6 +90,10 @@ STALE_AFTER = datetime.timedelta(minutes=5)  # no heartbeat for this long
 MAX_ATTEMPTS = 2  # a stale job is requeued once, then failed
 MAX_RUNTIME = datetime.timedelta(minutes=60)
 HEARTBEAT_JOIN_TIMEOUT = 60  # seconds to wait for a heartbeat in progress
+# On shutdown the pod has a short grace period (Kubernetes default 30 s):
+# don't wait long for a heartbeat in progress. Releasing is fenced, so a
+# late heartbeat cannot undo it.
+SHUTDOWN_JOIN_TIMEOUT = 2
 
 MAX_RUNTIME_ERROR = ('import exceeded the maximum runtime of %d minutes'
                      % (MAX_RUNTIME.total_seconds() // 60))
@@ -102,8 +106,9 @@ _rounds_c = Round.__table__.c
 
 # Plain values only: the import session must never hold the job as an ORM
 # object, or a flush could write the job row without the claim-token fence.
+# flags: the job's flags when claimed (e.g. retry_of), kept on success.
 Claim = namedtuple('Claim', 'id token round_id user_id method params'
-                   ' start_date', defaults=(None,))
+                   ' start_date flags', defaults=(None, None))
 
 _c = import_jobs_t.c
 
@@ -241,7 +246,8 @@ def claim_next_job(engine, worker_id=None):
                 continue
 
             row = session.execute(
-                select([_c.round_id, _c.user_id, _c.method, _c.params])
+                select([_c.round_id, _c.user_id, _c.method, _c.params,
+                        _c.flags])
                 .where(_c.id == job_id)).first()
             session.commit()
             return Claim(id=job_id,
@@ -250,7 +256,8 @@ def claim_next_job(engine, worker_id=None):
                          user_id=row.user_id,
                          method=row.method,
                          params=dict(row.params or {}),
-                         start_date=now)
+                         start_date=now,
+                         flags=dict(row.flags or {}))
     except Exception:
         session.rollback()
         raise
@@ -312,6 +319,7 @@ class Heartbeat(object):
         self.claim = claim
         self.interval = interval
         self.result = None
+        self._stopped = False
         self._stop_event = threading.Event()
         self._thread = threading.Thread(
             target=self._run, name='heartbeat-job-%s' % claim.id)
@@ -333,15 +341,19 @@ class Heartbeat(object):
                 self.result = result
                 return
 
-    def stop(self):
-        """Stop and join; idempotent. After it returns no heartbeat UPDATE
-        is in flight (unless the join timed out, which is logged)."""
+    def stop(self, timeout=HEARTBEAT_JOIN_TIMEOUT):
+        """Stop and join (at most `timeout` seconds). Joins only on the
+        first call; later calls return at once. After it returns no
+        heartbeat UPDATE is in flight, unless the join timed out (logged)."""
         self._stop_event.set()
+        if self._stopped:
+            return
+        self._stopped = True
         if self._thread.is_alive():
-            self._thread.join(HEARTBEAT_JOIN_TIMEOUT)
+            self._thread.join(timeout)
             if self._thread.is_alive():
                 log.warning('job #%s: heartbeat thread did not stop within'
-                            ' %ss', self.claim.id, HEARTBEAT_JOIN_TIMEOUT)
+                            ' %ss', self.claim.id, timeout)
 
 
 def release_job(engine, claim):
@@ -443,6 +455,15 @@ def process_job(engine, claim, heartbeat_interval=None):
             # fetch with no transaction open: the slow, external part
             loaded = load_import_entries(claim.method, claim.params)
 
+            # The fetch can take long: if the claim expired (MAX_RUNTIME)
+            # or was lost (requeued, reclaimed) meanwhile, don't start a
+            # write transaction whose commit is fenced off anyway; it would
+            # hold locks against the run that now owns the job.
+            if heartbeat is not None and heartbeat.result is not None:
+                log.warning('job #%s: claim %s during the fetch; not'
+                            ' importing', claim.id, heartbeat.result)
+                return 'lost'
+
             session = sessionmaker(bind=engine)()
             user = session.query(User).get(claim.user_id)
             if user is None:
@@ -456,15 +477,18 @@ def process_job(engine, claim, heartbeat_interval=None):
         # No interrupts from here on, and no heartbeat UPDATE racing ours
         if heartbeat is not None:
             heartbeat.stop()
-        # LAST statement of the import transaction, fenced on the claim
+        # LAST statement of the import transaction, fenced on the claim.
+        # Merge flags (the UPDATE replaces the column): keep retry_of etc.
         now = _utcnow()
+        values = import_result_values(stats)
+        values['flags'] = dict(claim.flags or {}, **values['flags'])
         res = session.execute(
             import_jobs_t.update()
             .where(_fenced(claim))
             .values(status=IMPORT_SUCCEEDED,
                     finish_date=now,
                     heartbeat_date=now,
-                    **import_result_values(stats)))
+                    **values))
         if res.rowcount != 1:
             session.rollback()
             log.warning('job #%s: claim lost before commit (job was failed'
@@ -485,7 +509,7 @@ def process_job(engine, claim, heartbeat_interval=None):
             _discard_session(session, claim)
             session = None
         if heartbeat is not None:
-            heartbeat.stop()
+            heartbeat.stop(timeout=SHUTDOWN_JOIN_TIMEOUT)
         release_job(engine, claim)
         raise
     except Exception as e:
@@ -498,7 +522,7 @@ def process_job(engine, claim, heartbeat_interval=None):
                 _discard_session(session, claim)
                 session = None
             if heartbeat is not None:
-                heartbeat.stop()
+                heartbeat.stop(timeout=SHUTDOWN_JOIN_TIMEOUT)
             release_job(engine, claim)
             raise WorkerShutdown('shutdown requested') from e
         log.exception('job #%s: import failed after %.1fs',
@@ -550,8 +574,13 @@ def recover_stale_jobs(engine, now=None):
                     _c.claim_token])
             .where(stale).order_by(_c.id)).fetchall()
         for row in rows:
-            fence = and_(_c.id == row.id, stale,
-                         _c.claim_token == row.claim_token)
+            # explicit IS NULL: a running row without a token (manual SQL,
+            # legacy) must still be recoverable
+            if row.claim_token is None:
+                same_token = _c.claim_token.is_(None)
+            else:
+                same_token = _c.claim_token == row.claim_token
+            fence = and_(_c.id == row.id, stale, same_token)
             if (row.attempts or 0) < MAX_ATTEMPTS:
                 res = session.execute(
                     import_jobs_t.update().where(fence)
