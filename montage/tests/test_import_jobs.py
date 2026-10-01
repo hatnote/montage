@@ -1170,3 +1170,136 @@ def test_error_text_for_lock_errors():
     assert not rdb.is_lock_error(OperationalError(
         'SELECT 1', {}, Exception('gone away')))
     assert not rdb.is_lock_error(RuntimeError('1213'))
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Retry and Dismiss
+# ---------------------------------------------------------------------------
+
+def retry(client, round_id, job_id, **kw):
+    return client.fetch('coordinator: retry import',
+                        '/admin/round/%s/import/%s/retry' % (round_id, job_id),
+                        {'post': True}, as_user=COORD, **kw)
+
+
+def dismiss(client, round_id, job_id, **kw):
+    return client.fetch('coordinator: dismiss import',
+                        '/admin/round/%s/import/%s/dismiss'
+                        % (round_id, job_id),
+                        {'post': True}, as_user=COORD, **kw)
+
+
+def failed_category_job(app, client, round_id):
+    job = import_category(client, round_id)['data']['job']
+
+    def boom(*a, **kw):
+        raise RuntimeError('boom')
+
+    with patch.object(import_worker, 'load_import_entries', boom):
+        assert run_import_jobs(app) == [(job['id'], 'failed')]
+    return job
+
+
+def test_dismiss_failed_import_unblocks_gate(montage_app, coord_client,
+                                             mock_external_apis):
+    """A dismissed failed import no longer blocks activation; the round
+    keeps the entries an earlier import added."""
+    round_id = new_round(coord_client, 'dismiss')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    job = failed_category_job(montage_app, coord_client, round_id)
+    activate(coord_client, round_id, error_code=400)
+
+    data = dismiss(coord_client, round_id, job['id'])['data']
+    assert data['job']['id'] == job['id']
+    assert data['job']['dismissed'] is True
+    assert data['import_state']['status'] == 'failed'
+    assert data['import_state']['blocks_activation'] is False
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['blocks_activation'] is False
+    assert state['job']['dismissed'] is True
+    audit = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=dismiss_import'
+        % campaign_id_of(coord_client, round_id), as_user=COORD)['data']
+    assert len(audit) == 1
+
+    activate(coord_client, round_id)
+
+
+def test_dismiss_on_empty_round_still_cannot_activate(
+        montage_app, coord_client, mock_external_apis):
+    """AC3 [P2]: dismissing does not make an empty round activatable."""
+    round_id = new_round(coord_client, 'dismiss empty')
+    job = failed_category_job(montage_app, coord_client, round_id)
+    dismiss(coord_client, round_id, job['id'])
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'empty round' in error_text(resp)
+
+
+def test_dismiss_refused_unless_failed_and_undismissed(
+        montage_app, coord_client, mock_external_apis):
+    round_id = new_round(coord_client, 'dismiss refused')
+    queued = seed_job(montage_app, round_id, 'queued')
+    resp = dismiss(coord_client, round_id, queued, error_code=400)
+    assert 'only a failed import can be dismissed' in error_text(resp)
+    failed = seed_job(montage_app, round_id, 'failed', error='seeded')
+    dismiss(coord_client, round_id, failed)
+    resp = dismiss(coord_client, round_id, failed, error_code=400)
+    assert 'already dismissed' in error_text(resp)
+    other_round = new_round(coord_client, 'dismiss other')
+    dismiss(coord_client, other_round, failed, error_code=404)
+
+
+def test_retry_failed_import_enqueues_same_import(montage_app, coord_client,
+                                                  mock_external_apis):
+    round_id = new_round(coord_client, 'retry')
+    job = failed_category_job(montage_app, coord_client, round_id)
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'Retry the import' in error_text(resp)
+
+    data = retry(coord_client, round_id, job['id'])['data']
+    new_job = data['job']
+    assert new_job['id'] != job['id']
+    assert new_job['status'] == 'queued'
+    assert new_job['method'] == 'category'
+    assert new_job['params_summary'] == job['params_summary']
+    details = get_job(coord_client, round_id, new_job['id'])
+    assert details['params'] == {'category': 'Synthetic_test_category'}
+    assert details['retry_of'] == job['id']
+    assert 'claimed_by' not in details
+
+    # a second retry while the first one is queued is refused
+    retry(coord_client, round_id, job['id'], error_code=400)
+
+    assert run_import_jobs(montage_app) == [(new_job['id'], 'succeeded')]
+    assert round_entry_count(montage_app, round_id) == 20
+    assert get_job(coord_client, round_id, job['id'])['status'] == 'failed'
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['job']['id'] == new_job['id']
+    assert state['blocks_activation'] is False
+    activate(coord_client, round_id)
+
+
+def test_retry_refused_unless_failed(montage_app, coord_client,
+                                     mock_external_apis):
+    round_id = new_round(coord_client, 'retry refused')
+    job = import_category(coord_client, round_id)['data']['job']
+    resp = retry(coord_client, round_id, job['id'], error_code=400)
+    assert 'only a failed import can be retried' in error_text(resp)
+    retry(coord_client, round_id, 999999, error_code=404)
+
+
+def test_retry_in_sync_mode_runs_in_request(montage_app, coord_client,
+                                            mock_external_apis):
+    round_id = new_round(coord_client, 'retry sync')
+    job = failed_category_job(montage_app, coord_client, round_id)
+    montage_app.resources['config']['import_mode'] = 'sync'
+    try:
+        data = retry(coord_client, round_id, job['id'])['data']
+    finally:
+        montage_app.resources['config']['import_mode'] = 'worker'
+    assert data['new_round_entry_count'] == 20
+    assert data['job']['status'] == 'succeeded'
+    assert get_job(coord_client, round_id,
+                   data['job']['id'])['retry_of'] == job['id']

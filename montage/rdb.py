@@ -794,7 +794,8 @@ class ImportJob(Base):
             (self.flags or {}).get('disqualified_sample', []))
         ret['error'] = self.error
         ret['requested_by'] = self.user.username if self.user else None
-        ret['claimed_by'] = self.claimed_by
+        # not claimed_by: the worker's pod hostname:pid is for the logs
+        ret['retry_of'] = (self.flags or {}).get('retry_of')
         return ret
 
 
@@ -1787,8 +1788,9 @@ class CoordinatorDAO(UserDAO):
                                 ' the page')
         elif reason == 'import_failed':
             raise InvalidAction('cannot activate round: its last import'
-                                ' failed (job #%s). Cancel this round and'
-                                ' create it again' % (latest_job.id,))
+                                ' failed (job #%s). Retry the import, or'
+                                ' dismiss it to activate the round without'
+                                ' it' % (latest_job.id,))
         return
 
     def _get_active_import_job_locked(self, round_id):
@@ -2036,10 +2038,14 @@ class CoordinatorDAO(UserDAO):
         self._raise_if_import_active(round_id)
         return
 
-    def record_sync_import(self, round_id, method, params, stats):
+    def record_sync_import(self, round_id, method, params, stats,
+                           retry_of=None):
         """Record an import that already ran in this request
         (MONTAGE_IMPORT_MODE=sync) as a succeeded job."""
         now = _utcnow()
+        values = import_result_values(stats)
+        if retry_of is not None:
+            values['flags']['retry_of'] = retry_of
         job = ImportJob(round_id=round_id,
                         user_id=self.user.id,
                         status=IMPORT_SUCCEEDED,
@@ -2048,13 +2054,41 @@ class CoordinatorDAO(UserDAO):
                         attempts=1,
                         start_date=now,
                         finish_date=now,
-                        **import_result_values(stats))
+                        **values)
         self.rdb_session.add(job)
         self.rdb_session.flush()
         return job
 
-    def enqueue_import(self, round_id, method, params):
-        """Create a queued import job; the import worker runs it."""
+    def get_failed_import_job(self, round_id, job_id):
+        """The failed job to retry: same method and params, new job."""
+        job = self.get_import_job(round_id, job_id)
+        if job.status != IMPORT_FAILED:
+            raise InvalidAction('only a failed import can be retried (job #%s'
+                                ' is %s)' % (job.id, job.status))
+        return job
+
+    def dismiss_import_job(self, round_id, job_id):
+        """Mark a failed import as dismissed, so it no longer blocks
+        activation (import_state_for). Entries an earlier import added
+        stay; an empty round still cannot be activated."""
+        job = self.get_import_job(round_id, job_id)
+        if job.status != IMPORT_FAILED:
+            raise InvalidAction('only a failed import can be dismissed (job'
+                                ' #%s is %s)' % (job.id, job.status))
+        if job.dismiss_date is not None:
+            raise InvalidAction('import job #%s was already dismissed'
+                                % (job.id,))
+        job.dismiss_date = _utcnow()
+        job.dismiss_user_id = self.user.id
+        msg = ('%s dismissed failed import job #%s'
+               % (self.user.username, job.id))
+        self.log_action('dismiss_import', round_id=round_id, message=msg)
+        self.rdb_session.flush()
+        return job
+
+    def enqueue_import(self, round_id, method, params, retry_of=None):
+        """Create a queued import job; the import worker runs it.
+        retry_of: id of the failed job this one retries."""
         # cheap non-locking check first: no locks for the common refusal
         self._raise_if_import_active(round_id)
         rnd = self._lock_round(round_id)
@@ -2069,12 +2103,16 @@ class CoordinatorDAO(UserDAO):
                         status=IMPORT_QUEUED,
                         method=method,
                         params=params,
-                        attempts=0)
+                        attempts=0,
+                        flags=({'retry_of': retry_of}
+                               if retry_of is not None else {}))
         self.rdb_session.add(job)
         self.rdb_session.flush()
 
         msg = ('%s queued a %s import (job #%s)'
                % (self.user.username, method, job.id))
+        if retry_of is not None:
+            msg += ', retrying failed job #%s' % (retry_of,)
         self.log_action('enqueue_import', round=rnd, message=msg)
         return job
 

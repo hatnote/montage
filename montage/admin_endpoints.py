@@ -71,6 +71,10 @@ def get_admin_routes():
            GET('/admin/round/<round_id:int>/imports', get_import_jobs),
            GET('/admin/round/<round_id:int>/import/<job_id:int>',
                get_import_job),
+           POST('/admin/round/<round_id:int>/import/<job_id:int>/retry',
+                retry_import_job),
+           POST('/admin/round/<round_id:int>/import/<job_id:int>/dismiss',
+                dismiss_import_job),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
@@ -474,15 +478,24 @@ def import_entries(user_dao, round_id, request_dict, config):
         stats = run_import(user_dao, round_id, import_method, params)
         return {'data': stats}
 
+    return _start_import(user_dao, coord_dao, round_id, import_method,
+                         params, config)
+
+
+def _start_import(user_dao, coord_dao, round_id, import_method, params,
+                  config, retry_of=None):
+    """Queue the import (import_mode 'worker'), or run it in this request
+    and record it as a succeeded job (import_mode 'sync')."""
     if get_import_mode(config) == 'sync':
         coord_dao.check_no_active_import(round_id)
         stats = run_import(user_dao, round_id, import_method, params)
         job = coord_dao.record_sync_import(round_id, import_method, params,
-                                           stats)
+                                           stats, retry_of=retry_of)
         stats['job'] = job.to_info_dict()
         return {'data': stats}
 
-    job = coord_dao.enqueue_import(round_id, import_method, params)
+    job = coord_dao.enqueue_import(round_id, import_method, params,
+                                   retry_of=retry_of)
     return {'data': {'round_id': round_id, 'job': job.to_info_dict()}}
 
 
@@ -503,6 +516,47 @@ def get_import_job(user_dao, round_id, job_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     job = coord_dao.get_import_job(round_id, job_id)
     return {'data': job.to_details_dict()}
+
+
+def retry_import_job(user_dao, round_id, job_id, config):
+    """
+    Summary: Import again what a failed import job tried to import: a new
+    job with the same import method and parameters. Same response as
+    POST /admin/round/<round_id>/import.
+
+    Errors:
+       400: the job did not fail, the round is not paused, or another
+            import of the round is queued or running
+       404: no such job for this round
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    job = coord_dao.get_failed_import_job(round_id, job_id)
+    return _start_import(user_dao, coord_dao, round_id, job.method,
+                         dict(job.params or {}), config, retry_of=job.id)
+
+
+def dismiss_import_job(user_dao, round_id, job_id):
+    """
+    Summary: Dismiss a failed import job, so it no longer keeps the round
+    from being activated.
+
+    Response model:
+      - data:
+        - job: the dismissed job
+        - import_state: the round's import state afterwards
+
+    Errors:
+       400: the job did not fail, or was already dismissed
+       404: no such job for this round
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    job = coord_dao.dismiss_import_job(round_id, job_id)
+    rnd = coord_dao.get_round(round_id)
+    latest, active = user_dao.get_latest_import_jobs([round_id]).get(
+        round_id, (None, None))
+    return {'data': {'job': job.to_info_dict(),
+                     'import_state': import_state_for(rnd.status, latest,
+                                                      active)}}
 
 
 def activate_round(user_dao, round_id, request_dict):
