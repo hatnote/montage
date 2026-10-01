@@ -9,6 +9,11 @@
 #   bash ~/montage/tools/deploy.sh [--ref <branch-or-sha>]
 #
 # Defaults to the master branch. Pass --ref to override.
+#
+# Besides the webservice, the script checks the database schema inside the
+# new image before restarting anything (run the migration SQL first, see
+# deployment.md), and restarts the `import-worker` continuous job (the
+# background import worker, hatnote/montage#621) if it exists.
 
 set -euo pipefail
 
@@ -144,11 +149,45 @@ fi
 echo "    SHA match:    OK"
 echo "    Port check:   OK (8000)"
 
+# ── 4b. Schema pre-flight ────────────────────────────────────────────────────
+# The web app (and the import worker) exit at startup if a model table or
+# column is missing, e.g. import_jobs before tools/migrate_import_jobs.sql
+# was run. Check inside the new image, before restarting anything.
+# [unverified on Toolforge] that `jobs run --wait` returns the job's exit
+# status and that the job's working directory is the app directory.
+
+echo ""
+echo "==> Checking database schema in the new image ..."
+IMAGE="tool-${TOOL_NAME}/tool-${TOOL_NAME}:latest"
+toolforge jobs delete schema-check >/dev/null 2>&1 || true
+if ! toolforge jobs run schema-check \
+        --image "$IMAGE" \
+        --command "sh -c 'export USER=montage; python tools/check_schema.py'" \
+        --mount all --wait; then
+    echo "!! Schema check failed: run the migration SQL first (see deployment.md)."
+    echo "   toolforge jobs logs schema-check"
+    exit 1
+fi
+toolforge jobs delete schema-check >/dev/null 2>&1 || true
+echo "    Schema:       OK"
+
 # ── 5. Restart service ───────────────────────────────────────────────────────
 
 echo ""
 echo "==> Restarting service ..."
 toolforge webservice buildservice restart --mount all
+
+# ── 5b. Restart the import worker ────────────────────────────────────────────
+# Before the smoke test, which exits on failure. Exactly one replica.
+
+if toolforge jobs show import-worker >/dev/null 2>&1; then
+    echo "==> Restarting import worker ..."
+    toolforge jobs restart import-worker
+else
+    echo "!! No import-worker job. With MONTAGE_IMPORT_MODE=worker, imports stay"
+    echo "   queued until it exists. Create it with:"
+    echo "   toolforge jobs run import-worker --image $IMAGE --command import-worker --continuous --mount all --mem 1Gi --emails onfailure"
+fi
 
 # ── 6. Smoke test ────────────────────────────────────────────────────────────
 
