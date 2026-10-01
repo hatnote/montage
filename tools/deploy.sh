@@ -178,11 +178,20 @@ echo "==> Restarting service ..."
 toolforge webservice buildservice restart --mount all
 
 # ── 5b. Restart the import worker ────────────────────────────────────────────
-# Before the smoke test, which exits on failure. Exactly one replica.
+# Before the smoke test, which exits on failure. On SIGTERM the worker puts a
+# running import back in the queue, and the restarted worker runs it again.
+# `jobs list` (not `jobs show`) so a missing job and an API error differ.
 
-if toolforge jobs show import-worker >/dev/null 2>&1; then
+if ! JOBS_LIST=$(toolforge jobs list 2>&1); then
+    echo "!! Could not list Toolforge jobs; the import worker was NOT restarted:"
+    echo "$JOBS_LIST" | head -5 | sed 's/^/   /'
+    echo "   Restart it by hand: toolforge jobs restart import-worker"
+elif echo "$JOBS_LIST" | grep -qE '(^|[[:space:]|│])import-worker([[:space:]|│]|$)'; then
     echo "==> Restarting import worker ..."
-    toolforge jobs restart import-worker
+    if ! toolforge jobs restart import-worker; then
+        echo "!! Restarting import-worker failed; it may still run the old image."
+        echo "   Restart it by hand: toolforge jobs restart import-worker"
+    fi
 else
     echo "!! No import-worker job. With MONTAGE_IMPORT_MODE=worker, imports stay"
     echo "   queued until it exists. Create it with:"

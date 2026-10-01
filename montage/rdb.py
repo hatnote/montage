@@ -711,7 +711,9 @@ class RoundSource(Base):
     user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     method = Column(String(255), index=True)
-    params = Column(JSONEncodedDict)
+    # MEDIUMTEXT on MySQL: a 'selected' import's file list can pass TEXT's
+    # 64 KB (tools/migrate_round_sources_params.sql, hatnote/montage#621)
+    params = Column(LongJSONEncodedDict)
     dq_params = Column(JSONEncodedDict)
 
     create_date = Column(TIMESTAMP, server_default=func.now())

@@ -693,6 +693,23 @@ def test_long_json_column_roundtrip(montage_app, coord_client):
     assert len(''.join(names)) > 70000
 
 
+def test_round_sources_params_is_long_text():
+    """round_sources.params is MEDIUMTEXT on MySQL, matching
+    tools/migrate_round_sources_params.sql; dq_params stays TEXT."""
+    import os
+    from sqlalchemy.dialects import mysql
+    from sqlalchemy.schema import CreateTable
+    ddl = str(CreateTable(rdb.RoundSource.__table__).compile(
+        dialect=mysql.dialect()))
+    assert 'params MEDIUMTEXT' in ddl
+    assert 'dq_params TEXT' in ddl
+    tools = os.path.join(os.path.dirname(rdb.__file__), '..', 'tools')
+    with open(os.path.join(tools, 'migrate_round_sources_params.sql')) as f:
+        assert 'MODIFY params MEDIUMTEXT' in f.read()
+    with open(os.path.join(tools, 'revert_round_sources_params.sql')) as f:
+        assert 'MODIFY params TEXT' in f.read()
+
+
 # ---------------------------------------------------------------------------
 # PR check follow-ups: sweeps, fenced failure, timeouts, sync lock order
 # ---------------------------------------------------------------------------

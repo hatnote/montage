@@ -7,7 +7,28 @@ services:
       - "5001:5000"  # Airplay runs on port 5000 on mac. See https://forums.developer.apple.com/forums/thread/682332
     environment:
       - PYTHONPATH=/app
+      # imports are queued and run by the import-worker service below
+      # (hatnote/montage#621); an import_mode key in config.dev.yaml wins
+      - MONTAGE_IMPORT_MODE=worker
     volumes:
       - .:/app
     command: >
       bash -c "python tools/create_schema.py && python -m montage"
+
+  # Background import worker: runs the queued category / CSV / file-list
+  # imports. Same image, code and SQLite database (the mounted repo) as
+  # the web app; no port. Logs: docker compose logs -f import-worker
+  import-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - PYTHONPATH=/app
+      - MONTAGE_IMPORT_MODE=worker
+    volumes:
+      - .:/app
+    depends_on:
+      - montage
+    # exits 2 until the montage service has created the schema; retry
+    restart: on-failure
+    command: python -m montage.import_worker

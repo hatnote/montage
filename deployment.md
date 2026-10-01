@@ -106,6 +106,7 @@ If upgrading an existing deployment, run the migration SQL instead (on the basti
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_import_jobs.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 ```
 
 `tools/migrate_import_jobs.sql` adds the `import_jobs` table (background imports,
@@ -113,6 +114,11 @@ hatnote/montage#621). Run it **before** deploying code that has it: the web app 
 worker exit at startup if a model table is missing. Both migrations are idempotent. Fresh
 installs get the table from `create_schema.py`. To undo: deploy code without the `ImportJob`
 model, delete the `import-worker` job, then run `tools/revert_import_jobs.sql`.
+
+`tools/migrate_round_sources_params.sql` widens `round_sources.params` to `MEDIUMTEXT`, so a long
+file-list import no longer hits the 64 KB `TEXT` limit. The schema check does not compare column
+types, so it can run before or after the deploy; run it when no import is running (the `ALTER`
+copies the table). `tools/revert_round_sources_params.sql` undoes it (read its warning first).
 
 #### 7. Start the service
 
@@ -139,21 +145,31 @@ toolforge envvars create MONTAGE_IMPORT_MODE    # enter: worker
 toolforge webservice buildservice restart --mount all
 ```
 
-- Run **exactly one** replica (the default). At startup the worker marks every `running` job
-  failed, which is only correct with a single worker. It also fails jobs that have been
-  running for more than 60 minutes.
+- One replica (the default) is enough. More are safe: claims and every job update are fenced,
+  and recovery goes by heartbeat, not by worker start. But two imports at once can collide on
+  the same file names and fail (the coordinator retries).
+- A running job's heartbeat is refreshed every 30 s. A job whose worker died without a heartbeat
+  for 5 minutes (OOM, SIGKILL) is put back in the queue once; on the second time it is marked
+  failed ("the import worker stopped responding"). A job running longer than 60 minutes is
+  marked failed.
+- On SIGTERM (`toolforge jobs restart`, a deploy, pod eviction) the worker rolls back and puts its
+  running job back in the queue without counting the attempt; the next worker runs it again.
 - `--mount all`: same reason as the webservice; the wikireplica credentials are read from
   `~/replica.my.cnf`.
 - Check it started: `toolforge jobs logs import-worker` should show `schema validated ok` and
   `import worker ... starting`.
 - Until `MONTAGE_IMPORT_MODE=worker` is set, imports keep running inside the request (`sync`).
-- A failed import shows its reason on the round page; the coordinator cancels the round and
-  creates it again.
+- A failed import shows its reason on the round page, with **Retry import** (same source again)
+  and **Dismiss** (activate the round without it). A queued import of a cancelled round is
+  skipped without fetching anything.
 
 **To verify on montage-beta before production** (unverified so far): the `MONTAGE_*` envvars
 are injected into job pods; `~/replica.my.cnf` resolves in a job pod (category and file-name
 imports need it); `toolforge jobs restart` picks up the new `:latest` image; memory use of a
-large (~21.5k file) category import fits `--mem 1Gi`.
+large (~21.5k file) category import fits `--mem 1Gi`; `launcher` passes SIGTERM on to Python
+(the worker log shows `released back to the queue` after a restart during an import) and the
+rollback fits the pod's termination grace period (otherwise the job is requeued after 5 minutes
+instead); `toolforge jobs list` prints the job name `import-worker` (deploy.sh looks for it).
 
 #### 8. Verify
 
@@ -375,9 +391,11 @@ A round shows "Import queued" and cannot be activated:
 log shows nothing new): fetches have timeouts (HTTP: 15 s connect / 10 min per read; wikireplica:
 30 s connect, 45 min per query, overridable with `MONTAGE_LABS_READ_TIMEOUT` /
 `MONTAGE_LABS_CONNECT_TIMEOUT` in seconds), after which the job is marked failed with the reason
-and the worker moves on. If it is stuck anyway, restart it: `toolforge jobs restart import-worker`.
-The restarted worker marks the stuck job failed ("interrupted by a worker restart") and continues
-with the queue; the coordinator cancels that round and creates it again.
+and the worker moves on; after 60 minutes the job is marked failed in any case. If the worker is
+stuck anyway, restart it: `toolforge jobs restart import-worker`. The job goes back to the queue
+and runs again (if the old pod is killed without a clean shutdown, after 5 minutes without a
+heartbeat; the second time it is marked failed). The coordinator can retry or dismiss a failed
+import on the round page.
 
 **Rolling back to synchronous imports:** set `MONTAGE_IMPORT_MODE` to `sync`, restart the
 webservice, delete the worker (`toolforge jobs delete import-worker`), and fail the jobs nobody
@@ -385,7 +403,7 @@ will run any more, otherwise their rounds can never be activated:
 
 ```sql
 UPDATE import_jobs
-SET status = 'failed', error = 'background import disabled; cancel this round and create it again',
+SET status = 'failed', error = 'background import disabled; retry the import',
     finish_date = UTC_TIMESTAMP(), claim_token = NULL
 WHERE status IN ('queued', 'running');
 ```
