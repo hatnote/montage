@@ -2002,10 +2002,24 @@ class CoordinatorDAO(UserDAO):
 
     def check_no_active_import(self, round_id):
         """For the sync rollback mode: refuse to import next to a job
-        that is still queued/running. Call before importing anything."""
+        that is still queued/running. Call before importing anything.
+
+        Deliberately a plain, non-locking read. The sync import runs the
+        external fetch and the whole import in this request's transaction;
+        a round lock or a locking read on import_jobs here would be held
+        all that time, and on MariaDB the locking read's gap lock makes
+        concurrent imports into other new rounds wait or deadlock (1205 /
+        1213). So sync mode keeps the pre-#621 lock footprint.
+
+        Residual race (accepted): a worker-mode enqueue committed after
+        this check (only possible while web processes disagree about
+        MONTAGE_IMPORT_MODE, i.e. during a mode flip) is not seen, so a
+        sync import and a worker job can run for the same round. Both are
+        complete imports of an idempotent kind; at worst the round gets
+        duplicate round entries for files both imported at the same
+        moment, as two concurrent sync imports could before #621.
+        """
         self._raise_if_import_active(round_id)
-        self._lock_round(round_id)
-        self._raise_if_import_active(round_id, locked=True)
         return
 
     def record_sync_import(self, round_id, method, params, stats):
