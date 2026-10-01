@@ -344,13 +344,15 @@ def test_home_client(base_client, api_client, mock_external_apis,
                  {'import_method': 'csv', 'csv_url': gsheet_url},
                  as_user='LilyOfTheWest')
     # drain before the next import: one queued/running job per round
-    run_import_jobs(montage_app)
+    assert run_import_jobs(montage_app) == [
+        (resp['data']['job']['id'], 'succeeded')]
 
     resp = fetch('coordinator: import files selected by name',
                  '/admin/round/%s/import' % round_id,
                  {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
                  as_user='LilyOfTheWest')
-    run_import_jobs(montage_app)
+    assert run_import_jobs(montage_app) == [
+        (resp['data']['job']['id'], 'succeeded')]
 
     resp = fetch('coordinator: preview disqualifications',
                  '/admin/round/%s/preview_disqualification' % round_id,
@@ -937,7 +939,7 @@ def test_import_entries_have_file_id(api_client, mock_external_apis,
          'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
         as_user='Yarl',
     )
-    run_import_jobs(montage_app)
+    assert [o for _, o in run_import_jobs(montage_app)] == ['succeeded']
 
     api_client.fetch(
         'coordinator: activate round',
@@ -1200,7 +1202,7 @@ def test_vote_later_reappears(api_client, mock_external_apis, montage_app):
           {'import_method': 'category',
            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
           as_user='LilyOfTheWest')
-    run_import_jobs(montage_app)
+    assert [o for _, o in run_import_jobs(montage_app)] == ['succeeded']
 
     fetch('coordinator: activate round',
           '/admin/round/%s/activate' % round_id,

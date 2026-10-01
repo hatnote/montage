@@ -325,22 +325,38 @@ def test_import_missing_key_is_400(montage_app, coord_client, body):
 # ---------------------------------------------------------------------------
 
 def test_claim_cas_single_winner(montage_app, coord_client, engine):
-    """AC5: the claim UPDATE succeeds once; a second claimer gets rowcount 0
-    (sequential on SQLite; the row lock gives the same on MariaDB)."""
-    round_id = new_round(coord_client, 'cas')
-    job_id = seed_job(montage_app, round_id, 'queued')
-    other = make_engine(montage_app.resources['config'])
-    t = rdb.import_jobs_t
-    upd = (t.update()
-           .where((t.c.id == job_id) & (t.c.status == 'queued'))
-           .values(status='running', claim_token='x'))
+    """AC5: claim_next_job's UPDATE only wins while the job is still
+    queued. Another worker claims job 1 between our SELECT and our UPDATE;
+    we must not take it over, and move on to job 2. (Sequential on SQLite;
+    the row lock gives the same on MariaDB.)"""
+    from sqlalchemy import event
+    round_a = new_round(coord_client, 'cas a')
+    round_b = new_round(coord_client, 'cas b')
+    job_1 = seed_job(montage_app, round_a, 'queued')
+    job_2 = seed_job(montage_app, round_b, 'queued')
+    raced = []
+
+    def other_worker_claims_first(conn, cursor, statement, params, context,
+                                  executemany):
+        if statement.lstrip().upper().startswith('UPDATE IMPORT_JOBS') \
+                and not raced:
+            raced.append(1)
+            set_job(montage_app, job_1, status='running',
+                    claim_token='other-worker')
+
+    event.listen(engine, 'before_cursor_execute', other_worker_claims_first)
     try:
-        with engine.begin() as conn_a:
-            assert conn_a.execute(upd).rowcount == 1
-        with other.begin() as conn_b:
-            assert conn_b.execute(upd).rowcount == 0
+        claim = import_worker.claim_next_job(engine, 'w')
     finally:
-        other.dispose()
+        event.remove(engine, 'before_cursor_execute',
+                     other_worker_claims_first)
+
+    assert raced
+    assert claim.id == job_2
+    row_1 = db_query(montage_app, 'SELECT * FROM import_jobs WHERE id = :i',
+                     i=job_1)[0]
+    assert row_1['claim_token'] == 'other-worker'
+    assert row_1['attempts'] == 0
     assert import_worker.claim_next_job(engine, 'w') is None
 
 
@@ -559,10 +575,17 @@ def test_failed_sync_import_leaves_no_job(montage_app, coord_client,
     def boom(*a, **kw):
         raise RuntimeError('fail after inserting')
 
+    mock_category(mock_external_apis, make_file_infos('syncfail', 30))
     with patch.object(admin_endpoints, 'autodisqualify', boom):
         import_category(coord_client, round_id, error_code=500)
     assert db_query(montage_app,
                     'SELECT id FROM import_jobs WHERE round_id = :r',
+                    r=round_id) == []
+    assert db_query(montage_app,
+                    "SELECT id FROM entries WHERE name LIKE 'syncfail%'") == []
+    assert round_entry_count(montage_app, round_id) == 0
+    assert db_query(montage_app,
+                    'SELECT id FROM round_sources WHERE round_id = :r',
                     r=round_id) == []
 
 
@@ -631,3 +654,197 @@ def test_long_json_column_roundtrip(montage_app, coord_client):
         session.close()
         eng.dispose()
     assert len(''.join(names)) > 70000
+
+
+# ---------------------------------------------------------------------------
+# PR check follow-ups: sweeps, fenced failure, timeouts, sync lock order
+# ---------------------------------------------------------------------------
+
+class _StopLoop(BaseException):
+    pass
+
+
+def test_main_runs_startup_sweep_before_loop(montage_app, monkeypatch):
+    """M3: main() fails interrupted jobs (at_startup=True) before polling."""
+    calls = []
+    config = dict(montage_app.resources['config'])
+    monkeypatch.setattr(import_worker, 'load_env_config', lambda: config)
+    monkeypatch.setattr(import_worker, 'fail_interrupted_jobs',
+                        lambda engine, at_startup=False, **kw:
+                        calls.append(('sweep', at_startup)) or [])
+
+    def loop(engine, worker_id=None):
+        calls.append(('loop', None))
+        raise _StopLoop()
+
+    monkeypatch.setattr(import_worker, 'run_loop_iteration', loop)
+    with pytest.raises(_StopLoop):
+        import_worker.main([])
+    assert calls == [('sweep', True), ('loop', None)]
+
+
+def test_loop_iteration_fails_job_over_max_runtime(montage_app, coord_client,
+                                                   engine):
+    """M10: every loop iteration runs the max-runtime sweep."""
+    round_id = new_round(coord_client, 'loop sweep')
+    old = seed_job(montage_app, round_id, 'running',
+                   start_date=import_worker._utcnow()
+                   - datetime.timedelta(minutes=61))
+    assert import_worker.run_loop_iteration(engine, 'w') is False
+    details = get_job(coord_client, round_id, old)
+    assert details['status'] == 'failed'
+    assert details['error'] == import_worker.MAX_RUNTIME_ERROR
+
+
+def test_failure_after_sweep_is_fenced(montage_app, coord_client, engine,
+                                       mock_external_apis):
+    """M7: once a sweep failed the job (claim token cleared), the worker's
+    own failure must not overwrite it or log a second import_failed."""
+    round_id = new_round(coord_client, 'fenced failure')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    assert import_worker.fail_interrupted_jobs(engine, at_startup=True) == [
+        job['id']]
+
+    def boom(*a, **kw):
+        raise RuntimeError('late failure')
+
+    with patch.object(import_worker, 'load_import_entries', boom):
+        assert import_worker.process_job(engine, claim) == 'failed'
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['error'] == import_worker.INTERRUPTED_ERROR
+    audit = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=import_failed'
+        % campaign_id_of(coord_client, round_id), as_user=COORD)['data']
+    assert len(audit) == 1
+
+
+def test_failed_rollback_still_marks_job_failed(montage_app, coord_client,
+                                                engine, mock_external_apis):
+    round_id = new_round(coord_client, 'rollback raises')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    from sqlalchemy.orm import Session
+
+    real_rollback = Session.rollback
+    raised = []
+
+    def broken_rollback(self):
+        # the import session's rollback raises, as on a dead connection
+        # (whose transaction the server rolls back anyway)
+        real_rollback(self)
+        if not raised:
+            raised.append(1)
+            raise OperationalError('ROLLBACK', {},
+                                   Exception('connection lost'))
+
+    def boom(*a, **kw):
+        raise RuntimeError('import broke')
+
+    with patch.object(admin_endpoints, 'autodisqualify', boom), \
+            patch.object(Session, 'rollback', broken_rollback):
+        assert import_worker.process_job(engine, claim) == 'failed'
+    assert raised
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['status'] == 'failed'
+    assert 'import broke' in details['error']
+
+
+def test_hung_fetch_times_out_and_worker_moves_on(montage_app, coord_client,
+                                                  mock_external_apis):
+    """A fetch that times out fails its job with a readable reason; the
+    next job still runs."""
+    import requests
+    from montage.tests.conftest import GSHEET_CSV_URL_RE
+    mock_external_apis.replace(
+        responses_lib.GET, GSHEET_CSV_URL_RE,
+        body=requests.exceptions.ReadTimeout('Read timed out.'))
+    round_a = new_round(coord_client, 'hung csv')
+    round_b = new_round(coord_client, 'after hung csv')
+    job_a = coord_client.fetch(
+        'coordinator: import csv', '/admin/round/%s/import' % round_a,
+        {'import_method': 'csv',
+         'csv_url': 'https://docs.google.com/spreadsheets/d/x/edit'},
+        as_user=COORD)['data']['job']
+    job_b = import_category(coord_client, round_b)['data']['job']
+    assert run_import_jobs(montage_app) == [(job_a['id'], 'failed'),
+                                            (job_b['id'], 'succeeded')]
+    error = get_job(coord_client, round_a, job_a['id'])['error']
+    assert error.startswith('timed out while fetching the files to import')
+
+
+def test_http_helpers_default_timeout():
+    from montage import utils
+    with patch.object(utils.requests, 'get') as get, \
+            patch.object(utils.requests, 'post') as post:
+        utils.requests_get('https://example.org/a')
+        utils.requests_post('https://example.org/b', data={})
+        utils.requests_get('https://example.org/c', timeout=3)
+    assert get.call_args_list[0][1]['timeout'] == utils.DEFAULT_HTTP_TIMEOUT
+    assert post.call_args_list[0][1]['timeout'] == utils.DEFAULT_HTTP_TIMEOUT
+    assert get.call_args_list[1][1]['timeout'] == 3
+
+
+def test_wikireplica_connection_has_timeouts():
+    from montage import labs
+
+    class FakeCursor(object):
+        def execute(self, query, params):
+            pass
+
+        def fetchall(self):
+            return [{'img_name': b'A.jpg'}]
+
+    class FakeConnection(object):
+        def cursor(self, cursor_type):
+            return FakeCursor()
+
+    with patch.object(labs.pymysql, 'connect',
+                      return_value=FakeConnection()) as connect:
+        assert labs.fetchall_from_commonswiki('SELECT 1', ()) == [
+            {'img_name': 'A.jpg'}]
+    kw = connect.call_args[1]
+    assert kw['connect_timeout'] == labs.CONNECT_TIMEOUT
+    assert kw['read_timeout'] == labs.READ_TIMEOUT >= 30 * 60
+    assert kw['write_timeout'] == labs.WRITE_TIMEOUT
+
+
+def test_error_text_for_fetch_failures():
+    import pymysql
+    import requests
+    assert import_worker._error_text(
+        requests.exceptions.ConnectTimeout('x')).startswith('timed out')
+    assert import_worker._error_text(
+        requests.exceptions.ConnectionError('x')).startswith(
+            'could not fetch')
+    assert import_worker._error_text(
+        pymysql.err.OperationalError(2013, 'Lost connection')).startswith(
+            'the Commons database query failed or timed out')
+
+
+def test_sync_import_takes_no_lock_before_fetch(montage_app, coord_client,
+                                                mock_external_apis,
+                                                sync_mode):
+    """Blocker from the PR check: in sync mode the request must not hold a
+    round lock / locking read on import_jobs across the fetch."""
+    from sqlalchemy.orm import Query
+    events = []
+    real_wfu = Query.with_for_update
+    real_load = rdb.load_import_entries
+
+    def recording_wfu(self, *a, **kw):
+        events.append('lock')
+        return real_wfu(self, *a, **kw)
+
+    def recording_load(*a, **kw):
+        ret = real_load(*a, **kw)
+        events.append('fetched')
+        return ret
+
+    round_id = new_round(coord_client, 'sync locks')
+    with patch.object(Query, 'with_for_update', recording_wfu), \
+            patch.object(rdb, 'load_import_entries', recording_load):
+        import_category(coord_client, round_id)
+    assert 'fetched' in events
+    assert 'lock' not in events[:events.index('fetched')]
