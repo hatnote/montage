@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import adminService from '@/services/adminService'
 import { formatUtcDateTime } from '@/utils'
 
@@ -59,19 +59,26 @@ const warnings = computed(() =>
   )
 )
 
-// One details fetch on load for a finished import; no polling (#622)
-onMounted(() => {
-  if (job.value && ['succeeded', 'failed'].includes(job.value.status)) {
-    adminService
-      .getImportJob(props.roundId, job.value.id)
-      .then((response) => {
-        details.value = response.data
-      })
-      .catch(() => {
-        details.value = null
-      })
-  }
-})
+// One details fetch per finished job state; no polling (#622). Watched,
+// not onMounted: a campaign reload reuses this component with new props.
+watch(
+  () => (job.value ? `${job.value.id}:${job.value.status}` : null),
+  () => {
+    details.value = null
+    if (job.value && ['succeeded', 'failed'].includes(job.value.status)) {
+      const jobId = job.value.id
+      adminService
+        .getImportJob(props.roundId, jobId)
+        .then((response) => {
+          if (job.value && job.value.id === jobId) details.value = response.data
+        })
+        .catch(() => {
+          details.value = null
+        })
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
