@@ -1705,6 +1705,8 @@ class CoordinatorDAO(UserDAO):
             [{'entry_id': e.id,
               'round_id': round_id,
               'round_source_id': round_source.id} for e in new_entries])
+        # the core insert bypasses the session; reload on next access
+        self.rdb_session.expire(rnd, ['round_entries'])
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if method:
@@ -1713,11 +1715,7 @@ class CoordinatorDAO(UserDAO):
         new_entry_stats = {'round_id': rnd.id,
                            'new_entry_count': len(entries),
                            'new_round_entry_count': len(new_entries),
-                           # count in SQL: the core insert above bypasses
-                           # the session, so rnd.entries could be stale
-                           'total_entries': (self.query(RoundEntry)
-                                             .filter_by(round_id=round_id)
-                                             .count())}
+                           'total_entries': len(rnd.entries)}
         return new_entry_stats
 
     def cancel_round(self, round_id):
