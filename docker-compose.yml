@@ -2,7 +2,7 @@ services:
   montage:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile  # the tracked file name is lowercase
     ports:
       - "5001:5000"  # Airplay runs on port 5000 on mac. See https://forums.developer.apple.com/forums/thread/682332
     environment:
@@ -21,7 +21,7 @@ services:
   import-worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile  # the tracked file name is lowercase
     environment:
       - PYTHONPATH=/app
       - MONTAGE_IMPORT_MODE=worker
