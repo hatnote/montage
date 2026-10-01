@@ -52,6 +52,7 @@ Optional env vars (all have sensible defaults):
 | `MONTAGE_ROOT_PATH` | `/` | URL root path |
 | `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
 | `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
+| `MONTAGE_IMPORT_MODE` | `sync` | `worker`: imports are queued and run by the `import-worker` job (step 7b); `sync`: imports run inside the request (old behaviour, rollback switch) |
 
 #### 4. Create the database
 
@@ -104,7 +105,14 @@ If upgrading an existing deployment, run the migration SQL instead (on the basti
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_import_jobs.sql
 ```
+
+`tools/migrate_import_jobs.sql` adds the `import_jobs` table (background imports,
+hatnote/montage#621). Run it **before** deploying code that has it: the web app and the import
+worker exit at startup if a model table is missing. Both migrations are idempotent. Fresh
+installs get the table from `create_schema.py`. To undo: deploy code without the `ImportJob`
+model, delete the `import-worker` job, then run `tools/revert_import_jobs.sql`.
 
 #### 7. Start the service
 
@@ -114,6 +122,38 @@ toolforge webservice buildservice start --mount all
 
 `--mount all` is required — Montage writes logs to NFS (`/data/project/<toolname>/`), so shared
 storage must be mounted.
+
+#### 7b. Start the import worker
+
+Imports of a category, CSV or file list run in a background worker (hatnote/montage#621), a
+Toolforge [continuous job](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Running_jobs)
+using the same [buildservice image](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Building_container_images)
+(Procfile entry `import-worker`):
+
+```bash
+toolforge jobs run import-worker \
+    --image tool-<tool>/tool-<tool>:latest \
+    --command import-worker \
+    --continuous --mount all --mem 1Gi --emails onfailure
+toolforge envvars create MONTAGE_IMPORT_MODE    # enter: worker
+toolforge webservice buildservice restart --mount all
+```
+
+- Run **exactly one** replica (the default). At startup the worker marks every `running` job
+  failed, which is only correct with a single worker. It also fails jobs that have been
+  running for more than 60 minutes.
+- `--mount all`: same reason as the webservice; the wikireplica credentials are read from
+  `~/replica.my.cnf`.
+- Check it started: `toolforge jobs logs import-worker` should show `schema validated ok` and
+  `import worker ... starting`.
+- Until `MONTAGE_IMPORT_MODE=worker` is set, imports keep running inside the request (`sync`).
+- A failed import shows its reason on the round page; the coordinator cancels the round and
+  creates it again.
+
+**To verify on montage-beta before production** (unverified so far): the `MONTAGE_*` envvars
+are injected into job pods; `~/replica.my.cnf` resolves in a job pod (category and file-name
+imports need it); `toolforge jobs restart` picks up the new `:latest` image; memory use of a
+large (~21.5k file) category import fits `--mem 1Gi`.
 
 #### 8. Verify
 
@@ -190,7 +230,11 @@ bash ~/www/python/src/tools/deploy.sh --ref <branch>
 
 The script will: pull the latest version of itself, start the build, wait for
 completion, verify the SHA and port, warn if the running image already matches,
-restart the service, and smoke-test `/meta/`.
+check the database schema inside the new image (a one-off `schema-check` job; it aborts
+before any restart if a migration is missing), restart the service, restart the
+`import-worker` job (or print the command to create it), and smoke-test `/meta/`.
+
+Run any new migration SQL **before** the deploy script (see step 6 of the fresh install).
 
 ---
 
@@ -256,6 +300,10 @@ mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db nam
 toolforge webservice buildservice restart --mount all
 ```
 
+The same applies to a missing table, e.g.
+`!!  Model <class 'montage.rdb.ImportJob'> table import_jobs missing from database ...`: run
+`tools/migrate_import_jobs.sql`, then restart the webservice and the `import-worker` job.
+
 `tools/create_schema.py` only creates *missing tables* (`CREATE TABLE IF NOT EXISTS`); it does
 **not** `ALTER` existing tables, so it will not add a missing column. Use the migration SQL for
 schema changes to an existing database.
@@ -299,6 +347,40 @@ toolforge webservice buildservice logs
 
 This is ephemeral — it reflects the current pod's output since the last restart and is not
 written to a file.
+
+**Import worker:** one line per claimed, finished and failed import job, with full tracebacks
+for failures:
+
+```bash
+toolforge jobs logs import-worker        # add -f to follow
+```
+
+#### Imports stay queued
+
+A round shows "Import queued" and cannot be activated:
+
+1. Is the worker running? `toolforge jobs list`, `toolforge jobs show import-worker`. If it is
+   missing, create it (fresh install step 7b).
+2. Its log: `toolforge jobs logs import-worker` (schema errors, database errors, crashes).
+3. Is `MONTAGE_IMPORT_MODE` what you expect? `toolforge envvars list`.
+4. The jobs themselves (read-only):
+
+   ```sql
+   SELECT id, round_id, status, method, attempts, claimed_by, create_date, start_date,
+          finish_date, LEFT(error, 200) AS error
+   FROM import_jobs ORDER BY id DESC LIMIT 20;
+   ```
+
+**Rolling back to synchronous imports:** set `MONTAGE_IMPORT_MODE` to `sync`, restart the
+webservice, delete the worker (`toolforge jobs delete import-worker`), and fail the jobs nobody
+will run any more, otherwise their rounds can never be activated:
+
+```sql
+UPDATE import_jobs
+SET status = 'failed', error = 'background import disabled; cancel this round and create it again',
+    finish_date = UTC_TIMESTAMP(), claim_token = NULL
+WHERE status IN ('queued', 'running');
+```
 
 #### Running Python commands
 
