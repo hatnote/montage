@@ -7,6 +7,7 @@ from .utils import json_serial
 
 from sqlalchemy import inspect
 from sqlalchemy.types import TypeDecorator, Text
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.ext.mutable import Mutable
 
 
@@ -121,6 +122,17 @@ class JSONEncodedDict(TypeDecorator):
         if value is None:
             value = '{}'
         return json.loads(value)
+
+
+class LongJSONEncodedDict(JSONEncodedDict):
+    """JSONEncodedDict stored as MEDIUMTEXT on MySQL (16 MB instead of
+    TEXT's 64 KB); plain Text elsewhere. As a JSONEncodedDict subclass it
+    is MutableDict-associated, so values must be dicts."""
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'mysql':
+            return dialect.type_descriptor(MEDIUMTEXT())
+        return dialect.type_descriptor(Text())
 
 
 class MutableDict(Mutable, dict):
