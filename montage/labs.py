@@ -9,6 +9,15 @@ except ImportError:
 
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
 
+# Seconds. Without timeouts a dead connection blocks the caller for ever,
+# which stops the single import worker (hatnote/montage#621). The read
+# timeout bounds how long one query may run before the server sends rows:
+# generous, because a ~21.5k-file category takes a while, but under the
+# worker's 60-minute maximum runtime. Overridable for very large categories.
+CONNECT_TIMEOUT = int(os.environ.get('MONTAGE_LABS_CONNECT_TIMEOUT', 30))
+READ_TIMEOUT = int(os.environ.get('MONTAGE_LABS_READ_TIMEOUT', 45 * 60))
+WRITE_TIMEOUT = 60
+
 
 FILE_COLS = ['fr.fr_width AS img_width',
              'fr.fr_height AS img_height',
@@ -55,7 +64,10 @@ def fetchall_from_commonswiki(query, params):
     connection = pymysql.connect(db=db_title,
                                  host=db_host,
                                  read_default_file=DB_CONFIG,
-                                 charset='utf8')
+                                 charset='utf8',
+                                 connect_timeout=CONNECT_TIMEOUT,
+                                 read_timeout=READ_TIMEOUT,
+                                 write_timeout=WRITE_TIMEOUT)
     cursor = connection.cursor(pymysql.cursors.DictCursor)
     cursor.execute(query, params)
     res = cursor.fetchall()

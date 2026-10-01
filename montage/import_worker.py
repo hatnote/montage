@@ -40,9 +40,15 @@ import argparse
 import datetime
 from collections import namedtuple
 
+import requests
 from sqlalchemy import and_, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
+
+try:
+    from pymysql.err import MySQLError as WikireplicaError
+except ImportError:  # pragma: no cover
+    WikireplicaError = ()
 
 from .rdb import (Base,
                   User,
@@ -95,6 +101,17 @@ def _error_text(exc):
         text = str(exc)
     elif isinstance(exc, DBAPIError) and exc.orig is not None:
         text = '%s: %s' % (type(exc.orig).__name__, exc.orig)
+    elif isinstance(exc, requests.exceptions.Timeout):
+        text = ('timed out while fetching the files to import (%s: %s)'
+                % (type(exc).__name__, exc))
+    elif isinstance(exc, requests.exceptions.RequestException):
+        text = ('could not fetch the files to import (%s: %s)'
+                % (type(exc).__name__, exc))
+    elif isinstance(exc, WikireplicaError):
+        # raw pymysql errors only come from labs.py (the app database is
+        # reached through SQLAlchemy, whose errors are DBAPIError)
+        text = ('the Commons database query failed or timed out (%s: %s)'
+                % (type(exc).__name__, exc))
     else:
         text = '%s: %s' % (type(exc).__name__, exc)
     return text[:IMPORT_ERROR_MAX]
@@ -243,12 +260,20 @@ def process_job(engine, claim):
         log.exception('job #%s: import failed after %.1fs',
                       claim.id, time.time() - start)
         if session is not None:
-            session.rollback()
+            try:
+                session.rollback()
+            except Exception:
+                # e.g. the connection is gone; record the failure anyway
+                log.exception('job #%s: rollback failed', claim.id)
         _mark_failed(engine, claim, _error_text(e))
         return 'failed'
     finally:
         if session is not None:
-            session.close()
+            try:
+                session.close()
+            except Exception:
+                log.exception('job #%s: closing the session failed',
+                              claim.id)
 
 
 def fail_interrupted_jobs(engine, now=None, at_startup=False):
