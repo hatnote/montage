@@ -801,10 +801,13 @@ def test_wikireplica_connection_has_timeouts():
             return FakeCursor()
 
     with patch.object(labs.pymysql, 'connect',
-                      return_value=FakeConnection()) as connect:
+                      return_value=FakeConnection()) as connect, \
+         patch.object(labs, 'replica_credentials',
+                      return_value={'read_default_file': '/x/replica.my.cnf'}):
         assert labs.fetchall_from_commonswiki('SELECT 1', ()) == [
             {'img_name': 'A.jpg'}]
     kw = connect.call_args[1]
+    assert kw['read_default_file'] == '/x/replica.my.cnf'
     assert kw['connect_timeout'] == labs.CONNECT_TIMEOUT
     assert kw['read_timeout'] == labs.READ_TIMEOUT >= 30 * 60
     assert kw['write_timeout'] == labs.WRITE_TIMEOUT
