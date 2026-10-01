@@ -161,7 +161,23 @@ DEVTEST_CONFIG = {'oauth_client_id': None,
                   'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
                   '__file__': 'devtest-builtin',
                   '__env__': 'devtest',
+                  'import_mode': 'worker',
 }
+
+# How POST /admin/round/<id>/import runs external imports
+# (hatnote/montage#621): 'worker' queues an import job for
+# montage/import_worker.py; 'sync' runs it inside the request (the
+# pre-#621 behaviour, kept as a rollback switch).
+IMPORT_MODES = ('sync', 'worker')
+DEFAULT_IMPORT_MODE = 'sync'
+
+
+def get_import_mode(config):
+    mode = config.get('import_mode', DEFAULT_IMPORT_MODE)
+    if mode not in IMPORT_MODES:
+        raise ValueError('invalid import_mode %r (MONTAGE_IMPORT_MODE), expected'
+                         ' one of: %s' % (mode, ', '.join(IMPORT_MODES)))
+    return mode
 
 
 def _load_config_from_env(env_name):
@@ -203,6 +219,8 @@ def _load_config_from_env(env_name):
         'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),
         'replay_log_path': os.environ.get('MONTAGE_REPLAY_LOG_PATH'),
         'feel_log_path': os.environ.get('MONTAGE_FEEL_LOG_PATH'),
+        'import_mode': os.environ.get('MONTAGE_IMPORT_MODE',
+                                      DEFAULT_IMPORT_MODE),
         '__env__': env_name,
         '__file__': 'environment',
     })
@@ -229,6 +247,9 @@ def load_env_config(env_name=None):
 
     config['__env__'] = env_name
     config['__file__'] = config_file_path
+    # the YAML key wins; the env var lets dev-servers.sh pick the mode
+    config.setdefault('import_mode', os.environ.get('MONTAGE_IMPORT_MODE',
+                                                    DEFAULT_IMPORT_MODE))
     return config
 
 
