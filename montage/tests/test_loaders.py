@@ -289,3 +289,31 @@ def test_round_source_params_hold_large_file_lists():
     stored = session.query(RoundSource).one().params
     assert stored['file_names'] == names
     assert len(str(stored)) > 64 * 1024
+
+
+def test_get_files_order_is_binary_like_the_old_query(monkeypatch):
+    """Uppercase sorts before lowercase, as the old ORDER BY on the binary
+    file_name column did; a case-insensitive sort would differ."""
+    from montage import labs
+    names = ['b_lower.jpg', 'B_upper.jpg', 'a_lower.jpg', 'A_upper.jpg', 'Ö_umlaut.jpg']
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_replicas(names, {n: _file_row(n, i) for i, n in enumerate(names)}, calls))
+
+    result = [r['img_name'] for r in labs.get_files('Cat')]
+
+    assert result == ['A_upper.jpg', 'B_upper.jpg', 'a_lower.jpg', 'b_lower.jpg', 'Ö_umlaut.jpg']
+
+
+def test_load_by_filename_duplicates_and_space_underscore_pairs(monkeypatch):
+    """'A b.jpg' and 'A_b.jpg' are the same Commons file; both requests
+    resolve, with one query."""
+    from montage import labs, loaders
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_main_replica({'A_b.jpg'}, calls))
+
+    entries, warnings = loaders.load_by_filename(['A b.jpg', 'A_b.jpg', 'A b.jpg'], source='local')
+
+    assert [e.name for e in entries] == ['A_b.jpg'] * 3
+    assert warnings == [] and len(calls) == 1 and calls[0] == ('A_b.jpg',)

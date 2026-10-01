@@ -1270,3 +1270,37 @@ def test_selected_import_with_missing_name_reports_warning(api_client, mock_exte
 
     issues = [w for w in data['warnings'] if 'import issues' in w]
     assert len(issues) == 1 and 'Not_on_Commons.jpg' in issues[0]['import issues']
+
+
+def test_csv_import_warnings_are_dicts(api_client, mock_external_apis, monkeypatch):
+    """The frontend shows one value per warning; a plain string showed only
+    its last character. CSV warnings must be dicts like the others."""
+    from montage import loaders
+    from montage.tests.conftest import FIXTURE_FILE_INFOS
+
+    def fake_csv(url, source='local'):
+        entries = [loaders.make_entry(info) for info in FIXTURE_FILE_INFOS[:3]]
+        return entries, ['file "Gone.jpg" does not exist']
+    monkeypatch.setattr(loaders, 'get_entries_from_csv', fake_csv)
+
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer', {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'csv warning test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import csv', '/admin/round/%s/import' % round_id,
+        {'import_method': 'csv', 'csv_url': 'https://example.org/files.csv'},
+        as_user='Yarl')['data']
+
+    assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
+    assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])

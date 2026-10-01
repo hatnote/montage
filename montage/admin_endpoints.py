@@ -350,7 +350,9 @@ def import_entries(user_dao, round_id, request_dict):
         params = {'csv_url': csv_url}
         if warnings:
             msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
-            import_warnings.append(msg)
+            # a dict like the other warnings: the frontend shows one value
+            # per warning, and showed only the last character of a string
+            import_warnings.append({'import issues': msg})
     elif import_method == CATEGORY_METHOD:
         cat_name = request_dict['category']
         entries = coord_dao.add_entries_from_cat(round_id, cat_name)
