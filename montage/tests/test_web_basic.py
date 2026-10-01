@@ -867,7 +867,8 @@ def test_multiple_jurors(api_client, mock_external_apis):
 def test_get_files_info_by_name(api_client):
     """GET /utils/file returns file_infos with file_id populated."""
     from .conftest import SELECTED_FILE_INFO
-    with patch('montage.public_endpoints.get_file_info', return_value=SELECTED_FILE_INFO):
+    with patch('montage.public_endpoints.get_files_info_by_names',
+               return_value={SELECTED_FILE_INFO['img_name'].replace(' ', '_'): SELECTED_FILE_INFO}):
         resp = api_client.fetch(
             'public: get file info by name',
             '/utils/file',
@@ -1234,3 +1235,38 @@ def test_oauth_complete_login_success(oauth_app):
     data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
     assert data.get('userid') == 12345
     assert data.get('username') == 'OAuthTestUser'
+
+
+def test_selected_import_with_missing_name_reports_warning(api_client, mock_external_apis):
+    """A file-list import where some names are not found must succeed with a
+    warning. The warning used to be a set, which can't be serialised (500)."""
+    import responses as responses_lib
+    from montage.tests.conftest import TOOLFORGE_FILE_URL, SELECTED_FILE_INFO
+
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_FILE_URL,
+                               json={'file_infos': [SELECTED_FILE_INFO],
+                                     'no_info': ['Not_on_Commons.jpg']},
+                               status=200)
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'missing name test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import selected files', '/admin/round/%s/import' % round_id,
+        {'import_method': 'selected',
+         'file_names': [SELECTED_FILE_INFO['img_name'], 'Not on Commons.jpg']},
+        as_user='Yarl')['data']
+
+    issues = [w for w in data['warnings'] if 'import issues' in w]
+    assert len(issues) == 1 and 'Not_on_Commons.jpg' in issues[0]['import issues']

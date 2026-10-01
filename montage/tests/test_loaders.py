@@ -104,19 +104,6 @@ def test_make_entry_reupload():
     assert entry.file_id == 2
 
 
-@pytest.mark.xfail(
-    os.environ.get('TOOLFORGE') != '1',
-    reason='Requires live wikireplica (Toolforge); set TOOLFORGE=1 to run',
-)
-def test_get_files_parity():
-    """New file/filerevision query returns same filenames as old image/oldimage query."""
-    from montage.labs import get_files, get_files_legacy
-    category = 'Images_from_Wiki_Loves_Monuments_2015_in_France'
-    new = {r['img_name'] for r in get_files(category)}
-    old = {r['img_name'] for r in get_files_legacy(category)}
-    assert new == old
-
-
 # ---------------------------------------------------------------------------
 # Category membership comes from the Commons links replica (x4) since
 # 2026-09-08; file data from the main replica. The two are joined in code.
@@ -217,3 +204,65 @@ def test_get_files_sees_files_added_after_links_split():
     files = get_files(category)
     assert len(members) > 10000
     assert len(files) >= 0.99 * len(set(members))
+
+
+# ---------------------------------------------------------------------------
+# File-list imports look names up in batches, not one query per file
+# (a 1000+ name list outlasted the 30 s request timeout on montage-beta).
+# ---------------------------------------------------------------------------
+
+def _fake_main_replica(existing, calls):
+    from montage import labs
+
+    def fake(query, params, db_host=labs.COMMONS_DB_HOST):
+        assert db_host == labs.COMMONS_DB_HOST
+        calls.append(params)
+        return [_file_row(n, i) for i, n in enumerate(params) if n in existing]
+    return fake
+
+
+def test_load_by_filename_batches_lookups(monkeypatch):
+    from montage import labs, loaders
+    monkeypatch.setattr(labs, 'FILE_LOOKUP_CHUNK_SIZE', 4)
+    names = ['File %02d.jpg' % i for i in range(10)]
+    existing = {n.replace(' ', '_') for n in names}
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_main_replica(existing, calls))
+
+    entries, warnings = loaders.load_by_filename(names, source='local')
+
+    assert [len(c) for c in calls] == [4, 4, 2]  # 3 queries, not 10
+    assert [e.name for e in entries] == [n.replace(' ', '_') for n in names]
+    assert warnings == []
+
+
+def test_load_by_filename_warns_per_missing_name_in_input_order(monkeypatch):
+    from montage import labs, loaders
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_main_replica({'B.jpg'}, calls))
+
+    entries, warnings = loaders.load_by_filename(['Z missing.jpg', 'B.jpg', 'A missing.jpg'],
+                                                 source='local')
+
+    assert [e.name for e in entries] == ['B.jpg']
+    assert len(warnings) == 2
+    assert '"Z missing.jpg"' in warnings[0] and '"A missing.jpg"' in warnings[1]
+
+
+def test_load_name_list_local(monkeypatch):
+    """CSV with only file names, local source: used to unpack the file info
+    dict into (edict, warnings) and fail."""
+    from io import StringIO
+    from montage import labs, loaders
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_main_replica({'One.jpg', 'Two_words.jpg'}, calls))
+
+    entries, warnings = loaders.load_name_list(
+        StringIO('File:One.jpg\nTwo words.jpg\nGone.jpg\n'), source='local')
+
+    assert [e.name for e in entries] == ['One.jpg', 'Two_words.jpg']
+    assert len(calls) == 1
+    assert len(warnings) == 1 and '"Gone.jpg"' in warnings[0]

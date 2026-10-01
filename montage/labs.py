@@ -125,6 +125,17 @@ def get_files_by_name(file_names):
     return fetchall_from_commonswiki(query, tuple(file_names))
 
 
+def get_files_info_by_names(file_names):
+    """{underscored name: file info} for the names that exist, looked up in
+    chunks instead of one query (and connection) per file."""
+    names = sorted(set(name.replace(' ', '_') for name in file_names))
+    ret = {}
+    for i in range(0, len(names), FILE_LOOKUP_CHUNK_SIZE):
+        for rec in get_files_by_name(names[i:i + FILE_LOOKUP_CHUNK_SIZE]):
+            ret[rec['img_name']] = rec
+    return ret
+
+
 def get_files(category_name):
     # Two steps because category membership and file data now live on
     # different database clusters, which cannot be joined in SQL.
@@ -156,51 +167,6 @@ def get_file_info(filename):
         return results[0]
     else:
         return None
-
-
-def get_files_legacy(category_name):
-    """Verbatim copy of the original get_files() using image/oldimage tables.
-
-    Kept alive solely for the xfail parity test (test_get_files_parity).
-    Remove together with that test after 28 May 2026 once image/oldimage are
-    dropped from wikireplicas.
-    """
-    IMAGE_COLS = ['img_width',
-                  'img_height',
-                  'img_name',
-                  'img_major_mime',
-                  'img_minor_mime',
-                  'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
-                  'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
-                  'IFNULL(oi_timestamp, img_timestamp) AS img_timestamp',
-                  'img_timestamp AS rec_img_timestamp',
-                  'ci.actor_user AS rec_img_user',
-                  'ci.actor_name AS rec_img_text',
-                  'oi.oi_archive_name AS oi_archive_name']
-    query = '''
-        SELECT {cols}
-        FROM commonswiki_p.image AS i
-        LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
-        JOIN page ON page_namespace = 6
-        AND page_title = img_name
-        JOIN categorylinks ON cl_from = page_id
-        AND cl_type = 'file'
-        JOIN linktarget ON cl_target_id = lt_id
-        AND lt_namespace = 14
-        AND lt_title = %s
-        GROUP BY img_name
-        ORDER BY oi_timestamp ASC;
-    '''.format(cols=', '.join(IMAGE_COLS))
-    params = (category_name.replace(' ', '_'),)
-    return fetchall_from_commonswiki(query, params)
 
 
 if __name__ == '__main__':
