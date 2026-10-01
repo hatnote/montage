@@ -1,0 +1,633 @@
+"""Tests for background import jobs (hatnote/montage#621, origin #618).
+
+The import endpoint queues an import_jobs row; montage.import_worker runs
+it. Covers enqueue, the worker (claim, fenced commit, failure), the
+Phase 1 stuck-job rule, the activation gate, import_state in admin
+payloads, and the MONTAGE_IMPORT_MODE=sync rollback switch.
+
+All file data is synthetic.
+"""
+import datetime
+from unittest.mock import patch
+
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
+
+from montage import admin_endpoints, import_worker, rdb
+from montage.app import make_engine
+from montage.rdb import ImportJob, User
+from montage.tests.conftest import (run_import_jobs, SELECTED_FILE_INFO,
+                                    TOOLFORGE_FILE_URL)
+from montage.tests.test_import_entries import (COORD, db_query, new_round,
+                                               import_category, mock_category,
+                                               make_file_infos)
+from montage.tests.test_web_basic import montage_app, api_client  # noqa: F401 (fixtures)
+
+import responses as responses_lib
+
+
+@pytest.fixture
+def coord_client(api_client):
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': COORD})
+    return api_client
+
+
+@pytest.fixture
+def engine(montage_app):
+    eng = make_engine(montage_app.resources['config'])
+    yield eng
+    eng.dispose()
+
+
+def activate(client, round_id, **kw):
+    return client.fetch('coordinator: activate round',
+                        '/admin/round/%s/activate' % round_id,
+                        {'post': True}, as_user=COORD, **kw)
+
+
+def get_job(client, round_id, job_id, **kw):
+    resp = client.fetch('coordinator: get import job',
+                        '/admin/round/%s/import/%s' % (round_id, job_id),
+                        as_user=COORD, **kw)
+    return resp if kw.get('error_code') else resp['data']
+
+
+def get_round(client, round_id):
+    return client.fetch('coordinator: get round',
+                        '/admin/round/%s' % round_id, as_user=COORD)['data']
+
+
+def error_text(resp):
+    return resp.get_data(as_text=True)
+
+
+def round_entry_count(app, round_id):
+    return len(db_query(app, 'SELECT id FROM round_entries WHERE round_id = :r',
+                        r=round_id))
+
+
+def seed_job(app, round_id, status, **kw):
+    """Insert an import job row directly; returns its id."""
+    eng = create_engine(app.resources['config']['db_url'])
+    session = sessionmaker(bind=eng)()
+    try:
+        user = session.query(User).filter_by(username=COORD).one()
+        job = ImportJob(round_id=round_id, user_id=user.id, status=status,
+                        method='category', params={'category': 'Seeded'},
+                        **kw)
+        session.add(job)
+        session.commit()
+        return job.id
+    finally:
+        session.close()
+        eng.dispose()
+
+
+def set_job(app, job_id, **values):
+    sets = ', '.join('%s = :%s' % (k, k) for k in values)
+    eng = create_engine(app.resources['config']['db_url'])
+    try:
+        with eng.begin() as conn:
+            conn.execute(text('UPDATE import_jobs SET %s WHERE id = :id'
+                              % sets), id=job_id, **values)
+    finally:
+        eng.dispose()
+
+
+def campaign_id_of(client, round_id):
+    return get_round(client, round_id)['campaign']['id']
+
+
+# ---------------------------------------------------------------------------
+# Enqueue and worker
+# ---------------------------------------------------------------------------
+
+def test_enqueue_returns_queued_without_external_calls(
+        montage_app, coord_client, mock_external_apis):
+    """AC1: the request only records the job; no wikireplica/API call."""
+    round_id = new_round(coord_client, 'enqueue')
+    calls_before = len(mock_external_apis.calls)
+    data = import_category(coord_client, round_id)['data']
+    assert len(mock_external_apis.calls) == calls_before
+    assert data['round_id'] == round_id
+    assert data['job']['status'] == 'queued'
+    assert data['job']['params_summary'] == {
+        'category': 'Synthetic_test_category'}
+    assert 'new_entry_count' not in data
+    assert round_entry_count(montage_app, round_id) == 0
+
+    jobs = coord_client.fetch('coordinator: list import jobs',
+                              '/admin/round/%s/imports' % round_id,
+                              as_user=COORD)['data']
+    assert [j['id'] for j in jobs] == [data['job']['id']]
+
+
+def test_worker_runs_job(montage_app, coord_client, mock_external_apis):
+    """AC2: after the worker ran, the job succeeded with the imported rows
+    and the audit log has add_round_entries."""
+    round_id = new_round(coord_client, 'worker runs')
+    job = import_category(coord_client, round_id)['data']['job']
+    assert run_import_jobs(montage_app) == [(job['id'], 'succeeded')]
+
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['status'] == 'succeeded'
+    assert details['entry_count'] == 20
+    assert details['new_round_entry_count'] == 20
+    assert details['disqualified_count'] == 0
+    assert details['error'] is None
+    assert details['requested_by'] == COORD
+    assert details['finish_date']
+    assert round_entry_count(montage_app, round_id) == 20
+
+    campaign_id = campaign_id_of(coord_client, round_id)
+    audit = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=add_round_entries' % campaign_id,
+        as_user=COORD)['data']
+    assert audit
+    enq = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=enqueue_import' % campaign_id,
+        as_user=COORD)['data']
+    assert len(enq) == 1
+
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['status'] == 'succeeded'
+    assert state['blocks_activation'] is False
+    activate(coord_client, round_id)
+
+
+def test_loader_failure_marks_job_failed(montage_app, coord_client,
+                                         mock_external_apis):
+    """AC3: a failing fetch leaves a failed job with a reason, no rows,
+    an import_failed audit entry, and blocks activation."""
+    round_id = new_round(coord_client, 'loader fails')
+    job = import_category(coord_client, round_id)['data']['job']
+
+    def boom(*a, **kw):
+        raise RuntimeError('boom')
+
+    with patch.object(import_worker, 'load_import_entries', boom):
+        assert run_import_jobs(montage_app) == [(job['id'], 'failed')]
+
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['status'] == 'failed'
+    assert 'boom' in details['error']
+    assert round_entry_count(montage_app, round_id) == 0
+    assert db_query(montage_app,
+                    'SELECT id FROM round_sources WHERE round_id = :r',
+                    r=round_id) == []
+    campaign_id = campaign_id_of(coord_client, round_id)
+    audit = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=import_failed' % campaign_id,
+        as_user=COORD)['data']
+    assert len(audit) == 1
+
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['blocks_activation'] is True
+    assert state['blocked_reason'] == 'import_failed'
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'last import failed' in error_text(resp)
+
+
+def test_failure_after_inserts_rolls_back_in_worker(
+        montage_app, coord_client, mock_external_apis):
+    """AC3b: an error after the inserts rolls the whole import back."""
+    infos = make_file_infos('wrollback', 220)
+    round_id = new_round(coord_client, 'worker rollback')
+    mock_category(mock_external_apis, infos)
+    job = import_category(coord_client, round_id)['data']['job']
+
+    def boom(*a, **kw):
+        raise RuntimeError('fail after inserting')
+
+    with patch.object(admin_endpoints, 'autodisqualify', boom):
+        assert run_import_jobs(montage_app) == [(job['id'], 'failed')]
+
+    assert db_query(montage_app,
+                    "SELECT id FROM entries WHERE name LIKE 'wrollback%'") == []
+    assert round_entry_count(montage_app, round_id) == 0
+    assert db_query(montage_app,
+                    'SELECT id FROM round_sources WHERE round_id = :r',
+                    r=round_id) == []
+    assert 'fail after inserting' in get_job(coord_client, round_id,
+                                             job['id'])['error']
+
+
+def test_error_text_hides_sql():
+    exc = OperationalError('INSERT INTO entries VALUES (...) huge dump',
+                           {'p': 1}, Exception('database is locked'))
+    assert import_worker._error_text(exc) == 'Exception: database is locked'
+    assert import_worker._error_text(rdb.InvalidAction('nope')) == 'nope'
+    assert len(import_worker._error_text(ValueError('x' * 5000))) == \
+        rdb.IMPORT_ERROR_MAX
+
+
+def test_second_enqueue_rejected(montage_app, coord_client,
+                                 mock_external_apis):
+    """AC8: one queued/running job per round."""
+    round_id = new_round(coord_client, 'second enqueue')
+    import_category(coord_client, round_id)
+    resp = import_category(coord_client, round_id, error_code=400)
+    assert 'already queued or running' in error_text(resp)
+    run_import_jobs(montage_app)
+    import_category(coord_client, round_id)  # 200 again
+
+
+def test_enqueue_requires_paused_round(montage_app, coord_client,
+                                       mock_external_apis):
+    round_id = new_round(coord_client, 'enqueue active')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    activate(coord_client, round_id)
+    resp = import_category(coord_client, round_id, error_code=400)
+    assert 'must be paused' in error_text(resp)
+
+
+def test_activate_blocked_while_queued_and_running(
+        montage_app, coord_client, mock_external_apis):
+    """AC4"""
+    round_id = new_round(coord_client, 'gate')
+    job = import_category(coord_client, round_id)['data']['job']
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'still queued' in error_text(resp)
+
+    set_job(montage_app, job['id'], status='running')
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'still running' in error_text(resp)
+    assert get_round(coord_client, round_id)['import_state'][
+        'blocked_reason'] == 'import_running'
+
+    set_job(montage_app, job['id'], status='queued')
+    run_import_jobs(montage_app)
+    activate(coord_client, round_id)
+
+
+def test_rerun_is_idempotent(montage_app, coord_client, mock_external_apis):
+    """AC7: the same import again adds no round entries."""
+    round_id = new_round(coord_client, 'rerun')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    job2 = import_category(coord_client, round_id)['data']['job']
+    assert run_import_jobs(montage_app) == [(job2['id'], 'succeeded')]
+
+    details = get_job(coord_client, round_id, job2['id'])
+    assert details['new_round_entry_count'] == 0
+    assert {'duplicate import': 'no new entries imported'} in \
+        details['warnings']
+    assert round_entry_count(montage_app, round_id) == 20
+
+
+def test_selected_import_warning_is_dict(montage_app, coord_client,
+                                         mock_external_apis):
+    """The 'import issues' warning is a dict (was a set literal)."""
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_FILE_URL,
+                               json={'file_infos': [SELECTED_FILE_INFO],
+                                     'no_info': ['Missing.jpg']},
+                               status=200)
+    round_id = new_round(coord_client, 'selected warning')
+    job = coord_client.fetch(
+        'coordinator: import selected', '/admin/round/%s/import' % round_id,
+        {'import_method': 'selected',
+         'file_names': [SELECTED_FILE_INFO['img_name'], 'Missing.jpg']},
+        as_user=COORD)['data']['job']
+    assert job['params_summary'] == {'file_count': 2}
+    run_import_jobs(montage_app)
+    warnings = get_job(coord_client, round_id, job['id'])['warnings']
+    issues = [w for w in warnings if 'import issues' in w]
+    assert len(issues) == 1
+    assert 'Missing.jpg' in issues[0]['import issues']
+
+
+@pytest.mark.parametrize('body', [
+    {'import_method': 'category'},
+    {'import_method': 'category', 'category': ''},
+    {'import_method': 'csv'},
+    {'import_method': 'gistcsv', 'csv_url': 'https://example.org/x.csv'},
+    {'import_method': 'selected', 'file_names': []},
+    {'import_method': 'selected', 'file_names': 'Not_a_list.jpg'},
+    {'category': 'No_method'},
+])
+def test_import_missing_key_is_400(montage_app, coord_client, body):
+    round_id = new_round(coord_client, 'missing key')
+    coord_client.fetch('coordinator: bad import',
+                       '/admin/round/%s/import' % round_id, body,
+                       as_user=COORD, error_code=400)
+    assert db_query(montage_app, 'SELECT id FROM import_jobs') == []
+
+
+# ---------------------------------------------------------------------------
+# Worker internals: CAS claim, fencing, stuck-job rule, loop
+# ---------------------------------------------------------------------------
+
+def test_claim_cas_single_winner(montage_app, coord_client, engine):
+    """AC5: the claim UPDATE succeeds once; a second claimer gets rowcount 0
+    (sequential on SQLite; the row lock gives the same on MariaDB)."""
+    round_id = new_round(coord_client, 'cas')
+    job_id = seed_job(montage_app, round_id, 'queued')
+    other = make_engine(montage_app.resources['config'])
+    t = rdb.import_jobs_t
+    upd = (t.update()
+           .where((t.c.id == job_id) & (t.c.status == 'queued'))
+           .values(status='running', claim_token='x'))
+    try:
+        with engine.begin() as conn_a:
+            assert conn_a.execute(upd).rowcount == 1
+        with other.begin() as conn_b:
+            assert conn_b.execute(upd).rowcount == 0
+    finally:
+        other.dispose()
+    assert import_worker.claim_next_job(engine, 'w') is None
+
+
+def test_claim_next_job(montage_app, coord_client, engine):
+    round_id = new_round(coord_client, 'claim')
+    job_id = seed_job(montage_app, round_id, 'queued')
+    claim = import_worker.claim_next_job(engine, 'worker-a')
+    assert claim.id == job_id
+    assert claim.params == {'category': 'Seeded'}
+    row = db_query(montage_app, 'SELECT * FROM import_jobs WHERE id = :i',
+                   i=job_id)[0]
+    assert row['status'] == 'running'
+    assert row['claimed_by'] == 'worker-a'
+    assert row['claim_token'] == claim.token
+    assert row['attempts'] == 1
+    assert row['start_date'] is not None
+    assert import_worker.claim_next_job(engine, 'worker-b') is None
+
+
+def test_fenced_commit_rejected_after_token_change(
+        montage_app, coord_client, engine, mock_external_apis):
+    """AC6b: a worker whose claim token changed cannot mark the job
+    succeeded; its import is rolled back."""
+    round_id = new_round(coord_client, 'fence')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    set_job(montage_app, job['id'], claim_token='someone-else')
+    assert import_worker.process_job(engine, claim) == 'lost'
+    assert round_entry_count(montage_app, round_id) == 0
+    assert get_job(coord_client, round_id, job['id'])['status'] == 'running'
+
+
+def test_interrupted_jobs_failed_at_startup_and_after_max_runtime(
+        montage_app, coord_client, engine):
+    """AC6a: Phase 1 stuck-job rule."""
+    now = datetime.datetime(2026, 10, 1, 12, 0, 0)
+    round_a = new_round(coord_client, 'stuck a')
+    round_b = new_round(coord_client, 'stuck b')
+    round_c = new_round(coord_client, 'stuck c')
+    old = seed_job(montage_app, round_a, 'running',
+                   start_date=now - datetime.timedelta(minutes=61))
+    recent = seed_job(montage_app, round_b, 'running',
+                      start_date=now - datetime.timedelta(minutes=1))
+    queued = seed_job(montage_app, round_c, 'queued')
+
+    assert import_worker.fail_interrupted_jobs(engine, now=now) == [old]
+    assert get_job(coord_client, round_a, old)['error'] == \
+        import_worker.MAX_RUNTIME_ERROR
+    assert get_job(coord_client, round_b, recent)['status'] == 'running'
+
+    assert import_worker.fail_interrupted_jobs(
+        engine, now=now, at_startup=True) == [recent]
+    details = get_job(coord_client, round_b, recent)
+    assert details['status'] == 'failed'
+    assert 'interrupted by a worker restart' in details['error']
+    assert get_job(coord_client, round_c, queued)['status'] == 'queued'
+
+    campaign_id = campaign_id_of(coord_client, round_b)
+    audit = coord_client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=import_failed' % campaign_id,
+        as_user=COORD)['data']
+    assert len(audit) == 1
+
+
+def test_worker_loop_survives_db_error(montage_app, coord_client, engine,
+                                       mock_external_apis):
+    round_id = new_round(coord_client, 'loop')
+    job = import_category(coord_client, round_id)['data']['job']
+    calls = []
+    real_claim = import_worker.claim_next_job
+
+    def flaky_claim(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise OperationalError('SELECT 1', {}, Exception('gone away'))
+        return real_claim(*a, **kw)
+
+    with patch.object(import_worker, 'claim_next_job', flaky_claim):
+        assert import_worker.run_loop_iteration(engine, 'w') is False
+        assert import_worker.run_loop_iteration(engine, 'w') is True
+    assert get_job(coord_client, round_id, job['id'])['status'] == 'succeeded'
+
+
+# ---------------------------------------------------------------------------
+# Gate and import_state with seeded rows
+# ---------------------------------------------------------------------------
+
+def test_failed_job_on_round_with_entries_reports_import_failed(
+        montage_app, coord_client, mock_external_apis):
+    round_id = new_round(coord_client, 'failed with entries')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    job_id = seed_job(montage_app, round_id, 'failed', error='seeded')
+    resp = activate(coord_client, round_id, error_code=400)
+    assert 'failed (job #%s)' % job_id in error_text(resp)
+
+
+def test_older_active_job_blocks_behind_newer_success(
+        montage_app, coord_client, mock_external_apis):
+    round_id = new_round(coord_client, 'any active')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    queued = seed_job(montage_app, round_id, 'queued')
+    seed_job(montage_app, round_id, 'succeeded')  # newer, latest
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['blocked_reason'] == 'import_queued'
+    assert state['job']['id'] == queued
+    activate(coord_client, round_id, error_code=400)
+
+
+def test_failed_job_does_not_decorate_active_round(
+        montage_app, coord_client, mock_external_apis):
+    round_id = new_round(coord_client, 'active round')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    activate(coord_client, round_id)
+    seed_job(montage_app, round_id, 'failed', error='seeded')
+    state = get_round(coord_client, round_id)['import_state']
+    assert state['status'] == 'failed'
+    assert state['blocks_activation'] is False
+    assert state['blocked_reason'] is None
+
+
+def test_job_from_other_round_is_404(montage_app, coord_client):
+    round_a = new_round(coord_client, 'other a')
+    round_b = new_round(coord_client, 'other b')
+    job_id = seed_job(montage_app, round_a, 'queued')
+    get_job(coord_client, round_b, job_id, error_code=404)
+
+
+def test_import_state_in_admin_payloads(montage_app, coord_client):
+    round_id = new_round(coord_client, 'payloads')
+    campaign_id = campaign_id_of(coord_client, round_id)
+    keys = {'status', 'blocks_activation', 'blocked_reason', 'job'}
+
+    state = get_round(coord_client, round_id)['import_state']
+    assert set(state) == keys
+    assert state['status'] == 'none' and state['job'] is None
+
+    job_id = seed_job(montage_app, round_id, 'queued')
+    campaign = coord_client.fetch('coordinator: campaign',
+                                  '/admin/campaign/%s' % campaign_id,
+                                  as_user=COORD)['data']
+    rnd = [r for r in campaign['rounds'] if r['id'] == round_id][0]
+    assert set(rnd['import_state']) == keys
+    assert rnd['import_state']['job']['id'] == job_id
+    assert rnd['import_state']['blocked_reason'] == 'import_queued'
+
+    for url in ('/admin', '/admin/campaigns/all'):
+        campaigns = coord_client.fetch('coordinator: index', url,
+                                       as_user=COORD)['data']
+        mine = [c for c in campaigns if c['id'] == campaign_id][0]
+        rnd = [r for r in mine['rounds'] if r['id'] == round_id][0]
+        assert rnd['import_state']['status'] == 'queued'
+
+
+def test_import_state_in_active_round_payload(montage_app, coord_client,
+                                              mock_external_apis):
+    round_id = new_round(coord_client, 'active payload')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    activate(coord_client, round_id)
+    campaign = coord_client.fetch(
+        'coordinator: campaign',
+        '/admin/campaign/%s' % campaign_id_of(coord_client, round_id),
+        as_user=COORD)['data']
+    assert campaign['active_round']['import_state']['status'] == 'succeeded'
+
+
+def test_import_state_not_in_juror_payload(montage_app, coord_client,
+                                           mock_external_apis):
+    round_id = new_round(coord_client, 'juror payload')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    activate(coord_client, round_id)
+    campaign_id = campaign_id_of(coord_client, round_id)
+    data = coord_client.fetch('juror: campaign',
+                              '/juror/campaign/%s' % campaign_id,
+                              as_user='Slaporte')['data']
+    for rnd in data['rounds']:
+        assert 'import_state' not in rnd
+    assert data['active_round'] is not None
+    assert 'import_state' not in data['active_round']
+
+
+# ---------------------------------------------------------------------------
+# Sync rollback mode
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sync_mode(montage_app):
+    montage_app.resources['config']['import_mode'] = 'sync'
+
+
+def test_sync_import_records_succeeded_job(montage_app, coord_client,
+                                           mock_external_apis, sync_mode):
+    round_id = new_round(coord_client, 'sync job')
+    data = import_category(coord_client, round_id)['data']
+    assert data['new_round_entry_count'] == 20
+    assert data['entry_count'] == 20
+    assert 'warnings' in data and 'disqualified' in data
+    assert data['job']['status'] == 'succeeded'
+    assert data['job']['new_round_entry_count'] == 20
+    jobs = coord_client.fetch('coordinator: list import jobs',
+                              '/admin/round/%s/imports' % round_id,
+                              as_user=COORD)['data']
+    assert [j['id'] for j in jobs] == [data['job']['id']]
+    activate(coord_client, round_id)
+
+
+def test_failed_sync_import_leaves_no_job(montage_app, coord_client,
+                                          mock_external_apis, sync_mode):
+    round_id = new_round(coord_client, 'sync fail')
+
+    def boom(*a, **kw):
+        raise RuntimeError('fail after inserting')
+
+    with patch.object(admin_endpoints, 'autodisqualify', boom):
+        import_category(coord_client, round_id, error_code=500)
+    assert db_query(montage_app,
+                    'SELECT id FROM import_jobs WHERE round_id = :r',
+                    r=round_id) == []
+
+
+def test_sync_import_refused_while_job_queued(montage_app, coord_client,
+                                              mock_external_apis):
+    round_id = new_round(coord_client, 'sync refused')
+    import_category(coord_client, round_id)  # worker mode: queued
+    montage_app.resources['config']['import_mode'] = 'sync'
+    resp = import_category(coord_client, round_id, error_code=400)
+    assert 'already queued or running' in error_text(resp)
+    assert round_entry_count(montage_app, round_id) == 0
+
+
+def test_get_import_mode_validates():
+    from montage.utils import get_import_mode
+    assert get_import_mode({}) == 'sync'
+    assert get_import_mode({'import_mode': 'worker'}) == 'worker'
+    with pytest.raises(ValueError):
+        get_import_mode({'import_mode': 'wroker'})
+
+
+# ---------------------------------------------------------------------------
+# Schema
+# ---------------------------------------------------------------------------
+
+def test_schema_check_reports_missing_import_jobs(tmpdir):
+    """AC11: the startup schema check names a missing import_jobs table."""
+    from montage.check_rdb import get_schema_errors
+    eng = create_engine('sqlite:///%s/schema.db' % tmpdir)
+    try:
+        rdb.Base.metadata.create_all(eng)
+        session = sessionmaker(bind=eng)()
+        assert get_schema_errors(rdb.Base, session) == []
+        session.close()
+        rdb.import_jobs_t.drop(eng)
+        session = sessionmaker(bind=eng)()
+        errors = get_schema_errors(rdb.Base, session)
+        session.close()
+        assert len(errors) == 1 and 'import_jobs' in errors[0]
+    finally:
+        eng.dispose()
+
+
+def test_long_json_column_roundtrip(montage_app, coord_client):
+    from sqlalchemy.dialects import mysql
+    from sqlalchemy.schema import CreateTable
+    ddl = str(CreateTable(rdb.import_jobs_t).compile(dialect=mysql.dialect()))
+    for col in ('params', 'warnings', 'flags'):
+        assert '%s MEDIUMTEXT' % col in ddl
+    assert 'error TEXT' in ddl
+    assert 'TIMESTAMP' not in ddl
+
+    round_id = new_round(coord_client, 'long json')
+    names = ['File_%06d_%s.jpg' % (i, 'x' * 60) for i in range(1000)]
+    job_id = seed_job(montage_app, round_id, 'queued')
+    eng = create_engine(montage_app.resources['config']['db_url'])
+    session = sessionmaker(bind=eng)()
+    try:
+        job = session.query(ImportJob).get(job_id)
+        job.params = {'file_names': names}
+        session.commit()
+        session.expire_all()
+        assert session.query(ImportJob).get(job_id).params == {
+            'file_names': names}
+    finally:
+        session.close()
+        eng.dispose()
+    assert len(''.join(names)) > 70000
