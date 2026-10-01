@@ -1376,3 +1376,60 @@ def test_other_operational_errors_still_500(montage_app, coord_client):
 
     with patch.object(rdb.CoordinatorDAO, '_lock_round', gone_away):
         import_category(coord_client, round_id, error_code=500)
+
+
+def test_recovery_skips_job_whose_heartbeat_resumed(montage_app, coord_client,
+                                                    engine):
+    """The requeue UPDATE re-checks staleness: a heartbeat that lands
+    between recovery's SELECT and its UPDATE keeps the job running."""
+    from sqlalchemy import event
+    round_id = new_round(coord_client, 'heartbeat resumed')
+    long_ago = import_worker._utcnow() - datetime.timedelta(minutes=30)
+    job_id = seed_job(montage_app, round_id, 'running', attempts=1,
+                      claim_token='slow-but-alive', start_date=long_ago,
+                      heartbeat_date=long_ago)
+    beat = []
+
+    def heartbeat_lands_first(conn, cursor, statement, params, context,
+                              executemany):
+        if statement.lstrip().upper().startswith('UPDATE IMPORT_JOBS') \
+                and not beat:
+            beat.append(1)
+            set_job(montage_app, job_id, heartbeat_date=import_worker._utcnow())
+
+    event.listen(engine, 'before_cursor_execute', heartbeat_lands_first)
+    try:
+        assert import_worker.recover_stale_jobs(engine) == ([], [])
+    finally:
+        event.remove(engine, 'before_cursor_execute', heartbeat_lands_first)
+    assert beat
+    row = job_row(montage_app, job_id)
+    assert (row['status'], row['claim_token']) == ('running',
+                                                   'slow-but-alive')
+
+
+def test_activate_lock_error_at_final_insert_is_busy_400(
+        montage_app, coord_client, mock_external_apis):
+    """A lock error on the last pending write of activate_round (its
+    audit entry) surfaces inside the guard, not at commit."""
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+    round_id = new_round(coord_client, 'activate final flush')
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+
+    def deadlock_on_activate_audit(conn, cursor, statement, params, context,
+                                   executemany):
+        if statement.lstrip().upper().startswith(
+                'INSERT INTO AUDIT_LOG_ENTRIES') \
+                and "'activate_round'" in repr(params):
+            raise mysql_lock_error(1213)
+
+    event.listen(Engine, 'before_cursor_execute', deadlock_on_activate_audit)
+    try:
+        resp = activate(coord_client, round_id, error_code=400)
+    finally:
+        event.remove(Engine, 'before_cursor_execute',
+                     deadlock_on_activate_audit)
+    assert 'the server is busy, please retry' in error_text(resp)
+    assert get_round(coord_client, round_id)['status'] == 'paused'
