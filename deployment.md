@@ -371,6 +371,14 @@ A round shows "Import queued" and cannot be activated:
    FROM import_jobs ORDER BY id DESC LIMIT 20;
    ```
 
+**Hung worker** (one job stays "Import running", every other import stays queued, the worker
+log shows nothing new): fetches have timeouts (HTTP: 15 s connect / 10 min per read; wikireplica:
+30 s connect, 45 min per query, overridable with `MONTAGE_LABS_READ_TIMEOUT` /
+`MONTAGE_LABS_CONNECT_TIMEOUT` in seconds), after which the job is marked failed with the reason
+and the worker moves on. If it is stuck anyway, restart it: `toolforge jobs restart import-worker`.
+The restarted worker marks the stuck job failed ("interrupted by a worker restart") and continues
+with the queue; the coordinator cancels that round and creates it again.
+
 **Rolling back to synchronous imports:** set `MONTAGE_IMPORT_MODE` to `sync`, restart the
 webservice, delete the worker (`toolforge jobs delete import-worker`), and fail the jobs nobody
 will run any more, otherwise their rounds can never be activated:
