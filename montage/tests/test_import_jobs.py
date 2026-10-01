@@ -1303,3 +1303,59 @@ def test_retry_in_sync_mode_runs_in_request(montage_app, coord_client,
     assert data['job']['status'] == 'succeeded'
     assert get_job(coord_client, round_id,
                    data['job']['id'])['retry_of'] == job['id']
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: MySQL lock errors (1205 / 1213) -> retryable 400
+# ---------------------------------------------------------------------------
+
+def raise_lock_error(code):
+    def raiser(*a, **kw):
+        raise mysql_lock_error(code)
+    return raiser
+
+
+@pytest.mark.parametrize('code', [1205, 1213])
+def test_enqueue_lock_error_is_busy_400(montage_app, coord_client,
+                                        mock_external_apis, code):
+    round_id = new_round(coord_client, 'enqueue lock %s' % code)
+    with patch.object(rdb.CoordinatorDAO, '_lock_round',
+                      raise_lock_error(code)):
+        resp = import_category(coord_client, round_id, error_code=400)
+    assert 'the server is busy, please retry' in error_text(resp)
+    assert 'queue the import' in error_text(resp)
+    assert db_query(montage_app, 'SELECT id FROM import_jobs'
+                    ' WHERE round_id = :r', r=round_id) == []
+    # nothing left behind: the retry works
+    assert import_category(coord_client, round_id)['data']['job'][
+        'status'] == 'queued'
+
+
+@pytest.mark.parametrize('code', [1205, 1213])
+def test_activate_lock_error_is_busy_400(montage_app, coord_client,
+                                         mock_external_apis, code):
+    round_id = new_round(coord_client, 'activate lock %s' % code)
+    import_category(coord_client, round_id)
+    run_import_jobs(montage_app)
+    # during the locked re-check
+    with patch.object(rdb.CoordinatorDAO, '_get_active_import_job_locked',
+                      raise_lock_error(code)):
+        resp = activate(coord_client, round_id, error_code=400)
+    assert 'the server is busy, please retry' in error_text(resp)
+    # during task creation, after the round row was changed in memory
+    with patch.object(rdb, 'create_initial_tasks', raise_lock_error(code)):
+        resp = activate(coord_client, round_id, error_code=400)
+    assert 'activate the round' in error_text(resp)
+    assert get_round(coord_client, round_id)['status'] == 'paused'
+    activate(coord_client, round_id)
+    assert get_round(coord_client, round_id)['status'] == 'active'
+
+
+def test_other_operational_errors_still_500(montage_app, coord_client):
+    round_id = new_round(coord_client, 'enqueue gone away')
+
+    def gone_away(*a, **kw):
+        raise OperationalError('SELECT 1', {}, Exception(2006, 'gone away'))
+
+    with patch.object(rdb.CoordinatorDAO, '_lock_round', gone_away):
+        import_category(coord_client, round_id, error_code=500)

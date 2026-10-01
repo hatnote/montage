@@ -8,6 +8,7 @@ import time
 import random
 import datetime
 import itertools
+from contextlib import contextmanager
 from collections import Counter, defaultdict
 from math import ceil
 from itertools import zip_longest
@@ -124,6 +125,21 @@ def is_lock_error(exc):
         return False
     args = getattr(exc.orig, 'args', None) or ()
     return bool(args) and args[0] in MYSQL_LOCK_ERROR_CODES
+
+
+@contextmanager
+def lock_errors_as_busy(action):
+    """Turn a MySQL lock wait timeout / deadlock into a 400 the user can
+    simply retry, instead of a 500. The request's transaction is rolled
+    back by DBSessionMiddleware either way (hatnote/montage#621)."""
+    try:
+        yield
+    except DBAPIError as e:
+        if not is_lock_error(e):
+            raise
+        raise InvalidAction('the server is busy, please retry (a database'
+                            ' lock wait timed out or deadlocked while'
+                            ' trying to %s)' % (action,))
 
 ENV_NAME = get_env_name()
 
@@ -1811,6 +1827,13 @@ class CoordinatorDAO(UserDAO):
                 .one())
 
     def activate_round(self, round_id):
+        with lock_errors_as_busy('activate the round'):
+            self._activate_round(round_id)
+            # surface lock errors of the task inserts here, not at commit
+            self.rdb_session.flush()
+        return
+
+    def _activate_round(self, round_id):
         rnd = self.user_dao.get_round(round_id)
 
         # import gate (hatnote/montage#621): cheap non-locking check
@@ -2089,6 +2112,10 @@ class CoordinatorDAO(UserDAO):
     def enqueue_import(self, round_id, method, params, retry_of=None):
         """Create a queued import job; the import worker runs it.
         retry_of: id of the failed job this one retries."""
+        with lock_errors_as_busy('queue the import'):
+            return self._enqueue_import(round_id, method, params, retry_of)
+
+    def _enqueue_import(self, round_id, method, params, retry_of):
         # cheap non-locking check first: no locks for the common refusal
         self._raise_if_import_active(round_id)
         rnd = self._lock_round(round_id)
