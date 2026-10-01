@@ -115,3 +115,105 @@ def test_get_files_parity():
     new = {r['img_name'] for r in get_files(category)}
     old = {r['img_name'] for r in get_files_legacy(category)}
     assert new == old
+
+
+# ---------------------------------------------------------------------------
+# Category membership comes from the Commons links replica (x4) since
+# 2026-09-08; file data from the main replica. The two are joined in code.
+# ---------------------------------------------------------------------------
+
+def _fake_replicas(links_rows, file_rows, calls):
+    """A fetchall_from_commonswiki stand-in: category members from the
+    links replica, file details from the main replica."""
+    from montage import labs
+
+    def fake(query, params, db_host=labs.COMMONS_DB_HOST):
+        calls.append((db_host, query, params))
+        if db_host == labs.COMMONS_LINKS_DB_HOST:
+            assert 'categorylinks' in query and 'file AS file' not in query
+            return [{'file_name': n} for n in links_rows]
+        assert 'categorylinks' not in query and 'linktarget' not in query
+        return [dict(file_rows[n]) for n in params if n in file_rows]
+    return fake
+
+
+def _file_row(name, file_id):
+    return {'img_name': name, 'img_width': 3000, 'img_height': 2000,
+            'img_major_mime': 'image', 'img_minor_mime': 'jpeg',
+            'img_user': 1, 'img_user_text': 'Uploader',
+            'img_timestamp': '20260910120000',
+            'rec_img_timestamp': '20260910120000', 'rec_img_user': 1,
+            'rec_img_text': 'Uploader', 'oi_archive_name': None,
+            'file_id': file_id}
+
+
+def test_get_files_reads_members_from_links_replica(monkeypatch):
+    from montage import labs
+    names = ['B_file.jpg', 'A_file.jpg', 'Café_ü.jpg', 'A_file.jpg']
+    file_rows = {n: _file_row(n, i) for i, n in enumerate(set(names))}
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_replicas(names, file_rows, calls))
+
+    result = labs.get_files('Images from Wiki Loves Monuments 2026 in Russia')
+
+    assert calls[0][0] == labs.COMMONS_LINKS_DB_HOST
+    assert calls[0][2] == ('Images_from_Wiki_Loves_Monuments_2026_in_Russia',)
+    assert all(host == labs.COMMONS_DB_HOST for host, _, _ in calls[1:])
+    # one row per file, duplicates collapsed, binary name order as before
+    assert [r['img_name'] for r in result] == ['A_file.jpg', 'B_file.jpg', 'Café_ü.jpg']
+    assert set(result[0]) == set(_file_row('x', 0))  # output keys unchanged
+
+
+def test_get_files_looks_up_files_in_chunks(monkeypatch):
+    from montage import labs
+    monkeypatch.setattr(labs, 'FILE_LOOKUP_CHUNK_SIZE', 3)
+    names = ['F%02d.jpg' % i for i in range(8)]
+    file_rows = {n: _file_row(n, i) for i, n in enumerate(names)}
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_replicas(names, file_rows, calls))
+
+    result = labs.get_files('Some category')
+
+    lookups = [params for host, _, params in calls if host == labs.COMMONS_DB_HOST]
+    assert [len(p) for p in lookups] == [3, 3, 2]
+    assert [r['img_name'] for r in result] == names
+
+
+def test_get_files_skips_members_without_a_file_row(monkeypatch):
+    """A member with no live file row (deleted) is left out, as the old
+    inner JOIN did."""
+    from montage import labs
+    names = ['Kept.jpg', 'Deleted.jpg']
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_replicas(names, {'Kept.jpg': _file_row('Kept.jpg', 1)}, calls))
+
+    assert [r['img_name'] for r in labs.get_files('Cat')] == ['Kept.jpg']
+
+
+def test_get_files_empty_category_makes_no_file_lookup(monkeypatch):
+    from montage import labs
+    calls = []
+    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
+                        _fake_replicas([], {}, calls))
+
+    assert labs.get_files('Empty category') == []
+    assert [host for host, _, _ in calls] == [labs.COMMONS_LINKS_DB_HOST]
+
+
+@pytest.mark.xfail(
+    os.environ.get('TOOLFORGE') != '1',
+    reason='Requires live wikireplicas (Toolforge); set TOOLFORGE=1 to run',
+)
+def test_get_files_sees_files_added_after_links_split():
+    """On 2026-10-01 the stale main-replica copy of categorylinks had 5,005
+    links for this category and the links replica 15,678. get_files must
+    follow the links replica."""
+    from montage.labs import get_category_file_names, get_files
+    category = 'Images_from_Wiki_Loves_Monuments_2026_in_Russia'
+    members = get_category_file_names(category)
+    files = get_files(category)
+    assert len(members) > 10000
+    assert len(files) >= 0.99 * len(set(members))

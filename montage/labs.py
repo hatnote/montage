@@ -46,12 +46,24 @@ class MissingMySQLClient(RuntimeError):
     pass
 
 
-def fetchall_from_commonswiki(query, params):
+COMMONS_DB_HOST = 'commonswiki.labsdb'
+# Since 2026-09-08 the Commons links tables (categorylinks, linktarget, ...)
+# live on their own cluster (x4); the copies on the main Commons replica are
+# no longer written, so category membership must be read from this replica.
+# See https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split
+COMMONS_LINKS_DB_HOST = os.environ.get(
+    'MONTAGE_COMMONS_LINKS_DB_HOST',
+    'links.commonswiki.analytics.db.svc.wikimedia.cloud')
+
+# file names per query when looking up a category's files on the main replica
+FILE_LOOKUP_CHUNK_SIZE = 500
+
+
+def fetchall_from_commonswiki(query, params, db_host=COMMONS_DB_HOST):
     if pymysql is None:
         raise MissingMySQLClient('could not import pymysql, check your'
                                  ' environment and restart the service')
     db_title = 'commonswiki_p'
-    db_host = 'commonswiki.labsdb'
     connection = pymysql.connect(db=db_title,
                                  host=db_host,
                                  read_default_file=DB_CONFIG,
@@ -73,7 +85,30 @@ def fetchall_from_commonswiki(query, params):
     return ret
 
 
-def get_files(category_name):
+def get_category_file_names(category_name):
+    """Names of the files directly in a Commons category, read from the
+    links replica (page exists on both clusters, so this stays one query).
+    """
+    query = '''
+        SELECT DISTINCT page_title AS file_name
+        FROM categorylinks
+        JOIN linktarget ON cl_target_id = lt_id
+          AND lt_namespace = 14
+          AND lt_title = %s
+        JOIN page ON page_id = cl_from
+          AND page_namespace = 6
+        WHERE cl_type = 'file'
+    '''
+    params = (category_name.replace(' ', '_'),)
+    rows = fetchall_from_commonswiki(query, params,
+                                     db_host=COMMONS_LINKS_DB_HOST)
+    return [row['file_name'] for row in rows]
+
+
+def get_files_by_name(file_names):
+    """File details for file names (underscored), from the main replica."""
+    if not file_names:
+        return []
     query = '''
         SELECT DISTINCT {cols}
         FROM commonswiki_p.file AS file
@@ -82,20 +117,24 @@ def get_files(category_name):
         LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
         LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
         {earliest_rev}
-        JOIN page ON page_namespace = 6
-          AND page_title = file.file_name
-        JOIN categorylinks ON cl_from = page_id
-          AND cl_type = 'file'
-        JOIN linktarget ON cl_target_id = lt_id
-          AND lt_namespace = 14
-          AND lt_title = %s
-        WHERE file.file_deleted = 0
-        ORDER BY file.file_name ASC
+        WHERE file.file_name IN ({names})
+          AND file.file_deleted = 0
     '''.format(cols=', '.join(FILE_COLS),
-               earliest_rev=_EARLIEST_REVISION_SUBQUERY)
-    params = (category_name.replace(' ', '_'),)
+               earliest_rev=_EARLIEST_REVISION_SUBQUERY,
+               names=', '.join(['%s'] * len(file_names)))
+    return fetchall_from_commonswiki(query, tuple(file_names))
 
-    return fetchall_from_commonswiki(query, params)
+
+def get_files(category_name):
+    # Two steps because category membership and file data now live on
+    # different database clusters, which cannot be joined in SQL.
+    file_names = sorted(set(get_category_file_names(category_name)))
+    ret = []
+    for i in range(0, len(file_names), FILE_LOOKUP_CHUNK_SIZE):
+        ret.extend(get_files_by_name(file_names[i:i + FILE_LOOKUP_CHUNK_SIZE]))
+    # same order as the old single query's ORDER BY file_name (binary)
+    ret.sort(key=lambda rec: rec['img_name'].encode('utf8'))
+    return ret
 
 
 def get_file_info(filename):
