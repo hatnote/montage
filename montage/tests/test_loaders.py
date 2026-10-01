@@ -266,3 +266,26 @@ def test_load_name_list_local(monkeypatch):
     assert [e.name for e in entries] == ['One.jpg', 'Two_words.jpg']
     assert len(calls) == 1
     assert len(warnings) == 1 and '"Gone.jpg"' in warnings[0]
+
+
+def test_round_source_params_hold_large_file_lists():
+    """A 'selected' import stores its whole file list in round_sources.params;
+    1000+ names pass TEXT's 64 KB, so the column is MEDIUMTEXT on MySQL."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.dialects import mysql
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.schema import CreateTable
+    from montage.rdb import Base, RoundSource
+
+    ddl = str(CreateTable(RoundSource.__table__).compile(dialect=mysql.dialect()))
+    assert 'params MEDIUMTEXT' in ddl
+
+    engine = create_engine('sqlite://')
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    names = ['Wiki_Loves_Monuments_2026_in_Russia_photo_%05d.jpg' % i for i in range(2000)]
+    session.add(RoundSource(method='selected', params={'file_names': names}))
+    session.commit()
+    stored = session.query(RoundSource).one().params
+    assert stored['file_names'] == names
+    assert len(str(stored)) > 64 * 1024
