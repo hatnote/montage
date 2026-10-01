@@ -55,6 +55,7 @@
       </div>
     </div>
     <div style="flex: 4">
+      <round-import-status :round-id="round.id" :import-state="importState" />
       <div class="round-file-info">
         <h4>{{ $t('montage-round-file-info') }}</h4>
         <p>
@@ -109,7 +110,15 @@
     class="round__actions"
     style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
   >
-    <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
+    <p v-if="round.status === 'paused' && importBlockedKey" class="round-import-blocked">
+      {{ $t(importBlockedKey) }}
+    </p>
+    <cdx-button
+      v-if="round.status === 'paused'"
+      @click="activateRound"
+      action="progressive"
+      :disabled="!!importBlockedKey"
+    >
       <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
     </cdx-button>
 
@@ -140,6 +149,7 @@ import alertService from '@/services/alertService'
 // Components
 import { CdxButton, CdxAccordion } from '@wikimedia/codex'
 import UserAvatarWithName from '../UserAvatarWithName.vue'
+import RoundImportStatus from './RoundImportStatus.vue'
 
 // Icons
 import Play from 'vue-material-design-icons/Play.vue'
@@ -155,6 +165,14 @@ const props = defineProps({
 
 const roundDetails = ref(null)
 const roundResults = ref(null)
+
+// import state from the campaign payload, so Activate is disabled from
+// the first render (hatnote/montage#622)
+const importState = computed(() => props.round.import_state)
+const importBlockedKey = computed(() => {
+  const reason = importState.value?.blocks_activation && importState.value.blocked_reason
+  return reason ? 'montage-import-blocked-' + reason.replace('import_', '') : null
+})
 
 const remainingDays = computed(() => {
   const deadline = new Date(props.round.deadline_date)
@@ -251,6 +269,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.round-import-blocked {
+  align-self: center;
+  color: #54595d;
+}
+
 .round {
   display: flex;
   flex-direction: column;

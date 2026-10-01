@@ -419,7 +419,12 @@ const importCategory = (id) => {
   adminService
     .populateRound(id, payload)
     .then((response) => {
-      if (response.data && response.data.warnings && response.data.warnings.length) {
+      if (response.data && response.data.job && response.data.job.status === 'queued') {
+        // background import (hatnote/montage#622): no waiting, no polling
+        alertService.success($t('montage-import-started'), 8000)
+        emit('reload-campaign-state')
+        emit('update:showAddRoundForm', false)
+      } else if (response.data && response.data.warnings && response.data.warnings.length) {
         const { warnings = [], disqualified = [] } = response.data
 
         const warningsList = warnings.map((warning) => Object.values(warning).pop())

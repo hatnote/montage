@@ -80,3 +80,18 @@ export function getCommonsImageUrl(image, width = 1280) {
     return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}`
   }
 }
+
+// Badge i18n key for a round's server-computed import_state
+// (hatnote/montage#622), or null when there is nothing to show.
+export function getImportBadgeKey(importState) {
+  if (!importState || !importState.blocks_activation) return null
+  if (importState.blocked_reason === 'import_failed') return 'montage-import-badge-failed'
+  return 'montage-import-badge-importing'
+}
+
+// The server sends naive UTC ISO dates without a zone; new Date() would
+// read them as local time.
+export function formatUtcDateTime(s) {
+  if (!s) return ''
+  return new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString()
+}

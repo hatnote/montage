@@ -17,7 +17,7 @@
               lastRound
                 ? $t(getVotingName(lastRound.round.vote_method)) + ' - ' + lastRound.round.status
                 : '-'
-            }}
+            }}<span v-if="importBadgeKey"> · {{ $t(importBadgeKey) }}</span>
           </p>
           <p class="coordinator-campaign-card-info-label">
             {{ $t('montage-coordinators') }} ({{ campaign.coordinators.length }})
@@ -41,7 +41,7 @@
 <script setup>
 import { CdxCard } from '@wikimedia/codex'
 import { cdxIconImageLayoutFrameless } from '@wikimedia/codex-icons'
-import { getAvatarColor, formatDate, getVotingName } from '@/utils'
+import { getAvatarColor, formatDate, getVotingName, getImportBadgeKey } from '@/utils'
 
 const props = defineProps({
   campaign: {
@@ -64,6 +64,8 @@ if (props.campaign.rounds && props.campaign.rounds.length) {
     round: props.campaign.rounds[props.campaign.rounds.length - 1]
   }
 }
+
+const importBadgeKey = lastRound ? getImportBadgeKey(lastRound.round.import_state) : null
 </script>
 
 <style scoped>
