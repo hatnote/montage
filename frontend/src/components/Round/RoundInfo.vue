@@ -55,7 +55,11 @@
       </div>
     </div>
     <div style="flex: 4">
-      <round-import-status :round-id="round.id" :import-state="importState" />
+      <round-import-status
+        :round-id="round.id"
+        :round-status="round.status"
+        :import-state="importState"
+      />
       <div class="round-file-info">
         <h4>{{ $t('montage-round-file-info') }}</h4>
         <p>

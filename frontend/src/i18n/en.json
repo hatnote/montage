@@ -205,8 +205,16 @@
   "montage-import-blocked-queued": "This round cannot be activated yet: its import is queued.",
   "montage-import-blocked-running": "This round cannot be activated yet: its import is still running.",
   "montage-import-blocked-failed": "This round cannot be activated: its last import failed.",
-  "montage-import-failed-next-step": "To try again, cancel this round and create it again.",
+  "montage-import-failed-next-step": "Retry the import, or dismiss it to activate the round with the files it already has.",
   "montage-import-badge-importing": "importing…",
   "montage-import-badge-failed": "import failed",
-  "montage-import-started": "Round created. Import started; it runs in the background. Refresh the page to see when it has finished."
+  "montage-import-started": "Round created. Import started; it runs in the background. Refresh the page to see when it has finished.",
+  "montage-import-retry": "Retry import",
+  "montage-import-dismiss": "Dismiss",
+  "montage-import-retry-started": "Import submitted again.",
+  "montage-import-dismissed": "Failed import dismissed.",
+  "montage-import-dismissed-note": "Dismissed: this failed import no longer blocks activating the round.",
+  "montage-import-waiting": "Importing files… The result appears here if the import finishes within a minute; otherwise it continues in the background.",
+  "montage-import-warning-title": "Import warnings",
+  "montage-btn-ok": "OK"
 }

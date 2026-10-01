@@ -205,8 +205,16 @@
 	"montage-import-blocked-queued": "Explanation next to the disabled Activate button while the import waits for the worker.",
 	"montage-import-blocked-running": "Explanation next to the disabled Activate button while the import runs.",
 	"montage-import-blocked-failed": "Explanation next to the disabled Activate button after an import failed.",
-	"montage-import-failed-next-step": "Hint under a failed import, telling the coordinator how to recover.",
+	"montage-import-failed-next-step": "Hint under a failed import, next to the Retry import and Dismiss buttons.",
 	"montage-import-badge-importing": "Short badge next to a round's status (campaign cards, round header) while its import is queued or running.",
 	"montage-import-badge-failed": "Short badge next to a round's status when its last import failed.",
-	"montage-import-started": "Shown after creating a round, once its import has been queued."
+	"montage-import-started": "Shown after creating a round, once its import has been queued.",
+	"montage-import-retry": "Button that submits the same import again after it failed.",
+	"montage-import-dismiss": "Button that hides a failed import so the round can be activated without it.",
+	"montage-import-retry-started": "Notification after the coordinator retried a failed import.",
+	"montage-import-dismissed": "Notification after the coordinator dismissed a failed import.",
+	"montage-import-dismissed-note": "Shown under a failed import that a coordinator dismissed.",
+	"montage-import-waiting": "Shown in the round-creation form while it waits (at most one minute) for the file import to finish.",
+	"montage-import-warning-title": "Title of the dialog that lists import warnings and disqualified files.",
+	"montage-btn-ok": "Generic OK button label.\n{{Identical|OK}}"
 }

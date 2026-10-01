@@ -37,6 +37,12 @@ const adminService = {
 
   getImportJob: (id, jobId) => apiBackend.get(`admin/round/${id}/import/${jobId}`),
 
+  retryImportJob: (id, jobId) =>
+    apiBackend.post(`admin/round/${id}/import/${jobId}/retry`, { post: true }),
+
+  dismissImportJob: (id, jobId) =>
+    apiBackend.post(`admin/round/${id}/import/${jobId}/dismiss`, { post: true }),
+
   editCampaign: (id, data) => apiBackend.post(`admin/campaign/${id}/edit`, data),
 
   editRound: (id, data) => apiBackend.post(`admin/round/${id}/edit`, data),

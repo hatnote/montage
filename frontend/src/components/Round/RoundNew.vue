@@ -179,7 +179,7 @@
           </div>
           <div class="button-group">
             <cdx-button
-              :disabled="isLoading || (roundIndex !== 0 && !thresholds)"
+              :disabled="isLoading || isPolling || (roundIndex !== 0 && !thresholds)"
               action="progressive"
               weight="primary"
               @click="submitRound()"
@@ -194,6 +194,7 @@
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
+          <p v-if="isPolling" class="import-waiting">{{ $t('montage-import-waiting') }}</p>
         </template>
       </cdx-card>
     </div>
@@ -201,7 +202,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import alertService from '@/services/alertService'
 import dataService from '@/services/dataService'
@@ -209,7 +210,7 @@ import adminService from '@/services/adminService'
 import dialogService from '@/services/dialogService'
 
 import { useRoute } from 'vue-router'
-import { getVotingName } from '@/utils'
+import { getVotingName, formatImportWarning, pollImportJob } from '@/utils'
 
 import {
   CdxCard,
@@ -316,6 +317,11 @@ function searchCategory(name) {
 }
 
 const cancelRound = () => {
+  if (stopPoll) {
+    // the round exists already; its import keeps running in the background
+    finishWithoutResult()
+    return
+  }
   emit('update:showAddRoundForm', false)
 }
 
@@ -402,6 +408,74 @@ const submitRound = () => {
   }
 }
 
+const closeForm = () => {
+  emit('reload-campaign-state')
+  emit('update:showAddRoundForm', false)
+}
+
+// Result of a finished import: warnings and disqualified files
+// ({ name, dq_reason }), shown in a dialog as before #621
+const showImportResult = ({ warnings = [], disqualified = [] }) => {
+  if (!warnings.length) {
+    closeForm()
+    return
+  }
+  const warningsList = warnings.map(formatImportWarning)
+  const filesList = disqualified
+    .map((file) => `${file.name} – ${file.dq_reason}`.trim())
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .join('\n')
+
+  dialogService().show({
+    title: $t('montage-import-warning-title'),
+    content: `${warningsList.join('\n\n')}\n\n${filesList}`,
+    primaryAction: {
+      label: $t('montage-btn-ok'),
+      actionType: 'progressive'
+    },
+    onPrimary: closeForm
+  })
+}
+
+// Bounded poll after enqueue (#622): every 3 s for at most 60 s. Large
+// imports take longer; then the coordinator refreshes the page later.
+const isPolling = ref(false)
+let stopPoll = null
+
+const endPoll = () => {
+  if (stopPoll) stopPoll()
+  stopPoll = null
+  isPolling.value = false
+}
+
+const finishWithoutResult = () => {
+  endPoll()
+  alertService.success($t('montage-import-started'), 8000)
+  closeForm()
+}
+
+const waitForImport = (roundId, job) => {
+  isPolling.value = true
+  stopPoll = pollImportJob({
+    fetchJob: () => adminService.getImportJob(roundId, job.id).then((resp) => resp.data),
+    onFinished: (details) => {
+      endPoll()
+      if (details.status === 'failed') {
+        alertService.error({ message: details.error })
+        closeForm()
+      } else {
+        showImportResult({
+          warnings: details.warnings || [],
+          disqualified: details.disqualified_sample || []
+        })
+      }
+    },
+    onTimeout: finishWithoutResult
+  })
+}
+
+onBeforeUnmount(endPoll)
+
 const importCategory = (id) => {
   const payload = {
     import_method: selectedImportSource.value
@@ -419,37 +493,19 @@ const importCategory = (id) => {
   adminService
     .populateRound(id, payload)
     .then((response) => {
-      if (response.data && response.data.job && response.data.job.status === 'queued') {
-        // background import (hatnote/montage#622): no waiting, no polling
-        alertService.success($t('montage-import-started'), 8000)
-        emit('reload-campaign-state')
-        emit('update:showAddRoundForm', false)
-      } else if (response.data && response.data.warnings && response.data.warnings.length) {
-        const { warnings = [], disqualified = [] } = response.data
-
-        const warningsList = warnings.map((warning) => Object.values(warning).pop())
-        const filesList = disqualified
-          .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
-          .filter((value, index, array) => array.indexOf(value) === index)
-          .join('\n')
-
-        const text = `${warningsList.join('\n\n')}\n\n${filesList}`
-
-        dialogService().show({
-          title: 'Import Warning',
-          content: text,
-          primaryAction: {
-            label: 'OK',
-            actionType: 'progressive'
-          },
-          onPrimary: () => {
-            emit('reload-campaign-state')
-            emit('update:showAddRoundForm', false)
-          }
-        })
+      const data = response.data || {}
+      if (data.job && data.job.status === 'queued') {
+        // background import (hatnote/montage#622)
+        waitForImport(id, data.job)
       } else {
-        emit('reload-campaign-state')
-        emit('update:showAddRoundForm', false)
+        // import_mode 'sync' (rollback switch): the import already ran
+        showImportResult({
+          warnings: data.warnings || [],
+          disqualified: (data.disqualified || []).map((image) => ({
+            name: image.entry.name,
+            dq_reason: image.dq_reason
+          }))
+        })
       }
     })
     .catch(alertService.error)
@@ -480,6 +536,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.import-waiting {
+  margin-top: 8px;
+  color: #54595d;
+}
+
 .juror-campaign-round-card {
   display: flex;
   flex-direction: column;

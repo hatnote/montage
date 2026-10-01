@@ -90,8 +90,71 @@ export function getImportBadgeKey(importState) {
 }
 
 // The server sends naive UTC ISO dates without a zone; new Date() would
-// read them as local time.
-export function formatUtcDateTime(s) {
+// read them as local time. locale: the vue-i18n locale (e.g. 'pt-br').
+export function formatUtcDateTime(s, locale) {
   if (!s) return ''
-  return new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString()
+  const date = new Date(s.endsWith('Z') ? s : s + 'Z')
+  try {
+    return date.toLocaleString(locale || undefined)
+  } catch (e) {
+    // RangeError: a locale code the browser does not accept
+    return date.toLocaleString()
+  }
+}
+
+// Import warnings are dicts ({'duplicate import': '...'}) or plain strings
+export function formatImportWarning(warning) {
+  return typeof warning === 'string' ? warning : Object.values(warning || {}).join(' ')
+}
+
+// Bounded poll of an import job (hatnote/montage#622): call fetchJob()
+// every intervalMs, at most maxMs / intervalMs times. onFinished(job) once
+// the job has succeeded or failed; onTimeout() when the attempts run out
+// (failed requests count as attempts). Returns a function that stops it.
+export function pollImportJob({
+  fetchJob,
+  onFinished,
+  onTimeout,
+  intervalMs = 3000,
+  maxMs = 60000
+}) {
+  const maxAttempts = Math.max(1, Math.floor(maxMs / intervalMs))
+  let attempts = 0
+  let timer = null
+  let stopped = false
+
+  const next = () => {
+    if (stopped) return
+    if (attempts >= maxAttempts) {
+      stopped = true
+      onTimeout()
+    } else {
+      timer = setTimeout(tick, intervalMs)
+    }
+  }
+
+  const tick = () => {
+    timer = null
+    if (stopped) return
+    attempts += 1
+    Promise.resolve()
+      .then(fetchJob)
+      .then((job) => {
+        if (stopped) return
+        if (job && (job.status === 'succeeded' || job.status === 'failed')) {
+          stopped = true
+          onFinished(job)
+        } else {
+          next()
+        }
+      })
+      .catch(next)
+  }
+
+  timer = setTimeout(tick, intervalMs)
+  return () => {
+    stopped = true
+    if (timer) clearTimeout(timer)
+    timer = null
+  }
 }
