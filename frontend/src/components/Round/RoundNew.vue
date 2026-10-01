@@ -188,13 +188,16 @@
             </cdx-button>
             <cdx-button
               action="destructive"
+              :disabled="isLoading"
               @click="cancelRound()"
               data-testid="cancel-round-button"
             >
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
-          <p v-if="isPolling" class="import-waiting">{{ $t('montage-import-waiting') }}</p>
+          <p v-if="isPolling" class="import-waiting" role="status" aria-live="polite">
+            {{ $t('montage-import-waiting') }}
+          </p>
         </template>
       </cdx-card>
     </div>
@@ -365,7 +368,7 @@ const submitRound = () => {
             .filter((elem) => elem)
         }
 
-        importCategory(resp.data.id)
+        return importCategory(resp.data.id)
       })
       .catch(alertService.error)
       .finally(() => {
@@ -455,13 +458,17 @@ const finishWithoutResult = () => {
 }
 
 const waitForImport = (roundId, job) => {
+  if (unmounted) return
   isPolling.value = true
   stopPoll = pollImportJob({
     fetchJob: () => adminService.getImportJob(roundId, job.id).then((resp) => resp.data),
     onFinished: (details) => {
       endPoll()
       if (details.status === 'failed') {
-        alertService.error({ message: details.error })
+        const reason = details.error || $t('montage-something-went-wrong')
+        alertService.error({
+          message: `${$t('montage-import-status-failed')}. ${$t('montage-import-error', [reason])}`
+        })
         closeForm()
       } else {
         showImportResult({
@@ -474,7 +481,11 @@ const waitForImport = (roundId, job) => {
   })
 }
 
-onBeforeUnmount(endPoll)
+let unmounted = false
+onBeforeUnmount(() => {
+  unmounted = true
+  endPoll()
+})
 
 const importCategory = (id) => {
   const payload = {
@@ -490,9 +501,10 @@ const importCategory = (id) => {
   }
 
   isLoading.value = true
-  adminService
+  return adminService
     .populateRound(id, payload)
     .then((response) => {
+      if (unmounted) return
       const data = response.data || {}
       if (data.job && data.job.status === 'queued') {
         // background import (hatnote/montage#622)
