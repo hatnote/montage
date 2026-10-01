@@ -389,37 +389,74 @@ def test_fenced_commit_rejected_after_token_change(
     assert get_job(coord_client, round_id, job['id'])['status'] == 'running'
 
 
-def test_interrupted_jobs_failed_at_startup_and_after_max_runtime(
-        montage_app, coord_client, engine):
-    """AC6a: Phase 1 stuck-job rule."""
+def job_row(app, job_id):
+    return db_query(app, 'SELECT * FROM import_jobs WHERE id = :i',
+                    i=job_id)[0]
+
+
+def import_failed_audit(client, round_id):
+    return client.fetch(
+        'coordinator: audit log',
+        '/admin/campaign/%s/audit?action=import_failed'
+        % campaign_id_of(client, round_id), as_user=COORD)['data']
+
+
+def test_stale_requeue_then_fail(montage_app, coord_client, engine):
+    """AC6: a running job whose heartbeat is older than STALE_AFTER is
+    requeued while attempts < MAX_ATTEMPTS, then failed; jobs with a
+    fresh heartbeat (another live worker's) and queued jobs are left
+    alone."""
     now = datetime.datetime(2026, 10, 1, 12, 0, 0)
-    round_a = new_round(coord_client, 'stuck a')
-    round_b = new_round(coord_client, 'stuck b')
-    round_c = new_round(coord_client, 'stuck c')
-    old = seed_job(montage_app, round_a, 'running',
-                   start_date=now - datetime.timedelta(minutes=61))
-    recent = seed_job(montage_app, round_b, 'running',
-                      start_date=now - datetime.timedelta(minutes=1))
+    old_beat = now - import_worker.STALE_AFTER - datetime.timedelta(minutes=5)
+    fresh_beat = now - datetime.timedelta(minutes=1)
+    round_a = new_round(coord_client, 'stale a')
+    round_b = new_round(coord_client, 'stale b')
+    round_c = new_round(coord_client, 'stale c')
+    stale = seed_job(montage_app, round_a, 'running', attempts=1,
+                     claimed_by='dead-pod:1', claim_token='t-dead',
+                     start_date=old_beat, heartbeat_date=old_beat)
+    alive = seed_job(montage_app, round_b, 'running', attempts=1,
+                     claimed_by='live-pod:1', claim_token='t-live',
+                     start_date=old_beat, heartbeat_date=fresh_beat)
     queued = seed_job(montage_app, round_c, 'queued')
 
-    assert import_worker.fail_interrupted_jobs(engine, now=now) == [old]
-    assert get_job(coord_client, round_a, old)['error'] == \
-        import_worker.MAX_RUNTIME_ERROR
-    assert get_job(coord_client, round_b, recent)['status'] == 'running'
+    assert import_worker.recover_stale_jobs(engine, now=now) == ([stale], [])
+    row = job_row(montage_app, stale)
+    assert row['status'] == 'queued'
+    assert row['attempts'] == 1
+    assert (row['claimed_by'], row['claim_token'], row['start_date'],
+            row['heartbeat_date']) == (None, None, None, None)
+    assert job_row(montage_app, alive)['status'] == 'running'
+    assert job_row(montage_app, alive)['claim_token'] == 't-live'
+    assert job_row(montage_app, queued)['status'] == 'queued'
 
-    assert import_worker.fail_interrupted_jobs(
-        engine, now=now, at_startup=True) == [recent]
-    details = get_job(coord_client, round_b, recent)
+    # second attempt dies too: claimed again (attempts 2), heartbeat stops
+    claim = import_worker.claim_next_job(engine, 'w2')
+    assert claim.id == stale
+    set_job(montage_app, stale, heartbeat_date=old_beat)
+    assert import_worker.recover_stale_jobs(engine, now=now) == ([], [stale])
+    details = get_job(coord_client, round_a, stale)
     assert details['status'] == 'failed'
-    assert 'interrupted by a worker restart' in details['error']
-    assert get_job(coord_client, round_c, queued)['status'] == 'queued'
+    assert details['error'] == import_worker.STALE_ERROR % 2
+    assert 'stopped responding' in details['error']
+    assert len(import_failed_audit(coord_client, round_a)) == 1
+    assert job_row(montage_app, alive)['status'] == 'running'
+    # nothing left to do
+    assert import_worker.recover_stale_jobs(engine, now=now) == ([], [])
 
-    campaign_id = campaign_id_of(coord_client, round_b)
-    audit = coord_client.fetch(
-        'coordinator: audit log',
-        '/admin/campaign/%s/audit?action=import_failed' % campaign_id,
-        as_user=COORD)['data']
-    assert len(audit) == 1
+
+def test_stale_job_is_rerun_after_requeue(montage_app, coord_client, engine,
+                                          mock_external_apis):
+    """A worker killed mid-import (no release, no heartbeat) leaves a
+    running job; once stale it is requeued and the next run imports it."""
+    round_id = new_round(coord_client, 'rerun stale')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'killed-worker')
+    long_ago = claim.start_date - import_worker.STALE_AFTER * 2
+    set_job(montage_app, claim.id, heartbeat_date=long_ago)
+    assert run_import_jobs(montage_app) == [(job['id'], 'succeeded')]
+    assert job_row(montage_app, job['id'])['attempts'] == 2
+    assert round_entry_count(montage_app, round_id) == 20
 
 
 def test_worker_loop_survives_db_error(montage_app, coord_client, engine,
@@ -660,51 +697,63 @@ def test_long_json_column_roundtrip(montage_app, coord_client):
 # PR check follow-ups: sweeps, fenced failure, timeouts, sync lock order
 # ---------------------------------------------------------------------------
 
-class _StopLoop(BaseException):
-    pass
-
-
-def test_main_runs_startup_sweep_before_loop(montage_app, monkeypatch):
-    """M3: main() fails interrupted jobs (at_startup=True) before polling."""
-    calls = []
+def test_main_has_no_startup_sweep_and_exits_on_shutdown(
+        montage_app, coord_client, monkeypatch):
+    """Multi-replica safety: a starting worker leaves other workers' running
+    jobs (fresh heartbeat) alone, and main() returns 0 once a shutdown is
+    requested."""
+    round_id = new_round(coord_client, 'second replica')
+    now = import_worker._utcnow()
+    other = seed_job(montage_app, round_id, 'running', attempts=1,
+                     claim_token='other-replica', start_date=now,
+                     heartbeat_date=now)
     config = dict(montage_app.resources['config'])
     monkeypatch.setattr(import_worker, 'load_env_config', lambda: config)
-    monkeypatch.setattr(import_worker, 'fail_interrupted_jobs',
-                        lambda engine, at_startup=False, **kw:
-                        calls.append(('sweep', at_startup)) or [])
+    monkeypatch.setattr(import_worker, 'install_signal_handlers',
+                        lambda: None)
+    real_iteration = import_worker.run_loop_iteration
+    iterations = []
 
-    def loop(engine, worker_id=None):
-        calls.append(('loop', None))
-        raise _StopLoop()
+    def one_iteration_then_sigterm(*a, **kw):
+        iterations.append(real_iteration(*a, **kw))
+        # what the SIGTERM handler does outside a job: only set the flag
+        import_worker._on_shutdown_signal(15, None)
+        return iterations[-1]
 
-    monkeypatch.setattr(import_worker, 'run_loop_iteration', loop)
-    with pytest.raises(_StopLoop):
-        import_worker.main([])
-    assert calls == [('sweep', True), ('loop', None)]
+    monkeypatch.setattr(import_worker, 'run_loop_iteration',
+                        one_iteration_then_sigterm)
+    assert import_worker.main(['--poll-interval', '0']) == 0
+    assert iterations == [False]
+    row = job_row(montage_app, other)
+    assert (row['status'], row['claim_token']) == ('running',
+                                                   'other-replica')
 
 
-def test_loop_iteration_fails_job_over_max_runtime(montage_app, coord_client,
-                                                   engine):
-    """M10: every loop iteration runs the max-runtime sweep."""
-    round_id = new_round(coord_client, 'loop sweep')
-    old = seed_job(montage_app, round_id, 'running',
-                   start_date=import_worker._utcnow()
-                   - datetime.timedelta(minutes=61))
+def test_loop_iteration_recovers_stale_jobs(montage_app, coord_client,
+                                            engine):
+    """Every loop iteration runs stale recovery."""
+    round_id = new_round(coord_client, 'loop recovery')
+    long_ago = import_worker._utcnow() - datetime.timedelta(minutes=30)
+    old = seed_job(montage_app, round_id, 'running', attempts=2,
+                   claim_token='t', start_date=long_ago,
+                   heartbeat_date=long_ago)
     assert import_worker.run_loop_iteration(engine, 'w') is False
     details = get_job(coord_client, round_id, old)
     assert details['status'] == 'failed'
-    assert details['error'] == import_worker.MAX_RUNTIME_ERROR
+    assert details['error'] == import_worker.STALE_ERROR % 2
 
 
-def test_failure_after_sweep_is_fenced(montage_app, coord_client, engine,
-                                       mock_external_apis):
-    """M7: once a sweep failed the job (claim token cleared), the worker's
-    own failure must not overwrite it or log a second import_failed."""
+def test_failure_after_recovery_is_fenced(montage_app, coord_client, engine,
+                                          mock_external_apis):
+    """M7: once stale recovery failed the job (claim token cleared), the
+    worker's own failure must not overwrite it or log a second
+    import_failed."""
     round_id = new_round(coord_client, 'fenced failure')
     job = import_category(coord_client, round_id)['data']['job']
     claim = import_worker.claim_next_job(engine, 'w')
-    assert import_worker.fail_interrupted_jobs(engine, at_startup=True) == [
-        job['id']]
+    long_ago = claim.start_date - datetime.timedelta(minutes=30)
+    set_job(montage_app, job['id'], attempts=2, heartbeat_date=long_ago)
+    assert import_worker.recover_stale_jobs(engine) == ([], [job['id']])
 
     def boom(*a, **kw):
         raise RuntimeError('late failure')
@@ -712,12 +761,8 @@ def test_failure_after_sweep_is_fenced(montage_app, coord_client, engine,
     with patch.object(import_worker, 'load_import_entries', boom):
         assert import_worker.process_job(engine, claim) == 'failed'
     details = get_job(coord_client, round_id, job['id'])
-    assert details['error'] == import_worker.INTERRUPTED_ERROR
-    audit = coord_client.fetch(
-        'coordinator: audit log',
-        '/admin/campaign/%s/audit?action=import_failed'
-        % campaign_id_of(coord_client, round_id), as_user=COORD)['data']
-    assert len(audit) == 1
+    assert details['error'] == import_worker.STALE_ERROR % 2
+    assert len(import_failed_audit(coord_client, round_id)) == 1
 
 
 def test_failed_rollback_still_marks_job_failed(montage_app, coord_client,
@@ -851,3 +896,277 @@ def test_sync_import_takes_no_lock_before_fetch(montage_app, coord_client,
         import_category(coord_client, round_id)
     assert 'fetched' in events
     assert 'lock' not in events[:events.index('fetched')]
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: heartbeat, shutdown release, skipped jobs, lock errors
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def reset_worker_shutdown():
+    import_worker._shutdown.update(requested=False, interruptible=False)
+    yield
+    import_worker._shutdown.update(requested=False, interruptible=False)
+
+
+def test_heartbeat_updates_and_max_runtime(montage_app, coord_client, engine,
+                                           mock_external_apis):
+    """A tick refreshes heartbeat_date (fenced); after MAX_RUNTIME it fails
+    the job instead, and the worker's later commit is rejected."""
+    round_id = new_round(coord_client, 'heartbeat')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    later = claim.start_date + datetime.timedelta(minutes=10)
+    assert import_worker.heartbeat_tick(engine, claim, now=later) == 'ok'
+    assert job_row(montage_app, job['id'])['heartbeat_date'] is not None
+    assert get_job(coord_client, round_id, job['id'])['heartbeat_date'] == \
+        later.isoformat()
+
+    # a fresh heartbeat keeps stale recovery away
+    assert import_worker.recover_stale_jobs(
+        engine, now=later + datetime.timedelta(minutes=1)) == ([], [])
+
+    # fenced: another token's tick changes nothing
+    other = claim._replace(token='not-ours')
+    assert import_worker.heartbeat_tick(
+        engine, other, now=later + datetime.timedelta(minutes=1)) == 'lost'
+    assert get_job(coord_client, round_id, job['id'])['heartbeat_date'] == \
+        later.isoformat()
+
+    too_late = claim.start_date + import_worker.MAX_RUNTIME \
+        + datetime.timedelta(seconds=1)
+    assert import_worker.heartbeat_tick(engine, claim, now=too_late) == \
+        'expired'
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['status'] == 'failed'
+    assert details['error'] == import_worker.MAX_RUNTIME_ERROR
+    assert len(import_failed_audit(coord_client, round_id)) == 1
+    assert import_worker.heartbeat_tick(engine, claim, now=too_late) == 'lost'
+
+    # the (slow) worker finishes afterwards: its commit is fenced off
+    assert import_worker.process_job(engine, claim) == 'lost'
+    assert round_entry_count(montage_app, round_id) == 0
+    assert get_job(coord_client, round_id, job['id'])['status'] == 'failed'
+
+
+def test_heartbeat_thread_runs_and_stops_before_final_update(
+        montage_app, coord_client, engine, mock_external_apis):
+    """process_job keeps the job's heartbeat fresh while it fetches, and
+    stops and joins the heartbeat thread before the fenced success
+    UPDATE."""
+    import threading
+    import time as time_mod
+    from sqlalchemy import event
+    round_id = new_round(coord_client, 'heartbeat thread')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+    events = []
+    real_tick = import_worker.heartbeat_tick
+    real_load = import_worker.load_import_entries
+    real_stop = import_worker.Heartbeat.stop
+
+    def recording_tick(*a, **kw):
+        events.append('tick')
+        return real_tick(*a, **kw)
+
+    def slow_load(*a, **kw):
+        time_mod.sleep(0.5)
+        return real_load(*a, **kw)
+
+    def recording_stop(self):
+        events.append('stop')
+        return real_stop(self)
+
+    def on_execute(conn, cursor, statement, params, context, executemany):
+        if statement.lstrip().upper().startswith('UPDATE IMPORT_JOBS') \
+                and 'succeeded' in repr(params):
+            events.append('final update')
+
+    event.listen(engine, 'before_cursor_execute', on_execute)
+    try:
+        with patch.object(import_worker, 'heartbeat_tick', recording_tick), \
+                patch.object(import_worker, 'load_import_entries',
+                             slow_load), \
+                patch.object(import_worker.Heartbeat, 'stop',
+                             recording_stop):
+            assert import_worker.process_job(
+                engine, claim, heartbeat_interval=0.05) == 'succeeded'
+    finally:
+        event.remove(engine, 'before_cursor_execute', on_execute)
+
+    assert 'tick' in events
+    final = events.index('final update')
+    assert 'stop' in events[:final]
+    assert 'tick' not in events[final:]
+    assert not [t for t in threading.enumerate()
+                if t.name == 'heartbeat-job-%s' % job['id']]
+    assert round_entry_count(montage_app, round_id) == 20
+
+
+def test_release_job_does_not_use_an_attempt(montage_app, coord_client,
+                                             engine):
+    round_id = new_round(coord_client, 'release')
+    job_id = seed_job(montage_app, round_id, 'queued', attempts=0)
+    claim = import_worker.claim_next_job(engine, 'w')
+    assert job_row(montage_app, job_id)['attempts'] == 1
+    assert import_worker.release_job(engine, claim) is True
+    row = job_row(montage_app, job_id)
+    assert row['status'] == 'queued'
+    assert row['attempts'] == 0
+    assert (row['claimed_by'], row['claim_token'], row['start_date'],
+            row['heartbeat_date']) == (None, None, None, None)
+    # fenced: a second release (token gone) does nothing
+    assert import_worker.release_job(engine, claim) is False
+    assert job_row(montage_app, job_id)['attempts'] == 0
+
+
+def test_sigterm_during_fetch_releases_job(montage_app, coord_client, engine,
+                                           mock_external_apis):
+    """A real SIGTERM while the worker fetches: the handler interrupts it,
+    the job goes back to 'queued' with its attempt returned, and the next
+    run imports it."""
+    import os
+    import signal
+    import time as time_mod
+    round_id = new_round(coord_client, 'sigterm fetch')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+
+    def fetch_then_get_killed(*a, **kw):
+        os.kill(os.getpid(), signal.SIGTERM)
+        time_mod.sleep(10)  # interrupted by the handler
+
+    old_term = signal.getsignal(signal.SIGTERM)
+    old_int = signal.getsignal(signal.SIGINT)
+    started = time_mod.monotonic()
+    try:
+        import_worker.install_signal_handlers()
+        with patch.object(import_worker, 'load_import_entries',
+                          fetch_then_get_killed), \
+                pytest.raises(import_worker.WorkerShutdown):
+            import_worker.process_job(engine, claim, heartbeat_interval=0.05)
+    finally:
+        signal.signal(signal.SIGTERM, old_term)
+        signal.signal(signal.SIGINT, old_int)
+    assert time_mod.monotonic() - started < 5
+
+    row = job_row(montage_app, job['id'])
+    assert (row['status'], row['attempts'], row['claim_token']) == (
+        'queued', 0, None)
+    assert import_failed_audit(coord_client, round_id) == []
+
+    import_worker._shutdown.update(requested=False)  # a new worker
+    assert run_import_jobs(montage_app) == [(job['id'], 'succeeded')]
+    assert job_row(montage_app, job['id'])['attempts'] == 1
+
+
+def test_shutdown_during_import_rolls_back_and_releases(
+        montage_app, coord_client, engine, mock_external_apis):
+    """Interrupted after the inserts: nothing of the import is committed
+    and the job is released, not failed."""
+    round_id = new_round(coord_client, 'shutdown import')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+
+    def interrupted(*a, **kw):
+        import_worker._on_shutdown_signal(15, None)
+        raise AssertionError('handler should have raised')
+
+    with patch.object(admin_endpoints, 'autodisqualify', interrupted), \
+            pytest.raises(import_worker.WorkerShutdown):
+        import_worker.process_job(engine, claim)
+    assert job_row(montage_app, job['id'])['status'] == 'queued'
+    assert job_row(montage_app, job['id'])['attempts'] == 0
+    assert round_entry_count(montage_app, round_id) == 0
+    assert db_query(montage_app,
+                    'SELECT id FROM round_sources WHERE round_id = :r',
+                    r=round_id) == []
+
+
+def test_error_during_shutdown_releases_instead_of_failing(
+        montage_app, coord_client, engine, mock_external_apis):
+    """If the interrupt surfaces as another exception (e.g. a rollback on
+    the interrupted connection failing), the job is still released."""
+    round_id = new_round(coord_client, 'shutdown side effect')
+    job = import_category(coord_client, round_id)['data']['job']
+    claim = import_worker.claim_next_job(engine, 'w')
+
+    def broken(*a, **kw):
+        import_worker._shutdown['requested'] = True
+        raise RuntimeError('connection in a bad state')
+
+    with patch.object(import_worker, 'load_import_entries', broken), \
+            pytest.raises(import_worker.WorkerShutdown):
+        import_worker.process_job(engine, claim)
+    assert job_row(montage_app, job['id'])['status'] == 'queued'
+    assert import_failed_audit(coord_client, round_id) == []
+
+
+def test_shutdown_signal_raises_only_when_interruptible():
+    import_worker._on_shutdown_signal(15, None)  # between jobs: flag only
+    assert import_worker._shutdown['requested'] is True
+    with pytest.raises(import_worker.WorkerShutdown):
+        with import_worker._interruptible():  # already requested
+            pass
+    import_worker._shutdown['requested'] = False
+    with pytest.raises(import_worker.WorkerShutdown):
+        with import_worker._interruptible():
+            import_worker._on_shutdown_signal(15, None)
+    assert import_worker._shutdown['interruptible'] is False
+
+
+def test_cancelled_rounds_queued_job_skipped_without_fetch(
+        montage_app, coord_client, mock_external_apis):
+    round_id = new_round(coord_client, 'cancelled before import')
+    job = import_category(coord_client, round_id)['data']['job']
+    coord_client.fetch('coordinator: cancel round',
+                       '/admin/round/%s/cancel' % round_id, {'post': True},
+                       as_user=COORD)
+    calls_before = len(mock_external_apis.calls)
+    assert run_import_jobs(montage_app) == [(job['id'], 'failed')]
+    assert len(mock_external_apis.calls) == calls_before
+    details = get_job(coord_client, round_id, job['id'])
+    assert details['error'] == 'import skipped: the round is cancelled, not' \
+        ' paused'
+    # a cancelled round is not blocked or badged by it
+    assert get_round(coord_client, round_id)['import_state'][
+        'blocks_activation'] is False
+
+
+def mysql_lock_error(code=1213):
+    import pymysql
+    msg = {1205: 'Lock wait timeout exceeded; try restarting transaction',
+           1213: 'Deadlock found when trying to get lock; try restarting'
+                 ' transaction'}[code]
+    return OperationalError('SELECT ...', {},
+                            pymysql.err.OperationalError(code, msg))
+
+
+def test_worker_loop_logs_lock_error_and_continues(
+        montage_app, coord_client, engine, mock_external_apis, caplog):
+    round_id = new_round(coord_client, 'worker deadlock')
+    job = import_category(coord_client, round_id)['data']['job']
+    calls = []
+    real_claim = import_worker.claim_next_job
+
+    def deadlocked_once(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise mysql_lock_error(1213)
+        return real_claim(*a, **kw)
+
+    with patch.object(import_worker, 'claim_next_job', deadlocked_once):
+        assert import_worker.run_loop_iteration(engine, 'w') is False
+        assert 'database busy' in caplog.text
+        assert import_worker.run_loop_iteration(engine, 'w') is True
+    assert get_job(coord_client, round_id, job['id'])['status'] == 'succeeded'
+
+
+def test_error_text_for_lock_errors():
+    for code in (1205, 1213):
+        text = import_worker._error_text(mysql_lock_error(code))
+        assert text.startswith(import_worker.LOCK_ERROR)
+        assert 'SELECT' not in text
+    assert not rdb.is_lock_error(OperationalError(
+        'SELECT 1', {}, Exception('gone away')))
+    assert not rdb.is_lock_error(RuntimeError('1213'))

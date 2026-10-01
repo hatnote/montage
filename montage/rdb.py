@@ -25,6 +25,7 @@ from sqlalchemy import (Text,
                         TIMESTAMP,
                         ForeignKey,
                         inspect)
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.sql import func, asc, and_, or_
 from sqlalchemy.orm import relationship, joinedload, defer
 from sqlalchemy.sql.expression import select
@@ -110,6 +111,19 @@ ROUND_METHOD = 'round'
 # Caps for what an import job row stores
 DISQUALIFIED_SAMPLE_MAX = 500
 IMPORT_ERROR_MAX = 2000
+
+# MySQL/MariaDB lock errors: 1205 lock wait timeout, 1213 deadlock. The
+# statement's transaction is (or must be) rolled back; retrying is safe.
+MYSQL_LOCK_ERROR_CODES = (1205, 1213)
+
+
+def is_lock_error(exc):
+    """True for a SQLAlchemy DBAPIError wrapping a MySQL lock wait timeout
+    or deadlock (driver error args start with the error code)."""
+    if not isinstance(exc, DBAPIError):
+        return False
+    args = getattr(exc.orig, 'args', None) or ()
+    return bool(args) and args[0] in MYSQL_LOCK_ERROR_CODES
 
 ENV_NAME = get_env_name()
 
