@@ -108,7 +108,7 @@
   </div>
   <div
     class="round__actions"
-    style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
+    style="display: flex; flex-wrap: wrap; justify-content: end; gap: 16px; margin-top: 16px"
   >
     <p v-if="round.status === 'paused' && importBlockedKey" class="round-import-blocked">
       {{ $t(importBlockedKey) }}
@@ -269,9 +269,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* its own line above the buttons, so they keep their full labels */
 .round-import-blocked {
-  align-self: center;
+  flex-basis: 100%;
+  margin: 0;
+  text-align: end;
   color: #54595d;
+}
+
+.round__actions > .cdx-button {
+  flex-shrink: 0;
 }
 
 .round {
