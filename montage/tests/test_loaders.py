@@ -109,8 +109,54 @@ def test_make_entry_reupload():
 # 2026-09-08; file data from the main replica. The two are joined in code.
 # ---------------------------------------------------------------------------
 
+class _FakeCursor(object):
+    def __init__(self, conn):
+        self.conn = conn
+        self.rows = None
+
+    def execute(self, query, params):
+        assert not self.conn.closed
+        self.conn.queries += 1
+        self.rows = self.conn.fetch(query, params, db_host=self.conn.db_host)
+
+    def fetchall(self):
+        return self.rows
+
+    def close(self):
+        pass
+
+
+class _FakeConnection(object):
+    """Stands in for a pymysql connection; each query is answered by a
+    fetchall_from_commonswiki-style function fetch(query, params, db_host)."""
+    def __init__(self, db_host, fetch):
+        self.db_host = db_host
+        self.fetch = fetch
+        self.queries = 0
+        self.closed = False
+
+    def cursor(self):
+        return _FakeCursor(self)
+
+    def close(self):
+        self.closed = True
+
+
+def _patch_replicas(monkeypatch, fetch):
+    """Replace labs._connect with fake connections answered by fetch;
+    returns the list of connections opened."""
+    from montage import labs
+    opened = []
+
+    def connect(db_host):
+        opened.append(_FakeConnection(db_host, fetch))
+        return opened[-1]
+    monkeypatch.setattr(labs, '_connect', connect)
+    return opened
+
+
 def _fake_replicas(links_rows, file_rows, calls):
-    """A fetchall_from_commonswiki stand-in: category members from the
+    """A replica stand-in: category members from the
     links replica, file details from the main replica."""
     from montage import labs
 
@@ -139,8 +185,7 @@ def test_get_files_reads_members_from_links_replica(monkeypatch):
     names = ['B_file.jpg', 'A_file.jpg', 'Café_ü.jpg', 'A_file.jpg']
     file_rows = {n: _file_row(n, i) for i, n in enumerate(set(names))}
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_replicas(names, file_rows, calls))
+    _patch_replicas(monkeypatch, _fake_replicas(names, file_rows, calls))
 
     result = labs.get_files('Images from Wiki Loves Monuments 2026 in Russia')
 
@@ -158,8 +203,7 @@ def test_get_files_looks_up_files_in_chunks(monkeypatch):
     names = ['F%02d.jpg' % i for i in range(8)]
     file_rows = {n: _file_row(n, i) for i, n in enumerate(names)}
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_replicas(names, file_rows, calls))
+    _patch_replicas(monkeypatch, _fake_replicas(names, file_rows, calls))
 
     result = labs.get_files('Some category')
 
@@ -174,8 +218,7 @@ def test_get_files_skips_members_without_a_file_row(monkeypatch):
     from montage import labs
     names = ['Kept.jpg', 'Deleted.jpg']
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_replicas(names, {'Kept.jpg': _file_row('Kept.jpg', 1)}, calls))
+    _patch_replicas(monkeypatch, _fake_replicas(names, {'Kept.jpg': _file_row('Kept.jpg', 1)}, calls))
 
     assert [r['img_name'] for r in labs.get_files('Cat')] == ['Kept.jpg']
 
@@ -183,8 +226,7 @@ def test_get_files_skips_members_without_a_file_row(monkeypatch):
 def test_get_files_empty_category_makes_no_file_lookup(monkeypatch):
     from montage import labs
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_replicas([], {}, calls))
+    _patch_replicas(monkeypatch, _fake_replicas([], {}, calls))
 
     assert labs.get_files('Empty category') == []
     assert [host for host, _, _ in calls] == [labs.COMMONS_LINKS_DB_HOST]
@@ -227,8 +269,7 @@ def test_load_by_filename_batches_lookups(monkeypatch):
     names = ['File %02d.jpg' % i for i in range(10)]
     existing = {n.replace(' ', '_') for n in names}
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_main_replica(existing, calls))
+    _patch_replicas(monkeypatch, _fake_main_replica(existing, calls))
 
     entries, warnings = loaders.load_by_filename(names, source='local')
 
@@ -240,8 +281,7 @@ def test_load_by_filename_batches_lookups(monkeypatch):
 def test_load_by_filename_warns_per_missing_name_in_input_order(monkeypatch):
     from montage import labs, loaders
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_main_replica({'B.jpg'}, calls))
+    _patch_replicas(monkeypatch, _fake_main_replica({'B.jpg'}, calls))
 
     entries, warnings = loaders.load_by_filename(['Z missing.jpg', 'B.jpg', 'A missing.jpg'],
                                                  source='local')
@@ -257,8 +297,7 @@ def test_load_name_list_local(monkeypatch):
     from io import StringIO
     from montage import labs, loaders
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_main_replica({'One.jpg', 'Two_words.jpg'}, calls))
+    _patch_replicas(monkeypatch, _fake_main_replica({'One.jpg', 'Two_words.jpg'}, calls))
 
     entries, warnings = loaders.load_name_list(
         StringIO('File:One.jpg\nTwo words.jpg\nGone.jpg\n'), source='local')
@@ -297,8 +336,7 @@ def test_get_files_order_is_binary_like_the_old_query(monkeypatch):
     from montage import labs
     names = ['b_lower.jpg', 'B_upper.jpg', 'a_lower.jpg', 'A_upper.jpg', 'Ö_umlaut.jpg']
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_replicas(names, {n: _file_row(n, i) for i, n in enumerate(names)}, calls))
+    _patch_replicas(monkeypatch, _fake_replicas(names, {n: _file_row(n, i) for i, n in enumerate(names)}, calls))
 
     result = [r['img_name'] for r in labs.get_files('Cat')]
 
@@ -310,10 +348,61 @@ def test_load_by_filename_duplicates_and_space_underscore_pairs(monkeypatch):
     resolve, with one query."""
     from montage import labs, loaders
     calls = []
-    monkeypatch.setattr(labs, 'fetchall_from_commonswiki',
-                        _fake_main_replica({'A_b.jpg'}, calls))
+    _patch_replicas(monkeypatch, _fake_main_replica({'A_b.jpg'}, calls))
 
     entries, warnings = loaders.load_by_filename(['A b.jpg', 'A_b.jpg', 'A b.jpg'], source='local')
 
     assert [e.name for e in entries] == ['A_b.jpg'] * 3
     assert warnings == [] and len(calls) == 1 and calls[0] == ('A_b.jpg',)
+
+
+# ---------------------------------------------------------------------------
+# One replica connection per lookup (per database host), closed afterwards,
+# not one per 500-name chunk (hatnote/montage#625).
+# ---------------------------------------------------------------------------
+
+def test_get_files_uses_one_connection_per_replica(monkeypatch):
+    from montage import labs
+    monkeypatch.setattr(labs, 'FILE_LOOKUP_CHUNK_SIZE', 3)
+    names = ['F%02d.jpg' % i for i in range(8)]
+    calls = []
+    opened = _patch_replicas(monkeypatch, _fake_replicas(
+        names, {n: _file_row(n, i) for i, n in enumerate(names)}, calls))
+
+    assert len(labs.get_files('Some category')) == 8
+
+    # links + main, although the main replica answered 3 chunk queries
+    assert [c.db_host for c in opened] == [labs.COMMONS_LINKS_DB_HOST,
+                                           labs.COMMONS_DB_HOST]
+    assert [c.queries for c in opened] == [1, 3]
+    assert all(c.closed for c in opened)
+
+
+def test_get_files_info_by_names_uses_one_connection(monkeypatch):
+    from montage import labs
+    monkeypatch.setattr(labs, 'FILE_LOOKUP_CHUNK_SIZE', 4)
+    names = ['File %02d.jpg' % i for i in range(10)]
+    calls = []
+    opened = _patch_replicas(monkeypatch, _fake_main_replica(
+        {n.replace(' ', '_') for n in names}, calls))
+
+    assert len(labs.get_files_info_by_names(names)) == 10
+
+    assert [len(c) for c in calls] == [4, 4, 2]
+    assert [(c.db_host, c.queries, c.closed) for c in opened] == [
+        (labs.COMMONS_DB_HOST, 3, True)]
+
+
+def test_replica_connection_is_closed_when_a_query_fails(monkeypatch):
+    from montage import labs
+
+    def failing(query, params, db_host=labs.COMMONS_DB_HOST):
+        raise RuntimeError('replica went away')
+    opened = _patch_replicas(monkeypatch, failing)
+
+    with pytest.raises(RuntimeError):
+        labs.get_files_info_by_names(['A.jpg'])
+    with pytest.raises(RuntimeError):
+        labs.fetchall_from_commonswiki('SELECT 1', ())
+
+    assert len(opened) == 2 and all(c.closed for c in opened)

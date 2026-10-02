@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import os
+from contextlib import contextmanager
 
 try:
     import pymysql
@@ -59,23 +60,22 @@ COMMONS_LINKS_DB_HOST = os.environ.get(
 FILE_LOOKUP_CHUNK_SIZE = 500
 
 
-def fetchall_from_commonswiki(query, params, db_host=COMMONS_DB_HOST):
+def _connect(db_host):
     if pymysql is None:
         raise MissingMySQLClient('could not import pymysql, check your'
                                  ' environment and restart the service')
-    db_title = 'commonswiki_p'
-    connection = pymysql.connect(db=db_title,
-                                 host=db_host,
-                                 read_default_file=DB_CONFIG,
-                                 charset='utf8')
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
-    cursor.execute(query, params)
-    res = cursor.fetchall()
+    return pymysql.connect(db='commonswiki_p',
+                           host=db_host,
+                           read_default_file=DB_CONFIG,
+                           charset='utf8',
+                           cursorclass=pymysql.cursors.DictCursor)
 
+
+def _decode_rows(rows):
     # looking at the schema on labs, it's all varbinary, not varchar,
     # so this block converts values
     ret = []
-    for rec in res:
+    for rec in rows:
         new_rec = {}
         for k, v in rec.items():
             if isinstance(v, bytes):
@@ -85,10 +85,42 @@ def fetchall_from_commonswiki(query, params, db_host=COMMONS_DB_HOST):
     return ret
 
 
+@contextmanager
+def commonswiki_connection(db_host=COMMONS_DB_HOST):
+    """One replica connection, closed on exit. Yields fetchall(query,
+    params), which runs a query on that connection and returns decoded
+    dict rows, so a multi-query lookup reuses one connection."""
+    connection = _connect(db_host)
+
+    def fetchall(query, params):
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query, params)
+            return _decode_rows(cursor.fetchall())
+        finally:
+            cursor.close()
+
+    try:
+        yield fetchall
+    finally:
+        connection.close()
+
+
+def fetchall_from_commonswiki(query, params, db_host=COMMONS_DB_HOST):
+    """Run one query on its own (closed afterwards) connection."""
+    with commonswiki_connection(db_host) as fetchall:
+        return fetchall(query, params)
+
+
 def get_category_file_names(category_name):
     """Names of the files directly in a Commons category, read from the
     links replica (page exists on both clusters, so this stays one query).
     """
+    with commonswiki_connection(COMMONS_LINKS_DB_HOST) as fetchall:
+        return _category_file_names(fetchall, category_name)
+
+
+def _category_file_names(fetchall, category_name):
     query = '''
         SELECT DISTINCT page_title AS file_name
         FROM categorylinks
@@ -100,13 +132,19 @@ def get_category_file_names(category_name):
         WHERE cl_type = 'file'
     '''
     params = (category_name.replace(' ', '_'),)
-    rows = fetchall_from_commonswiki(query, params,
-                                     db_host=COMMONS_LINKS_DB_HOST)
+    rows = fetchall(query, params)
     return [row['file_name'] for row in rows]
 
 
 def get_files_by_name(file_names):
     """File details for file names (underscored), from the main replica."""
+    if not file_names:
+        return []
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        return _files_by_name(fetchall, file_names)
+
+
+def _files_by_name(fetchall, file_names):
     if not file_names:
         return []
     query = '''
@@ -122,27 +160,36 @@ def get_files_by_name(file_names):
     '''.format(cols=', '.join(FILE_COLS),
                earliest_rev=_EARLIEST_REVISION_SUBQUERY,
                names=', '.join(['%s'] * len(file_names)))
-    return fetchall_from_commonswiki(query, tuple(file_names))
+    return fetchall(query, tuple(file_names))
 
 
 def get_files_info_by_names(file_names):
     """{underscored name: file info} for the names that exist, looked up in
-    chunks instead of one query (and connection) per file."""
+    chunks instead of one query per file, all on one connection."""
     names = sorted(set(name.replace(' ', '_') for name in file_names))
     ret = {}
-    for i in range(0, len(names), FILE_LOOKUP_CHUNK_SIZE):
-        for rec in get_files_by_name(names[i:i + FILE_LOOKUP_CHUNK_SIZE]):
-            ret[rec['img_name']] = rec
+    if not names:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(names), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = names[i:i + FILE_LOOKUP_CHUNK_SIZE]
+            for rec in _files_by_name(fetchall, chunk):
+                ret[rec['img_name']] = rec
     return ret
 
 
 def get_files(category_name):
     # Two steps because category membership and file data now live on
     # different database clusters, which cannot be joined in SQL.
+    # One connection per cluster for the whole lookup.
     file_names = sorted(set(get_category_file_names(category_name)))
     ret = []
-    for i in range(0, len(file_names), FILE_LOOKUP_CHUNK_SIZE):
-        ret.extend(get_files_by_name(file_names[i:i + FILE_LOOKUP_CHUNK_SIZE]))
+    if not file_names:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(file_names), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = file_names[i:i + FILE_LOOKUP_CHUNK_SIZE]
+            ret.extend(_files_by_name(fetchall, chunk))
     # same order as the old single query's ORDER BY file_name (binary)
     ret.sort(key=lambda rec: rec['img_name'].encode('utf8'))
     return ret
