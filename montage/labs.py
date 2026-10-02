@@ -86,7 +86,13 @@ class MissingMySQLClient(RuntimeError):
     pass
 
 
-COMMONS_DB_HOST = 'commonswiki.labsdb'
+# Wikireplica hosts, both on the analytics replicas and both overridable,
+# e.g. when Wikimedia moves tables again. COMMONS_DB_HOST used to be the
+# legacy alias commonswiki.labsdb, which points to the same s4 analytics
+# replica.
+COMMONS_DB_HOST = os.environ.get(
+    'MONTAGE_COMMONS_DB_HOST',
+    'commonswiki.analytics.db.svc.wikimedia.cloud')
 # Since 2026-09-08 the Commons links tables (categorylinks, linktarget, ...)
 # live on their own cluster (x4); the copies on the main Commons replica are
 # no longer written, so category membership must be read from this replica.
