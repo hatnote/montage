@@ -899,9 +899,15 @@ def test_wikireplica_connection_has_timeouts():
         def fetchall(self):
             return [{'img_name': b'A.jpg'}]
 
+        def close(self):
+            pass
+
     class FakeConnection(object):
-        def cursor(self, cursor_type):
+        def cursor(self, cursor_type=None):
             return FakeCursor()
+
+        def close(self):
+            pass
 
     with patch.object(labs.pymysql, 'connect',
                       return_value=FakeConnection()) as connect, \

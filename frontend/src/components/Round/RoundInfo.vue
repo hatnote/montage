@@ -55,6 +55,12 @@
       </div>
     </div>
     <div style="flex: 4">
+      <round-import-status
+        :round-id="round.id"
+        :round-status="round.status"
+        :import-state="importState"
+        :entry-count="roundDetails?.total_entries ?? null"
+      />
       <div class="round-file-info">
         <h4>{{ $t('montage-round-file-info') }}</h4>
         <p>
@@ -107,13 +113,16 @@
   </div>
   <div
     class="round__actions"
-    style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
+    style="display: flex; flex-wrap: wrap; justify-content: end; gap: 16px; margin-top: 16px"
   >
+    <p v-if="round.status === 'paused' && importBlockedKey" class="round-import-blocked">
+      {{ $t(importBlockedKey) }}
+    </p>
     <cdx-button
       v-if="round.status === 'paused'"
-      :disabled="activating"
       @click="activateRound"
       action="progressive"
+      :disabled="activating || !!importBlockedKey"
     >
       <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
     </cdx-button>
@@ -145,6 +154,7 @@ import alertService from '@/services/alertService'
 // Components
 import { CdxButton, CdxAccordion } from '@wikimedia/codex'
 import UserAvatarWithName from '../UserAvatarWithName.vue'
+import RoundImportStatus from './RoundImportStatus.vue'
 
 // Icons
 import Play from 'vue-material-design-icons/Play.vue'
@@ -160,6 +170,14 @@ const props = defineProps({
 
 const roundDetails = ref(null)
 const roundResults = ref(null)
+
+// import state from the campaign payload, so Activate is disabled from
+// the first render (hatnote/montage#622)
+const importState = computed(() => props.round.import_state)
+const importBlockedKey = computed(() => {
+  const reason = importState.value?.blocks_activation && importState.value.blocked_reason
+  return reason ? 'montage-import-blocked-' + reason.replace('import_', '') : null
+})
 
 const remainingDays = computed(() => {
   const deadline = new Date(props.round.deadline_date)
@@ -265,6 +283,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* its own line above the buttons, so they keep their full labels */
+.round-import-blocked {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: end;
+  color: #54595d;
+}
+
+.round__actions > .cdx-button {
+  flex-shrink: 0;
+}
+
 .round {
   display: flex;
   flex-direction: column;
