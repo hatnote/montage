@@ -240,10 +240,21 @@ def entry_ids(app, prefix):
 def summarize_response(data, strip_prefix=''):
     data = dict(data)
     data.pop('round_id', None)
+    # job ids and dates differ between the legacy and the new run (#621)
+    data.pop('job', None)
+    data.pop('entry_count', None)
     dq = data.pop('disqualified', [])
     data['disqualified'] = sorted(
         (d['entry']['name'][len(strip_prefix):], d['dq_reason']) for d in dq)
     return data
+
+
+@pytest.fixture(autouse=True)
+def _sync_import_mode(montage_app):
+    # These tests assert on the synchronous import response; run imports
+    # in the request (MONTAGE_IMPORT_MODE=sync). The worker runs the same
+    # run_import() code path (#621). create_app shares this config dict.
+    montage_app.resources['config']['import_mode'] = 'sync'
 
 
 @pytest.fixture

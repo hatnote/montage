@@ -20,6 +20,7 @@ from montage import utils
 from montage.log import script_log
 from montage.app import create_app, STATIC_PATH
 from montage.utils import unicode
+from montage.tests.conftest import run_import_jobs
 
 
 class ClasticTestClient(Client):
@@ -166,7 +167,8 @@ def api_client(montage_app):
     return api_client
 
 
-def test_home_client(base_client, api_client, mock_external_apis):
+def test_home_client(base_client, api_client, mock_external_apis,
+                     montage_app):
 
     resp = base_client.fetch('organizer: home', '/')
     #resp = base_client.fetch('public: login', '/login')
@@ -321,6 +323,10 @@ def test_home_client(base_client, api_client, mock_external_apis):
     resp = fetch('coordinator: import entries from a category',
                  '/admin/round/%s/import' % round_id,
                  data, as_user='LilyOfTheWest')
+    assert resp['data']['job']['status'] == 'queued'
+    # imports run in the background import worker (#621)
+    assert run_import_jobs(montage_app) == [
+        (resp['data']['job']['id'], 'succeeded')]
 
     resp = fetch('coordinator: activate a round',
                  '/admin/round/%s/activate' % round_id,
@@ -337,11 +343,16 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  '/admin/round/%s/import' % round_id,
                  {'import_method': 'csv', 'csv_url': gsheet_url},
                  as_user='LilyOfTheWest')
+    # drain before the next import: one queued/running job per round
+    assert run_import_jobs(montage_app) == [
+        (resp['data']['job']['id'], 'succeeded')]
 
     resp = fetch('coordinator: import files selected by name',
                  '/admin/round/%s/import' % round_id,
                  {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
                  as_user='LilyOfTheWest')
+    assert run_import_jobs(montage_app) == [
+        (resp['data']['job']['id'], 'succeeded')]
 
     resp = fetch('coordinator: preview disqualifications',
                  '/admin/round/%s/preview_disqualification' % round_id,
@@ -877,7 +888,8 @@ def test_get_files_info_by_name(api_client):
     assert resp['file_infos'][0]['file_id'] == 1
 
 
-def test_import_entries_have_file_id(api_client, mock_external_apis):
+def test_import_entries_have_file_id(api_client, mock_external_apis,
+                                     montage_app):
     """After a category import, every entry returned by the API has a non-null file_id.
 
     Regression for the image→file/filerevision migration (hatnote/montage#504).
@@ -927,6 +939,7 @@ def test_import_entries_have_file_id(api_client, mock_external_apis):
          'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
         as_user='Yarl',
     )
+    assert [o for _, o in run_import_jobs(montage_app)] == ['succeeded']
 
     api_client.fetch(
         'coordinator: activate round',
@@ -954,7 +967,8 @@ def test_import_entries_have_file_id(api_client, mock_external_apis):
     )
 
 
-def test_category_import_batches_inserts(api_client, mock_external_apis):
+def test_category_import_batches_inserts(api_client, mock_external_apis,
+                                         montage_app):
     """A category import issues a few multi-row INSERTs, not one per file.
 
     Regression for hatnote/montage#618: two single-row INSERTs per file
@@ -1012,10 +1026,16 @@ def test_category_import_batches_inserts(api_client, mock_external_apis):
             inserts[table] = inserts.get(table, 0) + 1
 
     def do_import():
-        return api_client.fetch(
+        # the request only queues the job; the worker runs the import (#621)
+        job = api_client.fetch(
             'coordinator: import entries via category',
             '/admin/round/%s/import' % round_id,
             {'import_method': 'category', 'category': 'Batch_import'},
+            as_user='Yarl')['data']['job']
+        assert run_import_jobs(montage_app) == [(job['id'], 'succeeded')]
+        return api_client.fetch(
+            'coordinator: get import job',
+            '/admin/round/%s/import/%s' % (round_id, job['id']),
             as_user='Yarl')['data']
 
     event.listen(Engine, 'before_cursor_execute', count_inserts)
@@ -1025,7 +1045,10 @@ def test_category_import_batches_inserts(api_client, mock_external_apis):
         event.remove(Engine, 'before_cursor_execute', count_inserts)
 
     assert data['new_round_entry_count'] == n
-    assert data['total_entries'] == n
+    total_entries = api_client.fetch(
+        'coordinator: get round', '/admin/round/%s' % round_id,
+        as_user='Yarl')['data']['total_entries']
+    assert total_entries == n
     # one INSERT per chunk of entries, one for all round entries
     assert inserts.get('entries', 0) <= 3, inserts
     assert inserts.get('round_entries', 0) <= 3, inserts
@@ -1134,7 +1157,7 @@ def submit_ratings(client, round_id, coord_user='Yarl'):
     # submit random valid votes until there are no more tasks
 
 
-def test_vote_later_reappears(api_client, mock_external_apis):
+def test_vote_later_reappears(api_client, mock_external_apis, montage_app):
     """
     Regression test for #371 / #372: skipped tasks ("Vote Later") should
     reappear after the juror exhausts all remaining non-skipped tasks.
@@ -1179,6 +1202,7 @@ def test_vote_later_reappears(api_client, mock_external_apis):
           {'import_method': 'category',
            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
           as_user='LilyOfTheWest')
+    assert [o for _, o in run_import_jobs(montage_app)] == ['succeeded']
 
     fetch('coordinator: activate round',
           '/admin/round/%s/activate' % round_id,

@@ -232,3 +232,21 @@ def mock_external_apis():
         )
 
         yield rsps
+
+
+# ---------------------------------------------------------------------------
+# Background imports (hatnote/montage#621): with import_mode 'worker' (the
+# devtest default) POST /admin/round/<id>/import only queues a job. Tests
+# drain the queue in-process with this helper, while mock_external_apis is
+# active (the worker does the HTTP fetch).
+# ---------------------------------------------------------------------------
+def run_import_jobs(app):
+    """Run every queued import job once; return [(job_id, outcome), ...]."""
+    from montage.app import make_engine
+    from montage import import_worker
+
+    engine = make_engine(app.resources['config'])
+    try:
+        return import_worker.run_once(engine)
+    finally:
+        engine.dispose()

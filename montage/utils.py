@@ -39,17 +39,29 @@ DEFAULT_ENV_NAME = 'dev'
 USER_AGENT = 'montage/25.0 (https://github.com/hatnote/montage; mahmoud@hatnote.com)'
 
 
+# (connect, read) seconds. Without a timeout a dead or stalling server
+# blocks the caller for ever, which stops the single import worker
+# (hatnote/montage#621). The read timeout is per socket read, not total;
+# it is generous because the Toolforge utils API can take minutes on a
+# large category. Pass timeout= to override.
+DEFAULT_HTTP_TIMEOUT = (15, 600)
+
+
 def requests_get(url, **kwargs):
-    """Wrapper for requests.get that adds User-Agent header"""
+    """Wrapper for requests.get that adds User-Agent header and a default
+    timeout"""
     headers = kwargs.pop('headers', {})
     headers.setdefault('User-Agent', USER_AGENT)
+    kwargs.setdefault('timeout', DEFAULT_HTTP_TIMEOUT)
     return requests.get(url, headers=headers, **kwargs)
 
 
 def requests_post(url, **kwargs):
-    """Wrapper for requests.post that adds User-Agent header"""
+    """Wrapper for requests.post that adds User-Agent header and a default
+    timeout"""
     headers = kwargs.pop('headers', {})
     headers.setdefault('User-Agent', USER_AGENT)
+    kwargs.setdefault('timeout', DEFAULT_HTTP_TIMEOUT)
     return requests.post(url, headers=headers, **kwargs)
 
 
@@ -161,7 +173,23 @@ DEVTEST_CONFIG = {'oauth_client_id': None,
                   'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
                   '__file__': 'devtest-builtin',
                   '__env__': 'devtest',
+                  'import_mode': 'worker',
 }
+
+# How POST /admin/round/<id>/import runs external imports
+# (hatnote/montage#621): 'worker' queues an import job for
+# montage/import_worker.py; 'sync' runs it inside the request (the
+# pre-#621 behaviour, kept as a rollback switch).
+IMPORT_MODES = ('sync', 'worker')
+DEFAULT_IMPORT_MODE = 'sync'
+
+
+def get_import_mode(config):
+    mode = config.get('import_mode', DEFAULT_IMPORT_MODE)
+    if mode not in IMPORT_MODES:
+        raise ValueError('invalid import_mode %r (MONTAGE_IMPORT_MODE), expected'
+                         ' one of: %s' % (mode, ', '.join(IMPORT_MODES)))
+    return mode
 
 
 def _load_config_from_env(env_name):
@@ -203,6 +231,8 @@ def _load_config_from_env(env_name):
         'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),
         'replay_log_path': os.environ.get('MONTAGE_REPLAY_LOG_PATH'),
         'feel_log_path': os.environ.get('MONTAGE_FEEL_LOG_PATH'),
+        'import_mode': os.environ.get('MONTAGE_IMPORT_MODE',
+                                      DEFAULT_IMPORT_MODE),
         '__env__': env_name,
         '__file__': 'environment',
     })
@@ -229,6 +259,9 @@ def load_env_config(env_name=None):
 
     config['__env__'] = env_name
     config['__file__'] = config_file_path
+    # the YAML key wins; the env var lets dev-servers.sh pick the mode
+    config.setdefault('import_mode', os.environ.get('MONTAGE_IMPORT_MODE',
+                                                    DEFAULT_IMPORT_MODE))
     return config
 
 
@@ -244,7 +277,12 @@ def check_schema(db_url, base_type, echo=False, autoexit=False):
     # import pdb;pdb.set_trace()
 
     tmp_rdb_session = session_type()
-    schema_errors = get_schema_errors(base_type, tmp_rdb_session)
+    try:
+        schema_errors = get_schema_errors(base_type, tmp_rdb_session)
+    finally:
+        # don't keep an idle connection open for the caller's lifetime
+        tmp_rdb_session.close()
+        engine.dispose()
     if not schema_errors:
         print('++  schema validated ok')
     else:
