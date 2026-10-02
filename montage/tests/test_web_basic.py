@@ -867,7 +867,8 @@ def test_multiple_jurors(api_client, mock_external_apis):
 def test_get_files_info_by_name(api_client):
     """GET /utils/file returns file_infos with file_id populated."""
     from .conftest import SELECTED_FILE_INFO
-    with patch('montage.public_endpoints.get_file_info', return_value=SELECTED_FILE_INFO):
+    with patch('montage.public_endpoints.get_files_info_by_names',
+               return_value={SELECTED_FILE_INFO['img_name'].replace(' ', '_'): SELECTED_FILE_INFO}):
         resp = api_client.fetch(
             'public: get file info by name',
             '/utils/file',
@@ -1234,3 +1235,92 @@ def test_oauth_complete_login_success(oauth_app):
     data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
     assert data.get('userid') == 12345
     assert data.get('username') == 'OAuthTestUser'
+
+
+def _import_result(montage_app, api_client, round_id, data):
+    """The result of an /admin/round/<id>/import call, in either mode.
+
+    Synchronous import: the response data itself. Background import worker
+    (hatnote/montage#621): the response carries data['job']; run the queue
+    and return the job's data, which holds the warnings. On branches
+    without the worker the second path is never taken.
+    """
+    if 'job' not in data:
+        return data
+    from montage.tests.conftest import run_import_jobs
+    job_id = data['job']['id']
+    assert run_import_jobs(montage_app) == [(job_id, 'succeeded')]
+    return api_client.fetch('coordinator: import job',
+                            '/admin/round/%s/import/%s' % (round_id, job_id),
+                            as_user='Yarl')['data']
+
+
+def test_selected_import_with_missing_name_reports_warning(montage_app, api_client, mock_external_apis):
+    """A file-list import where some names are not found must succeed with a
+    warning. The warning used to be a set, which can't be serialised (500)."""
+    import responses as responses_lib
+    from montage.tests.conftest import TOOLFORGE_FILE_URL, SELECTED_FILE_INFO
+
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_FILE_URL,
+                               json={'file_infos': [SELECTED_FILE_INFO],
+                                     'no_info': ['Not_on_Commons.jpg']},
+                               status=200)
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'missing name test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import selected files', '/admin/round/%s/import' % round_id,
+        {'import_method': 'selected',
+         'file_names': [SELECTED_FILE_INFO['img_name'], 'Not on Commons.jpg']},
+        as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
+
+    issues = [w for w in data['warnings'] if 'import issues' in w]
+    assert len(issues) == 1 and 'Not_on_Commons.jpg' in issues[0]['import issues']
+
+
+def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_apis, monkeypatch):
+    """The frontend shows one value per warning; a plain string showed only
+    its last character. CSV warnings must be dicts like the others."""
+    from montage import loaders
+    from montage.tests.conftest import FIXTURE_FILE_INFOS
+
+    def fake_csv(url, source='local'):
+        entries = [loaders.make_entry(info) for info in FIXTURE_FILE_INFOS[:3]]
+        return entries, ['file "Gone.jpg" does not exist']
+    monkeypatch.setattr(loaders, 'get_entries_from_csv', fake_csv)
+
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer', {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'csv warning test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import csv', '/admin/round/%s/import' % round_id,
+        {'import_method': 'csv', 'csv_url': 'https://example.org/files.csv'},
+        as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
+
+    assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
+    assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])

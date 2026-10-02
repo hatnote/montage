@@ -10,7 +10,7 @@ from boltons.iterutils import chunked_iter
 from unicodecsv import DictReader
 
 import montage.rdb  # TODO: circular import
-from .labs import get_files, get_file_info
+from .labs import get_files, get_files_info_by_names
 from .utils import unicode, requests_get, requests_post
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
@@ -137,11 +137,7 @@ def load_name_list(file_obj, source='local'):
     if source == 'remote':
         edicts, warnings = get_by_filename_remote(rl)
     else:
-        for filename in rl:
-            file_info = get_file_info(filename)
-            if file_info is not None:
-                edict, warnings = file_info
-                edicts.append(edict)
+        edicts, warnings = _lookup_file_names(rl)
 
     for edict in edicts:
         try:
@@ -196,22 +192,33 @@ def get_entries_from_gsheet(raw_url, source='local'):
     return ret, warnings
 
 
+def _lookup_file_names(filenames):
+    """File infos in input order, plus a warning per name that was not found.
+
+    Looks the names up in batches: one query per file made large file-list
+    imports outlast the request timeout.
+    """
+    found = get_files_info_by_names(filenames)
+    files, warnings = [], []
+    for filename in filenames:
+        file_info = found.get(filename.replace(' ', '_'))
+        if file_info is not None:
+            files.append(file_info)
+        else:
+            warnings.append(
+                'file "%s" does not exist, please check that its name is spelled correctly, '
+                'that it has not been renamed or removed' % (filename,)
+            )
+    return files, warnings
+
+
 def load_by_filename(filenames, source='local'):
     entries = []
     warnings = []
     if source == 'remote':
         files, warnings = get_by_filename_remote(filenames)
     else:
-        files = []
-        for filename in filenames:
-            file_info = get_file_info(filename)
-            if file_info is not None:
-                files.append(file_info)
-            else:
-                warnings.append(
-                    'file "%s" does not exist, please check that its name is spelled correctly, '
-                    'that it has not been renamed or removed' % (filename,)
-                )
+        files, warnings = _lookup_file_names(filenames)
     for edict in files:
         entry = make_entry(edict)
         entries.append(entry)
