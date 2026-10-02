@@ -1237,7 +1237,25 @@ def test_oauth_complete_login_success(oauth_app):
     assert data.get('username') == 'OAuthTestUser'
 
 
-def test_selected_import_with_missing_name_reports_warning(api_client, mock_external_apis):
+def _import_result(montage_app, api_client, round_id, data):
+    """The result of an /admin/round/<id>/import call, in either mode.
+
+    Synchronous import: the response data itself. Background import worker
+    (hatnote/montage#621): the response carries data['job']; run the queue
+    and return the job's data, which holds the warnings. On branches
+    without the worker the second path is never taken.
+    """
+    if 'job' not in data:
+        return data
+    from montage.tests.conftest import run_import_jobs
+    job_id = data['job']['id']
+    assert run_import_jobs(montage_app) == [(job_id, 'succeeded')]
+    return api_client.fetch('coordinator: import job',
+                            '/admin/round/%s/import/%s' % (round_id, job_id),
+                            as_user='Yarl')['data']
+
+
+def test_selected_import_with_missing_name_reports_warning(montage_app, api_client, mock_external_apis):
     """A file-list import where some names are not found must succeed with a
     warning. The warning used to be a set, which can't be serialised (500)."""
     import responses as responses_lib
@@ -1267,12 +1285,13 @@ def test_selected_import_with_missing_name_reports_warning(api_client, mock_exte
         {'import_method': 'selected',
          'file_names': [SELECTED_FILE_INFO['img_name'], 'Not on Commons.jpg']},
         as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
 
     issues = [w for w in data['warnings'] if 'import issues' in w]
     assert len(issues) == 1 and 'Not_on_Commons.jpg' in issues[0]['import issues']
 
 
-def test_csv_import_warnings_are_dicts(api_client, mock_external_apis, monkeypatch):
+def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_apis, monkeypatch):
     """The frontend shows one value per warning; a plain string showed only
     its last character. CSV warnings must be dicts like the others."""
     from montage import loaders
@@ -1301,6 +1320,7 @@ def test_csv_import_warnings_are_dicts(api_client, mock_external_apis, monkeypat
         'coordinator: import csv', '/admin/round/%s/import' % round_id,
         {'import_method': 'csv', 'csv_url': 'https://example.org/files.csv'},
         as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
