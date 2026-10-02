@@ -406,3 +406,34 @@ def test_replica_connection_is_closed_when_a_query_fails(monkeypatch):
         labs.fetchall_from_commonswiki('SELECT 1', ())
 
     assert len(opened) == 2 and all(c.closed for c in opened)
+
+
+def _labs_hosts(env):
+    """(COMMONS_DB_HOST, COMMONS_LINKS_DB_HOST) as a fresh interpreter
+    computes them at import, with these MONTAGE_COMMONS_* variables."""
+    import subprocess
+    import sys
+    run_env = dict(os.environ)
+    run_env.pop('MONTAGE_COMMONS_DB_HOST', None)
+    run_env.pop('MONTAGE_COMMONS_LINKS_DB_HOST', None)
+    run_env.update(env)
+    root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    out = subprocess.check_output(
+        [sys.executable, '-c',
+         'import montage.labs as l; print(l.COMMONS_DB_HOST); '
+         'print(l.COMMONS_LINKS_DB_HOST)'],
+        env=run_env, cwd=root)
+    return tuple(out.decode('utf8').split())
+
+
+def test_replica_hosts_default_to_the_analytics_replicas():
+    assert _labs_hosts({}) == (
+        'commonswiki.analytics.db.svc.wikimedia.cloud',
+        'links.commonswiki.analytics.db.svc.wikimedia.cloud')
+
+
+def test_replica_hosts_can_be_set_by_environment():
+    assert _labs_hosts({'MONTAGE_COMMONS_DB_HOST': 'main.example',
+                        'MONTAGE_COMMONS_LINKS_DB_HOST': 'links.example'}) == (
+        'main.example', 'links.example')
