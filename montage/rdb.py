@@ -1533,8 +1533,22 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
+    def _lock_round(self, round_id):
+        # FOR UPDATE on MySQL (sees the latest committed row, not the
+        # REPEATABLE READ snapshot); a plain read on SQLite.
+        # populate_existing: don't keep a stale copy from the session
+        return (self.query(Round)
+                .filter_by(id=round_id)
+                .with_for_update()
+                .populate_existing()
+                .one())
+
     def activate_round(self, round_id):
-        rnd = self.user_dao.get_round(round_id)
+        self.user_dao.get_round(round_id)  # permission check
+        # lock the round and re-read it, so that a second activation
+        # (double click) waits for the first and then sees it active,
+        # instead of creating a second set of tasks (hatnote/montage#334)
+        rnd = self._lock_round(round_id)
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
