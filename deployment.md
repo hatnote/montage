@@ -384,7 +384,8 @@ A round shows "Import queued" and cannot be activated:
 1. Is the worker running? `toolforge jobs list`, `toolforge jobs show import-worker`. If it is
    missing, create it (fresh install step 7b).
 2. Its log: `toolforge jobs logs import-worker` (schema errors, database errors, crashes).
-3. Is `MONTAGE_IMPORT_MODE` what you expect? `toolforge envvars list`.
+3. Is `MONTAGE_IMPORT_MODE` what you expect? `toolforge envvars show MONTAGE_IMPORT_MODE`
+   (unset means `sync`).
 4. The jobs themselves (read-only):
 
    ```sql
@@ -451,8 +452,13 @@ DESCRIBE entries;
 
 ```bash
 toolforge envvars create MONTAGE_SUPERUSERS  # overwrites existing value
+toolforge envvars show MONTAGE_SUPERUSERS    # check one variable by name
 toolforge webservice buildservice restart --mount all
 ```
+
+Look at variables one at a time with `toolforge envvars show <NAME>`. Don't use
+`toolforge envvars list`: it prints every value, the OAuth secret, cookie secret and database
+password included, onto the shared bastion terminal.
 
 ---
 
