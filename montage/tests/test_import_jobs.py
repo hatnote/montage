@@ -875,6 +875,32 @@ def test_wikireplica_connection_has_timeouts():
     assert kw['write_timeout'] == labs.WRITE_TIMEOUT
 
 
+def _labs_connect_timeout(env_value):
+    """CONNECT_TIMEOUT as a fresh interpreter computes it at import."""
+    import os
+    import subprocess
+    import sys
+    env = dict(os.environ)
+    env.pop('MONTAGE_LABS_CONNECT_TIMEOUT', None)
+    if env_value is not None:
+        env['MONTAGE_LABS_CONNECT_TIMEOUT'] = env_value
+    root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    out = subprocess.check_output(
+        [sys.executable, '-c',
+         'import montage.labs as l; print(l.CONNECT_TIMEOUT)'],
+        cwd=root, env=env)
+    return int(out.decode().strip().splitlines()[-1])
+
+
+def test_wikireplica_connect_timeout_fails_before_gunicorn():
+    # In sync mode the replica fetch runs inside the web request: an
+    # unreachable replica must fail well before gunicorn's 30 s kill.
+    # 10 s is pymysql's own default, which master used (hatnote/montage#621).
+    assert _labs_connect_timeout(None) == 10
+    assert _labs_connect_timeout('25') == 25
+
+
 def test_error_text_for_fetch_failures():
     import pymysql
     import requests

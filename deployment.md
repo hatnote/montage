@@ -389,8 +389,9 @@ A round shows "Import queued" and cannot be activated:
 
 **Hung worker** (one job stays "Import running", every other import stays queued, the worker
 log shows nothing new): fetches have timeouts (HTTP: 15 s connect / 10 min per read; wikireplica:
-30 s connect, 45 min per query, overridable with `MONTAGE_LABS_READ_TIMEOUT` /
-`MONTAGE_LABS_CONNECT_TIMEOUT` in seconds), after which the job is marked failed with the reason
+10 s connect, 45 min per query, overridable with `MONTAGE_LABS_CONNECT_TIMEOUT` /
+`MONTAGE_LABS_READ_TIMEOUT` in seconds; keep the connect timeout well under gunicorn's 30 s,
+because in `sync` mode the fetch runs inside the web request), after which the job is marked failed with the reason
 and the worker moves on; after 60 minutes the job is marked failed in any case. If the worker is
 stuck anyway, restart it: `toolforge jobs restart import-worker`. The job goes back to the queue
 and runs again (if the old pod is killed without a clean shutdown, after 5 minutes without a

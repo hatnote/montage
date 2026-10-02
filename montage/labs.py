@@ -37,11 +37,14 @@ def replica_credentials():
         ' are not set and replica.my.cnf is not in $TOOL_DATA_DIR or ~')
 
 # Seconds. Without timeouts a dead connection blocks the caller for ever,
-# which stops the single import worker (hatnote/montage#621). The read
-# timeout bounds how long one query may run before the server sends rows:
-# generous, because a ~21.5k-file category takes a while, but under the
-# worker's 60-minute maximum runtime. Overridable for very large categories.
-CONNECT_TIMEOUT = int(os.environ.get('MONTAGE_LABS_CONNECT_TIMEOUT', 30))
+# which stops the single import worker (hatnote/montage#621).
+# The connect timeout is pymysql's own default (10 s): in sync import mode
+# the fetch runs inside a web request, and an unreachable replica must
+# fail cleanly well before gunicorn kills the request at 30 s.
+# The read timeout bounds how long one query may run before the server
+# sends rows: generous, because a ~21.5k-file category takes a while, but
+# under the worker's 60-minute maximum runtime. Both are overridable.
+CONNECT_TIMEOUT = int(os.environ.get('MONTAGE_LABS_CONNECT_TIMEOUT', 10))
 READ_TIMEOUT = int(os.environ.get('MONTAGE_LABS_READ_TIMEOUT', 45 * 60))
 WRITE_TIMEOUT = 60
 
