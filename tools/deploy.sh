@@ -10,10 +10,11 @@
 #
 # Defaults to the master branch. Pass --ref to override.
 #
-# Besides the webservice, the script checks the database schema inside the
-# new image before restarting anything (run the migration SQL first, see
-# deployment.md), and restarts the `import-worker` continuous job (the
-# background import worker, hatnote/montage#621) if it exists.
+# Besides the webservice, the script checks the database schema and the
+# configured MONTAGE_IMPORT_MODE inside the new image before restarting
+# anything (run the migration SQL first, see deployment.md), and restarts
+# the `import-worker` continuous job (the background import worker,
+# hatnote/montage#621) if it exists.
 
 set -euo pipefail
 
@@ -149,27 +150,32 @@ fi
 echo "    SHA match:    OK"
 echo "    Port check:   OK (8000)"
 
-# ── 4b. Schema pre-flight ────────────────────────────────────────────────────
+# ── 4b. Schema and import-mode pre-flight ────────────────────────────────────
 # The web app (and the import worker) exit at startup if a model table or
 # column is missing, e.g. import_jobs before tools/migrate_import_jobs.sql
-# was run. Check inside the new image, before restarting anything.
+# was run. The web app also refuses to start if MONTAGE_IMPORT_MODE is not a
+# known mode (a typo). tools/check_schema.py checks both inside the new
+# image, with the tool's envvars, before restarting anything.
 # [unverified on Toolforge] that `jobs run --wait` returns the job's exit
 # status and that the job's working directory is the app directory.
 
 echo ""
-echo "==> Checking database schema in the new image ..."
+echo "==> Checking database schema and import mode in the new image ..."
 IMAGE="tool-${TOOL_NAME}/tool-${TOOL_NAME}:latest"
 toolforge jobs delete schema-check >/dev/null 2>&1 || true
 if ! toolforge jobs run schema-check \
         --image "$IMAGE" \
         --command "sh -c 'export USER=montage; python tools/check_schema.py'" \
         --mount all --wait; then
-    echo "!! Schema check failed: run the migration SQL first (see deployment.md)."
+    echo "!! Pre-flight failed; nothing was restarted. Missing table or column: run the"
+    echo "   migration SQL first. 'invalid import_mode': fix MONTAGE_IMPORT_MODE"
+    echo "   (sync or worker). See deployment.md. Details:"
     echo "   toolforge jobs logs schema-check"
     exit 1
 fi
 toolforge jobs delete schema-check >/dev/null 2>&1 || true
 echo "    Schema:       OK"
+echo "    Import mode:  OK"
 
 # ── 5. Restart service ───────────────────────────────────────────────────────
 

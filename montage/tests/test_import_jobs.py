@@ -644,6 +644,47 @@ def test_get_import_mode_validates():
         get_import_mode({'import_mode': 'wroker'})
 
 
+def _load_check_schema_tool():
+    import importlib.util
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    spec = importlib.util.spec_from_file_location(
+        'montage_tool_check_schema',
+        os.path.join(root, 'tools', 'check_schema.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize('mode', ['wroker', 'Worker', ''])
+def test_deploy_preflight_rejects_unknown_import_mode(mode):
+    # tools/deploy.sh runs tools/check_schema.py before restarting the
+    # webservice; a typo in MONTAGE_IMPORT_MODE must abort the deploy there,
+    # not stop the restarted app from starting.
+    tool = _load_check_schema_tool()
+    config = {'db_url': 'sqlite://', 'import_mode': mode}
+    with patch.object(tool, 'load_env_config', return_value=config), \
+         patch.object(tool, 'check_schema') as check:
+        with pytest.raises(SystemExit) as exc:
+            tool.main([])
+    assert exc.value.code == 2
+    check.assert_not_called()
+
+
+@pytest.mark.parametrize('mode', ['sync', 'worker', None])
+def test_deploy_preflight_accepts_known_import_mode(mode):
+    tool = _load_check_schema_tool()
+    config = {'db_url': 'sqlite://'}
+    if mode is not None:
+        config['import_mode'] = mode
+    with patch.object(tool, 'load_env_config', return_value=config), \
+         patch.object(tool, 'check_schema') as check:
+        tool.main([])
+    assert check.call_args[1]['db_url'] == 'sqlite://'
+    assert check.call_args[1]['autoexit'] is True
+
+
 # ---------------------------------------------------------------------------
 # Schema
 # ---------------------------------------------------------------------------

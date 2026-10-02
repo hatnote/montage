@@ -52,7 +52,7 @@ Optional env vars (all have sensible defaults):
 | `MONTAGE_ROOT_PATH` | `/` | URL root path |
 | `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
 | `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
-| `MONTAGE_IMPORT_MODE` | `sync` | `worker`: imports are queued and run by the `import-worker` job (step 7b); `sync`: imports run inside the request (old behaviour, rollback switch) |
+| `MONTAGE_IMPORT_MODE` | `sync` | `worker`: imports are queued and run by the `import-worker` job (step 7b); `sync`: imports run inside the request (old behaviour, rollback switch). Any other value (a typo, wrong case, empty) stops the web app from starting; `tools/deploy.sh` checks it before restarting anything |
 
 #### 4. Create the database
 
@@ -142,8 +142,13 @@ toolforge jobs run import-worker \
     --command import-worker \
     --continuous --mount all --mem 1Gi --emails onfailure
 toolforge envvars create MONTAGE_IMPORT_MODE    # enter: worker
+toolforge envvars show MONTAGE_IMPORT_MODE      # must print exactly: worker
 toolforge webservice buildservice restart --mount all
 ```
+
+The web app refuses to start if `MONTAGE_IMPORT_MODE` is anything but `sync` or `worker`.
+`tools/deploy.sh` checks the value before it restarts anything, but a manual
+`webservice ... restart` like the one above does not, so check the value first.
 
 - One replica (the default) is enough. More are safe: claims and every job update are fenced,
   and recovery goes by heartbeat, not by worker start. But two imports at once can collide on
@@ -246,8 +251,9 @@ bash ~/www/python/src/tools/deploy.sh --ref <branch>
 
 The script will: pull the latest version of itself, start the build, wait for
 completion, verify the SHA and port, warn if the running image already matches,
-check the database schema inside the new image (a one-off `schema-check` job; it aborts
-before any restart if a migration is missing), restart the service, restart the
+check the database schema and `MONTAGE_IMPORT_MODE` inside the new image (a one-off
+`schema-check` job running `tools/check_schema.py`; it aborts before any restart if a migration
+is missing or the import mode is not `sync` or `worker`), restart the service, restart the
 `import-worker` job (or print the command to create it), and smoke-test `/meta/`.
 
 Run any new migration SQL **before** the deploy script (see step 6 of the fresh install).
