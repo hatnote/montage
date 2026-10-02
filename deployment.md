@@ -150,29 +150,38 @@ The web app refuses to start if `MONTAGE_IMPORT_MODE` is anything but `sync` or 
 `tools/deploy.sh` checks the value before it restarts anything, but a manual
 `webservice ... restart` like the one above does not, so check the value first.
 
-- One replica (the default) is enough. More are safe: claims and every job update are fenced,
-  and recovery goes by heartbeat, not by worker start. But two imports at once can collide on
-  the same file names and fail (the coordinator retries).
+- Keep one replica (the default). More are correct for the job rows (claims and every job
+  update are fenced, and recovery goes by heartbeat, not by worker start), but overlapping
+  imports contend for database locks and can collide on the same file names and fail (the
+  coordinator retries).
 - A running job's heartbeat is refreshed every 30 s. A job whose worker died without a heartbeat
   for 5 minutes (OOM, SIGKILL) is put back in the queue once; on the second time it is marked
   failed ("the import worker stopped responding"). A job running longer than 60 minutes is
-  marked failed.
+  marked failed by the worker's heartbeat thread, and nothing of that import is kept (the worker
+  skips the import if the time ran out during the fetch, and its final commit is refused
+  otherwise). This limit is soft: a fetch or import already under way is not cut short, so the
+  worker stays busy until it ends.
 - On SIGTERM (`toolforge jobs restart`, a deploy, pod eviction) the worker rolls back and puts its
   running job back in the queue without counting the attempt; the next worker runs it again.
-- `--mount all`: same reason as the webservice; the wikireplica credentials are read from
-  `~/replica.my.cnf`.
+- `--mount all`: same reason as the webservice. Wikireplica credentials come from the
+  `TOOL_REPLICA_USER` / `TOOL_REPLICA_PASSWORD` envvars Toolforge provides, else
+  `$TOOL_DATA_DIR/replica.my.cnf`, else `~/replica.my.cnf` (in a job pod `HOME` is `/`, so `~`
+  is not the tool's home).
 - Check it started: `toolforge jobs logs import-worker` should show `schema validated ok` and
   `import worker ... starting`.
 - Until `MONTAGE_IMPORT_MODE=worker` is set, imports keep running inside the request (`sync`).
 - A failed import shows its reason on the round page, with **Retry import** (same source again)
-  and **Dismiss** (activate the round without it). A queued import of a cancelled round is
+  and **Dismiss** (unblocks activation with the files the round already has; a round with no
+  files still cannot be activated). A queued import of a cancelled round is
   skipped without fetching anything.
 
-**To verify on montage-beta before production** (unverified so far): the `MONTAGE_*` envvars
-are injected into job pods; `~/replica.my.cnf` resolves in a job pod (category and file-name
-imports need it); `toolforge jobs restart` picks up the new `:latest` image; memory use of a
-large (~21.5k file) category import fits `--mem 1Gi`; `launcher` passes SIGTERM on to Python
-(the worker log shows `released back to the queue` after a restart during an import) and the
+Checked on montage-dev (worker mode): the worker finds the wikireplica credentials in its job
+pod, and `toolforge jobs restart` picks up the new `:latest` image.
+
+**To verify on montage-beta before production** (unverified so far): memory use of a large
+(~21.5k file) category import fits `--mem 1Gi` (measured off Toolforge: a 120k-file import
+peaked at about 1 GiB, so treat about 100k files as the ceiling); `launcher` passes SIGTERM on
+to Python (the worker log shows `released back to the queue` after a restart during an import) and the
 rollback fits the pod's termination grace period (otherwise the job is requeued after 5 minutes
 instead); `toolforge jobs list` prints the job name `import-worker` (deploy.sh looks for it).
 
@@ -399,7 +408,8 @@ log shows nothing new): fetches have timeouts (HTTP: 15 s connect / 10 min per r
 10 s connect, 45 min per query, overridable with `MONTAGE_LABS_CONNECT_TIMEOUT` /
 `MONTAGE_LABS_READ_TIMEOUT` in seconds; keep the connect timeout well under gunicorn's 30 s,
 because in `sync` mode the fetch runs inside the web request), after which the job is marked failed with the reason
-and the worker moves on; after 60 minutes the job is marked failed in any case. If the worker is
+and the worker moves on; after 60 minutes the job is marked failed (the limit is soft, see step
+7b: a stuck fetch keeps the worker busy). If the worker is
 stuck anyway, restart it: `toolforge jobs restart import-worker`. The job goes back to the queue
 and runs again (if the old pod is killed without a clean shutdown, after 5 minutes without a
 heartbeat; the second time it is marked failed). The coordinator can retry or dismiss a failed

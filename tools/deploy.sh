@@ -2,11 +2,11 @@
 # Deploy Montage on Toolforge using the buildservice.
 # Run on the Toolforge bastion after `become <toolname>`.
 #
-# One-time setup (first deploy only):
-#   git clone https://github.com/hatnote/montage.git ~/montage
+# One-time setup (first deploy only): clone the repo to ~/www/python/src,
+# see "Deploying updates" in deployment.md.
 #
 # Usage:
-#   bash ~/montage/tools/deploy.sh [--ref <branch-or-sha>]
+#   bash ~/www/python/src/tools/deploy.sh [--ref <branch-or-sha>]
 #
 # Defaults to the master branch. Pass --ref to override.
 #

@@ -430,11 +430,12 @@ def import_entries(user_dao, round_id, request_dict, config):
     """
     Summary: Load entries into a round via one of the import methods.
 
-    Imports of external sources (category, csv, gistcsv, selected) are
-    queued as a background import job and run by the import worker
-    (montage/import_worker.py, hatnote/montage#621); the response returns
-    at once. With import_mode 'sync' (MONTAGE_IMPORT_MODE=sync, the
-    rollback switch) they run inside this request as before. The 'round'
+    Imports of external sources (category, csv, gistcsv, selected) run
+    inside this request with import_mode 'sync' (MONTAGE_IMPORT_MODE unset
+    or 'sync', the default) and are recorded as a succeeded job. With
+    import_mode 'worker' they are queued as a background import job and
+    run by the import worker (montage/import_worker.py,
+    hatnote/montage#621); the response returns at once. The 'round'
     method always runs synchronously and creates no job.
 
     Request model:
