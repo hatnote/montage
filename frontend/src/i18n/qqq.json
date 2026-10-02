@@ -216,5 +216,9 @@
 	"montage-import-dismissed-note": "Shown under a failed import that a coordinator dismissed.",
 	"montage-import-waiting": "Shown in the round-creation form while it waits (at most one minute) for the file import to finish.",
 	"montage-import-warning-title": "Title of the dialog that lists import warnings and disqualified files.",
+	"montage-import-failed-with-reason": "Error notification after a file import failed. {0} is the error message from the server (English, technical).",
+	"montage-import-failed-next-step-empty": "Hint under a failed import, next to the Retry import and Dismiss buttons, when the round has no files at all (an empty round cannot be activated, so dismissing does not help).",
+	"montage-import-in-progress": "Shown in the round-creation form while the request that imports (or queues) the files is running.",
+	"montage-import-request-failed-hint": "Shown in the round-creation form when the round was created but the request to import its files failed. {0} is the label of the button that retries the import (montage-import-retry); the Add round button shows that label and imports into the same round. {1} is the label of the Cancel button (montage-btn-cancel).",
 	"montage-btn-ok": "Generic OK button label.\n{{Identical|OK}}"
 }

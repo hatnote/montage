@@ -59,6 +59,7 @@
         :round-id="round.id"
         :round-status="round.status"
         :import-state="importState"
+        :entry-count="roundDetails?.total_entries ?? null"
       />
       <div class="round-file-info">
         <h4>{{ $t('montage-round-file-info') }}</h4>

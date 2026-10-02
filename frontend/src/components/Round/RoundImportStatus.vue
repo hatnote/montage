@@ -36,7 +36,11 @@
       </p>
       <p v-if="job.dismissed" class="greyed">{{ $t('montage-import-dismissed-note') }}</p>
       <template v-if="roundStatus === 'paused'">
-        <p v-if="!job.dismissed">{{ $t('montage-import-failed-next-step') }}</p>
+        <!-- activation needs files: promise it only when the round has some -->
+        <p v-if="entryCount === 0">{{ $t('montage-import-failed-next-step-empty') }}</p>
+        <p v-else-if="entryCount > 0 && !job.dismissed">
+          {{ $t('montage-import-failed-next-step') }}
+        </p>
         <div class="round-import-actions">
           <cdx-button action="progressive" :disabled="busy" @click="retryImport">
             {{ $t('montage-import-retry') }}
@@ -61,7 +65,9 @@ import { formatUtcDateTime, formatImportWarning } from '@/utils'
 const props = defineProps({
   roundId: Number,
   roundStatus: String,
-  importState: Object
+  importState: Object,
+  // files in the round (from the admin round details); null until loaded
+  entryCount: { type: Number, default: null }
 })
 
 const { t: $t, locale } = useI18n()

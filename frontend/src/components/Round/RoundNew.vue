@@ -184,7 +184,8 @@
               weight="primary"
               @click="submitRound()"
             >
-              <check class="icon-small" /> {{ $t('montage-round-add') }}
+              <check class="icon-small" />
+              {{ failedImportRoundId ? $t('montage-import-retry') : $t('montage-round-add') }}
             </cdx-button>
             <cdx-button
               action="destructive"
@@ -195,8 +196,21 @@
               <close class="icon-small" /> {{ $t('montage-btn-cancel') }}
             </cdx-button>
           </div>
-          <p v-if="isPolling" class="import-waiting" role="status" aria-live="polite">
-            {{ $t('montage-import-waiting') }}
+          <p
+            v-if="isImporting || isPolling"
+            class="import-waiting"
+            role="status"
+            aria-live="polite"
+          >
+            {{ isPolling ? $t('montage-import-waiting') : $t('montage-import-in-progress') }}
+          </p>
+          <p v-else-if="failedImportRoundId" class="import-waiting" role="status">
+            {{
+              $t('montage-import-request-failed-hint', [
+                $t('montage-import-retry'),
+                $t('montage-btn-cancel')
+              ])
+            }}
           </p>
         </template>
       </cdx-card>
@@ -325,10 +339,22 @@ const cancelRound = () => {
     finishWithoutResult()
     return
   }
+  if (failedImportRoundId.value) {
+    // the round exists already, without files
+    closeForm()
+    return
+  }
   emit('update:showAddRoundForm', false)
 }
 
 const submitRound = () => {
+  if (failedImportRoundId.value) {
+    // the round was created but its import request failed: import into
+    // that round again (only the file source is used)
+    importCategory(failedImportRoundId.value)
+    return
+  }
+
   if (!formData.value.deadline_date) {
     alertService.error({
       message: $t('montage-required-voting-deadline')
@@ -361,13 +387,6 @@ const submitRound = () => {
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
-
-        if (selectedImportSource.value === 'selected') {
-          importSourceValue.value.file_names = importSourceValue.value.file_names
-            .split('\n')
-            .filter((elem) => elem)
-        }
-
         return importCategory(resp.data.id)
       })
       .catch(alertService.error)
@@ -465,9 +484,10 @@ const waitForImport = (roundId, job) => {
     onFinished: (details) => {
       endPoll()
       if (details.status === 'failed') {
-        const reason = details.error || $t('montage-something-went-wrong')
         alertService.error({
-          message: `${$t('montage-import-status-failed')}. ${$t('montage-import-error', [reason])}`
+          message: details.error
+            ? $t('montage-import-failed-with-reason', [details.error])
+            : $t('montage-import-status-failed')
         })
         closeForm()
       } else {
@@ -487,6 +507,15 @@ onBeforeUnmount(() => {
   endPoll()
 })
 
+// The import request itself is in flight (both modes; in sync mode the
+// whole import runs inside it)
+const isImporting = ref(false)
+// Round created, but its import request failed (sync-mode error or
+// timeout, refused enqueue, network): the round is paused and has no
+// job, so nothing else offers to import into it. Keep the form open
+// and let Add round retry the import into this round.
+const failedImportRoundId = ref(null)
+
 const importCategory = (id) => {
   const payload = {
     import_method: selectedImportSource.value
@@ -497,14 +526,16 @@ const importCategory = (id) => {
   } else if (selectedImportSource.value === 'csv') {
     payload.csv_url = importSourceValue.value.csv_url
   } else if (selectedImportSource.value === 'selected') {
-    payload.file_names = importSourceValue.value.file_names
+    payload.file_names = importSourceValue.value.file_names.split('\n').filter((elem) => elem)
   }
 
   isLoading.value = true
+  isImporting.value = true
   return adminService
     .populateRound(id, payload)
     .then((response) => {
       if (unmounted) return
+      failedImportRoundId.value = null
       const data = response.data || {}
       if (data.job && data.job.status === 'queued') {
         // background import (hatnote/montage#622)
@@ -520,9 +551,13 @@ const importCategory = (id) => {
         })
       }
     })
-    .catch(alertService.error)
+    .catch((error) => {
+      failedImportRoundId.value = id
+      alertService.error(error)
+    })
     .finally(() => {
       isLoading.value = false
+      isImporting.value = false
     })
 }
 
