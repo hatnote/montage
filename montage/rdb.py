@@ -8,6 +8,7 @@ import time
 import random
 import datetime
 import itertools
+from contextlib import contextmanager
 from collections import Counter, defaultdict
 from math import ceil
 from itertools import zip_longest
@@ -25,8 +26,9 @@ from sqlalchemy import (Text,
                         TIMESTAMP,
                         ForeignKey,
                         inspect)
-from sqlalchemy.sql import func, asc
-from sqlalchemy.orm import relationship, joinedload
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.sql import func, asc, and_, or_
+from sqlalchemy.orm import relationship, joinedload, defer
 from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -91,6 +93,53 @@ PRIVATE_STATUS = 'private'
 VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
                 PRIVATE_STATUS]
+
+# Background import job status (import_jobs.status); not round/campaign
+# statuses, so deliberately not in VALID_STATUS (hatnote/montage#621)
+IMPORT_QUEUED = 'queued'
+IMPORT_RUNNING = 'running'
+IMPORT_SUCCEEDED = 'succeeded'
+IMPORT_FAILED = 'failed'
+IMPORT_ACTIVE_STATUSES = (IMPORT_QUEUED, IMPORT_RUNNING)
+
+# Import methods (POST /admin/round/<id>/import 'import_method')
+CATEGORY_METHOD = 'category'
+CSV_METHOD = 'csv'
+GISTCSV_METHOD = 'gistcsv'
+SELECTED_METHOD = 'selected'
+ROUND_METHOD = 'round'
+
+# Caps for what an import job row stores
+DISQUALIFIED_SAMPLE_MAX = 500
+IMPORT_ERROR_MAX = 2000
+
+# MySQL/MariaDB lock errors: 1205 lock wait timeout, 1213 deadlock. The
+# statement's transaction is (or must be) rolled back; retrying is safe.
+MYSQL_LOCK_ERROR_CODES = (1205, 1213)
+
+
+def is_lock_error(exc):
+    """True for a SQLAlchemy DBAPIError wrapping a MySQL lock wait timeout
+    or deadlock (driver error args start with the error code)."""
+    if not isinstance(exc, DBAPIError):
+        return False
+    args = getattr(exc.orig, 'args', None) or ()
+    return bool(args) and args[0] in MYSQL_LOCK_ERROR_CODES
+
+
+@contextmanager
+def lock_errors_as_busy(action):
+    """Turn a MySQL lock wait timeout / deadlock into a 400 the user can
+    simply retry, instead of a 500. The request's transaction is rolled
+    back by DBSessionMiddleware either way (hatnote/montage#621)."""
+    try:
+        yield
+    except DBAPIError as e:
+        if not is_lock_error(e):
+            raise
+        raise InvalidAction('the server is busy, please retry (a database'
+                            ' lock wait timed out or deadlocked while'
+                            ' trying to %s)' % (action,))
 
 ENV_NAME = get_env_name()
 
@@ -673,6 +722,145 @@ class RoundSource(Base):
     flags = Column(JSONEncodedDict)
 
 
+def _utcnow():
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+
+class ImportJob(Base):
+    """A background import of an external source (category, csv,
+    gistcsv, selected) into a round (hatnote/montage#621).
+
+    Lifecycle: queued -> running -> succeeded | failed. The worker
+    (montage/import_worker.py) marks a job succeeded in the same
+    transaction as the imported rows. Dates are naive UTC DATETIME (not
+    TIMESTAMP, which MariaDB may give an implicit ON UPDATE).
+    """
+    __tablename__ = 'import_jobs'
+
+    id = Column(Integer, primary_key=True)
+    round_id = Column(Integer, ForeignKey('rounds.id'), nullable=False,
+                      index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False,
+                     index=True)
+
+    status = Column(String(32), nullable=False, index=True)
+    method = Column(String(255), nullable=False)
+    params = Column(LongJSONEncodedDict)  # request key names
+    attempts = Column(Integer, nullable=False, default=0,
+                      server_default='0')
+    # nullable, so deliberately not unique (03-database-safety)
+    claimed_by = Column(String(255))
+    claim_token = Column(String(64))
+    entry_count = Column(Integer)
+    new_entry_count = Column(Integer)
+    new_round_entry_count = Column(Integer)
+    disqualified_count = Column(Integer)
+    warnings = Column(LongJSONEncodedDict)  # {'items': [...]}, dicts only
+    error = Column(Text)
+
+    create_date = Column(DateTime, nullable=False, default=_utcnow)
+    start_date = Column(DateTime)
+    heartbeat_date = Column(DateTime)
+    finish_date = Column(DateTime)
+    dismiss_date = Column(DateTime)
+    dismiss_user_id = Column(Integer, ForeignKey('users.id'))
+    # {'disqualified_sample': [{'name': ..., 'dq_reason': ...}, ...]}
+    flags = Column(LongJSONEncodedDict)
+
+    # no backref on Round: to_dict() would serialize it
+    round = relationship('Round')
+    user = relationship('User', foreign_keys=[user_id])
+
+    def __init__(self, **kw):
+        self.flags = kw.pop('flags', {})
+        super(ImportJob, self).__init__(**kw)
+
+    def params_summary(self):
+        params = self.params or {}
+        if self.method == CATEGORY_METHOD:
+            return {'category': params.get('category')}
+        elif self.method in (CSV_METHOD, GISTCSV_METHOD):
+            return {'url': params.get('csv_url') or params.get('gist_url')}
+        elif self.method == SELECTED_METHOD:
+            return {'file_count': len(params.get('file_names') or [])}
+        return {}
+
+    def to_info_dict(self):
+        return {'id': self.id,
+                'round_id': self.round_id,
+                'user_id': self.user_id,
+                'status': self.status,
+                'method': self.method,
+                'params_summary': self.params_summary(),
+                'attempts': self.attempts,
+                'entry_count': self.entry_count,
+                'new_entry_count': self.new_entry_count,
+                'new_round_entry_count': self.new_round_entry_count,
+                'disqualified_count': self.disqualified_count,
+                'create_date': format_date(self.create_date),
+                'start_date': format_date(self.start_date),
+                'heartbeat_date': format_date(self.heartbeat_date),
+                'finish_date': format_date(self.finish_date),
+                'dismiss_date': format_date(self.dismiss_date),
+                'dismissed': self.dismiss_date is not None}
+
+    def to_details_dict(self):
+        ret = self.to_info_dict()
+        ret['params'] = dict(self.params or {})
+        ret['warnings'] = list((self.warnings or {}).get('items', []))
+        ret['disqualified_sample'] = list(
+            (self.flags or {}).get('disqualified_sample', []))
+        ret['error'] = self.error
+        ret['requested_by'] = self.user.username if self.user else None
+        # not claimed_by: the worker's pod hostname:pid is for the logs
+        ret['retry_of'] = (self.flags or {}).get('retry_of')
+        return ret
+
+
+import_jobs_t = ImportJob.__table__
+
+
+def import_state_for(round_status, latest_job, active_job):
+    """Server-computed import state of a round, as shown in admin
+    payloads and used by the activation gate.
+
+    Blocks activation iff the round is paused and ANY job is
+    queued/running (active_job), or the latest job failed and was not
+    dismissed. Rounds without jobs are never blocked.
+    """
+    job = active_job if active_job is not None else latest_job
+    blocked_reason = None
+    if round_status == PAUSED_STATUS:
+        if active_job is not None:
+            if active_job.status == IMPORT_QUEUED:
+                blocked_reason = 'import_queued'
+            else:
+                blocked_reason = 'import_running'
+        elif (latest_job is not None
+              and latest_job.status == IMPORT_FAILED
+              and latest_job.dismiss_date is None):
+            blocked_reason = 'import_failed'
+    return {'status': job.status if job is not None else 'none',
+            'job': job.to_info_dict() if job is not None else None,
+            'blocks_activation': blocked_reason is not None,
+            'blocked_reason': blocked_reason}
+
+
+def import_result_values(stats):
+    """Column values describing a finished import, from run_import()'s
+    stats. Shared by the sync path (ORM) and the worker (core UPDATE)."""
+    disqualified = stats.get('disqualified') or []
+    sample = [{'name': d['entry']['name'], 'dq_reason': d['dq_reason']}
+              for d in disqualified[:DISQUALIFIED_SAMPLE_MAX]]
+    # add_round_entries returns {} on a duplicate import, hence .get()
+    return {'entry_count': stats.get('entry_count', 0),
+            'new_entry_count': stats.get('new_entry_count', 0),
+            'new_round_entry_count': stats.get('new_round_entry_count', 0),
+            'disqualified_count': len(disqualified),
+            'warnings': {'items': list(stats.get('warnings') or [])},
+            'flags': {'disqualified_sample': sample}}
+
+
 class Flag(Base):
     __tablename__ = 'flags'
 
@@ -1052,6 +1240,38 @@ class UserDAO(PublicDAO):
             raise Forbidden('not a coordinator for round %s' % round_id)
         return rnd
 
+    def get_latest_import_jobs(self, round_ids):
+        """Return {round_id: (latest_job, active_job)} in one query.
+
+        latest_job is the job with the highest id for the round;
+        active_job is a queued/running job, if any (the oldest one).
+        Rounds without jobs are absent. No permission check: callers
+        pass ids of rounds they already loaded through a permission
+        checked path.
+        """
+        round_ids = sorted(set(rid for rid in round_ids if rid is not None))
+        if not round_ids:
+            return {}
+        latest_ids = (self.query(func.max(ImportJob.id))
+                      .filter(ImportJob.round_id.in_(round_ids))
+                      .group_by(ImportJob.round_id))
+        jobs = (self.query(ImportJob)
+                .filter(ImportJob.round_id.in_(round_ids))
+                .filter(or_(ImportJob.id.in_(latest_ids.subquery()),
+                            ImportJob.status.in_(IMPORT_ACTIVE_STATUSES)))
+                .options(defer('warnings'), defer('flags'))
+                .order_by(ImportJob.id)
+                .all())
+        ret = {}
+        for job in jobs:
+            latest, active = ret.get(job.round_id, (None, None))
+            if latest is None or job.id > latest.id:
+                latest = job
+            if active is None and job.status in IMPORT_ACTIVE_STATUSES:
+                active = job
+            ret[job.round_id] = (latest, active)
+        return ret
+
     def get_or_create_user(self, user, role, **kw):
         # kw is for including round/round_id/campaign/campaign_id
         # which is used in the audit log if the user is created
@@ -1113,6 +1333,34 @@ class UserDAO(PublicDAO):
 
         self.rdb_session.add(ale)
         return
+
+
+def load_import_entries(method, params):
+    """Fetch the files of an import source; touches no database session.
+
+    Returns (entries, warnings) for every method. Used by the
+    add_entries_from_* methods and by the import worker, which fetches
+    before it opens its import transaction (hatnote/montage#621).
+    """
+    if ENV_NAME == 'dev':
+        source = 'remote'
+    else:
+        source = 'local'
+    if method == CATEGORY_METHOD:
+        return loaders.load_category(params['category'], source=source), []
+    elif method in (CSV_METHOD, GISTCSV_METHOD):
+        if method == GISTCSV_METHOD:
+            csv_url = params['gist_url']
+        else:
+            csv_url = params['csv_url']
+        try:
+            return loaders.get_entries_from_csv(csv_url, source=source)
+        except ValueError:
+            raise InvalidAction('unable to load csv "%s"' % csv_url)
+    elif method == SELECTED_METHOD:
+        return loaders.load_by_filename(params['file_names'], source=source)
+    raise NotImplementedResponse('cannot load entries for import method %r'
+                                 % (method,))
 
 
 class CoordinatorDAO(UserDAO):
@@ -1545,10 +1793,35 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
+    def _raise_if_import_blocks(self, round_status, latest_job, active_job):
+        state = import_state_for(round_status, latest_job, active_job)
+        reason = state['blocked_reason']
+        if reason == 'import_queued':
+            raise InvalidAction('cannot activate round: its import is still'
+                                ' queued. Wait for it to finish and reload'
+                                ' the page')
+        elif reason == 'import_running':
+            raise InvalidAction('cannot activate round: its import is still'
+                                ' running. Wait for it to finish and reload'
+                                ' the page')
+        elif reason == 'import_failed':
+            raise InvalidAction('cannot activate round: its last import'
+                                ' failed (job #%s). Retry the import, or'
+                                ' dismiss it to activate the round without'
+                                ' it' % (latest_job.id,))
+        return
+
+    def _get_active_import_job_locked(self, round_id):
+        # FOR UPDATE on MySQL (sees the latest committed rows, not the
+        # REPEATABLE READ snapshot); a plain read on SQLite
+        return (self.query(ImportJob)
+                .filter(ImportJob.round_id == round_id,
+                        ImportJob.status.in_(IMPORT_ACTIVE_STATUSES))
+                .order_by(ImportJob.id)
+                .with_for_update()
+                .first())
+
     def _lock_round(self, round_id):
-        # FOR UPDATE on MySQL (sees the latest committed row, not the
-        # REPEATABLE READ snapshot); a plain read on SQLite.
-        # populate_existing: don't keep a stale copy from the session
         return (self.query(Round)
                 .filter_by(id=round_id)
                 .with_for_update()
@@ -1556,11 +1829,24 @@ class CoordinatorDAO(UserDAO):
                 .one())
 
     def activate_round(self, round_id):
-        self.user_dao.get_round(round_id)  # permission check
-        # lock the round and re-read it, so that a second activation
-        # (double click) waits for the first and then sees it active,
-        # instead of creating a second set of tasks (hatnote/montage#334)
+        with lock_errors_as_busy('activate the round'):
+            self._activate_round(round_id)
+            # surface lock errors of the task inserts here, not at commit
+            self.rdb_session.flush()
+        return
+
+    def _activate_round(self, round_id):
+        rnd = self.user_dao.get_round(round_id)
+
+        # import gate (hatnote/montage#621): cheap non-locking check
+        # first, then lock the round and re-check with a locking read
+        latest, active = self.get_latest_import_jobs([round_id]).get(
+            round_id, (None, None))
+        self._raise_if_import_blocks(rnd.status, latest, active)
         rnd = self._lock_round(round_id)
+        active = self._get_active_import_job_locked(round_id)
+        self._raise_if_import_blocks(rnd.status, latest, active)
+
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
@@ -1583,13 +1869,13 @@ class CoordinatorDAO(UserDAO):
 
         return
 
-    def add_entries_from_cat(self, round_id, cat_name):
+    def add_entries_from_cat(self, round_id, cat_name, loaded=None):
+        # loaded: (entries, warnings) already fetched by the import worker
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries = loaders.load_category(cat_name, source=source)
+        if loaded is None:
+            loaded = load_import_entries(CATEGORY_METHOD,
+                                         {'category': cat_name})
+        entries, _ = loaded
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from category (%s), %s new entries added'
@@ -1598,13 +1884,12 @@ class CoordinatorDAO(UserDAO):
 
         return entries
 
-    def add_entries_by_name(self, round_id, file_names):
+    def add_entries_by_name(self, round_id, file_names, loaded=None):
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries, warnings = loaders.load_by_filename(file_names, source=source)
+        if loaded is None:
+            loaded = load_import_entries(SELECTED_METHOD,
+                                         {'file_names': file_names})
+        entries, warnings = loaded
         entries, new_entry_count = self.add_entries(rnd, entries)
 
         msg = ('%s loaded %s entries from filenames, %s new entries added'
@@ -1613,19 +1898,13 @@ class CoordinatorDAO(UserDAO):
 
         return entries, warnings
 
-    def add_entries_from_csv(self, round_id, csv_url):
+    def add_entries_from_csv(self, round_id, csv_url, loaded=None):
         # NOTE: this no longer creates RoundEntries, use
         # add_round_entries to do this.
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        try:
-            entries, warnings = loaders.get_entries_from_csv(csv_url,
-                                                             source=source)
-        except ValueError:
-            raise InvalidAction('unable to load csv "%s"' % csv_url)
+        if loaded is None:
+            loaded = load_import_entries(CSV_METHOD, {'csv_url': csv_url})
+        entries, warnings = loaded
 
         entries, new_entry_count = self.add_entries(rnd, entries)
 
@@ -1733,6 +2012,138 @@ class CoordinatorDAO(UserDAO):
                            'new_round_entry_count': len(new_entries),
                            'total_entries': len(rnd.entries)}
         return new_entry_stats
+
+    # Background import jobs (hatnote/montage#621)
+
+    def get_import_jobs(self, round_id, limit=20):
+        q = self.query(ImportJob).filter_by(round_id=round_id)
+        q = q.order_by(ImportJob.id.desc())
+        q = q.limit(limit)
+        return q.all()
+
+    def get_import_job(self, round_id, job_id):
+        job = (self.query(ImportJob)
+               .filter_by(id=job_id, round_id=round_id)
+               .one_or_none())
+        if job is None:
+            raise DoesNotExist('import job %s does not exist for round %s'
+                               % (job_id, round_id))
+        return job
+
+    def _raise_if_import_active(self, round_id, locked=False):
+        if locked:
+            active = self._get_active_import_job_locked(round_id)
+        else:
+            _, active = self.get_latest_import_jobs([round_id]).get(
+                round_id, (None, None))
+        if active is not None:
+            raise InvalidAction('an import for this round is already queued'
+                                ' or running (job #%s)' % (active.id,))
+        return
+
+    def check_no_active_import(self, round_id):
+        """For the sync rollback mode: refuse to import next to a job
+        that is still queued/running. Call before importing anything.
+
+        Deliberately a plain, non-locking read. The sync import runs the
+        external fetch and the whole import in this request's transaction;
+        a round lock or a locking read on import_jobs here would be held
+        all that time, and on MariaDB the locking read's gap lock makes
+        concurrent imports into other new rounds wait or deadlock (1205 /
+        1213). So sync mode keeps the pre-#621 lock footprint.
+
+        Residual race (accepted): a worker-mode enqueue committed after
+        this check (only possible while web processes disagree about
+        MONTAGE_IMPORT_MODE, i.e. during a mode flip) is not seen, so a
+        sync import and a worker job can run for the same round. Both are
+        complete imports of an idempotent kind; at worst the round gets
+        duplicate round entries for files both imported at the same
+        moment, as two concurrent sync imports could before #621.
+        """
+        self._raise_if_import_active(round_id)
+        return
+
+    def record_sync_import(self, round_id, method, params, stats,
+                           retry_of=None):
+        """Record an import that already ran in this request
+        (MONTAGE_IMPORT_MODE=sync) as a succeeded job."""
+        now = _utcnow()
+        values = import_result_values(stats)
+        if retry_of is not None:
+            values['flags']['retry_of'] = retry_of
+        job = ImportJob(round_id=round_id,
+                        user_id=self.user.id,
+                        status=IMPORT_SUCCEEDED,
+                        method=method,
+                        params=params,
+                        attempts=1,
+                        start_date=now,
+                        finish_date=now,
+                        **values)
+        self.rdb_session.add(job)
+        self.rdb_session.flush()
+        return job
+
+    def get_failed_import_job(self, round_id, job_id):
+        """The failed job to retry: same method and params, new job."""
+        job = self.get_import_job(round_id, job_id)
+        if job.status != IMPORT_FAILED:
+            raise InvalidAction('only a failed import can be retried (job #%s'
+                                ' is %s)' % (job.id, job.status))
+        return job
+
+    def dismiss_import_job(self, round_id, job_id):
+        """Mark a failed import as dismissed, so it no longer blocks
+        activation (import_state_for). Entries an earlier import added
+        stay; an empty round still cannot be activated."""
+        job = self.get_import_job(round_id, job_id)
+        if job.status != IMPORT_FAILED:
+            raise InvalidAction('only a failed import can be dismissed (job'
+                                ' #%s is %s)' % (job.id, job.status))
+        if job.dismiss_date is not None:
+            raise InvalidAction('import job #%s was already dismissed'
+                                % (job.id,))
+        job.dismiss_date = _utcnow()
+        job.dismiss_user_id = self.user.id
+        msg = ('%s dismissed failed import job #%s'
+               % (self.user.username, job.id))
+        self.log_action('dismiss_import', round_id=round_id, message=msg)
+        self.rdb_session.flush()
+        return job
+
+    def enqueue_import(self, round_id, method, params, retry_of=None):
+        """Create a queued import job; the import worker runs it.
+        retry_of: id of the failed job this one retries."""
+        with lock_errors_as_busy('queue the import'):
+            return self._enqueue_import(round_id, method, params, retry_of)
+
+    def _enqueue_import(self, round_id, method, params, retry_of):
+        # cheap non-locking check first: no locks for the common refusal
+        self._raise_if_import_active(round_id)
+        rnd = self._lock_round(round_id)
+        if rnd.status != PAUSED_STATUS:
+            raise InvalidAction('round must be paused to import entries')
+        # locking read: under REPEATABLE READ a plain SELECT could miss a
+        # job committed by a concurrent request while we waited for the lock
+        self._raise_if_import_active(round_id, locked=True)
+
+        job = ImportJob(round_id=round_id,
+                        user_id=self.user.id,
+                        status=IMPORT_QUEUED,
+                        method=method,
+                        params=params,
+                        attempts=0,
+                        flags=({'retry_of': retry_of}
+                               if retry_of is not None else {}))
+        self.rdb_session.add(job)
+        self.rdb_session.flush()
+
+        msg = ('%s queued a %s import (job #%s)'
+               % (self.user.username, method, job.id))
+        if retry_of is not None:
+            msg += ', retrying failed job #%s' % (retry_of,)
+        self.log_action('enqueue_import', round=rnd, message=msg)
+        return job
 
     def cancel_round(self, round_id):
         rnd = self.get_round(round_id)

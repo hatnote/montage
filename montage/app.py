@@ -24,7 +24,7 @@ from .mw import (UserMiddleware,
                 MessageMiddleware,
                 SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
-from .utils import get_env_name, load_env_config
+from .utils import get_env_name, load_env_config, get_import_mode
 from .check_rdb import get_schema_errors, ping_connection
 
 from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
@@ -52,6 +52,21 @@ def set_mysql_session_charset_and_collation(connection, branch):
     return
 
 
+def make_engine(config):
+    """The SQLAlchemy engine used for requests (and by the import
+    worker, montage/import_worker.py)."""
+    db_url = config.get('db_url', DEFAULT_DB_URL)
+    engine = create_engine(db_url, pool_recycle=60)
+    engine.echo = config.get('db_echo', False)
+    if not config.get('db_disable_ping'):
+        event.listen(engine, 'engine_connect', ping_connection)
+
+    if 'mysql' in db_url:
+        event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
+
+    return engine
+
+
 def create_app(env_name='prod', config=None):
     # rendering is handled by MessageMiddleware
     ui_routes = (PUBLIC_UI_ROUTES + JUROR_UI_ROUTES
@@ -66,6 +81,7 @@ def create_app(env_name='prod', config=None):
     if config is None:
         config = load_env_config(env_name=env_name)
     print('==  loaded config file: %s' % (config['__file__'],))
+    print('==  import mode: %s' % (get_import_mode(config),))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
@@ -119,16 +135,7 @@ def create_app(env_name='prod', config=None):
         scm_mw.data_expiry = NEVER
 
     def get_engine():
-        db_url = config.get('db_url', DEFAULT_DB_URL)
-        engine = create_engine(db_url, pool_recycle=60)
-        engine.echo = config.get('db_echo', False)
-        if not config.get('db_disable_ping'):
-            event.listen(engine, 'engine_connect', ping_connection)
-
-        if 'mysql' in db_url:
-            event.listen(engine, 'engine_connect', set_mysql_session_charset_and_collation)
-
-        return engine
+        return make_engine(config)
 
     blank_session_type = sessionmaker()
 

@@ -11,6 +11,45 @@ except ImportError:
 DB_CONFIG = os.path.expanduser('~/replica.my.cnf')
 
 
+class MissingReplicaCredentials(RuntimeError):
+    pass
+
+
+def replica_credentials():
+    """pymysql.connect() arguments for the wikireplica credentials.
+
+    In a Toolforge job pod (the import worker) ``~`` is not the tool's home,
+    so ``~/replica.my.cnf`` is missing there and pymysql would connect with
+    no password (hatnote/montage#621). Prefer the ``TOOL_REPLICA_*``
+    variables Toolforge provides, then the tool home (``TOOL_DATA_DIR``),
+    then ``~`` as before.
+    """
+    user = os.environ.get('TOOL_REPLICA_USER')
+    password = os.environ.get('TOOL_REPLICA_PASSWORD')
+    if user and password:
+        return {'user': user, 'password': password}
+    for base in (os.environ.get('TOOL_DATA_DIR'), os.path.expanduser('~')):
+        if base:
+            path = os.path.join(base, 'replica.my.cnf')
+            if os.path.exists(path):
+                return {'read_default_file': path}
+    raise MissingReplicaCredentials(
+        'no wikireplica credentials: TOOL_REPLICA_USER/TOOL_REPLICA_PASSWORD'
+        ' are not set and replica.my.cnf is not in $TOOL_DATA_DIR or ~')
+
+# Seconds. Without timeouts a dead connection blocks the caller for ever,
+# which stops the single import worker (hatnote/montage#621).
+# The connect timeout is pymysql's own default (10 s): in sync import mode
+# the fetch runs inside a web request, and an unreachable replica must
+# fail cleanly well before gunicorn kills the request at 30 s.
+# The read timeout bounds how long one query may run before the server
+# sends rows: generous, because a ~21.5k-file category takes a while, but
+# under the worker's 60-minute maximum runtime. Both are overridable.
+CONNECT_TIMEOUT = int(os.environ.get('MONTAGE_LABS_CONNECT_TIMEOUT', 10))
+READ_TIMEOUT = int(os.environ.get('MONTAGE_LABS_READ_TIMEOUT', 45 * 60))
+WRITE_TIMEOUT = 60
+
+
 FILE_COLS = ['fr.fr_width AS img_width',
              'fr.fr_height AS img_height',
              'file.file_name AS img_name',
@@ -66,9 +105,12 @@ def _connect(db_host):
                                  ' environment and restart the service')
     return pymysql.connect(db='commonswiki_p',
                            host=db_host,
-                           read_default_file=DB_CONFIG,
                            charset='utf8',
-                           cursorclass=pymysql.cursors.DictCursor)
+                           cursorclass=pymysql.cursors.DictCursor,
+                           **replica_credentials(),
+                           connect_timeout=CONNECT_TIMEOUT,
+                           read_timeout=READ_TIMEOUT,
+                           write_timeout=WRITE_TIMEOUT)
 
 
 def _decode_rows(rows):

@@ -2,13 +2,19 @@
 # Deploy Montage on Toolforge using the buildservice.
 # Run on the Toolforge bastion after `become <toolname>`.
 #
-# One-time setup (first deploy only):
-#   git clone https://github.com/hatnote/montage.git ~/montage
+# One-time setup (first deploy only): clone the repo to ~/www/python/src,
+# see "Deploying updates" in deployment.md.
 #
 # Usage:
-#   bash ~/montage/tools/deploy.sh [--ref <branch-or-sha>]
+#   bash ~/www/python/src/tools/deploy.sh [--ref <branch-or-sha>]
 #
 # Defaults to the master branch. Pass --ref to override.
+#
+# Besides the webservice, the script checks the database schema and the
+# configured MONTAGE_IMPORT_MODE inside the new image before restarting
+# anything (run the migration SQL first, see deployment.md), and restarts
+# the `import-worker` continuous job (the background import worker,
+# hatnote/montage#621) if it exists.
 
 set -euo pipefail
 
@@ -144,11 +150,59 @@ fi
 echo "    SHA match:    OK"
 echo "    Port check:   OK (8000)"
 
+# ── 4b. Schema and import-mode pre-flight ────────────────────────────────────
+# The web app (and the import worker) exit at startup if a model table or
+# column is missing, e.g. import_jobs before tools/migrate_import_jobs.sql
+# was run. The web app also refuses to start if MONTAGE_IMPORT_MODE is not a
+# known mode (a typo). tools/check_schema.py checks both inside the new
+# image, with the tool's envvars, before restarting anything.
+# [unverified on Toolforge] that `jobs run --wait` returns the job's exit
+# status and that the job's working directory is the app directory.
+
+echo ""
+echo "==> Checking database schema and import mode in the new image ..."
+IMAGE="tool-${TOOL_NAME}/tool-${TOOL_NAME}:latest"
+toolforge jobs delete schema-check >/dev/null 2>&1 || true
+if ! toolforge jobs run schema-check \
+        --image "$IMAGE" \
+        --command "sh -c 'export USER=montage; python tools/check_schema.py'" \
+        --mount all --wait; then
+    echo "!! Pre-flight failed; nothing was restarted. Missing table or column: run the"
+    echo "   migration SQL first. 'invalid import_mode': fix MONTAGE_IMPORT_MODE"
+    echo "   (sync or worker). See deployment.md. Details:"
+    echo "   toolforge jobs logs schema-check"
+    exit 1
+fi
+toolforge jobs delete schema-check >/dev/null 2>&1 || true
+echo "    Schema:       OK"
+echo "    Import mode:  OK"
+
 # ── 5. Restart service ───────────────────────────────────────────────────────
 
 echo ""
 echo "==> Restarting service ..."
 toolforge webservice buildservice restart --mount all
+
+# ── 5b. Restart the import worker ────────────────────────────────────────────
+# Before the smoke test, which exits on failure. On SIGTERM the worker puts a
+# running import back in the queue, and the restarted worker runs it again.
+# `jobs list` (not `jobs show`) so a missing job and an API error differ.
+
+if ! JOBS_LIST=$(toolforge jobs list 2>&1); then
+    echo "!! Could not list Toolforge jobs; the import worker was NOT restarted:"
+    echo "$JOBS_LIST" | head -5 | sed 's/^/   /'
+    echo "   Restart it by hand: toolforge jobs restart import-worker"
+elif echo "$JOBS_LIST" | grep -qE '(^|[[:space:]|│])import-worker([[:space:]|│]|$)'; then
+    echo "==> Restarting import worker ..."
+    if ! toolforge jobs restart import-worker; then
+        echo "!! Restarting import-worker failed; it may still run the old image."
+        echo "   Restart it by hand: toolforge jobs restart import-worker"
+    fi
+else
+    echo "!! No import-worker job. With MONTAGE_IMPORT_MODE=worker, imports stay"
+    echo "   queued until it exists. Create it with:"
+    echo "   toolforge jobs run import-worker --image $IMAGE --command import-worker --continuous --mount all --mem 1Gi --emails onfailure"
+fi
 
 # ── 6. Smoke test ────────────────────────────────────────────────────────────
 

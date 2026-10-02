@@ -53,6 +53,7 @@ Optional env vars (all have sensible defaults):
 | `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
 | `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
 | `MONTAGE_COMMONS_LINKS_DB_HOST` | `links.commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the Commons links tables (categorylinks, linktarget, page), on their own cluster since 2026-09-08 ([Wikitech](https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split)) |
+| `MONTAGE_IMPORT_MODE` | `sync` | `worker`: imports are queued and run by the `import-worker` job (step 7b); `sync`: imports run inside the request (old behaviour, rollback switch). Any other value (a typo, wrong case, empty) stops the web app from starting; `tools/deploy.sh` checks it before restarting anything |
 
 #### 4. Create the database
 
@@ -105,12 +106,20 @@ If upgrading an existing deployment, run the migration SQL instead (on the basti
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_import_jobs.sql
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 ```
 
-`migrate_round_sources_params.sql` widens `round_sources.params` to MEDIUMTEXT. It can run before or
-after the deploy, but until it has run, file-list imports whose names pass 64 KB (roughly 1,000+
-names) still fail.
+`tools/migrate_import_jobs.sql` adds the `import_jobs` table (background imports,
+hatnote/montage#621). Run it **before** deploying code that has it: the web app and the import
+worker exit at startup if a model table is missing. Both migrations are idempotent. Fresh
+installs get the table from `create_schema.py`. To undo: deploy code without the `ImportJob`
+model, delete the `import-worker` job, then run `tools/revert_import_jobs.sql`.
+
+`tools/migrate_round_sources_params.sql` widens `round_sources.params` to `MEDIUMTEXT`, so a long
+file-list import no longer hits the 64 KB `TEXT` limit. The schema check does not compare column
+types, so it can run before or after the deploy; run it when no import is running (the `ALTER`
+copies the table). `tools/revert_round_sources_params.sql` undoes it (read its warning first).
 
 #### 7. Start the service
 
@@ -120,6 +129,62 @@ toolforge webservice buildservice start --mount all
 
 `--mount all` is required — Montage writes logs to NFS (`/data/project/<toolname>/`), so shared
 storage must be mounted.
+
+#### 7b. Start the import worker
+
+Imports of a category, CSV or file list run in a background worker (hatnote/montage#621), a
+Toolforge [continuous job](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Running_jobs)
+using the same [buildservice image](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Building_container_images)
+(Procfile entry `import-worker`):
+
+```bash
+toolforge jobs run import-worker \
+    --image tool-<tool>/tool-<tool>:latest \
+    --command import-worker \
+    --continuous --mount all --mem 1Gi --emails onfailure
+toolforge envvars create MONTAGE_IMPORT_MODE    # enter: worker
+toolforge envvars show MONTAGE_IMPORT_MODE      # must print exactly: worker
+toolforge webservice buildservice restart --mount all
+```
+
+The web app refuses to start if `MONTAGE_IMPORT_MODE` is anything but `sync` or `worker`.
+`tools/deploy.sh` checks the value before it restarts anything, but a manual
+`webservice ... restart` like the one above does not, so check the value first.
+
+- Keep one replica (the default). More are correct for the job rows (claims and every job
+  update are fenced, and recovery goes by heartbeat, not by worker start), but overlapping
+  imports contend for database locks and can collide on the same file names and fail (the
+  coordinator retries).
+- A running job's heartbeat is refreshed every 30 s. A job whose worker died without a heartbeat
+  for 5 minutes (OOM, SIGKILL) is put back in the queue once; on the second time it is marked
+  failed ("the import worker stopped responding"). A job running longer than 60 minutes is
+  marked failed by the worker's heartbeat thread, and nothing of that import is kept (the worker
+  skips the import if the time ran out during the fetch, and its final commit is refused
+  otherwise). This limit is soft: a fetch or import already under way is not cut short, so the
+  worker stays busy until it ends.
+- On SIGTERM (`toolforge jobs restart`, a deploy, pod eviction) the worker rolls back and puts its
+  running job back in the queue without counting the attempt; the next worker runs it again.
+- `--mount all`: same reason as the webservice. Wikireplica credentials come from the
+  `TOOL_REPLICA_USER` / `TOOL_REPLICA_PASSWORD` envvars Toolforge provides, else
+  `$TOOL_DATA_DIR/replica.my.cnf`, else `~/replica.my.cnf` (in a job pod `HOME` is `/`, so `~`
+  is not the tool's home).
+- Check it started: `toolforge jobs logs import-worker` should show `schema validated ok` and
+  `import worker ... starting`.
+- Until `MONTAGE_IMPORT_MODE=worker` is set, imports keep running inside the request (`sync`).
+- A failed import shows its reason on the round page, with **Retry import** (same source again)
+  and **Dismiss** (unblocks activation with the files the round already has; a round with no
+  files still cannot be activated). A queued import of a cancelled round is
+  skipped without fetching anything.
+
+Checked on montage-dev (worker mode): the worker finds the wikireplica credentials in its job
+pod, and `toolforge jobs restart` picks up the new `:latest` image.
+
+**To verify on montage-beta before production** (unverified so far): memory use of a large
+(~21.5k file) category import fits `--mem 1Gi` (measured off Toolforge: a 120k-file import
+peaked at about 1 GiB, so treat about 100k files as the ceiling); `launcher` passes SIGTERM on
+to Python (the worker log shows `released back to the queue` after a restart during an import) and the
+rollback fits the pod's termination grace period (otherwise the job is requeued after 5 minutes
+instead); `toolforge jobs list` prints the job name `import-worker` (deploy.sh looks for it).
 
 #### 8. Verify
 
@@ -196,7 +261,12 @@ bash ~/www/python/src/tools/deploy.sh --ref <branch>
 
 The script will: pull the latest version of itself, start the build, wait for
 completion, verify the SHA and port, warn if the running image already matches,
-restart the service, and smoke-test `/meta/`.
+check the database schema and `MONTAGE_IMPORT_MODE` inside the new image (a one-off
+`schema-check` job running `tools/check_schema.py`; it aborts before any restart if a migration
+is missing or the import mode is not `sync` or `worker`), restart the service, restart the
+`import-worker` job (or print the command to create it), and smoke-test `/meta/`.
+
+Run any new migration SQL **before** the deploy script (see step 6 of the fresh install).
 
 ---
 
@@ -263,6 +333,10 @@ mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db nam
 toolforge webservice buildservice restart --mount all
 ```
 
+The same applies to a missing table, e.g.
+`!!  Model <class 'montage.rdb.ImportJob'> table import_jobs missing from database ...`: run
+`tools/migrate_import_jobs.sql`, then restart the webservice and the `import-worker` job.
+
 `tools/create_schema.py` only creates *missing tables* (`CREATE TABLE IF NOT EXISTS`); it does
 **not** `ALTER` existing tables, so it will not add a missing column. Use the migration SQL for
 schema changes to an existing database.
@@ -307,6 +381,53 @@ toolforge webservice buildservice logs
 This is ephemeral — it reflects the current pod's output since the last restart and is not
 written to a file.
 
+**Import worker:** one line per claimed, finished and failed import job, with full tracebacks
+for failures:
+
+```bash
+toolforge jobs logs import-worker        # add -f to follow
+```
+
+#### Imports stay queued
+
+A round shows "Import queued" and cannot be activated:
+
+1. Is the worker running? `toolforge jobs list`, `toolforge jobs show import-worker`. If it is
+   missing, create it (fresh install step 7b).
+2. Its log: `toolforge jobs logs import-worker` (schema errors, database errors, crashes).
+3. Is `MONTAGE_IMPORT_MODE` what you expect? `toolforge envvars show MONTAGE_IMPORT_MODE`
+   (unset means `sync`).
+4. The jobs themselves (read-only):
+
+   ```sql
+   SELECT id, round_id, status, method, attempts, claimed_by, create_date, start_date,
+          finish_date, LEFT(error, 200) AS error
+   FROM import_jobs ORDER BY id DESC LIMIT 20;
+   ```
+
+**Hung worker** (one job stays "Import running", every other import stays queued, the worker
+log shows nothing new): fetches have timeouts (HTTP: 15 s connect / 10 min per read; wikireplica:
+10 s connect, 45 min per query, overridable with `MONTAGE_LABS_CONNECT_TIMEOUT` /
+`MONTAGE_LABS_READ_TIMEOUT` in seconds; keep the connect timeout well under gunicorn's 30 s,
+because in `sync` mode the fetch runs inside the web request), after which the job is marked failed with the reason
+and the worker moves on; after 60 minutes the job is marked failed (the limit is soft, see step
+7b: a stuck fetch keeps the worker busy). If the worker is
+stuck anyway, restart it: `toolforge jobs restart import-worker`. The job goes back to the queue
+and runs again (if the old pod is killed without a clean shutdown, after 5 minutes without a
+heartbeat; the second time it is marked failed). The coordinator can retry or dismiss a failed
+import on the round page.
+
+**Rolling back to synchronous imports:** set `MONTAGE_IMPORT_MODE` to `sync`, restart the
+webservice, delete the worker (`toolforge jobs delete import-worker`), and fail the jobs nobody
+will run any more, otherwise their rounds can never be activated:
+
+```sql
+UPDATE import_jobs
+SET status = 'failed', error = 'background import disabled; retry the import',
+    finish_date = UTC_TIMESTAMP(), claim_token = NULL
+WHERE status IN ('queued', 'running');
+```
+
 #### Running Python commands
 
 Use the buildservice shell — prefix Python with `launcher`. Set `USER` first (the shell skips
@@ -343,8 +464,13 @@ DESCRIBE entries;
 
 ```bash
 toolforge envvars create MONTAGE_SUPERUSERS  # overwrites existing value
+toolforge envvars show MONTAGE_SUPERUSERS    # check one variable by name
 toolforge webservice buildservice restart --mount all
 ```
+
+Look at variables one at a time with `toolforge envvars show <NAME>`. Don't use
+`toolforge envvars list`: it prints every value, the OAuth secret, cookie secret and database
+password included, onto the shared bastion terminal.
 
 ---
 

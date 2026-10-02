@@ -10,18 +10,29 @@ from boltons.strutils import slugify
 
 from .utils import (format_date,
                    get_threshold_map,
+                   get_import_mode,
                    InvalidAction,
                    NotImplementedResponse,
                    js_isoparse)
 
 from .rdb import (FINALIZED_STATUS,
+                 CATEGORY_METHOD,
+                 CSV_METHOD,
+                 GISTCSV_METHOD,
+                 ROUND_METHOD,
+                 SELECTED_METHOD,
                  CoordinatorDAO,
                  MaintainerDAO,
-                 OrganizerDAO)
+                 OrganizerDAO,
+                 import_state_for)
 
-CATEGORY_METHOD = 'category'
-ROUND_METHOD = 'round'
-SELECTED_METHOD = 'selected'
+# request keys each import method needs; they are also the keys of the
+# import job's params, so a job can be resubmitted as-is
+IMPORT_REQUIRED_KEYS = {GISTCSV_METHOD: ('gist_url',),
+                        CSV_METHOD: ('csv_url',),
+                        CATEGORY_METHOD: ('category',),
+                        SELECTED_METHOD: ('file_names',),
+                        ROUND_METHOD: ('threshold', 'previous_round_id')}
 
 
 # These are populated at the bottom of the module
@@ -57,6 +68,13 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/unpublish', unpublish_report),
            GET('/admin/campaign/<campaign_id:int>/audit', get_campaign_log),
            POST('/admin/round/<round_id:int>/import', import_entries),
+           GET('/admin/round/<round_id:int>/imports', get_import_jobs),
+           GET('/admin/round/<round_id:int>/import/<job_id:int>',
+               get_import_job),
+           POST('/admin/round/<round_id:int>/import/<job_id:int>/retry',
+                retry_import_job),
+           POST('/admin/round/<round_id:int>/import/<job_id:int>/dismiss',
+                dismiss_import_job),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
            POST('/admin/round/<round_id:int>/finalize', finalize_round),
@@ -304,81 +322,93 @@ def get_campaign_log(user_dao, campaign_id, request_dict):
     return {'data': ret}
 
 
-def import_entries(user_dao, round_id, request_dict):
+def _parse_import_request(request_dict):
+    """Validate an import request; return (import_method, params).
+
+    params keep the request key names (see IMPORT_REQUIRED_KEYS).
     """
-    Summary: Load entries into a round via one of four import methods
+    if not request_dict:
+        raise InvalidAction('expected a request body with import_method')
+    import_method = request_dict.get('import_method')
+    if not import_method:
+        raise InvalidAction('import_method is required')
+    if import_method not in IMPORT_REQUIRED_KEYS:
+        raise NotImplementedResponse()
+    params = {}
+    for key in IMPORT_REQUIRED_KEYS[import_method]:
+        val = request_dict.get(key)
+        if val is None or val == '' or val == []:
+            raise InvalidAction('%s is required for import method %s'
+                                % (key, import_method))
+        params[key] = val
+    if import_method == SELECTED_METHOD:
+        file_names = params['file_names']
+        if (not isinstance(file_names, list)
+                or not all(isinstance(fn, str) for fn in file_names)):
+            raise InvalidAction('file_names must be a list of file names')
+    return import_method, params
 
-    Request model:
-      - round_id (in path)
-      - import_method:
-        - gistcsv
-        - category
-        - round
-        - selected
-      - gist_url (if import_method=gistcsv)
-      - category (if import_method=category)
-      - threshold (if import_method=round)
-      - file_names (if import_method=selected)
 
-    Response model name:
-      - data:
-        - round_id
-        - new_entry_count
-        - new_round_entry_count
-        - total_entries
-        - status: success or failure
-        - errors: description of the failure (if any)
-        - warnings: possible problems to alert the user
-          - empty import (no entries)
-          - duplicate import (no new entries)
-          - all disqualified
+def run_import(user_dao, round_id, import_method, params, loaded=None):
+    """Import entries into a round and return the import stats.
+
+    The whole import: entries, round entries (with their round source),
+    and autodisqualification. Runs in the caller's transaction; used by
+    the import worker (montage/import_worker.py), the sync rollback mode,
+    and the synchronous 'round' method. ``loaded`` is an optional
+    (entries, warnings) pair fetched beforehand (by the worker, outside
+    its transaction); without it the source is fetched here.
     """
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    import_method = request_dict['import_method']
 
     # loader warnings
     import_warnings = list()
 
-    if import_method == 'csv' or import_method == 'gistcsv':
-        if import_method == 'gistcsv':
-            csv_url = request_dict['gist_url']
+    if import_method == CSV_METHOD or import_method == GISTCSV_METHOD:
+        if import_method == GISTCSV_METHOD:
+            csv_url = params['gist_url']
         else:
-            csv_url = request_dict['csv_url']
+            csv_url = params['csv_url']
 
         entries, warnings = coord_dao.add_entries_from_csv(round_id,
-                                                           csv_url)
-        params = {'csv_url': csv_url}
+                                                           csv_url,
+                                                           loaded=loaded)
+        source_params = {'csv_url': csv_url}
         if warnings:
             msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
             # a dict like the other warnings: the frontend shows one value
             # per warning, and showed only the last character of a string
             import_warnings.append({'import issues': msg})
     elif import_method == CATEGORY_METHOD:
-        cat_name = request_dict['category']
-        entries = coord_dao.add_entries_from_cat(round_id, cat_name)
-        params = {'category': cat_name}
+        cat_name = params['category']
+        entries = coord_dao.add_entries_from_cat(round_id, cat_name,
+                                                 loaded=loaded)
+        source_params = {'category': cat_name}
     elif import_method == ROUND_METHOD:
-        threshold = request_dict['threshold']
-        prev_round_id = request_dict['previous_round_id']
+        threshold = params['threshold']
+        prev_round_id = params['previous_round_id']
         entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
-        params = {'threshold': threshold,
-                  'round_id': prev_round_id}
+        source_params = {'threshold': threshold,
+                         'round_id': prev_round_id}
     elif import_method == SELECTED_METHOD:
-        file_names = request_dict['file_names']
-        entries, warnings = coord_dao.add_entries_by_name(round_id, file_names)
+        file_names = params['file_names']
+        entries, warnings = coord_dao.add_entries_by_name(round_id, file_names,
+                                                          loaded=loaded)
         if warnings:
             formatted_warnings = u'\n'.join([
                 u'- {}'.format(warning) for warning in warnings
             ])
             msg = u'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
+            # was a set literal ({'import issues', msg}), see #621
             import_warnings.append({'import issues': msg})
-        params = {'file_names': file_names}
+        source_params = {'file_names': file_names}
     else:
         raise NotImplementedResponse()
 
     new_entry_stats = coord_dao.add_round_entries(round_id, entries,
                                                   method=import_method,
-                                                  params=params)
+                                                  params=source_params)
+    new_entry_stats['entry_count'] = len(entries)
     new_entry_stats['warnings'] = import_warnings
 
     if not entries:
@@ -395,7 +425,141 @@ def import_entries(user_dao, round_id, request_dict):
         new_entry_stats['warnings'].append({'all disqualified':
                   'all entries disqualified by round settings'})
 
-    return {'data': new_entry_stats}
+    return new_entry_stats
+
+
+def import_entries(user_dao, round_id, request_dict, config):
+    """
+    Summary: Load entries into a round via one of the import methods.
+
+    Imports of external sources (category, csv, gistcsv, selected) run
+    inside this request with import_mode 'sync' (MONTAGE_IMPORT_MODE unset
+    or 'sync', the default) and are recorded as a succeeded job. With
+    import_mode 'worker' they are queued as a background import job and
+    run by the import worker (montage/import_worker.py,
+    hatnote/montage#621); the response returns at once. The 'round'
+    method always runs synchronously and creates no job.
+
+    Request model:
+      - round_id (in path)
+      - import_method:
+        - gistcsv
+        - csv
+        - category
+        - round
+        - selected
+      - gist_url (if import_method=gistcsv)
+      - csv_url (if import_method=csv)
+      - category (if import_method=category)
+      - threshold, previous_round_id (if import_method=round)
+      - file_names (if import_method=selected)
+
+    Response model (queued, import_mode 'worker'):
+      - data:
+        - round_id
+        - job: the queued import job (status 'queued'); follow it with
+          GET /admin/round/<round_id>/import/<job_id>
+
+    Response model (import_method=round, or import_mode 'sync'):
+      - data:
+        - round_id
+        - entry_count
+        - new_entry_count
+        - new_round_entry_count
+        - total_entries
+        - disqualified
+        - warnings: possible problems to alert the user
+          - empty import (no entries)
+          - duplicate import (no new entries)
+          - all disqualified
+        - job (sync mode only): the import recorded as a succeeded job
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    import_method, params = _parse_import_request(request_dict)
+
+    if import_method == ROUND_METHOD:
+        stats = run_import(user_dao, round_id, import_method, params)
+        return {'data': stats}
+
+    return _start_import(user_dao, coord_dao, round_id, import_method,
+                         params, config)
+
+
+def _start_import(user_dao, coord_dao, round_id, import_method, params,
+                  config, retry_of=None):
+    """Queue the import (import_mode 'worker'), or run it in this request
+    and record it as a succeeded job (import_mode 'sync')."""
+    if get_import_mode(config) == 'sync':
+        coord_dao.check_no_active_import(round_id)
+        stats = run_import(user_dao, round_id, import_method, params)
+        job = coord_dao.record_sync_import(round_id, import_method, params,
+                                           stats, retry_of=retry_of)
+        stats['job'] = job.to_info_dict()
+        return {'data': stats}
+
+    job = coord_dao.enqueue_import(round_id, import_method, params,
+                                   retry_of=retry_of)
+    return {'data': {'round_id': round_id, 'job': job.to_info_dict()}}
+
+
+def get_import_jobs(user_dao, round_id):
+    """
+    Summary: List the most recent import jobs of a round (newest first).
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    jobs = coord_dao.get_import_jobs(round_id)
+    return {'data': [job.to_info_dict() for job in jobs]}
+
+
+def get_import_job(user_dao, round_id, job_id):
+    """
+    Summary: Details of one import job of a round, including warnings,
+    a sample of disqualified files, and the error of a failed import.
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    job = coord_dao.get_import_job(round_id, job_id)
+    return {'data': job.to_details_dict()}
+
+
+def retry_import_job(user_dao, round_id, job_id, config):
+    """
+    Summary: Import again what a failed import job tried to import: a new
+    job with the same import method and parameters. Same response as
+    POST /admin/round/<round_id>/import.
+
+    Errors:
+       400: the job did not fail, the round is not paused, or another
+            import of the round is queued or running
+       404: no such job for this round
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    job = coord_dao.get_failed_import_job(round_id, job_id)
+    return _start_import(user_dao, coord_dao, round_id, job.method,
+                         dict(job.params or {}), config, retry_of=job.id)
+
+
+def dismiss_import_job(user_dao, round_id, job_id):
+    """
+    Summary: Dismiss a failed import job, so it no longer keeps the round
+    from being activated.
+
+    Response model:
+      - data:
+        - job: the dismissed job
+        - import_state: the round's import state afterwards
+
+    Errors:
+       400: the job did not fail, or was already dismissed
+       404: no such job for this round
+    """
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    job = coord_dao.dismiss_import_job(round_id, job_id)
+    rnd = coord_dao.get_round(round_id)
+    latest, active = user_dao.get_latest_import_jobs([round_id]).get(
+        round_id, (None, None))
+    return {'data': {'job': job.to_info_dict(),
+                     'import_state': import_state_for(rnd.status, latest,
+                                                      active)}}
 
 
 def activate_round(user_dao, round_id, request_dict):
@@ -670,7 +834,28 @@ def get_index(user_dao, only_active=True):
     for campaign in campaigns:
         data.append(campaign.to_details_dict())
 
+    _attach_import_state(user_dao, data)
     return {'data': data}
+
+
+def _attach_import_state(user_dao, campaign_dicts):
+    """Add 'import_state' to every round dict ('rounds' and
+    'active_round') of admin campaign payloads, with one query.
+
+    Admin payloads only: Round.to_info_dict is shared with juror
+    endpoints, so the state is attached here rather than there.
+    """
+    round_dicts = []
+    for campaign_dict in campaign_dicts:
+        round_dicts.extend(campaign_dict.get('rounds') or [])
+        if campaign_dict.get('active_round'):
+            round_dicts.append(campaign_dict['active_round'])
+    jobs = user_dao.get_latest_import_jobs([r['id'] for r in round_dicts])
+    for rnd_dict in round_dicts:
+        latest, active = jobs.get(rnd_dict['id'], (None, None))
+        rnd_dict['import_state'] = import_state_for(rnd_dict['status'],
+                                                    latest, active)
+    return
 
 
 def get_user(user_dao, only_active=True):
@@ -730,6 +915,7 @@ def get_campaign(user_dao, campaign_id):
     if campaign is None:
         raise Forbidden('not a coordinator on this campaign')
     data = campaign.to_details_dict()
+    _attach_import_state(user_dao, [data])
     return {'data': data}
 
 
@@ -752,6 +938,9 @@ def get_round(user_dao, round_id):
     # entries_info = user_dao.get_entry_info(round_id) # TODO
     # TODO: joinedload if this generates too many queries
     data = make_admin_round_details(rnd, rnd_stats)
+    latest, active = user_dao.get_latest_import_jobs([round_id]).get(
+        round_id, (None, None))
+    data['import_state'] = import_state_for(rnd.status, latest, active)
     return {'data': data}
 
 
