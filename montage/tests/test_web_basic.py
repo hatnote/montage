@@ -1140,6 +1140,103 @@ def test_vote_later_reappears(api_client, mock_external_apis):
     )
 
 
+def test_activation_inserts_tasks_in_batches(montage_app, api_client,
+                                             mock_external_apis):
+    """
+    Regression test for hatnote/montage#619: activating a round created one
+    ORM Vote object, and one INSERT, per task. On montage-dev a round of
+    ~21.5k tasks ran the 512 MiB webservice out of memory (OOMKilled).
+
+    Tasks are now inserted in batches, so the number of INSERTs into votes
+    no longer grows with the number of tasks. The assignment itself is
+    unchanged: quorum tasks per eligible entry, each by a different juror.
+    """
+    from collections import Counter
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    fetch('organizer: create campaign for batched task test',
+          '/admin/add_campaign',
+          {'name': 'Batched Task Insert Test',
+           'coordinators': [u'LilyOfTheWest', u'Slaporte', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    jurors = [u'Slaporte', u'LilyOfTheWest', u'Yarl']
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Batched Task Insert Round',
+                  'vote_method': 'yesno',
+                  'quorum': 2,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': jurors},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    resp = fetch('coordinator: import entries',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'category',
+                  'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                 as_user='LilyOfTheWest')
+    if (resp['data'].get('job') or {}).get('status') == 'queued':
+        # background-import mode (hatnote/montage#621): run the queue
+        from montage.tests.conftest import run_import_jobs
+        run_import_jobs(montage_app)
+
+    vote_inserts = []
+
+    def count_vote_inserts(conn, cursor, statement, params, context,
+                           executemany):
+        if statement.lstrip().upper().startswith('INSERT INTO VOTES'):
+            vote_inserts.append(executemany)
+
+    event.listen(Engine, 'before_cursor_execute', count_vote_inserts)
+    try:
+        fetch('coordinator: activate round',
+              '/admin/round/%s/activate' % round_id,
+              {'post': True}, as_user='LilyOfTheWest')
+    finally:
+        event.remove(Engine, 'before_cursor_execute', count_vote_inserts)
+
+    rnd = fetch('coordinator: get round', '/admin/round/%s' % round_id,
+                as_user='LilyOfTheWest')['data']
+    stats = rnd['stats']
+    eligible = stats['total_round_entries'] - stats['total_disqualified_entries']
+    assert eligible > 10
+    assert stats['total_tasks'] == stats['total_open_tasks'] == 2 * eligible
+
+    # one batched INSERT for this round, not one per task
+    assert len(vote_inserts) == 1, vote_inserts
+
+    # quorum distinct jurors per entry
+    from sqlalchemy import create_engine, text
+    engine = create_engine(montage_app.resources['config']['db_url'])
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            'SELECT v.round_entry_id, v.user_id, v.status, v.flags, v.create_date'
+            ' FROM votes v JOIN round_entries re ON re.id = v.round_entry_id'
+            ' WHERE re.round_id = :rid'), {'rid': round_id}).fetchall()
+    engine.dispose()
+    # same row contents as the ORM path wrote: empty flags, a create_date
+    assert set(r.flags for r in rows) == {'{}'}
+    assert all(r.create_date is not None for r in rows)
+    assert set(r.status for r in rows) == {'active'}
+    per_entry = Counter(r.round_entry_id for r in rows)
+    assert set(per_entry.values()) == {2}
+    assert len(set((r.round_entry_id, r.user_id) for r in rows)) == len(rows)
+
+
 # ---------------------------------------------------------------------------
 # OAuth 2.0 + PKCE flow tests
 # ---------------------------------------------------------------------------
