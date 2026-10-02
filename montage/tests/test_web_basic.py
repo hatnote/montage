@@ -1140,6 +1140,91 @@ def test_vote_later_reappears(api_client, mock_external_apis):
     )
 
 
+def test_concurrent_activation_creates_no_duplicate_tasks(montage_app, api_client,
+                                                          mock_external_apis):
+    """
+    Regression test for duplicate juror tasks (hatnote/montage#334):
+    two activation requests a few seconds apart (a double click while
+    the first one is still running) both passed the "round is paused"
+    check and each created a full set of tasks.
+
+    The second activation is simulated by committing the round as
+    active from another connection, after this request has loaded the
+    round and before it re-checks the status. With the fix,
+    activate_round re-reads the round under a row lock (FOR UPDATE on
+    MySQL) and refuses; without it, it trusts the stale 'paused'.
+    """
+    from sqlalchemy import create_engine, text
+    from montage import rdb
+
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    fetch('organizer: create campaign for concurrent activation test',
+          '/admin/add_campaign',
+          {'name': 'Concurrent Activation Test',
+           'coordinators': [u'LilyOfTheWest', u'Slaporte', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Concurrent Activation Round',
+                  'vote_method': 'yesno',
+                  'quorum': 1,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': [u'Slaporte']},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    fetch('coordinator: import entries',
+          '/admin/round/%s/import' % round_id,
+          {'import_method': 'category',
+           'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+          as_user='LilyOfTheWest')
+
+    other_engine = create_engine(montage_app.resources['config']['db_url'])
+    orig_get_round = rdb.UserDAO.get_round
+    raced = []
+
+    def get_round_then_other_request_activates(self, rid):
+        rnd = orig_get_round(self, rid)
+        if rid == round_id and not raced:
+            # keep the loaded round referenced, as the real request does
+            # (the session's identity map is weak)
+            raced.append(rnd)
+            # the other request: it already created its tasks (none
+            # needed for this check) and committed the round as active
+            with other_engine.begin() as conn:
+                conn.execute(text("UPDATE rounds SET status = 'active'"
+                                  " WHERE id = :rid"), {'rid': rid})
+        return rnd
+
+    with patch.object(rdb.UserDAO, 'get_round',
+                      get_round_then_other_request_activates):
+        fetch('coordinator: activate while another activation committed',
+              '/admin/round/%s/activate' % round_id,
+              {'post': True}, as_user='LilyOfTheWest', error_code=400)
+    assert raced
+
+    with other_engine.connect() as conn:
+        n_tasks = conn.execute(text(
+            'SELECT COUNT(*) FROM votes v JOIN round_entries re'
+            ' ON re.id = v.round_entry_id WHERE re.round_id = :rid'),
+            {'rid': round_id}).scalar()
+    other_engine.dispose()
+    assert n_tasks == 0, ('activation ran on a round another request had'
+                          ' already activated: %s tasks created' % n_tasks)
+
+
 # ---------------------------------------------------------------------------
 # OAuth 2.0 + PKCE flow tests
 # ---------------------------------------------------------------------------
