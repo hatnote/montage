@@ -172,14 +172,16 @@ become montage-beta
 Clone the repo so the deploy script is available on the bastion:
 
 ```bash
-git clone --branch tools/buildservice https://github.com/hatnote/montage.git ~/www/python/src
+git clone https://github.com/hatnote/montage.git ~/www/python/src
 ```
 
-If the repo is already cloned, make sure the branch tracks the right remote:
+If the repo is already cloned (for example an old checkout from before the buildservice, or one
+still on the deleted `tools/buildservice` branch), bring it to `master`:
 
 ```bash
 git -C ~/www/python/src fetch origin
-git -C ~/www/python/src checkout -b tools/buildservice origin/tools/buildservice
+git -C ~/www/python/src checkout master
+git -C ~/www/python/src pull --ff-only
 ```
 
 #### 4. Run the deploy script
