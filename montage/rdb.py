@@ -642,6 +642,16 @@ class RoundEntry(Base):
 
 
 round_entries_t = RoundEntry.__table__
+entries_t = Entry.__table__
+
+# columns a bulk entry insert supplies; id and create_date come from the DB
+_ENTRY_INSERT_COLS = [c.key for c in entries_t.columns
+                      if c.key not in ('id', 'create_date')]
+
+
+def _entry_insert_row(entry):
+    """Column values of a not-yet-saved Entry, for a core multi-row insert."""
+    return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
 
 
 class RoundSource(Base):
@@ -1657,15 +1667,19 @@ class CoordinatorDAO(UserDAO):
             entry_names = [to_unicode(e.name) for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
 
-            for entry in entry_chunk:
-                db_entry = db_entries.get(to_unicode(entry.name))
-                if db_entry:
-                    entry = db_entry
-                else:
-                    new_entry_count += 1
-                    self.rdb_session.add(entry)
+            new_rows = [_entry_insert_row(e) for e in entry_chunk
+                        if to_unicode(e.name) not in db_entries]
+            if new_rows:
+                # One multi-row INSERT per chunk instead of one INSERT per
+                # entry; per-row inserts made large category imports outlast
+                # the request timeout (#618). Read the rows back to get ids.
+                self.rdb_session.execute(entries_t.insert(), new_rows)
+                new_entry_count += len(new_rows)
+                db_entries.update(
+                    self.get_entry_name_map([r['name'] for r in new_rows]))
 
-                ret.append(entry)
+            for entry in entry_chunk:
+                ret.append(db_entries[to_unicode(entry.name)])
 
         return ret, new_entry_count
 
@@ -1685,11 +1699,14 @@ class CoordinatorDAO(UserDAO):
             return dict()
         round_source = self.get_or_create_round_source(round_id, method, params)
         self.rdb_session.flush()
-        for new_entry in new_entries:
-            new_round_entry = RoundEntry(entry_id=new_entry.id,
-                                         round_id=round_id,
-                                         round_source_id=round_source.id)
-            self.rdb_session.add(new_round_entry)
+        # batched like add_entries (#618)
+        self.rdb_session.execute(
+            round_entries_t.insert(),
+            [{'entry_id': e.id,
+              'round_id': round_id,
+              'round_source_id': round_source.id} for e in new_entries])
+        # the core insert bypasses the session; reload on next access
+        self.rdb_session.expire(rnd, ['round_entries'])
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if method:
