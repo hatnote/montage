@@ -2988,14 +2988,12 @@ def create_initial_tasks(rdb_session, rnd):
     return ret
 
 
-def create_ranking_tasks(rdb_session, rnd, jurors=None):
-    ret = []
+# tasks per INSERT statement when creating tasks (pymysql turns each
+# executemany into multi-row INSERTs)
+TASK_INSERT_CHUNK_SIZE = 5000
 
-    if jurors is None:
-        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
-    if not jurors:
-        raise InvalidAction('expected round with active jurors')
 
+def _shuffled_untasked_entry_ids(rdb_session, rnd):
     rdb_type = rdb_session.bind.dialect.name
 
     if rdb_type == 'mysql':
@@ -3003,27 +3001,57 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     else:
         rand_func = func.random()
 
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
-    if not shuffled_entries:
+    # this does the shuffling in the database. Only the ids: loading a
+    # RoundEntry object per entry does not fit in memory for large rounds
+    # (hatnote/montage#619)
+    rows = (rdb_session.query(RoundEntry.id)
+                       .filter(RoundEntry.round_id == rnd.id,
+                               RoundEntry.dq_user_id == None,
+                               RoundEntry.votes == None)
+                       .order_by(rand_func).all())
+    return [row[0] for row in rows]
+
+
+def _insert_tasks(rdb_session, tasks):
+    """Insert tasks ({'user_id', 'round_entry_id'} dicts) as active votes,
+    in batches, instead of one Vote object and one INSERT per task
+    (hatnote/montage#619). Returns the inserted rows."""
+    rows = [{'user_id': t['user_id'],
+             'round_entry_id': t['round_entry_id'],
+             'status': ACTIVE_STATUS,
+             'flags': {}} for t in tasks]
+    if not rows:
+        return rows
+    # write pending ORM changes first, so the inserts see them
+    rdb_session.flush()
+    for i in range(0, len(rows), TASK_INSERT_CHUNK_SIZE):
+        rdb_session.execute(votes_t.insert(),
+                            rows[i:i + TASK_INSERT_CHUNK_SIZE])
+    # relationships loaded before the inserts (e.g. RoundEntry.votes) are
+    # stale now; everything was flushed above, so expiring loses nothing
+    rdb_session.expire_all()
+    return rows
+
+
+def create_ranking_tasks(rdb_session, rnd, jurors=None):
+    if jurors is None:
+        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
+
+    shuffled_entry_ids = _shuffled_untasked_entry_ids(rdb_session, rnd)
+    if not shuffled_entry_ids:
         return []
 
-    for juror in jurors:
-        for entry in shuffled_entries:
-            vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-            ret.append(vote)
+    tasks = [{'user_id': juror.id, 'round_entry_id': entry_id}
+             for juror in jurors
+             for entry_id in shuffled_entry_ids]
 
-    return ret
+    return _insert_tasks(rdb_session, tasks)
 
 
 def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     # Creates a specified number of tasks per entry.
-
-    ret = []
 
     if not tasks_per_entry:
         tasks_per_entry = rnd.quorum
@@ -3036,19 +3064,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
         raise InvalidAction('expected round with active jurors')
     random.shuffle(jurors)
 
-    rdb_type = rdb_session.bind.dialect.name
-
-    if rdb_type == 'mysql':
-        rand_func = func.rand()
-    else:
-        rand_func = func.random()
-
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
+    shuffled_entries = _shuffled_untasked_entry_ids(rdb_session, rnd)
     if not shuffled_entries:
         return []
     # Note: It's only creating tasks for entries with no tasks. A
@@ -3066,15 +3082,14 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
 
     pairs = zip_longest(to_process, juror_iters, fillvalue=None)
 
-    for entry, juror in pairs:
+    tasks = []
+    for entry_id, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'
-        if entry is None:
+        if entry_id is None:
             break
 
-        # TODO: bulk_save_objects
-        vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-        ret.append(vote)
-    return ret
+        tasks.append({'user_id': juror.id, 'round_entry_id': entry_id})
+    return _insert_tasks(rdb_session, tasks)
 
 
 def reassign_tasks(session, rnd, new_jurors, strategy=None):
