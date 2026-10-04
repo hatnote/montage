@@ -867,7 +867,8 @@ def test_multiple_jurors(api_client, mock_external_apis):
 def test_get_files_info_by_name(api_client):
     """GET /utils/file returns file_infos with file_id populated."""
     from .conftest import SELECTED_FILE_INFO
-    with patch('montage.public_endpoints.get_file_info', return_value=SELECTED_FILE_INFO):
+    with patch('montage.public_endpoints.get_files_info_by_names',
+               return_value={SELECTED_FILE_INFO['img_name'].replace(' ', '_'): SELECTED_FILE_INFO}):
         resp = api_client.fetch(
             'public: get file info by name',
             '/utils/file',
@@ -952,6 +953,93 @@ def test_import_entries_have_file_id(api_client, mock_external_apis):
         'file_id values do not match fixture: extra=%s missing=%s'
         % (actual_ids - expected_ids, expected_ids - actual_ids)
     )
+
+
+def test_category_import_batches_inserts(api_client, mock_external_apis):
+    """A category import issues a few multi-row INSERTs, not one per file.
+
+    Regression for hatnote/montage#618: two single-row INSERTs per file
+    (entries + round_entries) made large category imports outlast the
+    gunicorn worker timeout.
+    """
+    import datetime
+
+    import responses as responses_lib
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    from montage.rdb import IMPORT_CHUNK_SIZE
+    from montage.tests.conftest import (TOOLFORGE_CATEGORY_URL,
+                                        _generate_file_infos)
+
+    n = 2 * IMPORT_CHUNK_SIZE + 50  # three chunks, the last one partial
+    file_infos = _generate_file_infos(n)
+    base_date = datetime.datetime(2015, 9, 6)
+    for i, info in enumerate(file_infos):
+        info['img_name'] = 'Batch_import_%04d.jpg' % i
+        # _generate_file_infos overflows the seconds field past 40 files
+        info['img_timestamp'] = (base_date + datetime.timedelta(seconds=i)
+                                 ).strftime('%Y%m%d%H%M%S')
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_CATEGORY_URL,
+                               json={'file_infos': file_infos, 'no_info': []},
+                               status=200)
+
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'batch import test',
+         'coordinators': ['Yarl'],
+         'open_date': '2015-01-01T00:00:00',
+         'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com',
+         'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round',
+        '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'Test round',
+         'vote_method': 'yesno',
+         'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    inserts = {}
+
+    def count_inserts(conn, cursor, statement, params, context, executemany):
+        if statement.lstrip().upper().startswith('INSERT'):
+            table = statement.split()[2]
+            inserts[table] = inserts.get(table, 0) + 1
+
+    def do_import():
+        return api_client.fetch(
+            'coordinator: import entries via category',
+            '/admin/round/%s/import' % round_id,
+            {'import_method': 'category', 'category': 'Batch_import'},
+            as_user='Yarl')['data']
+
+    event.listen(Engine, 'before_cursor_execute', count_inserts)
+    try:
+        data = do_import()
+    finally:
+        event.remove(Engine, 'before_cursor_execute', count_inserts)
+
+    assert data['new_round_entry_count'] == n
+    assert data['total_entries'] == n
+    # one INSERT per chunk of entries, one for all round entries
+    assert inserts.get('entries', 0) <= 3, inserts
+    assert inserts.get('round_entries', 0) <= 3, inserts
+
+    # importing the same files again reuses the existing entries
+    data = do_import()
+    assert {'duplicate import': 'no new entries imported'} in data['warnings']
+
+    entries = api_client.fetch('coordinator: get round entries',
+                               '/admin/round/%s/entries' % round_id,
+                               as_user='Yarl')['file_infos']
+    assert sorted(e['img_name'] for e in entries) == \
+        sorted(fi['img_name'] for fi in file_infos)
 
 
 @script_log.wrap('critical', verbose=True)
@@ -1225,6 +1313,103 @@ def test_concurrent_activation_creates_no_duplicate_tasks(montage_app, api_clien
                           ' already activated: %s tasks created' % n_tasks)
 
 
+def test_activation_inserts_tasks_in_batches(montage_app, api_client,
+                                             mock_external_apis):
+    """
+    Regression test for hatnote/montage#619: activating a round created one
+    ORM Vote object, and one INSERT, per task. On montage-dev a round of
+    ~21.5k tasks ran the 512 MiB webservice out of memory (OOMKilled).
+
+    Tasks are now inserted in batches, so the number of INSERTs into votes
+    no longer grows with the number of tasks. The assignment itself is
+    unchanged: quorum tasks per eligible entry, each by a different juror.
+    """
+    from collections import Counter
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    fetch('organizer: create campaign for batched task test',
+          '/admin/add_campaign',
+          {'name': 'Batched Task Insert Test',
+           'coordinators': [u'LilyOfTheWest', u'Slaporte', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    jurors = [u'Slaporte', u'LilyOfTheWest', u'Yarl']
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Batched Task Insert Round',
+                  'vote_method': 'yesno',
+                  'quorum': 2,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': jurors},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    resp = fetch('coordinator: import entries',
+                 '/admin/round/%s/import' % round_id,
+                 {'import_method': 'category',
+                  'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                 as_user='LilyOfTheWest')
+    if (resp['data'].get('job') or {}).get('status') == 'queued':
+        # background-import mode (hatnote/montage#621): run the queue
+        from montage.tests.conftest import run_import_jobs
+        run_import_jobs(montage_app)
+
+    vote_inserts = []
+
+    def count_vote_inserts(conn, cursor, statement, params, context,
+                           executemany):
+        if statement.lstrip().upper().startswith('INSERT INTO VOTES'):
+            vote_inserts.append(executemany)
+
+    event.listen(Engine, 'before_cursor_execute', count_vote_inserts)
+    try:
+        fetch('coordinator: activate round',
+              '/admin/round/%s/activate' % round_id,
+              {'post': True}, as_user='LilyOfTheWest')
+    finally:
+        event.remove(Engine, 'before_cursor_execute', count_vote_inserts)
+
+    rnd = fetch('coordinator: get round', '/admin/round/%s' % round_id,
+                as_user='LilyOfTheWest')['data']
+    stats = rnd['stats']
+    eligible = stats['total_round_entries'] - stats['total_disqualified_entries']
+    assert eligible > 10
+    assert stats['total_tasks'] == stats['total_open_tasks'] == 2 * eligible
+
+    # one batched INSERT for this round, not one per task
+    assert len(vote_inserts) == 1, vote_inserts
+
+    # quorum distinct jurors per entry
+    from sqlalchemy import create_engine, text
+    engine = create_engine(montage_app.resources['config']['db_url'])
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            'SELECT v.round_entry_id, v.user_id, v.status, v.flags, v.create_date'
+            ' FROM votes v JOIN round_entries re ON re.id = v.round_entry_id'
+            ' WHERE re.round_id = :rid'), {'rid': round_id}).fetchall()
+    engine.dispose()
+    # same row contents as the ORM path wrote: empty flags, a create_date
+    assert set(r.flags for r in rows) == {'{}'}
+    assert all(r.create_date is not None for r in rows)
+    assert set(r.status for r in rows) == {'active'}
+    per_entry = Counter(r.round_entry_id for r in rows)
+    assert set(per_entry.values()) == {2}
+    assert len(set((r.round_entry_id, r.user_id) for r in rows)) == len(rows)
+
+
 # ---------------------------------------------------------------------------
 # OAuth 2.0 + PKCE flow tests
 # ---------------------------------------------------------------------------
@@ -1319,3 +1504,92 @@ def test_oauth_complete_login_success(oauth_app):
     data = _get_cookie_data(client, oauth_app.resources['config']['cookie_secret'])
     assert data.get('userid') == 12345
     assert data.get('username') == 'OAuthTestUser'
+
+
+def _import_result(montage_app, api_client, round_id, data):
+    """The result of an /admin/round/<id>/import call, in either mode.
+
+    Synchronous import: the response data itself. Background import worker
+    (hatnote/montage#621): the response carries data['job']; run the queue
+    and return the job's data, which holds the warnings. On branches
+    without the worker the second path is never taken.
+    """
+    if 'job' not in data:
+        return data
+    from montage.tests.conftest import run_import_jobs
+    job_id = data['job']['id']
+    assert run_import_jobs(montage_app) == [(job_id, 'succeeded')]
+    return api_client.fetch('coordinator: import job',
+                            '/admin/round/%s/import/%s' % (round_id, job_id),
+                            as_user='Yarl')['data']
+
+
+def test_selected_import_with_missing_name_reports_warning(montage_app, api_client, mock_external_apis):
+    """A file-list import where some names are not found must succeed with a
+    warning. The warning used to be a set, which can't be serialised (500)."""
+    import responses as responses_lib
+    from montage.tests.conftest import TOOLFORGE_FILE_URL, SELECTED_FILE_INFO
+
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_FILE_URL,
+                               json={'file_infos': [SELECTED_FILE_INFO],
+                                     'no_info': ['Not_on_Commons.jpg']},
+                               status=200)
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'missing name test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import selected files', '/admin/round/%s/import' % round_id,
+        {'import_method': 'selected',
+         'file_names': [SELECTED_FILE_INFO['img_name'], 'Not on Commons.jpg']},
+        as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
+
+    issues = [w for w in data['warnings'] if 'import issues' in w]
+    assert len(issues) == 1 and 'Not_on_Commons.jpg' in issues[0]['import issues']
+
+
+def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_apis, monkeypatch):
+    """The frontend shows one value per warning; a plain string showed only
+    its last character. CSV warnings must be dicts like the others."""
+    from montage import loaders
+    from montage.tests.conftest import FIXTURE_FILE_INFOS
+
+    def fake_csv(url, source='local'):
+        entries = [loaders.make_entry(info) for info in FIXTURE_FILE_INFOS[:3]]
+        return entries, ['file "Gone.jpg" does not exist']
+    monkeypatch.setattr(loaders, 'get_entries_from_csv', fake_csv)
+
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer', {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'csv warning test', 'coordinators': ['Yarl'],
+         'open_date': '2014-01-01T00:00:00', 'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com', 'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round', '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'r', 'vote_method': 'yesno', 'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+
+    data = api_client.fetch(
+        'coordinator: import csv', '/admin/round/%s/import' % round_id,
+        {'import_method': 'csv', 'csv_url': 'https://example.org/files.csv'},
+        as_user='Yarl')['data']
+    data = _import_result(montage_app, api_client, round_id, data)
+
+    assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
+    assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])

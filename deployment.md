@@ -52,6 +52,8 @@ Optional env vars (all have sensible defaults):
 | `MONTAGE_ROOT_PATH` | `/` | URL root path |
 | `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
 | `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
+| `MONTAGE_COMMONS_DB_HOST` | `commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the other Commons tables (file, filerevision, actor, ...); before this was the legacy alias `commonswiki.labsdb`, which points to the same s4 analytics replica |
+| `MONTAGE_COMMONS_LINKS_DB_HOST` | `links.commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the Commons links tables (categorylinks, linktarget, page), on their own cluster since 2026-09-08 ([Wikitech](https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split)) |
 
 #### 4. Create the database
 
@@ -104,7 +106,12 @@ If upgrading an existing deployment, run the migration SQL instead (on the basti
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 ```
+
+`migrate_round_sources_params.sql` widens `round_sources.params` to MEDIUMTEXT. It can run before or
+after the deploy, but until it has run, file-list imports whose names pass 64 KB (roughly 1,000+
+names) still fail.
 
 #### 7. Start the service
 
@@ -172,14 +179,16 @@ become montage-beta
 Clone the repo so the deploy script is available on the bastion:
 
 ```bash
-git clone --branch tools/buildservice https://github.com/hatnote/montage.git ~/www/python/src
+git clone https://github.com/hatnote/montage.git ~/www/python/src
 ```
 
-If the repo is already cloned, make sure the branch tracks the right remote:
+If the repo is already cloned (for example an old checkout from before the buildservice, or one
+still on the deleted `tools/buildservice` branch), bring it to `master`:
 
 ```bash
 git -C ~/www/python/src fetch origin
-git -C ~/www/python/src checkout -b tools/buildservice origin/tools/buildservice
+git -C ~/www/python/src checkout master
+git -C ~/www/python/src pull --ff-only
 ```
 
 #### 4. Run the deploy script
@@ -253,6 +262,7 @@ while). Run the migration — do **not** "recreate the database", which would wi
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 toolforge webservice buildservice restart --mount all
 ```
 

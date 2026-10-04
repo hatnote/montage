@@ -51,7 +51,7 @@ from .utils import (format_date,
 
 from .imgutils import make_mw_img_url
 from . import loaders
-from .simple_serdes import DictableBase, JSONEncodedDict
+from .simple_serdes import DictableBase, JSONEncodedDict, LongJSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
@@ -642,6 +642,16 @@ class RoundEntry(Base):
 
 
 round_entries_t = RoundEntry.__table__
+entries_t = Entry.__table__
+
+# columns a bulk entry insert supplies; id and create_date come from the DB
+_ENTRY_INSERT_COLS = [c.key for c in entries_t.columns
+                      if c.key not in ('id', 'create_date')]
+
+
+def _entry_insert_row(entry):
+    """Column values of a not-yet-saved Entry, for a core multi-row insert."""
+    return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
 
 
 class RoundSource(Base):
@@ -652,7 +662,9 @@ class RoundSource(Base):
     user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     method = Column(String(255), index=True)
-    params = Column(JSONEncodedDict)
+    # MEDIUMTEXT on MySQL: a 'selected' import's file list can pass TEXT's
+    # 64 KB (tools/migrate_round_sources_params.sql, hatnote/montage#621)
+    params = Column(LongJSONEncodedDict)
     dq_params = Column(JSONEncodedDict)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1671,15 +1683,19 @@ class CoordinatorDAO(UserDAO):
             entry_names = [to_unicode(e.name) for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
 
-            for entry in entry_chunk:
-                db_entry = db_entries.get(to_unicode(entry.name))
-                if db_entry:
-                    entry = db_entry
-                else:
-                    new_entry_count += 1
-                    self.rdb_session.add(entry)
+            new_rows = [_entry_insert_row(e) for e in entry_chunk
+                        if to_unicode(e.name) not in db_entries]
+            if new_rows:
+                # One multi-row INSERT per chunk instead of one INSERT per
+                # entry; per-row inserts made large category imports outlast
+                # the request timeout (#618). Read the rows back to get ids.
+                self.rdb_session.execute(entries_t.insert(), new_rows)
+                new_entry_count += len(new_rows)
+                db_entries.update(
+                    self.get_entry_name_map([r['name'] for r in new_rows]))
 
-                ret.append(entry)
+            for entry in entry_chunk:
+                ret.append(db_entries[to_unicode(entry.name)])
 
         return ret, new_entry_count
 
@@ -1699,11 +1715,14 @@ class CoordinatorDAO(UserDAO):
             return dict()
         round_source = self.get_or_create_round_source(round_id, method, params)
         self.rdb_session.flush()
-        for new_entry in new_entries:
-            new_round_entry = RoundEntry(entry_id=new_entry.id,
-                                         round_id=round_id,
-                                         round_source_id=round_source.id)
-            self.rdb_session.add(new_round_entry)
+        # batched like add_entries (#618)
+        self.rdb_session.execute(
+            round_entries_t.insert(),
+            [{'entry_id': e.id,
+              'round_id': round_id,
+              'round_source_id': round_source.id} for e in new_entries])
+        # the core insert bypasses the session; reload on next access
+        self.rdb_session.expire(rnd, ['round_entries'])
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if method:
@@ -2983,14 +3002,12 @@ def create_initial_tasks(rdb_session, rnd):
     return ret
 
 
-def create_ranking_tasks(rdb_session, rnd, jurors=None):
-    ret = []
+# tasks per INSERT statement when creating tasks (pymysql turns each
+# executemany into multi-row INSERTs)
+TASK_INSERT_CHUNK_SIZE = 5000
 
-    if jurors is None:
-        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
-    if not jurors:
-        raise InvalidAction('expected round with active jurors')
 
+def _shuffled_untasked_entry_ids(rdb_session, rnd):
     rdb_type = rdb_session.bind.dialect.name
 
     if rdb_type == 'mysql':
@@ -2998,27 +3015,57 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     else:
         rand_func = func.random()
 
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
-    if not shuffled_entries:
+    # this does the shuffling in the database. Only the ids: loading a
+    # RoundEntry object per entry does not fit in memory for large rounds
+    # (hatnote/montage#619)
+    rows = (rdb_session.query(RoundEntry.id)
+                       .filter(RoundEntry.round_id == rnd.id,
+                               RoundEntry.dq_user_id == None,
+                               RoundEntry.votes == None)
+                       .order_by(rand_func).all())
+    return [row[0] for row in rows]
+
+
+def _insert_tasks(rdb_session, tasks):
+    """Insert tasks ({'user_id', 'round_entry_id'} dicts) as active votes,
+    in batches, instead of one Vote object and one INSERT per task
+    (hatnote/montage#619). Returns the inserted rows."""
+    rows = [{'user_id': t['user_id'],
+             'round_entry_id': t['round_entry_id'],
+             'status': ACTIVE_STATUS,
+             'flags': {}} for t in tasks]
+    if not rows:
+        return rows
+    # write pending ORM changes first, so the inserts see them
+    rdb_session.flush()
+    for i in range(0, len(rows), TASK_INSERT_CHUNK_SIZE):
+        rdb_session.execute(votes_t.insert(),
+                            rows[i:i + TASK_INSERT_CHUNK_SIZE])
+    # relationships loaded before the inserts (e.g. RoundEntry.votes) are
+    # stale now; everything was flushed above, so expiring loses nothing
+    rdb_session.expire_all()
+    return rows
+
+
+def create_ranking_tasks(rdb_session, rnd, jurors=None):
+    if jurors is None:
+        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
+
+    shuffled_entry_ids = _shuffled_untasked_entry_ids(rdb_session, rnd)
+    if not shuffled_entry_ids:
         return []
 
-    for juror in jurors:
-        for entry in shuffled_entries:
-            vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-            ret.append(vote)
+    tasks = [{'user_id': juror.id, 'round_entry_id': entry_id}
+             for juror in jurors
+             for entry_id in shuffled_entry_ids]
 
-    return ret
+    return _insert_tasks(rdb_session, tasks)
 
 
 def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     # Creates a specified number of tasks per entry.
-
-    ret = []
 
     if not tasks_per_entry:
         tasks_per_entry = rnd.quorum
@@ -3031,19 +3078,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
         raise InvalidAction('expected round with active jurors')
     random.shuffle(jurors)
 
-    rdb_type = rdb_session.bind.dialect.name
-
-    if rdb_type == 'mysql':
-        rand_func = func.rand()
-    else:
-        rand_func = func.random()
-
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
+    shuffled_entries = _shuffled_untasked_entry_ids(rdb_session, rnd)
     if not shuffled_entries:
         return []
     # Note: It's only creating tasks for entries with no tasks. A
@@ -3061,15 +3096,14 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
 
     pairs = zip_longest(to_process, juror_iters, fillvalue=None)
 
-    for entry, juror in pairs:
+    tasks = []
+    for entry_id, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'
-        if entry is None:
+        if entry_id is None:
             break
 
-        # TODO: bulk_save_objects
-        vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-        ret.append(vote)
-    return ret
+        tasks.append({'user_id': juror.id, 'round_entry_id': entry_id})
+    return _insert_tasks(rdb_session, tasks)
 
 
 def reassign_tasks(session, rnd, new_jurors, strategy=None):
