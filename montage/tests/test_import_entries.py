@@ -10,6 +10,7 @@ All file data is synthetic.
 """
 import datetime
 import json
+import zlib
 from unittest.mock import patch
 
 import pytest
@@ -161,15 +162,16 @@ def mock_category(mock_external_apis, file_infos):
                                status=200)
 
 
-def new_round(api_client, name, config=None, quorum=None):
+def new_round(api_client, name, config=None, quorum=None, open_date=OPEN_DATE,
+              close_date='2016-01-01T00:00:00'):
     """A paused round in a fresh campaign; returns the round id."""
     series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
     campaign_id = api_client.fetch(
         'organizer: create campaign', '/admin/add_campaign',
         {'name': name,
          'coordinators': [COORD],
-         'open_date': OPEN_DATE.isoformat(),
-         'close_date': '2016-01-01T00:00:00',
+         'open_date': open_date.isoformat(),
+         'close_date': close_date,
          'url': 'http://hatnote.com',
          'series_id': series_id},
         as_user=COORD)['data']['id']
@@ -476,3 +478,174 @@ def test_mysql_driver_batches_the_inserts():
                          ['entry_id', 'round_id', 'round_source_id'])):
         sql = str(table.insert().compile(dialect=dialect, column_keys=keys))
         assert RE_INSERT_VALUES.match(sql), sql
+
+
+# ---------------------------------------------------------------------------
+# Lookup by file_id for campaigns after the cutoff (#513)
+# ---------------------------------------------------------------------------
+
+AFTER_CUTOFF = rdb.FILE_ID_LOOKUP_CUTOFF + datetime.timedelta(days=30)
+
+
+def with_file_ids(infos):
+    """The same files, all with a file_id (as wikireplica imports give);
+    a missing one is derived from the name, so it is stable and unique."""
+    return [dict(info, file_id=info['file_id']
+                 or 10 ** 7 + zlib.crc32(info['img_name'].encode('utf8')))
+            for info in infos]
+
+
+def new_round_after_cutoff(api_client, name):
+    return new_round(api_client, name, open_date=AFTER_CUTOFF,
+                     close_date='2026-12-31T00:00:00')
+
+
+def _no_name_lookup(*a, **kw):
+    raise AssertionError('looked up entries by name')
+
+
+def _no_file_id_lookup(*a, **kw):
+    raise AssertionError('looked up entries by file_id')
+
+
+def test_file_id_lookup_after_cutoff(montage_app, coord_client,
+                                     mock_external_apis, monkeypatch):
+    first = with_file_ids(make_file_infos('fid', IMPORT_CHUNK_SIZE + 50))
+    more = with_file_ids(make_file_infos('fid', 30, start=500))
+    round_id = new_round_after_cutoff(coord_client, 'fid')
+    # production's indexes on entries: file_id yes, name no
+    monkeypatch.setattr(rdb, '_entries_indexes', lambda session: (
+        {'PRIMARY', 'ix_entries_file_id'}, {'id', 'file_id'}))
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_name_map', _no_name_lookup)
+
+    mock_category(mock_external_apis, first)
+    data = import_category(coord_client, round_id)['data']
+    assert data['new_round_entry_count'] == len(first)
+    ids_before = entry_ids(montage_app, 'fid')
+    assert len(ids_before) == len(first)
+
+    mock_category(mock_external_apis, first + more)
+    data = import_category(coord_client, round_id)['data']
+    assert data['new_round_entry_count'] == 30
+    ids_after = entry_ids(montage_app, 'fid')
+    assert len(ids_after) == len(first) + 30
+    assert {k: ids_after[k] for k in ids_before} == ids_before
+
+    # a second campaign after the cutoff reuses the same rows
+    other = new_round_after_cutoff(coord_client, 'fid other')
+    data = import_category(coord_client, other)['data']
+    assert data['new_round_entry_count'] == len(first) + 30
+    assert entry_ids(montage_app, 'fid') == ids_after
+
+
+def test_name_lookup_before_cutoff(montage_app, coord_client,
+                                   mock_external_apis, monkeypatch):
+    infos = with_file_ids(make_file_infos('old', 40))
+    round_id = new_round(coord_client, 'old')  # opens in 2015
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
+                        _no_file_id_lookup)
+    mock_category(mock_external_apis, infos)
+    import_category(coord_client, round_id)
+    assert len(entry_ids(montage_app, 'old')) == 40
+
+
+def test_name_lookup_when_a_file_id_is_missing(montage_app, coord_client,
+                                               mock_external_apis,
+                                               monkeypatch):
+    infos = make_file_infos('nofid', 40)  # some have file_id None
+    assert any(info['file_id'] is None for info in infos)
+    round_id = new_round_after_cutoff(coord_client, 'nofid')
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
+                        _no_file_id_lookup)
+    mock_category(mock_external_apis, infos)
+    import_category(coord_client, round_id)
+    assert len(entry_ids(montage_app, 'nofid')) == 40
+
+
+def test_file_id_lookup_keeps_the_row_of_a_renamed_file(montage_app,
+                                                        coord_client,
+                                                        mock_external_apis):
+    infos = with_file_ids(make_file_infos('ren', 3))
+    round_a = new_round_after_cutoff(coord_client, 'ren a')
+    mock_category(mock_external_apis, infos)
+    import_category(coord_client, round_a)
+    ids = entry_ids(montage_app, 'ren')
+
+    renamed = [dict(infos[0], img_name='ren_renamed.jpg')] + infos[1:]
+    round_b = new_round_after_cutoff(coord_client, 'ren b')
+    mock_category(mock_external_apis, renamed)
+    data = import_category(coord_client, round_b)['data']
+    assert data['new_round_entry_count'] == 3
+    assert entry_ids(montage_app, 'ren') == ids  # no row for the new name
+
+
+def test_file_id_lookup_keeps_the_row_of_a_file_without_file_id(
+        montage_app, coord_client, mock_external_apis):
+    # imported before the cutoff, so stored without a file_id
+    infos = with_file_ids(make_file_infos('pre', 5))
+    old_round = new_round(coord_client, 'pre old')
+    mock_category(mock_external_apis,
+                  [dict(info, file_id=None) for info in infos])
+    import_category(coord_client, old_round)
+    ids = entry_ids(montage_app, 'pre')
+
+    # the same files after the cutoff, now with a file_id: where entries.name
+    # is indexed (here unique, as on beta) they keep their rows
+    new = new_round_after_cutoff(coord_client, 'pre new')
+    mock_category(mock_external_apis, infos)
+    data = import_category(coord_client, new)['data']
+    assert data['new_round_entry_count'] == 5
+    assert entry_ids(montage_app, 'pre') == ids
+
+
+def test_entries_indexes_works_with_the_apps_connect_listener():
+    """The app runs SET NAMES on every new connection (app.py); reflecting
+    on the engine then hit a closed connection on montage-dev."""
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import sessionmaker
+    engine = create_engine('sqlite://')
+    rdb.Base.metadata.create_all(engine)
+
+    def like_set_names(connection, branch):
+        connection.execute('PRAGMA foreign_keys = ON')  # no rows, like SET NAMES
+
+    event.listen(engine, 'engine_connect', like_set_names)
+    session = sessionmaker(bind=engine)()
+    session.query(Entry.id).first()
+    rdb._ENTRIES_INDEX_CACHE.clear()
+    names, first_columns = rdb._entries_indexes(session)
+    assert 'name' in first_columns
+    session.query(Entry.id).first()  # the session is still usable
+
+
+def test_entries_indexes_reads_the_database():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    engine = create_engine('sqlite://')
+    rdb.Base.metadata.create_all(engine)
+    names, first_columns = rdb._entries_indexes(sessionmaker(bind=engine)())
+    assert 'name' in first_columns          # the model's unique index
+    assert 'ix_entries_file_id' not in names  # only migrate_prod_db.sql adds it
+
+
+def test_file_id_lookups_stay_below_the_index_dive_limit(
+        montage_app, coord_client, mock_external_apis, monkeypatch):
+    """MariaDB stops using ix_entries_file_id for IN lists of 200 values or
+    more (eq_range_index_dive_limit); see rdb.FILE_ID_LOOKUP_CHUNK_SIZE."""
+    assert rdb.FILE_ID_LOOKUP_CHUNK_SIZE < 200
+    sizes = []
+    real_lookup = CoordinatorDAO.get_entry_file_id_map
+
+    def recording_lookup(self, file_ids):
+        sizes.append(len(file_ids))
+        return real_lookup(self, file_ids)
+
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
+                        recording_lookup)
+    infos = with_file_ids(make_file_infos('dive', 450))
+    round_id = new_round_after_cutoff(coord_client, 'dive')
+    mock_category(mock_external_apis, infos)
+    import_category(coord_client, round_id)
+
+    assert len(entry_ids(montage_app, 'dive')) == 450
+    assert sizes and max(sizes) <= rdb.FILE_ID_LOOKUP_CHUNK_SIZE
