@@ -84,7 +84,36 @@ describe('Campaign Details Page', () => {
     .find('li')
     .first()
     .click();
-    cy.get('.button-group button').contains('Add Round').click().click();
+  // #510: the source is checked before the round can be saved
+  cy.intercept('POST', '/v1/admin/campaign/*/import/check', {
+    body: {
+      status: 'success',
+      data: {
+        token: 'cypress-check-token-000000000000',
+        checked_at: '2025-08-01T00:00:00Z',
+        expires_at: '2025-08-08T00:00:00Z',
+        import_method: 'selected',
+        source: { file_names: ['Example.jpg'] },
+        columns: { name: null, file_id: null, ignored: [] },
+        counts: { ok: 1, renamed: 0, duplicate: 0, unknown_name: 0,
+                  unknown_file_id: 0, malformed_file_id: 0, same_name: 0 },
+        blocking: false,
+        total_rows: 1,
+        importable_count: 1,
+        issues: [],
+        issues_total: 0,
+        issues_truncated: false,
+        same_name_groups: []
+      }
+    }
+  }).as('checkImport')
+  cy.get('.form-container').contains('label', 'File List').click()
+  cy.get('.form-container textarea').first().type('Example.jpg')
+  cy.get('.button-group button').contains('Add Round').should('be.disabled')
+  cy.get('[data-testid="check-source-button"]').click()
+  cy.wait('@checkImport')
+  cy.get('[data-testid="import-check-result"]').should('be.visible')
+    cy.get('.button-group button').contains('Add Round').click();
     cy.log(' Round created successfully');
 })
 
