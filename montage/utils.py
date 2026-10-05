@@ -73,6 +73,37 @@ class NotImplementedResponse(MontageError, BadRequest, NotImplementedError):
     "Raised when a feature hasn't yet been implemented"
 
 
+# Import check errors (hatnote/montage#510). They carry an error_type so the
+# frontend can tell them apart; subclasses of InvalidAction (400), not of
+# ValueError/TypeError, which older import code caught as "try another format".
+class _ImportError(InvalidAction):
+    error_type = None
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('error_type', self.error_type)
+        super(_ImportError, self).__init__(*args, **kwargs)
+
+
+class ImportSourceInvalid(_ImportError):
+    "The import source cannot be read (bad link, no name column, ...)"
+    error_type = 'import_source_invalid'
+
+
+class ImportCheckBlocked(_ImportError):
+    "The checked list has rows that block the import"
+    error_type = 'import_check_blocked'
+
+
+class ImportCheckExpired(_ImportError):
+    "The check token is unknown, expired or for another campaign/source"
+    error_type = 'import_check_expired'
+
+
+class ImportCheckRequired(_ImportError):
+    "An import of a first-round source was sent without a check token"
+    error_type = 'import_check_required'
+
+
 DEFAULT_SERIES = {'name': 'Unofficial',
                   'description': 'For unofficial campaigns, whether for testing or just for fun!',
                   'url': 'TODO add docs url'}  # TODO: status is always active
@@ -159,6 +190,7 @@ DEVTEST_CONFIG = {'oauth_client_id': None,
                   'debug': True,
                   'superusers': ['Slaporte', 'MahmoudHashemi'],
                   'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
+                  'import_check_path': None,
                   '__file__': 'devtest-builtin',
                   '__env__': 'devtest',
 }
@@ -203,6 +235,7 @@ def _load_config_from_env(env_name):
         'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),
         'replay_log_path': os.environ.get('MONTAGE_REPLAY_LOG_PATH'),
         'feel_log_path': os.environ.get('MONTAGE_FEEL_LOG_PATH'),
+        'import_check_path': os.environ.get('MONTAGE_IMPORT_CHECK_PATH'),
         '__env__': env_name,
         '__file__': 'environment',
     })
