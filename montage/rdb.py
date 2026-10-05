@@ -654,6 +654,65 @@ def _entry_insert_row(entry):
     return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
 
 
+# Imports have stored Commons' file_id since 2026-05-31: on production the
+# last category-imported entry without one dates from 2026-05-30 13:21, the
+# first with one from 2026-05-31 20:52. A file new to Montage after this date
+# therefore has its file_id stored (hatnote/montage#513).
+FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
+
+# Batch size for lookups by file_id: below 200 on purpose. MariaDB's
+# eq_range_index_dive_limit is 200 by default (ToolsDB too): with fewer
+# values in an IN (...) list the optimizer counts the matching rows in the
+# index and uses ix_entries_file_id; from 200 values on it estimates from
+# index statistics, misjudges this column and reads the whole table.
+# Measured on production on 2026-10-05 (#513): 199 ids took 2-7 ms with the
+# index, for existing and for new file_ids alike; 200 ids read the whole
+# table (0.56 s warm, 9.4 s cold). If a future server or setting changes
+# this (check with EXPLAIN), a fallback is
+# query.with_hint(Entry, 'FORCE INDEX (ix_entries_file_id)', 'mysql'):
+# 2 ms for 200 ids there, but only where that index exists, as the model
+# does not declare it (tools/migrate_prod_db.sql creates it).
+FILE_ID_LOOKUP_CHUNK_SIZE = 199
+
+
+def _use_file_id_lookup(rnd, entries):
+    """Whether add_entries looks entries up by file_id instead of by name
+    (#513): when the campaign opened after FILE_ID_LOOKUP_CUTOFF and every
+    entry has a file_id (wikireplica imports; CSV imports have none).
+    Production has no index on entries.name, so a lookup by name reads the
+    whole table; by file_id it uses ix_entries_file_id, in batches of
+    FILE_ID_LOOKUP_CHUNK_SIZE.
+
+    Files not found by file_id are looked up by name only where entries.name
+    is indexed (see _add_entries_by_file_id); elsewhere a file imported
+    before the cutoff, without a file_id, gets a second entries row.
+    Campaigns opening after the cutoff rarely contain such files."""
+    open_date = rnd.campaign.open_date if rnd.campaign else None
+    if open_date is None or open_date < FILE_ID_LOOKUP_CUTOFF:
+        return False
+    return bool(entries) and all(e.file_id is not None for e in entries)
+
+
+_ENTRIES_INDEX_CACHE = {}
+_ENTRIES_INDEX_TTL = 600  # seconds; a newly added index is used within this
+
+
+def _entries_indexes(rdb_session):
+    """(index names, first columns) of the entries table, as the database
+    has them: production's indexes differ from the model's (no index on
+    name, ix_entries_file_id only through tools/migrate_prod_db.sql)."""
+    engine = rdb_session.get_bind()
+    engine = getattr(engine, 'engine', engine)
+    cached = _ENTRIES_INDEX_CACHE.get(id(engine))
+    if cached and time.time() - cached[0] < _ENTRIES_INDEX_TTL:
+        return cached[1]
+    indexes = inspect(engine).get_indexes('entries')
+    found = (set(i['name'] for i in indexes),
+             set(i['column_names'][0] for i in indexes if i['column_names']))
+    _ENTRIES_INDEX_CACHE[id(engine)] = (time.time(), found)
+    return found
+
+
 class RoundSource(Base):
     __tablename__ = 'round_sources'
 
@@ -1212,6 +1271,18 @@ class CoordinatorDAO(UserDAO):
             ret[name] = entry
         return ret
 
+    def get_entry_file_id_map(self, file_ids):
+        # Keep len(file_ids) below 200: see FILE_ID_LOOKUP_CHUNK_SIZE.
+        entries = (self.query(Entry)
+                       .filter(Entry.file_id.in_(file_ids))
+                       .order_by(Entry.id)
+                       .all())
+        ret = {}
+        for entry in entries:
+            # with duplicates, the oldest row wins, as a stable choice
+            ret.setdefault(entry.file_id, entry)
+        return ret
+
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)
                            .filter_by(round_id=round_id)
@@ -1675,6 +1746,9 @@ class CoordinatorDAO(UserDAO):
                 deduped.append(e)
         entries = deduped
 
+        if _use_file_id_lookup(rnd, entries):
+            return self._add_entries_by_file_id(entries)
+
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
         new_entry_count = 0
@@ -1696,6 +1770,47 @@ class CoordinatorDAO(UserDAO):
 
             for entry in entry_chunk:
                 ret.append(db_entries[to_unicode(entry.name)])
+
+        return ret, new_entry_count
+
+    def _add_entries_by_file_id(self, entries):
+        """add_entries for imports where every entry has a file_id (see
+        _use_file_id_lookup): existing rows are found, and new rows read
+        back, by file_id instead of by name."""
+        seen = set()
+        deduped = []
+        for e in entries:
+            if e.file_id not in seen:
+                seen.add(e.file_id)
+                deduped.append(e)
+
+        # Files imported before the cutoff have no file_id; find them by name
+        # where that is cheap (an index on name), so they keep their row.
+        # Production has no such index: there they get a second row.
+        name_fallback = 'name' in _entries_indexes(self.rdb_session)[1]
+
+        ret = []
+        new_entry_count = 0
+        for entry_chunk in chunked(deduped, FILE_ID_LOOKUP_CHUNK_SIZE):
+            db_entries = self.get_entry_file_id_map(
+                [e.file_id for e in entry_chunk])
+            missing = [e for e in entry_chunk if e.file_id not in db_entries]
+            if missing and name_fallback:
+                by_name = self.get_entry_name_map(
+                    [to_unicode(e.name) for e in missing])
+                for e in missing:
+                    row = by_name.get(to_unicode(e.name))
+                    if row is not None and row.file_id is None:
+                        db_entries[e.file_id] = row
+            new_rows = [_entry_insert_row(e) for e in entry_chunk
+                        if e.file_id not in db_entries]
+            if new_rows:
+                self.rdb_session.execute(entries_t.insert(), new_rows)
+                new_entry_count += len(new_rows)
+                db_entries.update(
+                    self.get_entry_file_id_map([r['file_id'] for r in new_rows]))
+            for entry in entry_chunk:
+                ret.append(db_entries[entry.file_id])
 
         return ret, new_entry_count
 
