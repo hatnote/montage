@@ -38,6 +38,10 @@ from montage.rdb import (make_rdb_session,
                          CoordinatorDAO,
                          reassign_rating_tasks,
                          lookup_user)
+from montage.import_check import (run_check, raise_if_blocked, importable,
+                                  import_warnings, describe_source,
+                                  source_params, lookup_source)
+from montage.loaders import make_entry
 from montage.utils import get_threshold_map
 
 
@@ -218,14 +222,12 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     campaign = user_dao.get_campaign(campaign_id)
 
     if not advance:
-        entries = coord_dao.add_entries_from_cat(rnd.id, category_name)
-        source = category_name
-        # GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
-        # entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
-        # source = GIST_URL
+        request = {'import_method': 'category', 'category': category_name}
+        entries, params = _checked_entries(user_dao, coord_dao, rnd.id, request)
         print(('++ prepared %s entries from %r' %
-               (len(entries), source)))
-        coord_dao.add_round_entries(rnd.id, entries)
+               (len(entries), category_name)))
+        coord_dao.add_round_entries(rnd.id, entries, method='category',
+                                    params=params)
     else:
         final_rnds = [r for r in campaign.rounds if r.status == 'finalized']
         last_successful_rnd = final_rnds[-1]
@@ -466,13 +468,29 @@ def check_round_dupes(user_dao, round_id):
     return
 
 
+def _checked_entries(user_dao, coord_dao, round_id, request):
+    """Check an import source like the round form does (#510), stop on
+    blocking rows, and store the checked entries; returns (entries,
+    round source params). The check is not written to a file."""
+    result = run_check(request, coord_dao.campaign.id, source=lookup_source(),
+                       rdb_session=user_dao.rdb_session)
+    raise_if_blocked(result)
+    for warning in import_warnings(result):
+        print('!! %s' % (list(warning.values())[0],))
+    entries = [make_entry(row['commons']) for row in importable(result)]
+    entries = coord_dao.add_checked_entries(round_id, entries,
+                                            describe_source(result))
+    return entries, source_params(result)
+
+
 def import_gist(user_dao, round_id, url):
     "import round entries from a csv list"
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    entries, warnings = coord_dao.add_entries_from_csv(round_id, url)
+    request = {'import_method': 'gistcsv', 'gist_url': url}
+    entries, params = _checked_entries(user_dao, coord_dao, round_id, request)
     stats = coord_dao.add_round_entries(round_id, entries,
                                         method='gistcsv',
-                                        params={'gist_url': url})
+                                        params=params)
     print('++ added entries to round %s: %r' % (round_id, stats))
 
 

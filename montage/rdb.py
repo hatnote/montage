@@ -654,12 +654,6 @@ def _entry_insert_row(entry):
     return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
 
 
-# Imports have stored Commons' file_id since 2026-05-31: on production the
-# last category-imported entry without one dates from 2026-05-30 13:21, the
-# first with one from 2026-05-31 20:52. A file new to Montage after this date
-# therefore has its file_id stored (hatnote/montage#513).
-FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
-
 # Batch size for lookups by file_id: below 200 on purpose. MariaDB's
 # eq_range_index_dive_limit is 200 by default (ToolsDB too): with fewer
 # values in an IN (...) list the optimizer counts the matching rows in the
@@ -675,21 +669,17 @@ FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
 FILE_ID_LOOKUP_CHUNK_SIZE = 199
 
 
-def _use_file_id_lookup(rnd, entries):
+def _use_file_id_lookup(entries):
     """Whether add_entries looks entries up by file_id instead of by name
-    (#513): when the campaign opened after FILE_ID_LOOKUP_CUTOFF and every
-    entry has a file_id (wikireplica imports; CSV imports have none).
-    Production has no index on entries.name, so a lookup by name reads the
-    whole table; by file_id it uses ix_entries_file_id, in batches of
-    FILE_ID_LOOKUP_CHUNK_SIZE.
+    (#513): when every entry has a file_id, which every checked import
+    gives (#510), in every campaign. Production has no index on
+    entries.name, so a lookup by name reads the whole table; by file_id it
+    uses ix_entries_file_id, in batches of FILE_ID_LOOKUP_CHUNK_SIZE.
 
     Files not found by file_id are looked up by name only where entries.name
     is indexed (see _add_entries_by_file_id); elsewhere a file imported
-    before the cutoff, without a file_id, gets a second entries row.
-    Campaigns opening after the cutoff rarely contain such files."""
-    open_date = rnd.campaign.open_date if rnd.campaign else None
-    if open_date is None or open_date < FILE_ID_LOOKUP_CUTOFF:
-        return False
+    before 2026-05-31, stored without a file_id, gets a second entries row
+    (accepted until the backfill, #513)."""
     return bool(entries) and all(e.file_id is not None for e in entries)
 
 
@@ -1658,57 +1648,18 @@ class CoordinatorDAO(UserDAO):
 
         return
 
-    def add_entries_from_cat(self, round_id, cat_name):
+    def add_checked_entries(self, round_id, entries, source_description):
+        """Store the entries of a checked import (import_check.py, #510);
+        returns the stored Entry rows, in the order given."""
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries = loaders.load_category(cat_name, source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
-        msg = ('%s loaded %s entries from category (%s), %s new entries added'
-               % (self.user.username, len(entries), cat_name, new_entry_count))
+        msg = ('%s loaded %s entries from %s, %s new entries added'
+               % (self.user.username, len(entries), source_description,
+                  new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries
-
-    def add_entries_by_name(self, round_id, file_names):
-        rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries, warnings = loaders.load_by_filename(file_names, source=source)
-        entries, new_entry_count = self.add_entries(rnd, entries)
-
-        msg = ('%s loaded %s entries from filenames, %s new entries added'
-               % (self.user.username, len(entries), new_entry_count))
-        self.log_action('add_entries', message=msg, round=rnd)
-
-        return entries, warnings
-
-    def add_entries_from_csv(self, round_id, csv_url):
-        # NOTE: this no longer creates RoundEntries, use
-        # add_round_entries to do this.
-        rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        try:
-            entries, warnings = loaders.get_entries_from_csv(csv_url,
-                                                             source=source)
-        except ValueError:
-            raise InvalidAction('unable to load csv "%s"' % csv_url)
-
-        entries, new_entry_count = self.add_entries(rnd, entries)
-
-        msg = ('%s loaded %s entries from csv (%r), %s new entries added'
-               % (self.user.username, len(entries), csv_url, new_entry_count))
-        self.log_action('add_entries', message=msg, round=rnd)
-
-        return entries, warnings
 
     def get_round_sources(self, round_id, import_method):
         round_sources = (self.query(RoundSource)
@@ -1750,7 +1701,7 @@ class CoordinatorDAO(UserDAO):
                 deduped.append(e)
         entries = deduped
 
-        if _use_file_id_lookup(rnd, entries):
+        if _use_file_id_lookup(entries):
             return self._add_entries_by_file_id(entries)
 
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)

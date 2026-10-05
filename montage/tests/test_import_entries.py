@@ -189,11 +189,11 @@ def new_round(api_client, name, config=None, quorum=None, open_date=OPEN_DATE,
 
 
 def import_category(api_client, round_id, **kw):
-    return api_client.fetch('coordinator: import category',
-                            '/admin/round/%s/import' % round_id,
-                            {'import_method': 'category',
-                             'category': 'Synthetic_test_category'},
-                            as_user=COORD, **kw)
+    return api_client.fetch_checked_import('coordinator: import category',
+                                           round_id,
+                                           {'import_method': 'category',
+                                            'category': 'Synthetic_test_category'},
+                                           as_user=COORD, **kw)
 
 
 def _load_json(raw):
@@ -226,6 +226,8 @@ def round_rows(app, round_id, strip_prefix=''):
         row['flags'] = _load_json(row['flags'])
         row['re_flags'] = _load_json(row['re_flags'])
         row['source_params'] = _load_json(row['source_params'])
+        # random per check (#510); stored, see test_check_token_is_stored...
+        row['source_params'].pop('check_token', None)
         row['name'] = row['name'][len(strip_prefix):]
         if row['flags'].get('archive_name'):
             row['flags']['archive_name'] = row['flags']['archive_name'].replace(strip_prefix, '')
@@ -481,10 +483,11 @@ def test_mysql_driver_batches_the_inserts():
 
 
 # ---------------------------------------------------------------------------
-# Lookup by file_id for campaigns after the cutoff (#513)
+# Lookup by file_id (#513, #654); since #510 in every campaign, not only in
+# campaigns opened from 2026-06-01 (the former FILE_ID_LOOKUP_CUTOFF)
 # ---------------------------------------------------------------------------
 
-AFTER_CUTOFF = rdb.FILE_ID_LOOKUP_CUTOFF + datetime.timedelta(days=30)
+AFTER_CUTOFF = datetime.datetime(2026, 6, 1) + datetime.timedelta(days=30)
 
 
 def with_file_ids(infos):
@@ -538,12 +541,15 @@ def test_file_id_lookup_after_cutoff(montage_app, coord_client,
     assert entry_ids(montage_app, 'fid') == ids_after
 
 
-def test_name_lookup_before_cutoff(montage_app, coord_client,
-                                   mock_external_apis, monkeypatch):
+def test_file_id_lookup_in_old_campaigns_too(montage_app, coord_client,
+                                            mock_external_apis, monkeypatch):
+    """#510: checked imports match by file_id whatever the campaign's open
+    date; #654 did so only from 2026-06-01."""
     infos = with_file_ids(make_file_infos('old', 40))
     round_id = new_round(coord_client, 'old')  # opens in 2015
-    monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
-                        _no_file_id_lookup)
+    monkeypatch.setattr(rdb, '_entries_indexes', lambda session: (
+        {'PRIMARY', 'ix_entries_file_id'}, {'id', 'file_id'}))
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_name_map', _no_name_lookup)
     mock_category(mock_external_apis, infos)
     import_category(coord_client, round_id)
     assert len(entry_ids(montage_app, 'old')) == 40

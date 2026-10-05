@@ -118,6 +118,20 @@ class MontageTestClient(object):
             raise
         return data_dict
 
+    def fetch_checked_import(self, role_action, round_id, data, **kw):
+        """Import into a first round the way the round form does (#510):
+        check the source for the round's campaign, then import with the
+        check token. Returns the import's response."""
+        as_user = kw.get('as_user')
+        rnd = self.fetch('coordinator: get round', '/admin/round/%s' % round_id,
+                         as_user=as_user)['data']
+        check = self.fetch('coordinator: check import source',
+                           '/admin/campaign/%s/import/check' % rnd['campaign']['id'],
+                           data, as_user=as_user)['data']
+        return self.fetch(role_action, '/admin/round/%s/import' % round_id,
+                          {'import_method': data['import_method'],
+                           'check_token': check['token']}, **kw)
+
 
 def _create_schema(db_url, echo=True):
     from sqlalchemy import create_engine
@@ -133,6 +147,7 @@ def _create_schema(db_url, echo=True):
 def montage_app(tmpdir):
     config = utils.load_env_config(env_name='devtest')
     config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
+    config['import_check_path'] = str(tmpdir.join('import_checks'))
     db_url = config['db_url']
     _create_schema(db_url=db_url)
 
@@ -318,8 +333,8 @@ def test_home_client(base_client, api_client, mock_external_apis):
 
     data = {'import_method': 'category',
             'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
-    resp = fetch('coordinator: import entries from a category',
-                 '/admin/round/%s/import' % round_id,
+    resp = api_client.fetch_checked_import('coordinator: import entries from a category',
+                 round_id,
                  data, as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: activate a round',
@@ -333,13 +348,13 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  as_user='LilyOfTheWest')
 
     gsheet_url = 'https://docs.google.com/spreadsheets/d/1WzHFg_bhvNthRMwNmxnk010KJ8fwuyCrby29MvHUzH8/edit#gid=550467819'
-    resp = fetch('coordinator: import more entries from different gsheet csv into an existing round',
-                 '/admin/round/%s/import' % round_id,
+    resp = api_client.fetch_checked_import('coordinator: import more entries from different gsheet csv into an existing round',
+                 round_id,
                  {'import_method': 'csv', 'csv_url': gsheet_url},
                  as_user='LilyOfTheWest')
 
-    resp = fetch('coordinator: import files selected by name',
-                 '/admin/round/%s/import' % round_id,
+    resp = api_client.fetch_checked_import('coordinator: import files selected by name',
+                 round_id,
                  {'import_method': 'selected', 'file_names': ['Reynisfjara, Suðurland, Islandia, 2014-08-17, DD 164.JPG']},
                  as_user='LilyOfTheWest')
 
@@ -921,9 +936,9 @@ def test_import_entries_have_file_id(api_client, mock_external_apis):
     )
     round_id = rnd_resp['data']['id']
 
-    api_client.fetch(
+    api_client.fetch_checked_import(
         'coordinator: import entries via category',
-        '/admin/round/%s/import' % round_id,
+        round_id,
         {'import_method': 'category',
          'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
         as_user='Yarl',
@@ -1013,9 +1028,9 @@ def test_category_import_batches_inserts(api_client, mock_external_apis):
             inserts[table] = inserts.get(table, 0) + 1
 
     def do_import():
-        return api_client.fetch(
+        return api_client.fetch_checked_import(
             'coordinator: import entries via category',
-            '/admin/round/%s/import' % round_id,
+            round_id,
             {'import_method': 'category', 'category': 'Batch_import'},
             as_user='Yarl')['data']
 
@@ -1175,8 +1190,8 @@ def test_vote_later_reappears(api_client, mock_external_apis):
                  as_user='LilyOfTheWest')
     round_id = resp['data']['id']
 
-    fetch('coordinator: import entries',
-          '/admin/round/%s/import' % round_id,
+    api_client.fetch_checked_import('coordinator: import entries',
+          round_id,
           {'import_method': 'category',
            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
           as_user='LilyOfTheWest')
@@ -1273,8 +1288,8 @@ def test_concurrent_activation_creates_no_duplicate_tasks(montage_app, api_clien
                  as_user='LilyOfTheWest')
     round_id = resp['data']['id']
 
-    fetch('coordinator: import entries',
-          '/admin/round/%s/import' % round_id,
+    api_client.fetch_checked_import('coordinator: import entries',
+          round_id,
           {'import_method': 'category',
            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
           as_user='LilyOfTheWest')
@@ -1357,8 +1372,8 @@ def test_activation_inserts_tasks_in_batches(montage_app, api_client,
                  as_user='LilyOfTheWest')
     round_id = resp['data']['id']
 
-    resp = fetch('coordinator: import entries',
-                 '/admin/round/%s/import' % round_id,
+    resp = api_client.fetch_checked_import('coordinator: import entries',
+                 round_id,
                  {'import_method': 'category',
                   'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
                  as_user='LilyOfTheWest')
@@ -1549,8 +1564,8 @@ def test_selected_import_with_missing_name_reports_warning(montage_app, api_clie
          'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
         as_user='Yarl')['data']['id']
 
-    data = api_client.fetch(
-        'coordinator: import selected files', '/admin/round/%s/import' % round_id,
+    data = api_client.fetch_checked_import(
+        'coordinator: import selected files', round_id,
         {'import_method': 'selected',
          'file_names': [SELECTED_FILE_INFO['img_name'], 'Not on Commons.jpg']},
         as_user='Yarl')['data']
@@ -1563,13 +1578,13 @@ def test_selected_import_with_missing_name_reports_warning(montage_app, api_clie
 def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_apis, monkeypatch):
     """The frontend shows one value per warning; a plain string showed only
     its last character. CSV warnings must be dicts like the others."""
-    from montage import loaders
-    from montage.tests.conftest import FIXTURE_FILE_INFOS
+    import responses as responses_lib
+    from montage.tests.conftest import FIXTURE_FILE_INFOS, build_filename_csv
 
-    def fake_csv(url, source='local'):
-        entries = [loaders.make_entry(info) for info in FIXTURE_FILE_INFOS[:3]]
-        return entries, ['file "Gone.jpg" does not exist']
-    monkeypatch.setattr(loaders, 'get_entries_from_csv', fake_csv)
+    # a plain CSV link (fetched as given, #208): 3 known names + 1 unknown
+    mock_external_apis.add(responses_lib.GET, 'https://example.org/files.csv',
+                           body=build_filename_csv(FIXTURE_FILE_INFOS[:3]) + 'Gone.jpg\n',
+                           status=200)
 
     api_client.fetch('maintainer: add organizer', '/admin/add_organizer', {'username': 'Yarl'})
     series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
@@ -1585,8 +1600,8 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
          'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
         as_user='Yarl')['data']['id']
 
-    data = api_client.fetch(
-        'coordinator: import csv', '/admin/round/%s/import' % round_id,
+    data = api_client.fetch_checked_import(
+        'coordinator: import csv', round_id,
         {'import_method': 'csv', 'csv_url': 'https://example.org/files.csv'},
         as_user='Yarl')['data']
     data = _import_result(montage_app, api_client, round_id, data)
