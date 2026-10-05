@@ -414,3 +414,248 @@ def test_header_less_list_with_comma_names(monkeypatch, commons):
     result = csv_check(monkeypatch, u'%s\n%s\n' % (VOLOCHEK.replace('_', ' '), VOLOCHYOK))
     assert [(r['row'], r['commons_name'], r['status']) for r in result['rows']] == [
         (1, VOLOCHEK, 'same_name'), (2, VOLOCHYOK, 'same_name')]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: check, download, import by token
+# ---------------------------------------------------------------------------
+
+from montage.tests.test_web_basic import montage_app, api_client  # noqa: E402,F401
+from montage.tests.test_import_entries import (  # noqa: E402,F401
+    COORD, coord_client, new_round, db_query, entry_ids, round_rows)
+
+
+def _campaign_of(client, round_id):
+    return client.fetch('coordinator: get round', '/admin/round/%s' % round_id,
+                        as_user=COORD)['data']['campaign']['id']
+
+
+@pytest.fixture
+def local_commons(monkeypatch, commons):
+    """Endpoint tests run as 'dev'; look Commons up 'locally' (stand-in)
+    so lookups by file_id happen, as on Toolforge."""
+    monkeypatch.setattr(import_check, 'lookup_source', lambda: 'local')
+    return commons
+
+
+def _source(monkeypatch, text):
+    monkeypatch.setattr(import_check, 'fetch_source_text', lambda url: text)
+
+
+def _check(client, campaign_id, error_code=None, **request):
+    request.setdefault('import_method', 'csv')
+    request.setdefault('csv_url', 'https://example.org/list.csv')
+    kw = {'error_code': error_code} if error_code else {}
+    return client.fetch('coordinator: check import source',
+                        '/admin/campaign/%s/import/check' % campaign_id,
+                        request, as_user=COORD, **kw)
+
+
+def _import(client, round_id, token, method='csv', error_code=None):
+    data = {'import_method': method}
+    if token:
+        data['check_token'] = token
+    kw = {'error_code': error_code} if error_code else {}
+    return client.fetch('coordinator: import', '/admin/round/%s/import' % round_id,
+                        data, as_user=COORD, **kw)
+
+
+def _body(resp):
+    return resp.get_data(as_text=True)
+
+
+def test_check_endpoint_writes_no_rows(montage_app, coord_client, local_commons,
+                                       monkeypatch):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'filename,File ID\nA.jpg,x\nGone.jpg,\n')
+    round_id = new_round(coord_client, 'chk')
+    data = _check(coord_client, _campaign_of(coord_client, round_id))['data']
+    assert len(data['token']) == 32
+    assert data['counts']['ok'] == 1 and data['counts']['unknown_name'] == 1
+    assert data['columns']['ignored'] == ['File ID']
+    assert not data['blocking'] and data['importable_count'] == 1
+    assert [i['row'] for i in data['issues']] == [3]
+    assert db_query(montage_app, 'SELECT id FROM entries') == []
+    assert db_query(montage_app, 'SELECT id FROM round_sources') == []
+
+
+def test_check_and_download_need_a_coordinator(montage_app, coord_client,
+                                               local_commons, monkeypatch):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'A.jpg\n')
+    round_id = new_round(coord_client, 'perm')
+    campaign_id = _campaign_of(coord_client, round_id)
+    token = _check(coord_client, campaign_id)['data']['token']
+    coord_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                       {'username': 'Outsider'})
+    coord_client.fetch('outsider: check', '/admin/campaign/%s/import/check' % campaign_id,
+                       {'import_method': 'csv', 'csv_url': 'x'}, as_user='Outsider',
+                       error_code=403)
+    coord_client.fetch('outsider: download',
+                       '/admin/campaign/%s/import/check/%s/download' % (campaign_id, token),
+                       as_user='Outsider', error_code=403)
+
+
+def test_download(montage_app, coord_client, local_commons, monkeypatch):
+    local_commons([info('A.jpg', 1), info('B_new.jpg', 2)])
+    _source(monkeypatch, 'filename,file_id\nA.jpg,1\nB old.jpg,2\nGone.jpg,\n')
+    round_id = new_round(coord_client, 'dl')
+    campaign_id = _campaign_of(coord_client, round_id)
+    token = _check(coord_client, campaign_id)['data']['token']
+    resp = coord_client.fetch('coordinator: download check',
+                              '/admin/campaign/%s/import/check/%s/download'
+                              % (campaign_id, token), as_user=COORD)
+    assert resp.headers['Content-Disposition'].startswith(
+        'attachment; filename=montage_import-%s-' % campaign_id)
+    assert _body(resp) == 'filename,file_id\nA.jpg,1\nB_new.jpg,2\n'
+
+
+def test_import_without_a_token_is_refused(montage_app, coord_client):
+    round_id = new_round(coord_client, 'notoken')
+    for method in ('csv', 'gistcsv', 'category', 'selected'):
+        resp = _import(coord_client, round_id, None, method, error_code=400)
+        assert 'import_check_required' in _body(resp)
+    assert db_query(montage_app, 'SELECT id FROM round_sources') == []
+
+
+def test_import_takes_the_checked_list_without_lookups(montage_app, coord_client,
+                                                      local_commons, monkeypatch):
+    """#509 + #510: a full CSV with stale metadata imports Commons' data and
+    file_ids; the import fetches nothing and asks Commons nothing."""
+    local_commons([info('A.jpg', 1, img_width=4000), info('B_new.jpg', 2)])
+    _source(monkeypatch, 'img_name,file_id,img_width,img_user_text\n'
+                         'A.jpg,,10,Stale\nB old.jpg,2,10,Stale\n')
+    round_id = new_round(coord_client, 'bytoken')
+    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
+
+    def boom(*a, **kw):
+        raise AssertionError('looked something up during the import')
+    for name in ('fetch_source_text', 'lookup_by_names', 'lookup_by_ids',
+                 'category_records'):
+        monkeypatch.setattr(import_check, name, boom)
+    from montage import labs
+    monkeypatch.setattr(labs, '_connect', boom)
+    with responses_lib.RequestsMock():  # any HTTP request fails
+        data = _import(coord_client, round_id, token)['data']
+
+    assert data['new_round_entry_count'] == 2
+    assert ['renamed'] in [list(w) for w in data['warnings']]
+    assert all(len(w) == 1 for w in data['warnings'])  # one-key dicts
+    rows = round_rows(montage_app, round_id)
+    assert [(r['name'], r['file_id'], r['width'], r['upload_user_text'])
+            for r in rows] == [('A.jpg', 1, 4000, 'Uploader'),
+                               ('B_new.jpg', 2, 3000, 'Uploader')]
+    assert rows[0]['source_params']['csv_url'] == 'https://example.org/list.csv'
+
+
+def test_check_token_is_stored_in_the_round_source(montage_app, coord_client,
+                                                   local_commons, monkeypatch):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'A.jpg\n')
+    round_id = new_round(coord_client, 'param')
+    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
+    _import(coord_client, round_id, token)
+    params = db_query(montage_app, 'SELECT params FROM round_sources WHERE round_id = :r',
+                      r=round_id)
+    assert json.loads(params[0]['params']) == {
+        'csv_url': 'https://example.org/list.csv', 'check_token': token}
+
+
+def test_blocked_check_writes_nothing_and_retry_uses_the_same_round(
+        montage_app, coord_client, local_commons, monkeypatch):
+    files = [info('F%03d.jpg' % i, 1000 + i) for i in range(100)]
+    local_commons(files)
+    rows = ''.join('F%03d.jpg,%d\n' % (i, 1000 + i) for i in range(100))
+    _source(monkeypatch, 'filename,file_id\n' + rows.replace(',1050\n', ',9999\n'))
+    round_id = new_round(coord_client, 'blocked')
+    campaign_id = _campaign_of(coord_client, round_id)
+    check = _check(coord_client, campaign_id)['data']
+    assert check['blocking'] and check['counts']['unknown_file_id'] == 1
+
+    resp = _import(coord_client, round_id, check['token'], error_code=400)
+    assert 'import_check_blocked' in _body(resp)
+    assert 'row 52: file_id 9999 is not on Commons' in _body(resp)
+    assert db_query(montage_app, 'SELECT id FROM entries') == []
+    assert round_rows(montage_app, round_id) == []
+
+    # the coordinator fixes the source, checks again, imports into the
+    # round that already exists (the form does not create a second one)
+    _source(monkeypatch, 'filename,file_id\n' + rows)
+    check = _check(coord_client, campaign_id)['data']
+    data = _import(coord_client, round_id, check['token'])['data']
+    assert data['new_round_entry_count'] == 100
+    rounds = coord_client.fetch('coordinator: campaign', '/admin/campaign/%s' % campaign_id,
+                                as_user=COORD)['data']['rounds']
+    assert len(rounds) == 1
+
+
+def test_bad_tokens_via_the_endpoint(montage_app, coord_client, local_commons,
+                                     monkeypatch):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'A.jpg\n')
+    round_a = new_round(coord_client, 'tok a')
+    round_b = new_round(coord_client, 'tok b')
+    token_b = _check(coord_client, _campaign_of(coord_client, round_b))['data']['token']
+    for token, method in [('../../etc/passwd', 'csv'), ('x' * 32, 'csv'),
+                          (token_b, 'csv'),  # another campaign
+                          ]:
+        resp = _import(coord_client, round_a, token, method, error_code=400)
+        assert 'import_check_expired' in _body(resp)
+    resp = _import(coord_client, round_b, token_b, 'category', error_code=400)
+    assert 'import_check_expired' in _body(resp)
+    assert db_query(montage_app, 'SELECT id FROM round_sources') == []
+
+
+def test_import_after_seven_days_is_refused(montage_app, coord_client,
+                                            local_commons, monkeypatch, tmpdir):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'A.jpg\n')
+    round_id = new_round(coord_client, 'old check')
+    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
+    later = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=8)
+    monkeypatch.setattr(import_check, '_utcnow', lambda: later)
+    resp = _import(coord_client, round_id, token, error_code=400)
+    assert 'import_check_expired' in _body(resp) and '7 days' in _body(resp)
+
+
+def test_renamed_file_already_in_montage_keeps_its_row(montage_app, coord_client,
+                                                       local_commons, monkeypatch):
+    """Review fix 1: a file Montage already has (found by file_id) keeps its
+    row and stored name; only a file new to Montage gets Commons' name."""
+    local_commons([info('Old_name.jpg', 5)])
+    _source(monkeypatch, 'Old_name.jpg\n')
+    round_a = new_round(coord_client, 'ren a')
+    _import(coord_client, round_a, _check(coord_client, _campaign_of(coord_client, round_a))['data']['token'])
+    ids = entry_ids(montage_app, 'Old_name')
+
+    local_commons([info('New_name.jpg', 5)])
+    _source(monkeypatch, 'filename,file_id\nOld name.jpg,5\n')
+    round_b = new_round(coord_client, 'ren b')
+    check = _check(coord_client, _campaign_of(coord_client, round_b))['data']
+    assert check['counts']['renamed'] == 1
+    data = _import(coord_client, round_b, check['token'])['data']
+    assert data['new_round_entry_count'] == 1
+    assert entry_ids(montage_app, 'Old_name') == ids
+    assert entry_ids(montage_app, 'New_name') == {}
+
+
+def test_category_same_name_pair_keeps_the_first(montage_app, coord_client,
+                                                 local_commons):
+    local_commons([info(VOLOCHEK, 149673020), info(VOLOCHYOK, 149673022)])
+    round_id = new_round(coord_client, 'cat pair')
+    check = _check(coord_client, _campaign_of(coord_client, round_id),
+                   import_method='category', category='Cat')['data']
+    assert not check['blocking'] and check['importable_count'] == 1
+    data = _import(coord_client, round_id, check['token'], 'category')['data']
+    assert data['new_round_entry_count'] == 1
+    same = [w['same name'] for w in data['warnings'] if 'same name' in w]
+    assert len(same) == 1 and VOLOCHEK in same[0] and VOLOCHYOK in same[0]
+
+
+def test_app_refuses_to_start_without_a_check_folder(monkeypatch):
+    from montage.app import create_app
+    monkeypatch.delenv('MONTAGE_IMPORT_CHECK_PATH', raising=False)
+    with pytest.raises(ValueError) as exc:
+        create_app('prod', config={'__file__': 'test', '__env__': 'prod',
+                                   'db_url': 'sqlite://'})
+    assert 'MONTAGE_IMPORT_CHECK_PATH' in str(exc.value)
