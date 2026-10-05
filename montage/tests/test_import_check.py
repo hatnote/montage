@@ -672,3 +672,80 @@ def test_app_refuses_to_start_without_a_check_folder(monkeypatch):
         create_app('prod', config={'__file__': 'test', '__env__': 'prod',
                                    'db_url': 'sqlite://'})
     assert 'MONTAGE_IMPORT_CHECK_PATH' in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# #447: a first round is created together with its import, or not at all
+# ---------------------------------------------------------------------------
+
+def _new_campaign(client, name):
+    series_id = client.fetch('get default series', '/series')['data'][0]['id']
+    return client.fetch('organizer: create campaign', '/admin/add_campaign',
+                        {'name': name, 'coordinators': [COORD],
+                         'open_date': '2015-01-01T00:00:00',
+                         'close_date': '2016-01-01T00:00:00',
+                         'url': 'http://hatnote.com', 'series_id': series_id},
+                        as_user=COORD)['data']['id']
+
+
+def _add_round(client, campaign_id, import_request=None, error_code=None):
+    rnd = {'name': 'Round 1', 'vote_method': 'yesno',
+           'deadline_date': '2016-10-15T00:00:00',
+           'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']}
+    if import_request is not None:
+        rnd['import'] = import_request
+    kw = {'error_code': error_code} if error_code else {}
+    return client.fetch('coordinator: create round',
+                        '/admin/campaign/%s/add_round' % campaign_id,
+                        rnd, as_user=COORD, **kw)
+
+
+def _rounds(client, campaign_id):
+    return client.fetch('coordinator: campaign', '/admin/campaign/%s' % campaign_id,
+                        as_user=COORD)['data']['rounds']
+
+
+def test_create_round_with_its_import(montage_app, coord_client, local_commons,
+                                      monkeypatch):
+    local_commons([info('A.jpg', 1), info('B.jpg', 2)])
+    _source(monkeypatch, 'A.jpg\nB.jpg\nGone.jpg\n')
+    campaign_id = _new_campaign(coord_client, 'atomic ok')
+    token = _check(coord_client, campaign_id)['data']['token']
+
+    data = _add_round(coord_client, campaign_id,
+                      {'import_method': 'csv', 'check_token': token})['data']
+
+    assert data['import']['new_round_entry_count'] == 2
+    assert any('import issues' in w for w in data['import']['warnings'])
+    assert len(_rounds(coord_client, campaign_id)) == 1
+    assert len(round_rows(montage_app, data['id'])) == 2
+
+
+@pytest.mark.parametrize('case', ['no files', 'blocked', 'expired token'])
+def test_create_round_with_a_failing_import_creates_no_round(
+        montage_app, coord_client, local_commons, monkeypatch, case):
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, {'no files': 'Gone.jpg\n',
+                          'blocked': 'filename,file_id\nA.jpg,99\n',
+                          'expired token': 'A.jpg\n'}[case])
+    campaign_id = _new_campaign(coord_client, 'atomic ' + case)
+    token = _check(coord_client, campaign_id)['data']['token']
+    if case == 'expired token':
+        token = 'x' * 32
+
+    resp = _add_round(coord_client, campaign_id,
+                      {'import_method': 'csv', 'check_token': token}, error_code=400)
+
+    expected = {'no files': 'import_empty', 'blocked': 'import_check_blocked',
+                'expired token': 'import_check_expired'}[case]
+    assert expected in _body(resp)
+    assert _rounds(coord_client, campaign_id) == []
+    assert db_query(montage_app, 'SELECT id FROM round_sources') == []
+    # nothing blocks the next attempt (#447: "one active round at a time")
+    assert _add_round(coord_client, campaign_id)['data']['id']
+
+
+def test_create_round_without_import_is_unchanged(montage_app, coord_client):
+    campaign_id = _new_campaign(coord_client, 'plain')
+    data = _add_round(coord_client, campaign_id)['data']
+    assert 'import' not in data and len(_rounds(coord_client, campaign_id)) == 1

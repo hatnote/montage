@@ -13,6 +13,9 @@
       <cdx-message v-if="result.blocking" type="error">
         {{ $t('montage-round-check-blocking') }}
       </cdx-message>
+      <cdx-message v-else-if="!result.importable_count" type="error">
+        {{ $t('montage-round-check-nothing-to-import') }}
+      </cdx-message>
       <cdx-message v-else-if="!result.issues_total" type="success">
         {{ $t('montage-round-check-no-issues') }}
       </cdx-message>

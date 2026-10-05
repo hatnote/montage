@@ -219,7 +219,7 @@
   "montage-round-check-same-name-title": "Different files with names the database treats as the same",
   "montage-round-check-same-name-list": "Rename one of them on Commons or remove one row from the source, then check again.",
   "montage-round-check-same-name-category": "The first file of each pair is imported; the others are left out.",
-  "montage-round-created-import-only": "The round has been created. Only the import can be retried here; change the round settings later with Edit round.",
   "montage-round-import-warning": "Import warning",
+  "montage-round-check-nothing-to-import": "The source has no files that can be imported. A round needs at least one file.",
   "montage-btn-ok": "OK"
 }

@@ -219,7 +219,7 @@
 	"montage-round-check-same-name-title": "Heading above pairs of file names that the database cannot tell apart.",
 	"montage-round-check-same-name-list": "Advice for same-name pairs in a CSV or file list (they block the import).",
 	"montage-round-check-same-name-category": "Explanation for same-name pairs in a category import (they do not block it).",
-	"montage-round-created-import-only": "Shown in the new-round form after the round was created but its import failed.",
 	"montage-round-import-warning": "Title of the dialog that lists warnings after an import.",
+	"montage-round-check-nothing-to-import": "Shown when the import check found no file that can be imported; the round cannot be saved (hatnote/montage#447).",
 	"montage-btn-ok": "Label of a button that closes a message dialog."
 }

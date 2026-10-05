@@ -12,6 +12,7 @@ from .utils import (format_date,
                    get_threshold_map,
                    InvalidAction,
                    ImportCheckRequired,
+                   ImportEmpty,
                    NotImplementedResponse,
                    js_isoparse)
 from . import import_check
@@ -382,6 +383,13 @@ def import_entries(user_dao, round_id, request_dict, config):
           - all disqualified
     """
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    _, new_entry_stats = _import_into_round(user_dao, coord_dao, round_id,
+                                            request_dict, config)
+    return {'data': new_entry_stats}
+
+
+def _import_into_round(user_dao, coord_dao, round_id, request_dict, config):
+    """Import into a round; returns (entries, the import's result)."""
     import_method = request_dict['import_method']
 
     # loader warnings
@@ -432,7 +440,7 @@ def import_entries(user_dao, round_id, request_dict, config):
         new_entry_stats['warnings'].append({'all disqualified':
                   'all entries disqualified by round settings'})
 
-    return {'data': new_entry_stats}
+    return entries, new_entry_stats
 
 
 def activate_round(user_dao, round_id, request_dict):
@@ -530,20 +538,40 @@ def _prepare_round_params(coord_dao, request_dict):
     return rnd_dict
 
 
-def create_round(user_dao, campaign_id, request_dict):
+def create_round(user_dao, campaign_id, request_dict, config):
     """
     Summary: Create a new round
 
     Request model:
         campaign_id
+        import (optional): {import_method, check_token} of a checked
+          source. The round is then created and its files imported in one
+          transaction: if the import fails or brings no files, no round
+          is created (#447).
+
+    Response model: the round's details; with `import`, plus `import`:
+        the import's result (as /admin/round/<id>/import returns it)
     """
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
 
     rnd_params = _prepare_round_params(coord_dao, request_dict)
     rnd = coord_dao.create_round(**rnd_params)
 
+    import_stats = None
+    import_request = request_dict.get('import')
+    if import_request:
+        user_dao.rdb_session.flush()  # the round's id
+        entries, import_stats = _import_into_round(user_dao, coord_dao, rnd.id,
+                                                   import_request, config)
+        if not entries:
+            # RDBMiddleware rolls the round back with this 400
+            raise ImportEmpty('the source has no files to import; the round'
+                              ' was not created')
+
     data = rnd.to_details_dict()
     data['progress'] = rnd.get_count_map()
+    if import_stats is not None:
+        data['import'] = import_stats
 
     return {'data': data}
 

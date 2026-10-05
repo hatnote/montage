@@ -104,6 +104,11 @@ class ImportCheckRequired(_ImportError):
     error_type = 'import_check_required'
 
 
+class ImportEmpty(_ImportError):
+    "A new first round would get no files (#447)"
+    error_type = 'import_empty'
+
+
 DEFAULT_SERIES = {'name': 'Unofficial',
                   'description': 'For unofficial campaigns, whether for testing or just for fun!',
                   'url': 'TODO add docs url'}  # TODO: status is always active

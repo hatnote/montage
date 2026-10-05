@@ -33,18 +33,14 @@
         <template #supporting-text>
           <div class="form-container">
             <div class="form-left">
-              <cdx-message v-if="createdRoundId" type="notice" class="round-created-note">
-                {{ $t('montage-round-created-import-only') }}
-              </cdx-message>
-              <cdx-field :disabled="settingsLocked">
+              <cdx-field>
                 <cdx-text-input v-model="formData.name" />
                 <template #label>{{ $t('montage-round-name') }}</template>
               </cdx-field>
               <div class="flex-row">
-                <cdx-field :disabled="settingsLocked">
+                <cdx-field>
                   <date-picker
                     v-model:value="formData.deadline_date"
-                    :disabled="settingsLocked"
                     type="date"
                     format="YYYY-MM-DD"
                     placeholder="YYYY-MM-DD"
@@ -52,7 +48,7 @@
                   ></date-picker>
                   <template #label>{{ $t('montage-round-deadline') }}</template>
                 </cdx-field>
-                <cdx-field :disabled="settingsLocked">
+                <cdx-field>
                   <cdx-select
                     v-model:selected="formData.vote_method"
                     :menu-items="
@@ -138,11 +134,11 @@
                   :download-url="checkDownloadUrl"
                 />
               </div>
-              <cdx-field v-if="roundIndex === 0" :disabled="settingsLocked">
+              <cdx-field v-if="roundIndex === 0">
                 <cdx-text-area v-model="formData.directions" rows="3" />
                 <template #label>{{ $t('montage-directions') }}</template>
               </cdx-field>
-              <cdx-field v-if="roundIndex === 0" :disabled="settingsLocked">
+              <cdx-field v-if="roundIndex === 0">
                 <cdx-radio
                   v-for="source in showStatsOptions"
                   :key="'show_stats-' + source.value"
@@ -156,14 +152,14 @@
                   <p>{{ $t('montage-description-round-stats') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field :disabled="settingsLocked">
+              <cdx-field>
                 <cdx-text-input v-model="formData.quorum" input-type="number" />
                 <template #label>{{ $t('montage-label-round-quorum') }}</template>
                 <template #description>
                   <p>{{ $t('montage-round-quorum-description') }}</p>
                 </template>
               </cdx-field>
-              <cdx-field :disabled="settingsLocked">
+              <cdx-field>
                 <UserList
                   :users="formData.jurors"
                   @update:selectedUsers="formData.jurors = $event"
@@ -188,7 +184,7 @@
             </div>
             <div class="form-right" v-if="roundIndex === 0">
               <p>{{ $t('montage-round-file-setting') }}</p>
-              <cdx-field :disabled="settingsLocked">
+              <cdx-field>
                 <cdx-checkbox
                   v-for="key in fileSettingsOptions"
                   :key="key"
@@ -197,7 +193,7 @@
                   {{ $t('montage-round-' + key.replaceAll('_', '-')) }}
                 </cdx-checkbox>
               </cdx-field>
-              <cdx-field v-if="formData.config.dq_by_resolution" :disabled="settingsLocked">
+              <cdx-field v-if="formData.config.dq_by_resolution">
                 <cdx-text-input
                   v-model="formData.config.min_resolution"
                   input-type="number"
@@ -217,7 +213,11 @@
               :disabled="
                 isLoading ||
                 (roundIndex !== 0 && !thresholds) ||
-                (roundIndex === 0 && (isChecking || !checkResult || checkResult.blocking))
+                (roundIndex === 0 &&
+                  (isChecking ||
+                    !checkResult ||
+                    checkResult.blocking ||
+                    !checkResult.importable_count))
               "
               action="progressive"
               weight="primary"
@@ -259,8 +259,7 @@ import {
   CdxRadio,
   CdxTextArea,
   CdxCheckbox,
-  CdxLookup,
-  CdxMessage
+  CdxLookup
 } from '@wikimedia/codex'
 
 // Components
@@ -350,10 +349,6 @@ const checkResult = ref(null)
 const checkError = ref(null)
 const isChecking = ref(false)
 let checkRequestCount = 0
-// set once the round exists: a failed import is retried into this round
-// instead of creating a second one; the round settings are then locked
-const createdRoundId = ref(null)
-const settingsLocked = computed(() => !!createdRoundId.value)
 
 const sourceFilled = computed(() => {
   const value = importSourceValue.value
@@ -434,10 +429,6 @@ function searchCategory(name) {
 }
 
 const cancelRound = () => {
-  if (createdRoundId.value) {
-    // the round exists (its import failed): show it in the campaign
-    emit('reload-campaign-state')
-  }
   emit('update:showAddRoundForm', false)
 }
 
@@ -462,9 +453,8 @@ const submitRound = () => {
       alertService.error({ message: $t('montage-round-check-required') })
       return
     }
-    if (createdRoundId.value) {
-      // the round was created before and its import failed: import again
-      runImport(createdRoundId.value)
+    if (!checkResult.value.importable_count) {
+      alertService.error({ message: $t('montage-round-check-nothing-to-import') })
       return
     }
     const payload = {
@@ -475,7 +465,12 @@ const submitRound = () => {
       quorum: formData.value.quorum,
       jurors: formData.value.jurors,
       directions: formData.value.directions,
-      config: formData.value.config
+      config: formData.value.config,
+      // the round and its files are saved together, or not at all (#447)
+      import: {
+        import_method: selectedImportSource.value,
+        check_token: checkResult.value.token
+      }
     }
 
     isLoading.value = true
@@ -483,10 +478,9 @@ const submitRound = () => {
       .addRound(campaignId, payload)
       .then((resp) => {
         alertService.success($t('montage-round-added'))
-        createdRoundId.value = resp.data.id
-        runImport(resp.data.id)
+        showImportResult(resp.data.import)
       })
-      .catch(alertService.error)
+      .catch(showImportError)
       .finally(() => {
         isLoading.value = false
       })
@@ -532,55 +526,43 @@ const closeForm = () => {
   emit('update:showAddRoundForm', false)
 }
 
-const runImport = (id) => {
-  const payload = {
-    import_method: selectedImportSource.value,
-    check_token: checkResult.value.token
+const showImportResult = (result) => {
+  if (result && result.warnings && result.warnings.length) {
+    const { warnings = [], disqualified = [] } = result
+
+    const warningsList = warnings.map((warning) => Object.values(warning).pop())
+    const filesList = disqualified
+      .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
+      .filter((value, index, array) => array.indexOf(value) === index)
+      .join('\n')
+
+    const text = `${warningsList.join('\n\n')}\n\n${filesList}`
+
+    dialogService().show({
+      title: $t('montage-round-import-warning'),
+      content: text,
+      primaryAction: {
+        label: $t('montage-btn-ok'),
+        actionType: 'progressive'
+      },
+      onPrimary: closeForm
+    })
+  } else {
+    closeForm()
   }
+}
 
-  isLoading.value = true
-  adminService
-    .populateRound(id, payload)
-    .then((response) => {
-      if (response.data && response.data.warnings && response.data.warnings.length) {
-        const { warnings = [], disqualified = [] } = response.data
-
-        const warningsList = warnings.map((warning) => Object.values(warning).pop())
-        const filesList = disqualified
-          .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
-          .filter((value, index, array) => array.indexOf(value) === index)
-          .join('\n')
-
-        const text = `${warningsList.join('\n\n')}\n\n${filesList}`
-
-        dialogService().show({
-          title: $t('montage-round-import-warning'),
-          content: text,
-          primaryAction: {
-            label: $t('montage-btn-ok'),
-            actionType: 'progressive'
-          },
-          onPrimary: closeForm
-        })
-      } else {
-        closeForm()
-      }
-    })
-    .catch((error) => {
-      // the form stays open; the round exists and only the import is retried
-      const errorType = error?.response?.data?.error_type
-      if (errorType === 'import_check_expired') {
-        checkResult.value = null
-        checkError.value = $t('montage-round-check-expired')
-      } else if (errorType === 'import_check_blocked') {
-        checkError.value = $t('montage-round-import-blocked', [errorText(error)])
-      } else {
-        alertService.error(error)
-      }
-    })
-    .finally(() => {
-      isLoading.value = false
-    })
+// nothing was saved: the form stays open with everything as entered
+const showImportError = (error) => {
+  const errorType = error?.response?.data?.error_type
+  if (errorType === 'import_check_expired') {
+    checkResult.value = null
+    checkError.value = $t('montage-round-check-expired')
+  } else if (errorType === 'import_check_blocked' || errorType === 'import_empty') {
+    checkError.value = $t('montage-round-import-blocked', [errorText(error)])
+  } else {
+    alertService.error(error)
+  }
 }
 
 watch(thresholds, (value) => {
@@ -666,9 +648,5 @@ onMounted(() => {
 
 .import-check {
   margin-bottom: 16px;
-}
-
-.round-created-note {
-  margin-bottom: 12px;
 }
 </style>
