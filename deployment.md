@@ -41,6 +41,17 @@ toolforge envvars create MONTAGE_DB_URL         # mysql+pymysql://<user>:<pass>@
 toolforge envvars create MONTAGE_SUPERUSERS     # OPTIONAL — enables su-impersonation only, NOT admin access (see "Maintainer vs superuser" below)
 toolforge envvars create MONTAGE_API_LOG_PATH   # e.g. /data/project/montage-beta/montage_api.log
 toolforge envvars create MONTAGE_REPLAY_LOG_PATH
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH  # e.g. /data/project/montage-beta/import_checks (see below)
+```
+
+`MONTAGE_IMPORT_CHECK_PATH` is required on `devlabs`, `beta` and `prod`: Montage refuses to
+start without it. It is the folder for import checks (hatnote/montage#510): each check of a
+first-round import source is written there as a JSON file (mode 0600, folder 0700) and deleted
+after 7 days. It must be on the tool's NFS share (`/data/project/<tool>/...`) so that every pod
+reads the same files. Create the folder first:
+
+```bash
+mkdir -m 700 /data/project/montage-beta/import_checks
 ```
 
 Optional env vars (all have sensible defaults):
@@ -191,7 +202,24 @@ git -C ~/www/python/src checkout master
 git -C ~/www/python/src pull --ff-only
 ```
 
-#### 4. Run the deploy script
+#### 4. Check new required settings
+
+A release can add a required environment variable; the app then refuses to start until it is
+set. Since hatnote/montage#510 that is `MONTAGE_IMPORT_CHECK_PATH` (see Fresh install, step 3).
+Before the first deploy that includes it, create the folder and set the variable on that tool
+(replace `montage-beta` as appropriate):
+
+```bash
+mkdir -m 700 /data/project/montage-beta/import_checks
+```
+
+```bash
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH
+```
+
+Enter `/data/project/montage-beta/import_checks` at the prompt.
+
+#### 5. Run the deploy script
 
 ```bash
 bash ~/www/python/src/tools/deploy.sh --ref <branch>
