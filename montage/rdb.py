@@ -701,12 +701,16 @@ def _entries_indexes(rdb_session):
     """(index names, first columns) of the entries table, as the database
     has them: production's indexes differ from the model's (no index on
     name, ix_entries_file_id only through tools/migrate_prod_db.sql)."""
-    engine = rdb_session.get_bind()
-    engine = getattr(engine, 'engine', engine)
+    # Reflect on the session's own connection: on the engine, SQLAlchemy
+    # uses a connection that closes after its first result, and the app's
+    # engine_connect listener (SET NAMES, app.py) uses up that result, so
+    # the reflection then fails with "This Connection is closed".
+    connection = rdb_session.connection()
+    engine = connection.engine
     cached = _ENTRIES_INDEX_CACHE.get(id(engine))
     if cached and time.time() - cached[0] < _ENTRIES_INDEX_TTL:
         return cached[1]
-    indexes = inspect(engine).get_indexes('entries')
+    indexes = inspect(connection).get_indexes('entries')
     found = (set(i['name'] for i in indexes),
              set(i['column_names'][0] for i in indexes if i['column_names']))
     _ENTRIES_INDEX_CACHE[id(engine)] = (time.time(), found)

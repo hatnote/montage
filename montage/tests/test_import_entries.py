@@ -598,6 +598,26 @@ def test_file_id_lookup_keeps_the_row_of_a_file_without_file_id(
     assert entry_ids(montage_app, 'pre') == ids
 
 
+def test_entries_indexes_works_with_the_apps_connect_listener():
+    """The app runs SET NAMES on every new connection (app.py); reflecting
+    on the engine then hit a closed connection on montage-dev."""
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import sessionmaker
+    engine = create_engine('sqlite://')
+    rdb.Base.metadata.create_all(engine)
+
+    def like_set_names(connection, branch):
+        connection.execute('PRAGMA foreign_keys = ON')  # no rows, like SET NAMES
+
+    event.listen(engine, 'engine_connect', like_set_names)
+    session = sessionmaker(bind=engine)()
+    session.query(Entry.id).first()
+    rdb._ENTRIES_INDEX_CACHE.clear()
+    names, first_columns = rdb._entries_indexes(session)
+    assert 'name' in first_columns
+    session.query(Entry.id).first()  # the session is still usable
+
+
 def test_entries_indexes_reads_the_database():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
