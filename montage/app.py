@@ -73,6 +73,7 @@ def create_app(env_name='prod', config=None):
     if check_dir_problem:
         raise ValueError(check_dir_problem)
     print('==  import check folder: %s' % (import_check.check_dir(config),))
+    import_check.cleanup(config)  # files older than 7 days, also after a quiet spell
     check_dir_warning = import_check.check_dir_warning(config, env_name)
     if check_dir_warning:
         print('!!  %s' % (check_dir_warning,))

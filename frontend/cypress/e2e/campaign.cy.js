@@ -7,7 +7,7 @@ const stubCheck = () => {
       data: {
         token: 'cypress-check-token-000000000000',
         checked_at: new Date(now).toISOString().replace(/\.\d+Z$/, 'Z'),
-        expires_at: new Date(now + 7 * 24 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z'),
+        expires_at: new Date(now + 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z'),
         import_method: 'selected',
         source: { file_names: ['Example.jpg'] },
         columns: { name: null, file_id: null, ignored: [] },

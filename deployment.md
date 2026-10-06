@@ -46,8 +46,9 @@ toolforge envvars create MONTAGE_IMPORT_CHECK_PATH  # the tool's own folder, e.g
 
 `MONTAGE_IMPORT_CHECK_PATH` is required everywhere except local development: Montage refuses to
 start without it. It is the folder for import checks (hatnote/montage#510): each check of a
-first-round import source is written there as a JSON file (mode 0600). A check file older than 7
-days is deleted by the next check, and at most 5,000 are kept. The files hold the source link,
+first-round import source is written there as a JSON file (mode 0600). A check can be used to
+save a round for 1 hour. The file is deleted after at most 7 days: every check, import, download
+and app start deletes older files, and at most 5,000 are kept. The files hold the source link,
 the rows and Commons' data per file, including Commons uploader names.
 
 - It must be a folder **of its own**: Montage refuses to start if it holds other files, because
@@ -270,8 +271,8 @@ need migrating (see "Startup crash: missing column" below).
   rebuild and no rollback are needed.
 - **A check of a large source fails with a server error after about 30 s:** the request hit gunicorn's
   worker timeout. Nothing was saved; try a smaller source (split a list, or a sub-category).
-- **Old check files:** the next check deletes files older than 7 days. If nobody checks, delete
-  them by hand:
+- **Old check files:** every use of the folder (and every app start) deletes files older than
+  7 days. To delete them by hand:
 
 ```bash
 find "$HOME/import_checks" -name '*.json' -mtime +7 -delete

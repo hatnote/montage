@@ -690,16 +690,78 @@ def test_bad_tokens_via_the_endpoint(montage_app, coord_client, local_commons,
     assert db_query(montage_app, 'SELECT id FROM round_sources') == []
 
 
-def test_import_after_seven_days_is_refused(montage_app, coord_client,
-                                            local_commons, monkeypatch, tmpdir):
+def _after(monkeypatch, **delta):
+    later = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(**delta)
+    monkeypatch.setattr(import_check, '_utcnow', lambda: later)
+
+
+def test_a_check_is_valid_for_one_hour(montage_app, coord_client, local_commons,
+                                       monkeypatch, tmpdir):
+    """Files are renamed and deleted on Commons all the time: a check is
+    used within the hour or done again."""
     local_commons([info('A.jpg', 1)])
     _source(monkeypatch, 'A.jpg\n')
     round_id = new_round(coord_client, 'old check')
-    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
-    later = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=8)
-    monkeypatch.setattr(import_check, '_utcnow', lambda: later)
-    resp = _import(coord_client, round_id, token, error_code=400)
-    assert 'import_check_expired' in _body(resp) and '7 days' in _body(resp)
+    data = _check(coord_client, _campaign_of(coord_client, round_id))['data']
+    assert (import_check._parse_iso(data['expires_at'])
+            - import_check._parse_iso(data['checked_at'])) == datetime.timedelta(hours=1)
+    _after(monkeypatch, minutes=61)
+    resp = _import(coord_client, round_id, data['token'], error_code=400)
+    assert 'import_check_expired' in _body(resp) and '1 hour' in _body(resp)
+    _after(monkeypatch, minutes=59)
+    assert _import(coord_client, round_id, data['token'])['data']['new_round_entry_count'] == 1
+
+
+def test_downloads_work_until_the_file_is_deleted(montage_app, coord_client,
+                                                  local_commons, monkeypatch):
+    """The upload file and the issues report stay available for the file's
+    lifetime (at most 7 days), also after the check can no longer be
+    imported."""
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'A.jpg\nGone.jpg\n')
+    round_id = new_round(coord_client, 'downloads')
+    campaign_id = _campaign_of(coord_client, round_id)
+    token = _check(coord_client, campaign_id)['data']['token']
+    url = '/admin/campaign/%s/import/check/%s/' % (campaign_id, token)
+    _after(monkeypatch, days=2)
+    for kind in ('download', 'issues'):
+        coord_client.fetch('coordinator: ' + kind, url + kind, as_user=COORD)
+    _after(monkeypatch, days=8)
+    resp = coord_client.fetch('coordinator: download', url + 'download', as_user=COORD,
+                              error_code=400)
+    assert 'import_check_expired' in _body(resp)
+
+
+def test_every_use_of_the_folder_cleans_up(config):
+    """Files are deleted after at most 7 days whenever the folder is used:
+    a check, an import, a download, or the app starting."""
+    stale, fresh = save(_result(), config), save(_result(), config)
+    folder = config['import_check_path']
+    week_ago = time.time() - 8 * 24 * 3600
+    os.utime(os.path.join(folder, stale + '.json'), (week_ago, week_ago))
+    with pytest.raises(ImportCheckExpired):
+        load('x' * 32, config, CAMPAIGN)  # a failed load cleans up too
+    assert os.listdir(folder) == [fresh + '.json']
+    os.utime(os.path.join(folder, fresh + '.json'), (week_ago, week_ago))
+    import_check.cleanup(config)  # what the app runs at start
+    assert os.listdir(folder) == []
+
+
+def test_app_start_cleans_up_the_check_folder(tmpdir):
+    from montage.app import create_app
+    from montage import utils
+    folder = tmpdir.mkdir('checks')
+    old = folder.join('A' * 32 + '.json')
+    old.write('{}')
+    week_ago = time.time() - 8 * 24 * 3600
+    os.utime(str(old), (week_ago, week_ago))
+    config = utils.load_env_config(env_name='devtest')
+    config['db_url'] = 'sqlite:///' + str(tmpdir.join('app.db'))
+    config['import_check_path'] = str(folder)
+    from montage.tests.test_web_basic import _create_schema
+    _create_schema(config['db_url'], echo=False)
+    create_app('devtest', config=config)
+    assert folder.listdir() == []
 
 
 def test_renamed_file_already_in_montage_keeps_its_row(montage_app, coord_client,

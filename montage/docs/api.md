@@ -248,7 +248,8 @@ Create a new round within a campaign
 ## /v1/admin/campaign/`<campaign_id:int>`/import/check
 Check a first-round import source before importing it (hatnote/montage#510). Fetches the source,
 looks every row up on Commons (by `file_id` where the row has one, else by name), classifies the
-rows and stores the result as a check file for 7 days. Writes nothing to the database.
+rows and stores the result as a check file. The check can be imported for 1 hour; the file and
+its downloads stay at most 7 days. Writes nothing to the database.
 
   - Function: check_import (admin_endpoints.py)
   - Method: POST
@@ -431,7 +432,7 @@ takes exactly the checked list.
 ### Errors
   - 400 `import_check_required`: no `check_token`
   - 400 `import_check_blocked`: the check has rows that block the import
-  - 400 `import_check_expired`: unknown token, older than 7 days, or for another campaign/source
+  - 400 `import_check_expired`: unknown token, older than 1 hour, or for another campaign/source
   - 400 `import_busy`: another import held a lock (after #635); nothing imported, try again
   - 403: not a coordinator for this campaign
   - 404: round does not exist

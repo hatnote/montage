@@ -496,7 +496,7 @@ const cancelRound = () => {
   emit('update:showAddRoundForm', false)
 }
 
-// a check is valid for 7 days (the server refuses older ones)
+// a check is valid for 1 hour (the server refuses older ones)
 const checkExpired = (result) => {
   const expires = Date.parse(result?.expires_at || '')
   return !Number.isNaN(expires) && expires - 60 * 1000 <= Date.now()

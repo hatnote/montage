@@ -350,7 +350,8 @@ def _csv_response(data, output_name):
 def download_import_check(user_dao, campaign_id, token, config):
     """The checked list as a ready-to-use upload file (filename, file_id)."""
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    result = import_check.load(token, config, coord_dao.campaign.id)
+    result = import_check.load(token, config, coord_dao.campaign.id,
+                               max_age=import_check.CHECK_FILE_MAX_AGE)
     return _csv_response(import_check.upload_csv(result),
                          'montage_import-%s-%s.csv' % (campaign_id, result['checked_at'][:10]))
 
@@ -358,7 +359,8 @@ def download_import_check(user_dao, campaign_id, token, config):
 def download_import_check_issues(user_dao, campaign_id, token, config):
     """Every row of the check that is not ok, as a CSV report."""
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    result = import_check.load(token, config, coord_dao.campaign.id)
+    result = import_check.load(token, config, coord_dao.campaign.id,
+                               max_age=import_check.CHECK_FILE_MAX_AGE)
     return _csv_response(import_check.issues_csv(result),
                          'montage_import_issues-%s-%s.csv'
                          % (campaign_id, result['checked_at'][:10]))

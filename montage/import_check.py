@@ -57,7 +57,12 @@ IMPORTED_STATUSES = ('ok', 'renamed')
 ALL_STATUSES = ('ok', 'renamed', 'duplicate', 'unknown_name',
                 'unknown_file_id', 'malformed_file_id', 'same_name')
 
-CHECK_MAX_AGE = datetime.timedelta(days=7)
+# A check can be imported for an hour: files are renamed and deleted on
+# Commons all the time, and the check and the save happen in one sitting.
+CHECK_VALID_FOR = datetime.timedelta(hours=1)
+# A check file is deleted after at most this long; until then its downloads
+# (upload file, issues report) work. Every use of the folder cleans up.
+CHECK_FILE_MAX_AGE = datetime.timedelta(days=7)
 ISSUES_SHOWN = 1000       # non-ok rows in the check response; the file has all
 BLOCKING_ROWS_SHOWN = 10  # rows named in a "blocked" error
 WARNING_ROWS_SHOWN = 50   # rows named per import warning
@@ -419,7 +424,7 @@ def summarize(result, token):
     checked_at = _parse_iso(result['checked_at'])
     return {'token': token,
             'checked_at': result['checked_at'],
-            'expires_at': _iso(checked_at + CHECK_MAX_AGE),
+            'expires_at': _iso(checked_at + CHECK_VALID_FOR),
             'import_method': result['import_method'],
             'source': result['source'],
             'columns': result['columns'],
@@ -521,9 +526,9 @@ def _check_files(folder):
 
 
 def _cleanup(folder, now):
-    """Delete check files older than CHECK_MAX_AGE, and the oldest beyond
+    """Delete check files older than CHECK_FILE_MAX_AGE, and the oldest beyond
     MAX_CHECK_FILES. Nothing else in the folder is touched."""
-    cutoff = (now - CHECK_MAX_AGE).timestamp()
+    cutoff = (now - CHECK_FILE_MAX_AGE).timestamp()
     kept = []
     for name in _check_files(folder):
         path = os.path.join(folder, name)
@@ -556,6 +561,21 @@ def _ensure_folder(folder):
         pass
 
 
+def cleanup(config, now=None):
+    """Clean up the check folder (see _cleanup), if it exists. Runs on
+    every check, import and download, and when the app starts."""
+    folder = check_dir(config)
+    if os.path.isdir(folder):
+        _cleanup(folder, now or _utcnow())
+
+
+def _age_text(age):
+    hours = int(age.total_seconds() // 3600)
+    if hours % 24 == 0:
+        return '%s days' % (hours // 24) if hours != 24 else '1 day'
+    return '%s hours' % hours if hours != 1 else '1 hour'
+
+
 def save(result, config, now=None):
     """Write the check result to a new check file; returns its token.
     Deletes old check files first (see _cleanup)."""
@@ -585,9 +605,13 @@ def _method_family(import_method):
     return 'csv' if import_method in ('csv', 'gistcsv') else import_method
 
 
-def load(token, config, campaign_id, import_method=None, now=None):
-    """The check result for a token, if it exists, is younger than
-    CHECK_MAX_AGE and was made for this campaign (and import method)."""
+def load(token, config, campaign_id, import_method=None, now=None,
+         max_age=CHECK_VALID_FOR):
+    """The check result for a token, if it exists, is younger than max_age
+    (an import: CHECK_VALID_FOR; a download: CHECK_FILE_MAX_AGE) and was
+    made for this campaign (and import method)."""
+    now = now or _utcnow()
+    cleanup(config, now)
     expired = 'check not found or expired, please check the source again'
     if not isinstance(token, str) or not _TOKEN_RE.match(token):
         raise ImportCheckExpired(expired)
@@ -603,9 +627,9 @@ def load(token, config, campaign_id, import_method=None, now=None):
         raise ImportCheckExpired(expired)
     if result.get('format') != FORMAT:
         raise ImportCheckExpired(expired)
-    if (now or _utcnow()) - checked_at > CHECK_MAX_AGE:
-        raise ImportCheckExpired('check expired (older than 7 days), please'
-                                 ' check the source again')
+    if now - checked_at > max_age:
+        raise ImportCheckExpired('check expired (older than %s), please check'
+                                 ' the source again' % _age_text(max_age))
     if result.get('campaign_id') != campaign_id:
         raise ImportCheckExpired('this check was made for another campaign,'
                                  ' please check the source again')
