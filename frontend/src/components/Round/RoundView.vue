@@ -34,11 +34,17 @@
           </p>
         </div>
         <div style="margin-left: auto">
-          <cdx-button @click="toggleEditing()">
-            <cog style="font-size: 6px" v-if="!isRoundEditing" />
-            <close style="font-size: 6px" v-else />
-            {{ isRoundEditing ? $t('montage-btn-cancel') : $t('montage-round-edit') }}
-          </cdx-button>
+          <span
+            v-tooltip="
+              round.status === 'active' ? $t('montage-round-edit-active-warning') : undefined
+            "
+          >
+            <cdx-button :disabled="round.status === 'active'" @click="toggleEditing()">
+              <cog style="font-size: 6px" v-if="!isRoundEditing" />
+              <close style="font-size: 6px" v-else />
+              {{ isRoundEditing ? $t('montage-btn-cancel') : $t('montage-round-edit') }}
+            </cdx-button>
+          </span>
         </div>
       </div>
     </div>
