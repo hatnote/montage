@@ -6,13 +6,16 @@ from io import StringIO
 import csv
 import json
 import re
+import socket
+import ipaddress
+from urllib.parse import urlsplit, urljoin
 
 import requests
 from boltons.iterutils import chunked_iter
 
 import montage.rdb  # TODO: circular import
 from .labs import get_files, get_files_info_by_names, get_files_info_by_ids
-from .utils import (ImportSourceInvalid, to_unicode, requests_get,
+from .utils import (ImportSourceInvalid, requests_get,
                     requests_post)
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
@@ -21,6 +24,11 @@ GSHEET_URL = 'https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv'
 
 # seconds; a source link is fetched within the 30 s request limit
 SOURCE_FETCH_TIMEOUT = 15
+# Limits for a fetched source: its size, its rows (CSV, gist, Sheet, file
+# list; categories come from Commons and are not capped), and redirects.
+MAX_SOURCE_BYTES = 20 * 1024 * 1024
+MAX_SOURCE_ROWS = 100000
+MAX_REDIRECTS = 3
 
 
 def wpts2dt(timestamp):
@@ -106,13 +114,30 @@ def unguard_cell(value):
     return value
 
 
+_FILE_PREFIX_RE = re.compile(r'^(?:file|image)\s*:', re.IGNORECASE)
+_SPACES_RE = re.compile(r'[ _]+')
+
+
 def normalise_name(name):
-    """A file name as Montage and the replica store it: no File: prefix,
-    underscores for spaces."""
+    """A file name as Montage and the replica store it, canonical like a
+    MediaWiki File: title: no File:/Image: prefix (any case), runs of spaces
+    and underscores as one underscore, none at the start or end, and the
+    first letter in upper case (Commons titles are case-sensitive after
+    the first letter only)."""
+    if isinstance(name, bytes):
+        name = name.decode('utf8')
+    # A leading ' before = + - @ ' is the formula guard of Montage's own
+    # downloads (guard_cell). A real name that starts that way loses its
+    # apostrophe; such names are rare, and the round trip of the download
+    # matters more.
     name = unguard_cell((name or '').strip())
-    if name.startswith('File:'):
-        name = name[5:].strip()
-    return name.replace(' ', '_')
+    name = _FILE_PREFIX_RE.sub('', name)
+    name = _SPACES_RE.sub('_', name).strip('_')
+    if name:
+        first = name[0].upper()
+        if len(first) == 1:  # e.g. 'ß'.upper() is 'SS': leave it
+            name = first + name[1:]
+    return name
 
 
 def parse_file_id(cell):
@@ -181,6 +206,9 @@ def parse_source_rows(text):
         return [], columns
     header = [_header_key(c) for c in records[0]]
     name_col = next((c for c in NAME_COLUMNS if c in header), None)
+    if len(records) > MAX_SOURCE_ROWS + 1:
+        raise ImportSourceInvalid('the source has %s rows; at most %s can be imported'
+                                  ' at once' % (len(records) - 1, MAX_SOURCE_ROWS))
     rows = []
     if name_col is not None:
         name_idx = header.index(name_col)
@@ -212,9 +240,17 @@ def parse_name_list(file_names):
     one name per line; blank entries are skipped but keep their number."""
     if file_names is None:
         raise ImportSourceInvalid('no file names given')
-    if isinstance(file_names, (str, bytes)):
-        file_names = to_unicode(file_names).splitlines()
-    rows = [_source_row(i + 1, to_unicode(name or ''))
+    if isinstance(file_names, bytes):
+        file_names = file_names.decode('utf8')
+    if isinstance(file_names, str):
+        file_names = file_names.splitlines()
+    if not isinstance(file_names, list) or not all(
+            isinstance(n, (str, bytes)) or n is None for n in file_names):
+        raise ImportSourceInvalid('file_names must be a list of file names')
+    if len(file_names) > MAX_SOURCE_ROWS:
+        raise ImportSourceInvalid('%s file names; at most %s can be imported at once'
+                                  % (len(file_names), MAX_SOURCE_ROWS))
+    rows = [_source_row(i + 1, name.decode('utf8') if isinstance(name, bytes) else (name or ''))
             for i, name in enumerate(file_names)]
     return [r for r in rows if not _is_blank(r)]
 
@@ -235,26 +271,84 @@ def source_url(raw_url):
     return raw_url, False
 
 
+def _host_addresses(host):
+    """Every address the host name resolves to."""
+    return sorted(set(info[4][0] for info in
+                      socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)))
+
+
+def _check_public_url(url, raw_url):
+    """Only https links to public addresses are fetched: the server must
+    not be made to read its own network (169.254.169.254, 127.0.0.1, ...)
+    and show the result in the check."""
+    parts = urlsplit(url)
+    if parts.scheme != 'https' or not parts.hostname:
+        raise ImportSourceInvalid('only https:// links can be imported, not "%s"' % raw_url)
+    try:
+        addresses = _host_addresses(parts.hostname)
+    except (socket.gaierror, UnicodeError, OSError):
+        raise ImportSourceInvalid('cannot find the host of "%s"' % raw_url)
+    for address in addresses:
+        if not ipaddress.ip_address(address.split('%')[0]).is_global:
+            raise ImportSourceInvalid('"%s" does not point to a public address' % raw_url)
+
+
+def _get_public(url, raw_url):
+    """GET a public https URL, following at most MAX_REDIRECTS redirects,
+    each checked like the first link."""
+    for _ in range(MAX_REDIRECTS + 1):
+        _check_public_url(url, raw_url)
+        try:
+            resp = requests_get(url, timeout=SOURCE_FETCH_TIMEOUT,
+                                allow_redirects=False, stream=True)
+        except requests.RequestException as e:
+            raise ImportSourceInvalid('cannot load "%s" (%s)'
+                                      % (raw_url, e.__class__.__name__))
+        if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get('location'):
+            url = urljoin(url, resp.headers['location'])
+            resp.close()
+            continue
+        return resp
+    raise ImportSourceInvalid('cannot load "%s" (too many redirects)' % raw_url)
+
+
+def _read_capped(resp, raw_url):
+    chunks, size = [], 0
+    try:
+        for chunk in resp.iter_content(64 * 1024):
+            size += len(chunk)
+            if size > MAX_SOURCE_BYTES:
+                raise ImportSourceInvalid('"%s" is larger than %s MB'
+                                          % (raw_url, MAX_SOURCE_BYTES // (1024 * 1024)))
+            chunks.append(chunk)
+    except requests.RequestException as e:
+        raise ImportSourceInvalid('cannot load "%s" (%s)' % (raw_url, e.__class__.__name__))
+    finally:
+        resp.close()
+    return b''.join(chunks)
+
+
 def fetch_source_text(raw_url):
     """The text of a gist / CSV link or a Google Sheet's CSV export. No
     Commons lookup happens here."""
+    if raw_url is not None and not isinstance(raw_url, str):
+        raise ImportSourceInvalid('the link must be text')
     raw_url = (raw_url or '').strip()
     if not raw_url:
         raise ImportSourceInvalid('no link given')
     url, is_sheet = source_url(raw_url)
-    try:
-        resp = requests_get(url, timeout=SOURCE_FETCH_TIMEOUT)
-    except requests.RequestException as e:
-        raise ImportSourceInvalid('cannot load "%s" (%s)'
-                                  % (raw_url, e.__class__.__name__))
+    resp = _get_public(url, raw_url)
     if resp.status_code != 200:
+        resp.close()
         raise ImportSourceInvalid('cannot load "%s" (HTTP status %s)'
                                   % (raw_url, resp.status_code))
     if is_sheet and 'text/csv' not in resp.headers.get('content-type', ''):
+        resp.close()
         raise ImportSourceInvalid('cannot load Google Sheet "%s" (is link sharing on?)'
                                   % raw_url)
+    content = _read_capped(resp, raw_url)
     try:
-        return resp.content.decode('utf-8-sig')
+        return content.decode('utf-8-sig')
     except UnicodeDecodeError:
         raise ImportSourceInvalid('"%s" is not UTF-8 text' % raw_url)
 
@@ -284,6 +378,8 @@ def lookup_by_ids(file_ids):
 
 def category_records(category_name, source='local'):
     """Commons file infos of a category's files."""
+    if category_name is not None and not isinstance(category_name, str):
+        raise ImportSourceInvalid('the category must be text')
     if not (category_name or '').strip():
         raise ImportSourceInvalid('no category given')
     if source == 'remote':

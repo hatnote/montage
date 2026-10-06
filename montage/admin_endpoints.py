@@ -63,6 +63,8 @@ def get_admin_routes():
            POST('/admin/campaign/<campaign_id:int>/import/check', check_import),
            GET('/admin/campaign/<campaign_id:int>/import/check/<token:str>/download',
                download_import_check),
+           GET('/admin/campaign/<campaign_id:int>/import/check/<token:str>/issues',
+               download_import_check_issues),
            POST('/admin/round/<round_id:int>/import', import_entries),
            POST('/admin/round/<round_id:int>/activate', activate_round),
            POST('/admin/round/<round_id:int>/pause', pause_round),
@@ -338,16 +340,28 @@ def check_import(user_dao, campaign_id, request_dict, config):
     return {'data': import_check.summarize(result, token)}
 
 
+def _csv_response(data, output_name):
+    resp = Response(data, mimetype='text/csv')
+    resp.mimetype_params['charset'] = 'utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
+    return resp
+
+
 def download_import_check(user_dao, campaign_id, token, config):
     """The checked list as a ready-to-use upload file (filename, file_id)."""
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
     result = import_check.load(token, config, coord_dao.campaign.id)
-    output_name = 'montage_import-%s-%s.csv' % (campaign_id,
-                                                result['checked_at'][:10])
-    resp = Response(import_check.upload_csv(result), mimetype='text/csv')
-    resp.mimetype_params['charset'] = 'utf-8'
-    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % (output_name,)
-    return resp
+    return _csv_response(import_check.upload_csv(result),
+                         'montage_import-%s-%s.csv' % (campaign_id, result['checked_at'][:10]))
+
+
+def download_import_check_issues(user_dao, campaign_id, token, config):
+    """Every row of the check that is not ok, as a CSV report."""
+    coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    result = import_check.load(token, config, coord_dao.campaign.id)
+    return _csv_response(import_check.issues_csv(result),
+                         'montage_import_issues-%s-%s.csv'
+                         % (campaign_id, result['checked_at'][:10]))
 
 
 def import_entries(user_dao, round_id, request_dict, config):
@@ -405,9 +419,10 @@ def _import_into_round(user_dao, coord_dao, round_id, request_dict, config):
         token = request_dict.get('check_token')
         if not token:
             raise ImportCheckRequired(
-                'check the import source first: POST it to'
+                'reload the page and check the source again: an import now'
+                ' needs a check first (POST the source to'
                 ' /admin/campaign/<campaign_id>/import/check, then import'
-                ' with the check_token it returns')
+                ' with the check_token it returns)')
         result = import_check.load(token, config, coord_dao.campaign.id,
                                    import_method)
         import_check.raise_if_blocked(result)  # before anything is written
@@ -415,7 +430,7 @@ def _import_into_round(user_dao, coord_dao, round_id, request_dict, config):
                    for row in import_check.importable(result)]
         entries = coord_dao.add_checked_entries(
             round_id, entries, import_check.describe_source(result))
-        params = dict(import_check.source_params(result), check_token=token)
+        params = import_check.source_params(result, token)
         import_warnings.extend(import_check.import_warnings(result))
     else:
         raise NotImplementedResponse()
@@ -553,12 +568,18 @@ def create_round(user_dao, campaign_id, request_dict, config):
         the import's result (as /admin/round/<id>/import returns it)
     """
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    import_request = request_dict.get('import')
+    if import_request and (not isinstance(import_request, dict) or
+                           import_request.get('import_method')
+                           not in import_check.CHECKED_METHODS):
+        raise InvalidAction('import must be {import_method, check_token} with an'
+                            ' import_method of %s'
+                            % ', '.join(import_check.CHECKED_METHODS))
 
     rnd_params = _prepare_round_params(coord_dao, request_dict)
     rnd = coord_dao.create_round(**rnd_params)
 
     import_stats = None
-    import_request = request_dict.get('import')
     if import_request:
         user_dao.rdb_session.flush()  # the round's id
         entries, import_stats = _import_into_round(user_dao, coord_dao, rnd.id,

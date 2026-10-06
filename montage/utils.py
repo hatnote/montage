@@ -76,35 +76,35 @@ class NotImplementedResponse(MontageError, BadRequest, NotImplementedError):
 # Import check errors (hatnote/montage#510). They carry an error_type so the
 # frontend can tell them apart; subclasses of InvalidAction (400), not of
 # ValueError/TypeError, which older import code caught as "try another format".
-class _ImportError(InvalidAction):
+class _ImportProblem(InvalidAction):
     error_type = None
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('error_type', self.error_type)
-        super(_ImportError, self).__init__(*args, **kwargs)
+        super(_ImportProblem, self).__init__(*args, **kwargs)
 
 
-class ImportSourceInvalid(_ImportError):
+class ImportSourceInvalid(_ImportProblem):
     "The import source cannot be read (bad link, no name column, ...)"
     error_type = 'import_source_invalid'
 
 
-class ImportCheckBlocked(_ImportError):
+class ImportCheckBlocked(_ImportProblem):
     "The checked list has rows that block the import"
     error_type = 'import_check_blocked'
 
 
-class ImportCheckExpired(_ImportError):
+class ImportCheckExpired(_ImportProblem):
     "The check token is unknown, expired or for another campaign/source"
     error_type = 'import_check_expired'
 
 
-class ImportCheckRequired(_ImportError):
+class ImportCheckRequired(_ImportProblem):
     "An import of a first-round source was sent without a check token"
     error_type = 'import_check_required'
 
 
-class ImportEmpty(_ImportError):
+class ImportEmpty(_ImportProblem):
     "A new first round would get no files (#447)"
     error_type = 'import_empty'
 

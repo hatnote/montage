@@ -224,8 +224,9 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     if not advance:
         request = {'import_method': 'category', 'category': category_name}
         entries, params = _checked_entries(user_dao, coord_dao, rnd.id, request)
+        source = category_name
         print(('++ prepared %s entries from %r' %
-               (len(entries), category_name)))
+               (len(entries), source)))
         coord_dao.add_round_entries(rnd.id, entries, method='category',
                                     params=params)
     else:
@@ -239,7 +240,8 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
             raise UsageError('too many entries for ranking round')
 
         source = 'round(#%s)' % last_successful_rnd.id
-        coord_dao.add_round_entries(rnd.id, advancing_group, source)
+        coord_dao.add_round_entries(rnd.id, advancing_group, method='round',
+                                    params={'round_id': last_successful_rnd.id})
     print(('++ added entries from %s to round %s (%r)'
            % (source, rnd.id, rnd.name)))
 

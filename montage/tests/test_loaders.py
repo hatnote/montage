@@ -18,7 +18,6 @@ from .conftest import (
     FIXTURE_FILE_INFOS,
     FIXTURE_FULL_CSV,
     FIXTURE_FILENAME_CSV,
-    TOOLFORGE_FILE_URL,
     REUPLOAD_FILE_INFO,
 )
 
@@ -130,7 +129,7 @@ def test_parse_header_less_lists():
     assert _names(rows) == ['Foo,_bar.jpg', 'Two.jpg']
     # one column with an unknown header word: read as a name (as before)
     rows, _ = parse_source_rows('files\nOne.jpg\n')
-    assert _names(rows) == ['files', 'One.jpg']
+    assert _names(rows) == ['Files', 'One.jpg']  # first letter canonical
 
 
 def test_parse_file_id_cells():
@@ -564,3 +563,92 @@ def test_source_url_rewrites_only_gist_links():
         'https://gist.githubusercontent.com/u/abc/raw/x.csv', False)
     assert source_url('https://wikimedia.be/public/wlh/list.txt') == (
         'https://wikimedia.be/public/wlh/list.txt', False)
+
+
+
+# ---------------------------------------------------------------------------
+# Review fixes (pr-check 2026-10-06): what the server fetches, and how much
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('url', [
+    'http://example.org/list.csv',            # not https
+    'https://127.0.0.1/list.csv',
+    'https://169.254.169.254/latest/meta-data/',
+    'https://[::1]/list.csv',
+    'https://10.0.0.5/list.csv',
+    'ftp://example.org/list.csv',
+    'https:///nohost',
+])
+def test_fetch_refuses_non_public_or_non_https_links(url):
+    with responses.RequestsMock() as rsps:  # nothing may be requested
+        with raises(ImportSourceInvalid):
+            fetch_source_text(url)
+        assert len(rsps.calls) == 0
+
+
+def test_fetch_follows_redirects_only_to_public_addresses(monkeypatch):
+    from montage import loaders
+    with responses.RequestsMock() as rsps:
+        rsps.add(responses.GET, 'https://example.org/a.csv', status=302,
+                 headers={'Location': 'https://example.org/b.csv'})
+        rsps.add(responses.GET, 'https://example.org/b.csv', body='A.jpg\n', status=200)
+        assert fetch_source_text('https://example.org/a.csv') == 'A.jpg\n'
+    with responses.RequestsMock() as rsps:
+        rsps.add(responses.GET, 'https://example.org/c.csv', status=302,
+                 headers={'Location': 'https://169.254.169.254/secret'})
+        with raises(ImportSourceInvalid):
+            fetch_source_text('https://example.org/c.csv')
+        assert len(rsps.calls) == 1
+    with responses.RequestsMock() as rsps:
+        for i in range(loaders.MAX_REDIRECTS + 1):
+            rsps.add(responses.GET, 'https://example.org/r%d' % i, status=302,
+                     headers={'Location': 'https://example.org/r%d' % (i + 1)})
+        with raises(ImportSourceInvalid):
+            fetch_source_text('https://example.org/r0')
+
+
+def test_fetch_stops_at_the_size_cap(monkeypatch):
+    from montage import loaders
+    monkeypatch.setattr(loaders, 'MAX_SOURCE_BYTES', 1000)
+    with responses.RequestsMock() as rsps:
+        rsps.add(responses.GET, 'https://example.org/big.csv', body='A.jpg\n' * 500, status=200)
+        with raises(ImportSourceInvalid) as exc:
+            fetch_source_text('https://example.org/big.csv')
+    assert 'larger than' in exc.value.detail
+
+
+def test_parse_stops_at_the_row_cap(monkeypatch):
+    from montage import loaders
+    monkeypatch.setattr(loaders, 'MAX_SOURCE_ROWS', 3)
+    parse_source_rows('filename\nA.jpg\nB.jpg\nC.jpg\n')
+    with raises(ImportSourceInvalid):
+        parse_source_rows('filename\nA.jpg\nB.jpg\nC.jpg\nD.jpg\n')
+    with raises(ImportSourceInvalid):
+        parse_name_list(['A.jpg', 'B.jpg', 'C.jpg', 'D.jpg'])
+
+
+def test_source_fields_must_be_text():
+    from montage.loaders import category_records
+    for bad in (['https://example.org/x.csv'], {'u': 1}, 5):
+        with raises(ImportSourceInvalid):
+            fetch_source_text(bad)
+        with raises(ImportSourceInvalid):
+            category_records(bad)
+    with raises(ImportSourceInvalid):
+        parse_name_list(5)
+
+
+@pytest.mark.parametrize('written, canonical', [
+    ('file:a b.jpg', 'A_b.jpg'),
+    ('Image: Foo.jpg', 'Foo.jpg'),
+    ('File:  two   spaces__and_.jpg', 'Two_spaces_and_.jpg'),
+    ('_leading and trailing_ ', 'Leading_and_trailing'),
+    (u'éclair.jpg', u'Éclair.jpg'),
+    (b'Bytes.jpg', 'Bytes.jpg'),
+])
+def test_names_are_canonical_like_mediawiki(written, canonical):
+    """MediaWiki file titles: File:/Image: prefix in any case, runs of
+    spaces and underscores collapsed, no leading/trailing underscore,
+    first letter upper case (Commons is first-letter case-sensitive)."""
+    assert normalise_name(written) == canonical
+    assert parse_name_list([written])[0]['name'] == canonical

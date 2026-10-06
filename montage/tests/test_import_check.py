@@ -278,7 +278,7 @@ def test_same_name_keys_ask_mariadb(monkeypatch):
             self.n = n
 
         def fetchone(self):
-            return [b'k' for _ in range(self.n)]
+            return self.row
 
     class Session(object):
         def get_bind(self):
@@ -289,16 +289,51 @@ def test_same_name_keys_ask_mariadb(monkeypatch):
 
         def execute(self, statement, params):
             sent.append((str(statement), params))
-            return Result(len(params))
+            result = Result(len(params))
+            # a key per bound name, in column order (case-insensitive)
+            result.row = [params['n%d' % j].lower().encode('utf8')
+                          for j in range(len(params))]
+            return result
 
     monkeypatch.setattr(import_check, 'SAME_NAME_CHUNK_SIZE', 2)
-    keys = same_name_keys(['c.jpg', 'a.jpg', 'b.jpg'], Session())
-    assert set(keys) == {'a.jpg', 'b.jpg', 'c.jpg'}
-    assert [len(p) for _, p in sent] == [2, 1]
+    keys = same_name_keys(['c.jpg', 'X.jpg', 'a.jpg', 'x.jpg'], Session())
+    assert keys == {'X.jpg': b'x.jpg', 'a.jpg': b'a.jpg', 'c.jpg': b'c.jpg', 'x.jpg': b'x.jpg'}
+    assert [len(p) for _, p in sent] == [2, 2]  # X.jpg and x.jpg in different chunks
     sql = sent[0][0]
     assert sql.startswith('SELECT WEIGHT_STRING(CONVERT(:n0 USING utf8mb4)'
                           ' COLLATE utf8mb4_unicode_ci) AS w0')
     assert 'FROM' not in sql
+
+
+def _session(dialect):
+    class Session(object):
+        def get_bind(self):
+            class Bind(object):
+                pass
+            Bind.dialect = type('Dialect', (), {'name': dialect})
+            return Bind()
+
+        def execute(self, statement, params):
+            class Result(object):
+                def fetchone(self):
+                    return [None] * len(params)
+            return Result()
+    return Session()
+
+
+def test_same_name_keys_never_approximate_silently(monkeypatch):
+    """B4: the Python stand-in only for SQLite / no session in dev and
+    tests; another dialect, or any deployed instance, fails loudly."""
+    with pytest.raises(RuntimeError):
+        same_name_keys(['a.jpg'], _session('postgresql'))
+    with pytest.raises(RuntimeError):  # a NULL key from the database
+        same_name_keys(['a.jpg'], _session('mariadb'))
+    assert same_name_keys(['a.jpg'], _session('sqlite'))
+    monkeypatch.setattr(import_check, 'ENV_NAME', 'prod')
+    with pytest.raises(RuntimeError):
+        same_name_keys(['a.jpg'], _session('sqlite'))
+    with pytest.raises(RuntimeError):
+        same_name_keys(['a.jpg'])
 
 
 # ---------------------------------------------------------------------------
@@ -372,17 +407,38 @@ def test_load_refuses_bad_tokens(config):
             load(bad, config, *args)
 
 
-def test_save_cleans_up_old_files(config, tmpdir):
+def test_save_cleans_up_only_old_check_files(config, tmpdir):
     keep = save(_result(), config)
     stale = save(_result(), config)
     folder = config['import_check_path']
     week_ago = time.time() - 8 * 24 * 3600
-    os.utime(os.path.join(folder, stale + '.json'), (week_ago, week_ago))
-    other = os.path.join(folder, 'notes.txt')
-    open(other, 'w').close()
-    os.utime(other, (week_ago, week_ago))
+    for name in (stale + '.json', 'notes.txt', 'export.json', '.tmp-x1.json'):
+        path = os.path.join(folder, name)
+        if not os.path.exists(path):
+            open(path, 'w').close()
+        os.utime(path, (week_ago, week_ago))
     newest = save(_result(), config)
-    assert sorted(os.listdir(folder)) == sorted([keep + '.json', newest + '.json', 'notes.txt'])
+    assert sorted(os.listdir(folder)) == sorted(
+        [keep + '.json', newest + '.json', 'notes.txt', 'export.json'])
+
+
+def test_save_does_not_change_an_existing_folder(tmpdir):
+    folder = tmpdir.mkdir('shared')
+    os.chmod(str(folder), 0o755)
+    save(_result(), {'import_check_path': str(folder)})
+    assert os.stat(str(folder)).st_mode & 0o777 == 0o755
+
+
+def test_save_keeps_at_most_max_check_files(config, monkeypatch):
+    monkeypatch.setattr(import_check, 'MAX_CHECK_FILES', 3)
+    tokens = []
+    for i in range(5):
+        tokens.append(save(_result(), config))
+        path = os.path.join(config['import_check_path'], tokens[-1] + '.json')
+        recent = time.time() - 3600 + i  # within 7 days, oldest first
+        os.utime(path, (recent, recent))
+    left = sorted(os.listdir(config['import_check_path']))
+    assert left == sorted(t + '.json' for t in tokens[-3:])
 
 
 def test_check_file_has_no_montage_user(monkeypatch, commons, config):
@@ -397,14 +453,31 @@ def test_check_file_has_no_montage_user(monkeypatch, commons, config):
     assert 'Yarl' not in raw and 'Slaporte' not in raw
 
 
-def test_check_dir_required_on_deployed_instances(monkeypatch):
+def test_check_dir_required_outside_dev(monkeypatch, tmpdir):
     monkeypatch.delenv('MONTAGE_IMPORT_CHECK_PATH', raising=False)
-    for env in ('beta', 'prod', 'devlabs'):
+    good = str(tmpdir.mkdir('checks'))
+    for env in ('beta', 'prod', 'devlabs', 'staging'):
         assert 'MONTAGE_IMPORT_CHECK_PATH' in import_check.check_dir_problem({}, env)
-        assert import_check.check_dir_problem({'import_check_path': '/x'}, env) is None
-    assert import_check.check_dir_problem({}, 'dev') is None
-    monkeypatch.setenv('MONTAGE_IMPORT_CHECK_PATH', '/y')
+        assert import_check.check_dir_problem({'import_check_path': good}, env) is None
+    for env in ('dev', 'devtest'):
+        assert import_check.check_dir_problem({}, env) is None
+    monkeypatch.setenv('MONTAGE_IMPORT_CHECK_PATH', good)
     assert import_check.check_dir_problem({}, 'prod') is None
+
+
+def test_check_dir_must_be_a_folder_of_its_own(tmpdir):
+    """B1: a typo such as the tool's home must not start the app (its
+    cleanup would delete files there)."""
+    home = tmpdir.mkdir('home')
+    home.join('replica.my.cnf').write('x')
+    for path, why in [('relative/checks', 'absolute'),
+                      (str(home), 'other files'),
+                      (str(tmpdir.join('missing', 'deeper')), 'does not exist')]:
+        problem = import_check.check_dir_problem({'import_check_path': path}, 'prod')
+        assert problem and why in problem, (path, problem)
+    # a folder that does not exist yet, in an existing parent, is fine
+    assert import_check.check_dir_problem(
+        {'import_check_path': str(home.join('import_checks'))}, 'prod') is None
 
 
 def test_header_less_list_with_comma_names(monkeypatch, commons):
@@ -548,17 +621,28 @@ def test_import_takes_the_checked_list_without_lookups(montage_app, coord_client
     assert rows[0]['source_params']['csv_url'] == 'https://example.org/list.csv'
 
 
-def test_check_token_is_stored_in_the_round_source(montage_app, coord_client,
-                                                   local_commons, monkeypatch):
-    local_commons([info('A.jpg', 1)])
+def test_round_source_records_a_check_fingerprint_not_the_token(
+        montage_app, coord_client, local_commons, monkeypatch):
+    """B10: round_sources.params is shown on the public /entry page, so the
+    token itself is not stored; a second check of the same source reuses
+    the round source."""
+    import hashlib
+    local_commons([info('A.jpg', 1), info('B.jpg', 2)])
     _source(monkeypatch, 'A.jpg\n')
     round_id = new_round(coord_client, 'param')
-    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
+    campaign_id = _campaign_of(coord_client, round_id)
+    token = _check(coord_client, campaign_id)['data']['token']
     _import(coord_client, round_id, token)
+    _source(monkeypatch, 'A.jpg\nB.jpg\n')
+    _import(coord_client, round_id, _check(coord_client, campaign_id)['data']['token'])
     params = db_query(montage_app, 'SELECT params FROM round_sources WHERE round_id = :r',
                       r=round_id)
+    assert len(params) == 1
     assert json.loads(params[0]['params']) == {
-        'csv_url': 'https://example.org/list.csv', 'check_token': token}
+        'csv_url': 'https://example.org/list.csv',
+        'check_id': hashlib.sha256(token.encode('ascii')).hexdigest()[:12]}
+    page = coord_client.fetch('public: entry', '/entry/A.jpg')
+    assert token not in json.dumps(page)
 
 
 def test_blocked_check_writes_nothing_and_retry_uses_the_same_round(
@@ -721,23 +805,23 @@ def test_create_round_with_its_import(montage_app, coord_client, local_commons,
     assert len(round_rows(montage_app, data['id'])) == 2
 
 
-@pytest.mark.parametrize('case', ['no files', 'blocked', 'expired token'])
+@pytest.mark.parametrize('case', ['no files', 'blocked', 'unknown token'])
 def test_create_round_with_a_failing_import_creates_no_round(
         montage_app, coord_client, local_commons, monkeypatch, case):
     local_commons([info('A.jpg', 1)])
     _source(monkeypatch, {'no files': 'Gone.jpg\n',
                           'blocked': 'filename,file_id\nA.jpg,99\n',
-                          'expired token': 'A.jpg\n'}[case])
+                          'unknown token': 'A.jpg\n'}[case])
     campaign_id = _new_campaign(coord_client, 'atomic ' + case)
     token = _check(coord_client, campaign_id)['data']['token']
-    if case == 'expired token':
+    if case == 'unknown token':
         token = 'x' * 32
 
     resp = _add_round(coord_client, campaign_id,
                       {'import_method': 'csv', 'check_token': token}, error_code=400)
 
     expected = {'no files': 'import_empty', 'blocked': 'import_check_blocked',
-                'expired token': 'import_check_expired'}[case]
+                'unknown token': 'import_check_expired'}[case]
     assert expected in _body(resp)
     assert _rounds(coord_client, campaign_id) == []
     assert db_query(montage_app, 'SELECT id FROM round_sources') == []
@@ -749,3 +833,56 @@ def test_create_round_without_import_is_unchanged(montage_app, coord_client):
     campaign_id = _new_campaign(coord_client, 'plain')
     data = _add_round(coord_client, campaign_id)['data']
     assert 'import' not in data and len(_rounds(coord_client, campaign_id)) == 1
+
+
+def test_create_round_accepts_only_checked_import_methods(montage_app, coord_client):
+    """B12: add_round's import goes through the check; import_method
+    'round' (advance) would reach a KeyError (500)."""
+    campaign_id = _new_campaign(coord_client, 'advance')
+    resp = _add_round(coord_client, campaign_id,
+                      {'import_method': 'round', 'check_token': 'x'}, error_code=400)
+    assert 'import_method' in _body(resp)
+    assert _rounds(coord_client, campaign_id) == []
+
+
+def test_create_round_rolls_back_after_rows_were_written(montage_app, coord_client,
+                                                         local_commons, monkeypatch):
+    """B12: a failure after the entries and round entries were inserted
+    leaves nothing behind either."""
+    from montage import admin_endpoints
+    from montage.utils import InvalidAction
+    local_commons([info('Wr_A.jpg', 1), info('Wr_B.jpg', 2)])
+    _source(monkeypatch, 'Wr_A.jpg\nWr_B.jpg\n')
+    campaign_id = _new_campaign(coord_client, 'late failure')
+    token = _check(coord_client, campaign_id)['data']['token']
+
+    def late_failure(*a, **kw):
+        raise InvalidAction('failed after the inserts')
+    monkeypatch.setattr(admin_endpoints, 'autodisqualify', late_failure)
+    _add_round(coord_client, campaign_id, {'import_method': 'csv', 'check_token': token},
+               error_code=400)
+    monkeypatch.undo()
+    assert _rounds(coord_client, campaign_id) == []
+    assert entry_ids(montage_app, 'Wr_') == {}
+    assert db_query(montage_app, 'SELECT id FROM round_entries') == []
+    assert db_query(montage_app, 'SELECT id FROM round_sources') == []
+    assert db_query(montage_app, "SELECT id FROM audit_log_entries WHERE action = 'add_round_entries'") == []
+
+
+def test_issues_report_download(montage_app, coord_client, local_commons, monkeypatch):
+    """B13: every row that is not ok, also beyond the 1000 shown in the
+    form, as a CSV report (the upload file leaves them out)."""
+    local_commons([info('A.jpg', 1)])
+    _source(monkeypatch, 'filename,file_id\nA.jpg,1\n=Gone.jpg,\nX.jpg,99\n')
+    round_id = new_round(coord_client, 'issues')
+    campaign_id = _campaign_of(coord_client, round_id)
+    token = _check(coord_client, campaign_id)['data']['token']
+    resp = coord_client.fetch('coordinator: issues report',
+                              '/admin/campaign/%s/import/check/%s/issues' % (campaign_id, token),
+                              as_user=COORD)
+    assert resp.headers['Content-Disposition'].startswith(
+        'attachment; filename=montage_import_issues-%s-' % campaign_id)
+    rows = list(csv.reader(io.StringIO(_body(resp))))
+    assert rows[0] == ['row', 'name', 'file_id', 'commons_name', 'status', 'reason']
+    assert [(r[0], r[1], r[4]) for r in rows[1:]] == [
+        ('3', "'=Gone.jpg", 'unknown_name'), ('4', 'X.jpg', 'unknown_file_id')]

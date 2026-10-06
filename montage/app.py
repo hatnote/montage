@@ -73,6 +73,9 @@ def create_app(env_name='prod', config=None):
     if check_dir_problem:
         raise ValueError(check_dir_problem)
     print('==  import check folder: %s' % (import_check.check_dir(config),))
+    check_dir_warning = import_check.check_dir_warning(config, env_name)
+    if check_dir_warning:
+        print('!!  %s' % (check_dir_warning,))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()

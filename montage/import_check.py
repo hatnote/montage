@@ -31,6 +31,7 @@ import os
 import re
 import csv
 import json
+import hashlib
 import secrets
 import datetime
 import tempfile
@@ -70,11 +71,16 @@ SAME_NAME_CHUNK_SIZE = 500
 
 ENV_NAME = get_env_name()
 DEFAULT_CHECK_DIR = os.path.join(PROJ_PATH, 'tmp', 'import_checks')
-# deployed instances: the folder must be shared by all pods (and the import
-# worker), so it has to be configured
-CHECK_DIR_REQUIRED_ENVS = ('beta', 'prod', 'devlabs')
+# Only local development may use the default folder inside the checkout;
+# everywhere else the folder must be configured, on storage that all pods
+# (and the import worker) share.
+DEFAULT_CHECK_DIR_ENVS = ('dev', 'devtest')
+DEPLOYED_ENVS = ('beta', 'prod', 'devlabs')
+MAX_CHECK_FILES = 5000  # oldest check files beyond this are deleted
 
 _TOKEN_RE = re.compile(r'^[A-Za-z0-9_-]{32}$')
+# the only files Montage writes in the folder (and may delete)
+_CHECK_FILE_RE = re.compile(r'^(?:[A-Za-z0-9_-]{32}|\.tmp-.+)\.json$')
 
 
 def lookup_source():
@@ -276,16 +282,15 @@ def same_name_keys(names, rdb_session=None):
     names = sorted(set(names))
     if not names:
         return {}
-    if rdb_session is not None and _dialect_name(rdb_session) == 'mysql':
+    dialect = rdb_session.get_bind().dialect.name if rdb_session is not None else None
+    if dialect in ('mysql', 'mariadb'):
         return _database_keys(rdb_session, names)
+    if ENV_NAME in DEPLOYED_ENVS:
+        raise RuntimeError('the same-name check needs the MariaDB session on %s'
+                           ' (got %r)' % (ENV_NAME, dialect))
+    if dialect not in (None, 'sqlite'):
+        raise RuntimeError('no same-name comparison for database %r' % (dialect,))
     return {name: _test_only_approximate_key(name) for name in names}
-
-
-def _dialect_name(rdb_session):
-    try:
-        return rdb_session.get_bind().dialect.name
-    except Exception:
-        return None
 
 
 def _database_keys(rdb_session, names):
@@ -296,6 +301,8 @@ def _database_keys(rdb_session, names):
                          % (j, SAME_NAME_COLLATION, j) for j in range(len(chunk)))
         params = {'n%d' % j: name for j, name in enumerate(chunk)}
         row = rdb_session.execute(text('SELECT ' + cols), params).fetchone()
+        if row is None or any(cell is None for cell in row):
+            raise RuntimeError('the database returned no comparison key for a name')
         for j, name in enumerate(chunk):
             ret[name] = bytes(row[j])
     return ret
@@ -372,10 +379,21 @@ def import_warnings(result):
     return ret
 
 
-def source_params(result):
+def source_params(result, token=None):
     """round_sources.params for the import, from the check (not from the
-    import request)."""
-    return dict(result['source'])
+    import request), with a fingerprint of the check: the token itself is
+    not stored, because round sources are shown on public pages."""
+    params = dict(result['source'])
+    if token:
+        params[CHECK_ID_KEY] = check_fingerprint(token)
+    return params
+
+
+CHECK_ID_KEY = 'check_id'
+
+
+def check_fingerprint(token):
+    return hashlib.sha256(token.encode('ascii')).hexdigest()[:12]
 
 
 def describe_source(result):
@@ -430,6 +448,25 @@ def upload_csv(result):
     return out.getvalue().encode('utf8')
 
 
+ISSUES_COLUMNS = ['row', 'name', 'file_id', 'commons_name', 'status', 'reason']
+
+
+def issues_csv(result):
+    """Every row that is not ok, as a report (the upload file leaves them
+    out, and the form shows at most ISSUES_SHOWN)."""
+    out = StringIO()
+    writer = csv.writer(out, lineterminator='\n')
+    writer.writerow(ISSUES_COLUMNS)
+    for r in result['rows']:
+        if r['status'] == 'ok':
+            continue
+        writer.writerow([r['row'], guard_cell(r['name_as_written']),
+                         guard_cell(r['file_id_as_written']),
+                         guard_cell(r['commons_name'] or ''), r['status'],
+                         guard_cell(r['reason'])])
+    return out.getvalue().encode('utf8')
+
+
 # ---------------------------------------------------------------------------
 # Check files
 # ---------------------------------------------------------------------------
@@ -441,35 +478,89 @@ def check_dir(config):
 
 
 def check_dir_problem(config, env_name):
-    """Why the app must not start, or None."""
+    """Why the app must not start, or None. The folder must be configured
+    outside local development, absolute, writable, and Montage's own: the
+    cleanup deletes old check files in it."""
     configured = ((config or {}).get('import_check_path')
                   or os.environ.get('MONTAGE_IMPORT_CHECK_PATH'))
-    if env_name in CHECK_DIR_REQUIRED_ENVS and not configured:
+    if not configured:
+        if env_name in DEFAULT_CHECK_DIR_ENVS:
+            return None
         return ('MONTAGE_IMPORT_CHECK_PATH is not set: env %r needs a folder for'
                 ' import checks that all pods share, e.g.'
                 ' /data/project/<tool>/import_checks' % env_name)
+    if not os.path.isabs(configured):
+        return 'MONTAGE_IMPORT_CHECK_PATH %r must be an absolute path' % configured
+    if os.path.isdir(configured):
+        if not os.access(configured, os.W_OK | os.X_OK):
+            return 'MONTAGE_IMPORT_CHECK_PATH %r is not writable' % configured
+        others = [n for n in os.listdir(configured) if not _CHECK_FILE_RE.match(n)]
+        if others:
+            return ('MONTAGE_IMPORT_CHECK_PATH %r contains other files (%s): use a'
+                    ' folder of its own, e.g. .../import_checks'
+                    % (configured, ', '.join(sorted(others)[:3])))
+        return None
+    parent = os.path.dirname(configured.rstrip(os.sep))
+    if not (os.path.isdir(parent) and os.access(parent, os.W_OK | os.X_OK)):
+        return ('MONTAGE_IMPORT_CHECK_PATH %r does not exist and cannot be created'
+                % configured)
     return None
 
 
+def check_dir_warning(config, env_name):
+    """A note for the startup log, or None."""
+    folder = check_dir(config)
+    if env_name in DEPLOYED_ENVS and not folder.startswith('/data/project/'):
+        return ('import check folder %s is not under /data/project/: other pods and'
+                ' a restarted pod will not see its files' % folder)
+    return None
+
+
+def _check_files(folder):
+    return [n for n in os.listdir(folder) if _CHECK_FILE_RE.match(n)]
+
+
 def _cleanup(folder, now):
+    """Delete check files older than CHECK_MAX_AGE, and the oldest beyond
+    MAX_CHECK_FILES. Nothing else in the folder is touched."""
     cutoff = (now - CHECK_MAX_AGE).timestamp()
-    for name in os.listdir(folder):
-        if not (name.endswith('.json') or name.startswith('.tmp-')):
-            continue
+    kept = []
+    for name in _check_files(folder):
         path = os.path.join(folder, name)
         try:
-            if os.path.getmtime(path) < cutoff:
+            mtime = os.path.getmtime(path)
+            if mtime < cutoff:
                 os.remove(path)
+            elif _TOKEN_RE.match(name[:-5]):
+                kept.append((mtime, path))
         except FileNotFoundError:  # another process cleaned up first
             pass
+    kept.sort()
+    for _, path in kept[:max(0, len(kept) - MAX_CHECK_FILES + 1)]:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+
+def _ensure_folder(folder):
+    """Create the folder (mode 0700) if it is missing; an existing folder
+    keeps its mode."""
+    if os.path.isdir(folder):
+        return
+    os.makedirs(os.path.dirname(folder.rstrip(os.sep)) or '.', exist_ok=True)
+    try:
+        os.mkdir(folder, 0o700)
+        os.chmod(folder, 0o700)  # mkdir's mode is filtered by the umask
+    except FileExistsError:  # created by another process meanwhile
+        pass
 
 
 def save(result, config, now=None):
     """Write the check result to a new check file; returns its token.
-    Deletes check files older than CHECK_MAX_AGE first."""
+    Deletes old check files first (see _cleanup)."""
     folder = check_dir(config)
-    os.makedirs(folder, exist_ok=True)
-    os.chmod(folder, 0o700)
+    _ensure_folder(folder)
     _cleanup(folder, now or _utcnow())
     token = secrets.token_urlsafe(24)
     fd, tmp_path = tempfile.mkstemp(dir=folder, prefix='.tmp-', suffix='.json')

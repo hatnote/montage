@@ -45,12 +45,10 @@ from .utils import (format_date,
                     weighted_choice,
                     PermissionDenied, InvalidAction, NotImplementedResponse,
                     DoesNotExist,
-                    get_env_name,
                     load_default_series,
                     js_isoparse)
 
 from .imgutils import make_mw_img_url
-from . import loaders
 from .simple_serdes import DictableBase, JSONEncodedDict, LongJSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
@@ -92,7 +90,6 @@ VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
                 PRIVATE_STATUS]
 
-ENV_NAME = get_env_name()
 
 """
 Column ordering and groupings:
@@ -562,7 +559,8 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
-    file_id = Column(BigInteger, nullable=True)
+    # ix_entries_file_id: production has it from tools/migrate_prod_db.sql
+    file_id = Column(BigInteger, nullable=True, index=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1671,9 +1669,16 @@ class CoordinatorDAO(UserDAO):
     def get_or_create_round_source(self, round_id, import_method,
                                   params, dq_params=None):
         existing_sources = self.get_round_sources(round_id, import_method)
+
+        def same_source(a, b):
+            # a new check of the same source is the same round source; the
+            # check fingerprint (import_check.CHECK_ID_KEY) keeps the first
+            ignored = 'check_id'
+            return ({k: v for k, v in (a or {}).items() if k != ignored}
+                    == {k: v for k, v in (b or {}).items() if k != ignored})
         if existing_sources:
             for existing_source in existing_sources:
-                if existing_source.params == params:
+                if same_source(existing_source.params, params):
                     return existing_source
         round_source = RoundSource(method=import_method,
                                    params=params,
@@ -1688,6 +1693,12 @@ class CoordinatorDAO(UserDAO):
         # TODO: you shouldn't be able to use this method to add
         # entries to anything other than the first round in a campaign
 
+        # Checked imports (every entry has a file_id) are matched by file_id
+        # and deduplicated by it (_add_entries_by_file_id); names the database
+        # compares as equal were already handled by the import check.
+        if _use_file_id_lookup(entries):
+            return self._add_entries_by_file_id(entries)
+
         # Deduplicate case-insensitively before chunking. MySQL/MariaDB uses a
         # case-insensitive collation (utf8mb4_unicode_ci) on entries.name, so
         # two filenames differing only in case (e.g. Photo.JPG / photo.jpg)
@@ -1700,9 +1711,6 @@ class CoordinatorDAO(UserDAO):
                 seen_lower[key] = e.name
                 deduped.append(e)
         entries = deduped
-
-        if _use_file_id_lookup(entries):
-            return self._add_entries_by_file_id(entries)
 
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
@@ -1739,7 +1747,7 @@ class CoordinatorDAO(UserDAO):
                 seen.add(e.file_id)
                 deduped.append(e)
 
-        # Files imported before the cutoff have no file_id; find them by name
+        # Files imported before 2026-05-31 have no file_id; find them by name
         # where that is cheap (an index on name), so they keep their row.
         # Production has no such index: there they get a second row.
         name_fallback = 'name' in _entries_indexes(self.rdb_session)[1]
