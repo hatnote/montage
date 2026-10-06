@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <div class="card-container">
+    <div class="card-container" :aria-busy="isLoading || isChecking">
       <cdx-card class="information-card" style="margin-top: 24px">
         <template #supporting-text>
           <div class="form-container">
@@ -61,7 +61,7 @@
                   <template #label>{{ $t('montage-round-vote-method') }}</template>
                 </cdx-field>
               </div>
-              <cdx-field v-if="roundIndex === 0" :disabled="isChecking">
+              <cdx-field v-if="roundIndex === 0" :disabled="sourceLocked">
                 <cdx-radio
                   v-for="source in importSourceMethods"
                   :key="'radio-' + source.value"
@@ -85,11 +85,12 @@
               </cdx-field>
               <cdx-field
                 v-if="roundIndex === 0 && selectedImportSource === 'category'"
-                :disabled="isChecking"
+                :disabled="sourceLocked"
               >
                 <cdx-lookup
                   data-testid="montage-round-category"
                   v-model:selected="importSourceValue.category"
+                  v-model:input-value="categoryInput"
                   :menu-items="categoryOptions"
                   :placeholder="$t('montage-round-category-placeholder')"
                   @input="searchCategory"
@@ -97,17 +98,20 @@
                   <template #label>{{ $t('montage-round-category-label') }}</template>
                   <template #no-results>{{ $t('montage-round-no-category') }}</template>
                 </cdx-lookup>
+                <template v-if="categoryInput && !importSourceValue.category" #help-text>
+                  <p class="help-text">{{ $t('montage-round-category-pick') }}</p>
+                </template>
               </cdx-field>
               <cdx-field
                 v-if="roundIndex === 0 && selectedImportSource === 'csv'"
-                :disabled="isChecking"
+                :disabled="sourceLocked"
               >
                 <cdx-text-input input-type="url" v-model="importSourceValue.csv_url" />
                 <template #label>{{ $t('montage-round-file-url') }}</template>
               </cdx-field>
               <cdx-field
                 v-if="roundIndex === 0 && selectedImportSource === 'selected'"
-                :disabled="isChecking"
+                :disabled="sourceLocked"
               >
                 <cdx-text-area v-model="importSourceValue.file_names" rows="5" />
                 <template #label>{{ $t('montage-round-file-list') }}</template>
@@ -129,9 +133,12 @@
                 </p>
                 <import-check-result
                   v-if="checkResult || checkError"
+                  ref="checkResultPanel"
                   :result="checkResult"
                   :error="checkError"
+                  :error-detail="checkErrorDetail"
                   :download-url="checkDownloadUrl"
+                  :issues-url="checkIssuesUrl"
                 />
               </div>
               <cdx-field v-if="roundIndex === 0">
@@ -208,25 +215,34 @@
               </cdx-field>
             </div>
           </div>
+          <!-- announced to screen readers: check results, errors, changes -->
+          <p class="visually-hidden" role="status" aria-live="polite">{{ announcement }}</p>
+          <cdx-message v-if="saveError" type="error" class="save-error">
+            <p>{{ saveError }}</p>
+            <p v-if="saveErrorDetail" class="save-error-detail" lang="en" dir="ltr">
+              {{ saveErrorDetail }}
+            </p>
+          </cdx-message>
           <div class="button-group">
+            <p v-if="saveHint" id="round-save-hint" class="help-text save-hint">{{ saveHint }}</p>
             <cdx-button
-              :disabled="
-                isLoading ||
-                (roundIndex !== 0 && !thresholds) ||
-                (roundIndex === 0 &&
-                  (isChecking ||
-                    !checkResult ||
-                    checkResult.blocking ||
-                    !checkResult.importable_count))
-              "
+              :disabled="isLoading || (roundIndex !== 0 && !thresholds) || !!saveHint"
+              :aria-describedby="saveHint ? 'round-save-hint' : undefined"
               action="progressive"
               weight="primary"
+              data-testid="add-round-button"
               @click="submitRound()"
             >
-              <check class="icon-small" /> {{ $t('montage-round-add') }}
+              <check class="icon-small" />
+              {{
+                isLoading && roundIndex === 0
+                  ? $t('montage-round-saving-with-files')
+                  : $t('montage-round-add')
+              }}
             </cdx-button>
             <cdx-button
               action="destructive"
+              :disabled="isLoading"
               @click="cancelRound()"
               data-testid="cancel-round-button"
             >
@@ -240,7 +256,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import alertService from '@/services/alertService'
 import dataService from '@/services/dataService'
@@ -259,7 +275,8 @@ import {
   CdxRadio,
   CdxTextArea,
   CdxCheckbox,
-  CdxLookup
+  CdxLookup,
+  CdxMessage
 } from '@wikimedia/codex'
 
 // Components
@@ -347,8 +364,35 @@ const importSourceValue = ref({
 // import then takes exactly the checked list (check_token).
 const checkResult = ref(null)
 const checkError = ref(null)
+const checkErrorDetail = ref(null) // server text (English), shown with the message
 const isChecking = ref(false)
 let checkRequestCount = 0
+const checkResultPanel = ref(null)
+const categoryInput = ref('')
+// the round could not be saved (shown next to Save)
+const saveError = ref(null)
+const saveErrorDetail = ref(null)
+const announcement = ref('')
+
+// the source cannot change while it is checked or saved: the save would
+// still send the old check
+const sourceLocked = computed(() => isChecking.value || isLoading.value)
+
+// why Save is disabled for a first round (also its aria-describedby)
+const saveHint = computed(() => {
+  if (roundIndex !== 0 || isChecking.value) return null
+  if (!checkResult.value) return $t('montage-round-check-required')
+  if (checkResult.value.blocking) return $t('montage-round-check-blocking')
+  if (!checkResult.value.importable_count) return $t('montage-round-check-nothing-to-import')
+  return null
+})
+
+const announce = (text) => {
+  announcement.value = ''
+  nextTick(() => {
+    announcement.value = text
+  })
+}
 
 const sourceFilled = computed(() => {
   const value = importSourceValue.value
@@ -360,12 +404,22 @@ const sourceFilled = computed(() => {
 const checkDownloadUrl = computed(() =>
   checkResult.value ? adminService.downloadImportCheck(campaignId, checkResult.value.token) : null
 )
+const checkIssuesUrl = computed(() =>
+  checkResult.value
+    ? adminService.downloadImportCheckIssues(campaignId, checkResult.value.token)
+    : null
+)
 
 const clearCheck = () => {
+  const hadCheck = checkResult.value || checkError.value
   checkRequestCount += 1 // a response still on its way is ignored
   checkResult.value = null
   checkError.value = null
+  checkErrorDetail.value = null
+  saveError.value = null
+  saveErrorDetail.value = null
   isChecking.value = false
+  if (hadCheck) announce($t('montage-round-check-cleared'))
 }
 
 // any change to the source makes the check stale
@@ -389,29 +443,38 @@ const errorText = (error) => {
   return data?.detail || data?.message || error?.message || $t('montage-something-went-wrong')
 }
 
+const checkSummary = (result) =>
+  result.import_method === 'category'
+    ? $t('montage-round-check-summary-category', [result.total_rows, result.importable_count])
+    : $t('montage-round-check-summary', [result.total_rows, result.importable_count])
+
 const runCheck = () => {
   checkRequestCount += 1
   const requestNumber = checkRequestCount
   checkResult.value = null
   checkError.value = null
+  checkErrorDetail.value = null
+  saveError.value = null
+  saveErrorDetail.value = null
   isChecking.value = true
   adminService
     .checkImport(campaignId, buildSourcePayload())
     .then((response) => {
       if (requestNumber !== checkRequestCount) return
       checkResult.value = response.data
+      announce(checkSummary(response.data))
     })
     .catch((error) => {
       if (requestNumber !== checkRequestCount) return
-      if (error?.response?.data?.error_type === 'import_source_invalid') {
-        checkError.value = $t('montage-round-check-failed', [errorText(error)])
-      } else {
-        alertService.error(error)
-      }
+      // shown in the panel (a toast disappears): source errors and others
+      checkError.value = $t('montage-round-check-failed-short')
+      checkErrorDetail.value = errorText(error)
+      announce(checkError.value)
     })
     .finally(() => {
       if (requestNumber === checkRequestCount) {
         isChecking.value = false
+        nextTick(() => checkResultPanel.value?.focus())
       }
     })
 }
@@ -429,7 +492,14 @@ function searchCategory(name) {
 }
 
 const cancelRound = () => {
+  emit('reload-campaign-state')
   emit('update:showAddRoundForm', false)
+}
+
+// a check is valid for 7 days (the server refuses older ones)
+const checkExpired = (result) => {
+  const expires = Date.parse(result?.expires_at || '')
+  return !Number.isNaN(expires) && expires - 60 * 1000 <= Date.now()
 }
 
 const submitRound = () => {
@@ -457,6 +527,12 @@ const submitRound = () => {
       alertService.error({ message: $t('montage-round-check-nothing-to-import') })
       return
     }
+    if (checkExpired(checkResult.value)) {
+      checkResult.value = null
+      checkError.value = $t('montage-round-check-expired')
+      announce(checkError.value)
+      return
+    }
     const payload = {
       name: formData.value.name,
       vote_method: formData.value.vote_method,
@@ -474,10 +550,13 @@ const submitRound = () => {
     }
 
     isLoading.value = true
+    saveError.value = null
+    saveErrorDetail.value = null
     adminService
       .addRound(campaignId, payload)
       .then((resp) => {
-        alertService.success($t('montage-round-added'))
+        const imported = resp.data.import?.new_round_entry_count || 0
+        alertService.success($t('montage-round-added-with-files', [imported]))
         showImportResult(resp.data.import)
       })
       .catch(showImportError)
@@ -545,24 +624,42 @@ const showImportResult = (result) => {
         label: $t('montage-btn-ok'),
         actionType: 'progressive'
       },
-      onPrimary: closeForm
+      onPrimary: closeForm,
+      // closed with the X or Escape: the round is saved all the same
+      onClose: closeForm
     })
   } else {
     closeForm()
   }
 }
 
-// nothing was saved: the form stays open with everything as entered
+// The server refused or failed the save: nothing was saved, and the form
+// stays as entered. Without a response the round may have been saved, so
+// the campaign is reloaded and the coordinator told to look before saving
+// again.
 const showImportError = (error) => {
   const errorType = error?.response?.data?.error_type
   if (errorType === 'import_check_expired') {
     checkResult.value = null
     checkError.value = $t('montage-round-check-expired')
-  } else if (errorType === 'import_check_blocked' || errorType === 'import_empty') {
-    checkError.value = $t('montage-round-import-blocked', [errorText(error)])
+  } else if (errorType === 'import_check_blocked') {
+    checkResult.value = null
+    checkError.value = $t('montage-round-save-blocked-recheck')
+    checkErrorDetail.value = errorText(error)
+  } else if (errorType === 'import_empty') {
+    checkResult.value = null
+    checkError.value = $t('montage-round-check-nothing-to-import')
+  } else if (errorType === 'import_check_required') {
+    checkResult.value = null
+    checkError.value = $t('montage-round-reload-page')
+  } else if (!error?.response) {
+    emit('reload-campaign-state')
+    saveError.value = $t('montage-round-save-unknown')
   } else {
-    alertService.error(error)
+    saveError.value = $t('montage-round-not-saved')
+    saveErrorDetail.value = errorText(error)
   }
+  announce(checkError.value || saveError.value)
 }
 
 watch(thresholds, (value) => {
@@ -644,6 +741,32 @@ onMounted(() => {
 
 .icon-small {
   font-size: 6px;
+}
+
+.save-error {
+  margin-top: 16px;
+}
+
+.save-error-detail {
+  white-space: pre-line;
+  font-size: 0.875em;
+}
+
+.save-hint {
+  margin: 0 auto 0 0;
+  align-self: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .import-check {
