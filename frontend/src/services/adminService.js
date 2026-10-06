@@ -54,7 +54,26 @@ const adminService = {
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,
-  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`
+  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`,
+
+  getCampaignRequests: (status) =>
+    apiBackend.get('admin/campaign_requests', { params: status ? { status } : {} }),
+
+  getCampaignRequest: (requestId) => apiBackend.get(`admin/campaign_requests/${requestId}`),
+
+  validateWikimediaUser: (username) =>
+    apiBackend.get('admin/campaign_requests/validate_user', { params: { username } }),
+
+  submitCampaignRequest: (data) => apiBackend.post('admin/campaign_requests/submit', data),
+
+  approveCampaignRequest: (requestId, data = {}) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/approve`, data),
+
+  adviseCampaignRequest: (requestId, note) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/advise`, { note }),
+
+  resubmitCampaignRequest: (requestId, data) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/resubmit`, data)
 }
 
 export default adminService
