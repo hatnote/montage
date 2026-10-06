@@ -7,14 +7,22 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import { useThemeStore } from '@/stores/theme'
+
+const themeStore = useThemeStore()
+
+onMounted(() => {
+  themeStore.init()
+})
 </script>
 
 <style scoped>
 .main-container {
-  background-color: #fafafa;
+  background-color: var(--bg-page);
   min-height: calc(100vh - 116.5px);
   padding: 0 8px;
 }
