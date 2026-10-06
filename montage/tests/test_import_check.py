@@ -652,6 +652,19 @@ def test_category_same_name_pair_keeps_the_first(montage_app, coord_client,
     assert len(same) == 1 and VOLOCHEK in same[0] and VOLOCHYOK in same[0]
 
 
+def test_empty_import_is_not_reported_as_all_disqualified(montage_app, coord_client,
+                                                         local_commons, monkeypatch):
+    """#208: an import that brought no files also warned 'all entries
+    disqualified by round settings' (0 >= 0)."""
+    local_commons([])
+    _source(monkeypatch, 'Gone.jpg\n')
+    round_id = new_round(coord_client, 'empty')
+    token = _check(coord_client, _campaign_of(coord_client, round_id))['data']['token']
+    warnings = _import(coord_client, round_id, token)['data']['warnings']
+    keys = [k for w in warnings for k in w]
+    assert 'empty import' in keys and 'all disqualified' not in keys
+
+
 def test_app_refuses_to_start_without_a_check_folder(monkeypatch):
     from montage.app import create_app
     monkeypatch.delenv('MONTAGE_IMPORT_CHECK_PATH', raising=False)
