@@ -13,9 +13,9 @@
   >
     <div class="round-header">
       <div>
-        <h2
-          v-html="$t('montage-vote-edit-for', [`<a href='#/vote/${round.link}'>${round.name}</a>`])"
-        ></h2>
+        <i18n-t keypath="montage-vote-edit-for" tag="h2">
+          <a :href="`#/vote/${round.link}`">{{ round.name }}</a>
+        </i18n-t>
         <p style="color: gray">
           {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name]) }}
         </p>
