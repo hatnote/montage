@@ -10,6 +10,7 @@ import responses
 from pytest import raises
 
 from montage.loaders import (make_entry, parse_source_rows, parse_name_list,
+                             pasted_csv_text,
                              parse_file_id, normalise_name, fetch_source_text,
                              guard_cell, unguard_cell)
 from montage.utils import ImportSourceInvalid
@@ -155,6 +156,33 @@ def test_parse_name_list():
     assert _names(parse_name_list('A.jpg\nB.jpg')) == ['A.jpg', 'B.jpg']
     with raises(ImportSourceInvalid):
         parse_name_list(None)
+
+
+@pytest.mark.parametrize('pasted, expected', [
+    ('filename,file_id,note\nA.jpg,1,x', 'filename,file_id,note\nA.jpg,1,x'),
+    (['\ufeffFilename', 'A.jpg'], '\ufeffFilename\nA.jpg'),
+    (['', '"filename","file_id"', '"A, b.jpg",1'], '\n"filename","file_id"\n"A, b.jpg",1'),
+    ('file_id\n149673020', 'file_id\n149673020'),
+    (['img_name,img_size', 'A.jpg,10'], 'img_name,img_size\nA.jpg,10'),
+])
+def test_pasted_csv_in_a_file_list_is_read_as_csv(pasted, expected):
+    """A CSV pasted into the file list (e.g. the check's download) is read
+    as a CSV, not as one file name per line."""
+    assert pasted_csv_text(pasted) == expected
+
+
+def test_name_list_keeps_names_that_only_look_like_headers():
+    names = ['Filename.jpg', 'File_id_card.jpg', 'Filename,_file_id.jpg']
+    assert pasted_csv_text(names) is None
+    assert pasted_csv_text(['', '  ', None]) is None
+    assert _names(parse_name_list(names)) == names
+
+
+def test_csv_with_only_a_file_id_column():
+    rows, columns = parse_source_rows('file_id\n149673020\n\n7\n')
+    assert [(r['row'], r['name'], r['file_id']) for r in rows] == [
+        (2, '', 149673020), (4, '', 7)]
+    assert columns == {'name': None, 'file_id': 'file_id', 'ignored': []}
 
 
 def test_formula_guard_round_trip():

@@ -161,6 +161,14 @@ def _source_row(row_number, name_cell, file_id_cell=''):
             'malformed_file_id': malformed}
 
 
+def _list_row(row_number, line):
+    """A line of a header-less list: a file name, or a file_id if the line
+    is only digits (a Commons file name always has an extension)."""
+    if line.strip().isdigit():
+        return _source_row(row_number, '', line.strip())
+    return _source_row(row_number, line)
+
+
 def _is_blank(row):
     return not row['name'] and not row['file_id_as_written'].strip()
 
@@ -191,7 +199,8 @@ def _line_name(line):
 def parse_source_rows(text):
     """(rows, columns) of a CSV or a header-less name list.
 
-    The name column is `filename`, else `img_name`; `file_id` is optional;
+    The name column is `filename`, else `img_name`; `file_id` is optional
+    (or the only column: names then come from Commons);
     headers are matched case-insensitively, ignoring a BOM. Other columns
     are ignored (Commons supplies the metadata) and listed in
     columns['ignored']. Row numbers are spreadsheet rows (header = 1) or,
@@ -210,8 +219,8 @@ def parse_source_rows(text):
         raise ImportSourceInvalid('the source has %s rows; at most %s can be imported'
                                   ' at once' % (len(records) - 1, MAX_SOURCE_ROWS))
     rows = []
-    if name_col is not None:
-        name_idx = header.index(name_col)
+    if name_col is not None or FILE_ID_COLUMN in header:
+        name_idx = header.index(name_col) if name_col is not None else None
         id_idx = header.index(FILE_ID_COLUMN) if FILE_ID_COLUMN in header else None
         columns['name'] = name_col
         columns['file_id'] = FILE_ID_COLUMN if id_idx is not None else None
@@ -219,7 +228,8 @@ def parse_source_rows(text):
                               for i, c in enumerate(records[0])
                               if i not in (name_idx, id_idx) and c.strip()]
         for i, record in enumerate(records[1:]):
-            name = record[name_idx] if name_idx < len(record) else ''
+            name = (record[name_idx] if name_idx is not None
+                    and name_idx < len(record) else '')
             file_id = (record[id_idx] if id_idx is not None
                        and id_idx < len(record) else '')
             rows.append(_source_row(i + 2, name, file_id))
@@ -231,13 +241,39 @@ def parse_source_rows(text):
                 ' but none is called "filename" or "img_name"'
                 % len(records[0]))
         for i, line in enumerate(lines):
-            rows.append(_source_row(i + 1, _line_name(line)))
+            rows.append(_list_row(i + 1, _line_name(line)))
     return [r for r in rows if not _is_blank(r)], columns
+
+
+def pasted_csv_text(file_names):
+    """The text of a file list that is really a pasted CSV (its first line
+    is a header with filename, img_name or file_id, as in the check's
+    download), else None. Such a list is read like a CSV source."""
+    if isinstance(file_names, bytes):
+        file_names = file_names.decode('utf8')
+    if isinstance(file_names, str):
+        file_names = file_names.splitlines()
+    if not isinstance(file_names, list) or not all(
+            isinstance(n, (str, bytes)) or n is None for n in file_names):
+        return None
+    lines = [n.decode('utf8') if isinstance(n, bytes) else (n or '')
+             for n in file_names]
+    first = next((n for n in lines if n.strip()), None)
+    if first is None:
+        return None
+    try:
+        cells = next(csv.reader([first]))
+    except (StopIteration, csv.Error):
+        return None
+    if set(_header_key(c) for c in cells) & set(NAME_COLUMNS + (FILE_ID_COLUMN,)):
+        return '\n'.join(lines)
+    return None
 
 
 def parse_name_list(file_names):
     """Rows of a file list (import method `selected`): a list of names or
-    one name per line; blank entries are skipped but keep their number."""
+    one name per line; a line of digits only is a file_id; blank entries
+    are skipped but keep their number."""
     if file_names is None:
         raise ImportSourceInvalid('no file names given')
     if isinstance(file_names, bytes):
@@ -250,7 +286,7 @@ def parse_name_list(file_names):
     if len(file_names) > MAX_SOURCE_ROWS:
         raise ImportSourceInvalid('%s file names; at most %s can be imported at once'
                                   % (len(file_names), MAX_SOURCE_ROWS))
-    rows = [_source_row(i + 1, name.decode('utf8') if isinstance(name, bytes) else (name or ''))
+    rows = [_list_row(i + 1, name.decode('utf8') if isinstance(name, bytes) else (name or ''))
             for i, name in enumerate(file_names)]
     return [r for r in rows if not _is_blank(r)]
 

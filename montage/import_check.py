@@ -42,6 +42,7 @@ from collections import Counter
 from sqlalchemy import text
 
 from .loaders import (fetch_source_text, parse_source_rows, parse_name_list,
+                      pasted_csv_text,
                       lookup_by_names, lookup_by_ids, category_records,
                       guard_cell)
 from .utils import (PROJ_PATH, get_env_name, ImportSourceInvalid,
@@ -129,8 +130,14 @@ def run_check(request_dict, campaign_id, source='local', rdb_session=None,
         source_info = {'csv_url': url}
         rows = _classify_list(rows, source)
     elif import_method == 'selected':
-        rows = parse_name_list(request_dict.get('file_names'))
-        source_info = {'file_names': [r['name_as_written'] for r in rows]}
+        file_names = request_dict.get('file_names')
+        pasted_csv = pasted_csv_text(file_names)
+        if pasted_csv is not None:  # e.g. the check's download, pasted
+            rows, columns = parse_source_rows(pasted_csv)
+            source_info = {'file_names': pasted_csv.splitlines()}
+        else:
+            rows = parse_name_list(file_names)
+            source_info = {'file_names': [r['name_as_written'] for r in rows]}
         rows = _classify_list(rows, source)
     else:
         category = request_dict.get('category')

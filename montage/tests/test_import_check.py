@@ -364,6 +364,42 @@ def test_download_is_an_upload_file_that_passes_unchanged(monkeypatch, commons):
     assert upload_csv(second) == upload_csv(first)
 
 
+
+def test_download_pasted_into_the_file_list_passes_unchanged(monkeypatch, commons):
+    """The download can be pasted into the file list box as the next
+    source (the form sends the box's lines as file_names)."""
+    commons([info('A.jpg', 1), info('New.jpg', 2), info(VOLOCHEK, 3)])
+    first = csv_check(monkeypatch, 'filename,file_id\nA.jpg,1\nOld.jpg,2\n"%s",\nGone.jpg,\n' % VOLOCHEK)
+    data = upload_csv(first).decode('utf8')
+    second = run_check({'import_method': 'selected', 'file_names': data.split('\n')},
+                       CAMPAIGN, source='local')
+    assert [s for _, s in statuses(second)] == ['ok', 'ok', 'ok']
+    assert second['columns']['file_id'] == 'file_id'
+    assert upload_csv(second) == upload_csv(first)
+
+
+def test_pasted_csv_by_file_id_only_finds_same_name_pairs(commons):
+    """A list of file_ids alone (header file_id) is looked up by id; two
+    files whose names the database treats as equal block it."""
+    commons([info(VOLOCHEK, 149673020), info(VOLOCHYOK, 149673022)])
+    result = run_check({'import_method': 'selected',
+                        'file_names': ['file_id', '149673020', '149673022']},
+                       CAMPAIGN, source='local')
+    assert statuses(result) == [(2, 'same_name'), (3, 'same_name')]
+    assert [r['commons_name'] for r in result['rows']] == [VOLOCHEK, VOLOCHYOK]
+
+
+def test_file_list_of_bare_file_ids(commons):
+    """Lines of digits only are file_ids (no header needed); they mix with
+    names. Two ids whose Commons names the database treats as equal block."""
+    commons([info(VOLOCHEK, 149673020), info(VOLOCHYOK, 149673022), info('A.jpg', 1)])
+    result = run_check({'import_method': 'selected',
+                        'file_names': [' 149673020 ', 'A.jpg', '149673022', '999']},
+                       CAMPAIGN, source='local')
+    assert statuses(result) == [(1, 'same_name'), (2, 'ok'), (3, 'same_name'),
+                                (4, 'unknown_file_id')]
+    assert result['rows'][0]['commons_name'] == VOLOCHEK
+
 # ---------------------------------------------------------------------------
 # Check files
 # ---------------------------------------------------------------------------
