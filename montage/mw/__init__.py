@@ -63,16 +63,26 @@ class MessageMiddleware(Middleware):
         try:
             ret = next()
         except Exception as e:
-            if self.debug_errors and not isinstance(e, MontageError):
-                import pdb; pdb.post_mortem()
-                import pdb;pdb.set_trace()
-            if self.raise_errors:
-                raise
-            ret = None
-            exc_info = ExceptionInfo.from_current()
-            err = '%s: %s' % (exc_info.exc_type, exc_info.exc_msg)
-            response_dict['errors'].append(err)
-            response_dict['status'] = 'exception'
+            if isinstance(e, MontageError):
+                err = str(e)
+                # Some clastic errors like BadRequest have a description property
+                if hasattr(e, 'description') and e.description:
+                    err = e.description
+                response_dict['errors'].append(err)
+                response_dict['status'] = 'failure'
+                response_dict['_status_code'] = getattr(e, 'code', getattr(e, 'status_code', 400))
+                ret = None
+            else:
+                if self.debug_errors:
+                    import pdb; pdb.post_mortem()
+                if self.raise_errors:
+                    raise
+                ret = None
+                exc_info = ExceptionInfo.from_current()
+                err = '%s: %s' % (exc_info.exc_type, exc_info.exc_msg)
+                response_dict['errors'].append(err)
+                response_dict['status'] = 'exception'
+                response_dict['_status_code'] = 500
         else:
             status_code = response_dict.pop('_status_code', None)
             if response_dict.get('errors'):
