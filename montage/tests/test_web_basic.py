@@ -822,6 +822,39 @@ def test_home_client(base_client, api_client, mock_external_apis):
     #resp = base_client.fetch('public: logout', '/logout')
 
 
+def test_meta_shows_no_config_values(montage_app, base_client):
+    """/meta and /meta/json/ are public; they list the app's resources by
+    name, but must not show config values (clastic's default showed the
+    first 70 characters of repr(config))."""
+    config = montage_app.resources['config']
+    values = [config.get(key) for key in ('cookie_secret', 'db_url',
+                                          'oauth_client_id',
+                                          'oauth_client_secret')]
+    values = [v for v in values if isinstance(v, str) and len(v) >= 6]
+    assert values  # the devtest config has some of these
+
+    for url in ('/meta/', '/meta/json/'):
+        resp = base_client._test_client.get(url)
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'config' in body
+        for value in values:
+            assert value not in body, '%s shows a config value' % url
+        assert "{'" not in body.replace('&#x27;', "'")
+
+
+def test_frontend_error_log_maintainers_only(montage_app, api_client,
+                                            monkeypatch):
+    from montage import rdb
+    # every test user is a maintainer; make LilyOfTheWest a plain coordinator
+    monkeypatch.setattr(rdb, 'MAINTAINERS',
+                        [m for m in rdb.MAINTAINERS if m != 'LilyOfTheWest'])
+
+    api_client.fetch('coordinator: read frontend error log', '/logs/feel',
+                     as_user='LilyOfTheWest', error_code=403)
+    api_client.fetch('maintainer: read frontend error log', '/logs/feel')
+
+
 def test_multiple_jurors(api_client, mock_external_apis):
     # This is copied from above. What's the best way to break up the tests into
     # various stages? Should I use a pytest.fixture?
