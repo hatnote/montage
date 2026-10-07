@@ -17,6 +17,11 @@ Row statuses:
                      warning
   unknown_file_id    the file_id is not on Commons: blocks
   malformed_file_id  the file_id is not a plain whole number: blocks
+  page_id            a bare number (no name) that is a File: page's page ID,
+                     not a file_id: blocks
+  revision_id        a bare number that is a revision ID of a File: page: blocks
+  ambiguous_id       a bare number that is one file's file_id and another
+                     File: page's page or revision ID: blocks
   same_name          a different Commons file whose name the database treats
                      as equal to another's (utf8mb4_unicode_ci): blocks a
                      list import (CSV, gist, Sheet, file list); in a category
@@ -43,7 +48,8 @@ from sqlalchemy import text
 
 from .loaders import (fetch_source_text, parse_source_rows, parse_name_list,
                       pasted_csv_text,
-                      lookup_by_names, lookup_by_ids, category_records,
+                      lookup_by_names, lookup_by_ids, lookup_other_ids,
+                      category_records,
                       guard_cell)
 from .utils import (PROJ_PATH, get_env_name, ImportSourceInvalid,
                     ImportCheckBlocked, ImportCheckExpired)
@@ -53,10 +59,12 @@ FORMAT = 1
 CHECKED_METHODS = ('csv', 'gistcsv', 'category', 'selected')
 LIST_METHODS = ('csv', 'gistcsv', 'selected')  # same-name pairs block these
 
-BLOCKING_STATUSES = ('unknown_file_id', 'malformed_file_id', 'same_name')
+BLOCKING_STATUSES = ('unknown_file_id', 'malformed_file_id', 'page_id',
+                     'revision_id', 'ambiguous_id', 'same_name')
 IMPORTED_STATUSES = ('ok', 'renamed')
 ALL_STATUSES = ('ok', 'renamed', 'duplicate', 'unknown_name',
-                'unknown_file_id', 'malformed_file_id', 'same_name')
+                'unknown_file_id', 'malformed_file_id', 'page_id', 'revision_id',
+                'ambiguous_id', 'same_name')
 
 # A check can be imported for an hour: files are renamed and deleted on
 # Commons all the time, and the check and the save happen in one sitting.
@@ -185,10 +193,18 @@ def _classify_list(rows, source):
              if r['name'] and not r['malformed_file_id']
              and (r['file_id'] is None or source == 'remote')]
     by_name = lookup_by_names(names, source)
+    # a bare number (no name) may be a page ID or revision ID someone found
+    # on Commons; nothing confirms it is a file_id
+    bare = [r['file_id'] for r in rows if r['file_id'] is not None and not r['name']]
+    others = lookup_other_ids(bare) if bare and source != 'remote' else {}
 
     ret = []
     for r in rows:
-        if r['malformed_file_id']:
+        other = others.get(r['file_id']) if not r['name'] else None
+        rec = by_id.get(r['file_id']) if other else None
+        if other and (rec is None or rec['img_name'] != other['name']):
+            ret.append(_other_id_row(r, other, rec))
+        elif r['malformed_file_id']:
             ret.append(_row(r, 'malformed_file_id',
                             reason='file_id "%s" is not a plain whole number'
                             % r['file_id_as_written'].strip()))
@@ -224,6 +240,27 @@ def _classify_list(rows, source):
                                 reason='"%s" is not on Commons: check the'
                                 ' spelling (renamed or deleted?)' % r['name']))
     return ret
+
+
+_ID_KINDS = {'page_id': 'the page ID', 'revision_id': 'a revision ID'}
+
+
+def _other_id_row(r, other, rec):
+    """A bare number that is a File: page's page ID or revision ID."""
+    num, page = r['file_id'], 'File:' + other['name']
+    if rec is not None:
+        return _row(r, 'ambiguous_id', file_id=num,
+                    reason='%s is the file_id of %s but also %s of %s; write'
+                    ' the file name instead, so it is clear which file is meant'
+                    % (num, rec['img_name'], _ID_KINDS[other['kind']], page))
+    if other['kind'] == 'revision_id':
+        reason = ('%s is a revision ID (one edit of the page %s), not a file_id;'
+                  ' Montage imports files, so write the file name instead: %s'
+                  % (num, page, other['name']))
+    else:
+        reason = ('%s is the page ID of %s, not a file_id; write the file name'
+                  ' instead: %s' % (num, page, other['name']))
+    return _row(r, other['kind'], file_id=num, reason=reason)
 
 
 def _file_key(row):

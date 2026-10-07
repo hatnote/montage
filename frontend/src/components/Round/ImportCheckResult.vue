@@ -140,9 +140,19 @@ const allStatuses = [
   'unknown_name',
   'unknown_file_id',
   'malformed_file_id',
+  'page_id',
+  'revision_id',
+  'ambiguous_id',
   'same_name'
 ]
-const blockingStatuses = ['unknown_file_id', 'malformed_file_id', 'same_name']
+const blockingStatuses = [
+  'unknown_file_id',
+  'malformed_file_id',
+  'page_id',
+  'revision_id',
+  'ambiguous_id',
+  'same_name'
+]
 
 const isCategory = computed(() => props.result?.import_method === 'category')
 
@@ -162,7 +172,8 @@ const summaryText = computed(() => {
 const blocks = (issue) => !!props.result?.blocking && blockingStatuses.includes(issue.status)
 
 // montage-round-check-status-ok, -renamed, -duplicate, -unknown-name,
-// -unknown-file-id, -malformed-file-id, -same-name
+// -unknown-file-id, -malformed-file-id, -page-id, -revision-id, -ambiguous-id,
+// -same-name
 const statusLabel = (status) => $t('montage-round-check-status-' + status.replaceAll('_', '-'))
 </script>
 

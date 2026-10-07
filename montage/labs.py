@@ -215,6 +215,32 @@ def get_files_info_by_ids(file_ids):
     return ret
 
 
+def get_file_pages_by_other_ids(numbers):
+    """{number: {'kind': 'page_id' | 'revision_id', 'name': file name}} for
+    the numbers that are the page ID, or a revision ID, of a File: page.
+    Those are the IDs people find on Commons and may take for a file_id
+    (hatnote/montage#510). A page ID wins over a revision ID."""
+    nums = sorted(set(int(n) for n in numbers))
+    ret = {}
+    if not nums:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(nums), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = tuple(nums[i:i + FILE_LOOKUP_CHUNK_SIZE])
+            marks = ', '.join(['%s'] * len(chunk))
+            revs = fetchall(
+                'SELECT rev_id AS num, page_title AS name FROM revision'
+                ' JOIN page ON rev_page = page_id'
+                ' WHERE page_namespace = 6 AND rev_id IN (%s)' % marks, chunk)
+            pages = fetchall(
+                'SELECT page_id AS num, page_title AS name FROM page'
+                ' WHERE page_namespace = 6 AND page_id IN (%s)' % marks, chunk)
+            for kind, rows in (('revision_id', revs), ('page_id', pages)):
+                for rec in rows:
+                    ret[int(rec['num'])] = {'kind': kind, 'name': rec['name']}
+    return ret
+
+
 def get_files(category_name):
     # Two steps because category membership and file data now live on
     # different database clusters, which cannot be joined in SQL.

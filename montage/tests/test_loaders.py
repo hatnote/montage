@@ -582,6 +582,20 @@ def test_get_files_info_by_ids_live():
     assert by_id[by_name['file_id']] == by_name
 
 
+@pytest.mark.xfail(
+    os.environ.get('TOOLFORGE') != '1',
+    reason='Requires live wikireplicas (Toolforge); set TOOLFORGE=1 to run',
+)
+def test_get_file_pages_by_other_ids_live():
+    """The page ID and a revision ID of a File: page (as shown on Commons,
+    2026-10-07) are recognised as such."""
+    from montage.labs import get_file_pages_by_other_ids
+    name = 'Reynisfjara,_Suðurland,_Islandia,_2014-08-17,_DD_164.JPG'
+    found = get_file_pages_by_other_ids([37348796, 1281700543])
+    assert found[37348796] == {'kind': 'page_id', 'name': name}
+    assert found[1281700543] == {'kind': 'revision_id', 'name': name}
+
+
 def test_source_url_rewrites_only_gist_links():
     """#208: a plain CSV / text link got '/raw' appended and returned 404."""
     from montage.loaders import source_url

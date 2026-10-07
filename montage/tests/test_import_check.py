@@ -39,9 +39,10 @@ def info(name, file_id, **kw):
 
 class FakeCommons(object):
     """Stands in for the wikireplica lookups (local mode)."""
-    def __init__(self, files):
+    def __init__(self, files, other_ids=None):
         self.by_name = {f['img_name']: f for f in files}
         self.by_id = {f['file_id']: f for f in files}
+        self.other_ids = other_ids or {}
         self.calls = []
 
     def names(self, names, source='local'):
@@ -52,6 +53,10 @@ class FakeCommons(object):
         self.calls.append(('ids', sorted(set(ids))))
         return {i: self.by_id[i] for i in ids if i in self.by_id}
 
+    def others(self, numbers):
+        self.calls.append(('other_ids', sorted(set(numbers))))
+        return {n: self.other_ids[n] for n in numbers if n in self.other_ids}
+
     def category(self, name, source='local'):
         self.calls.append(('category', name))
         return sorted(self.by_name.values(), key=lambda f: f['img_name'].encode('utf8'))
@@ -61,12 +66,13 @@ class FakeCommons(object):
 def commons(monkeypatch):
     fake = FakeCommons([])
 
-    def install(files):
-        fake.__init__(files)
+    def install(files, other_ids=None):
+        fake.__init__(files, other_ids)
         return fake
     monkeypatch.setattr(import_check, 'lookup_by_names', fake.names)
     monkeypatch.setattr(import_check, 'lookup_by_ids', fake.ids)
     monkeypatch.setattr(import_check, 'category_records', fake.category)
+    monkeypatch.setattr(import_check, 'lookup_other_ids', fake.others)
     return install
 
 
@@ -399,6 +405,38 @@ def test_file_list_of_bare_file_ids(commons):
     assert statuses(result) == [(1, 'same_name'), (2, 'ok'), (3, 'same_name'),
                                 (4, 'unknown_file_id')]
     assert result['rows'][0]['commons_name'] == VOLOCHEK
+
+
+def test_bare_page_and_revision_ids_are_refused_with_a_reason(commons):
+    """People find page IDs and revision IDs on Commons, not file_ids. A
+    bare number that is one of those blocks, saying what it is and which
+    file it points to, instead of 'not on Commons' or, worse, importing
+    another file whose file_id happens to be that number."""
+    commons([info('A.jpg', 1), info('B.jpg', 2)],
+            other_ids={1: {'kind': 'page_id', 'name': 'A.jpg'},           # same file: fine
+                       2: {'kind': 'page_id', 'name': 'Other.jpg'},       # ambiguous
+                       1100000000: {'kind': 'revision_id', 'name': 'C.jpg'},
+                       170000000: {'kind': 'page_id', 'name': 'D.jpg'}})
+    result = run_check({'import_method': 'selected',
+                        'file_names': ['1', '2', '1100000000', '170000000', '5', 'B.jpg']},
+                       CAMPAIGN, source='local')
+    assert statuses(result) == [(1, 'ok'), (2, 'ambiguous_id'), (3, 'revision_id'),
+                                (4, 'page_id'), (5, 'unknown_file_id'), (6, 'ok')]
+    reasons = {r['row']: r['reason'] for r in result['rows']}
+    assert 'revision ID' in reasons[3] and 'C.jpg' in reasons[3]
+    assert 'page ID' in reasons[4] and 'D.jpg' in reasons[4]
+    assert 'B.jpg' in reasons[2] and 'Other.jpg' in reasons[2]
+    assert [r['row'] for r in blocking_rows(result)] == [2, 3, 4, 5]
+
+
+def test_named_rows_are_not_looked_up_as_page_ids(commons):
+    """A row with a name confirms its file_id; only bare numbers are
+    checked against page and revision IDs."""
+    fake = commons([info('A.jpg', 1)], other_ids={1: {'kind': 'page_id', 'name': 'X.jpg'}})
+    result = run_check({'import_method': 'selected', 'file_names': ['A.jpg']},
+                       CAMPAIGN, source='local')
+    assert statuses(result) == [(1, 'ok')]
+    assert not any(c[0] == 'other_ids' for c in fake.calls)
 
 # ---------------------------------------------------------------------------
 # Check files

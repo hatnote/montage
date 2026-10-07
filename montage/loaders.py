@@ -14,7 +14,8 @@ import requests
 from boltons.iterutils import chunked_iter
 
 import montage.rdb  # TODO: circular import
-from .labs import get_files, get_files_info_by_names, get_files_info_by_ids
+from .labs import (get_files, get_files_info_by_names, get_files_info_by_ids,
+                   get_file_pages_by_other_ids)
 from .utils import (ImportSourceInvalid, requests_get,
                     requests_post)
 
@@ -410,6 +411,12 @@ def lookup_by_ids(file_ids):
     """{file_id: Commons file info} for the file_ids of live files; on the
     wikireplica only (the public utils endpoint has no lookup by id)."""
     return get_files_info_by_ids(file_ids)
+
+
+def lookup_other_ids(numbers):
+    """{number: {kind, name}} for numbers that are a File: page's page ID or
+    revision ID rather than a file_id; on the wikireplica only."""
+    return get_file_pages_by_other_ids(numbers)
 
 
 def category_records(category_name, source='local'):
