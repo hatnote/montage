@@ -35,15 +35,19 @@
         </p>
         <ul class="import-check-groups">
           <li v-for="(group, index) in result.same_name_groups" :key="'group-' + index">
-            <span v-for="(member, i) in group" :key="member.row">
+            <span v-for="(member, i) in group" :key="member.row" class="import-check-member">
               <template v-if="i > 0">
                 <span class="import-check-separator" aria-hidden="true"> ⟷ </span>
                 <span class="visually-hidden">{{ ' ' + $t('montage-round-check-and') + ' ' }}</span>
               </template>
               <span v-if="isCategory" class="import-check-name">{{ member.commons_name }}</span>
-              <span v-else class="import-check-name">{{
-                $t('montage-round-check-group-member', [member.commons_name, member.row])
-              }}</span>
+              <template v-else>
+                <span class="import-check-name">{{ member.commons_name }}</span
+                >{{ ' '
+                }}<span class="import-check-row">{{
+                  $t('montage-round-check-row-ref', [member.row])
+                }}</span>
+              </template>
             </span>
           </li>
         </ul>
@@ -97,7 +101,11 @@
       </template>
 
       <p v-if="downloadUrl && result.importable_count">
-        <a :href="downloadUrl" download>{{ $t('montage-round-check-download') }}</a>
+        <a :href="downloadUrl" download>{{
+          result.blocking
+            ? $t('montage-round-check-download-partial')
+            : $t('montage-round-check-download')
+        }}</a>
       </p>
       <p v-if="issuesUrl && result.issues_total">
         <a :href="issuesUrl" download>{{ $t('montage-round-check-download-issues') }}</a>
@@ -209,6 +217,18 @@ const statusLabel = (status) => $t('montage-round-check-status-' + status.replac
 
 .import-check-name {
   font-family: monospace;
+  /* Commons names have no spaces; let them wrap on narrow screens */
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .import-check-member {
+    display: block;
+  }
+}
+
+.import-check-row {
+  white-space: nowrap;
 }
 
 .visually-hidden {
