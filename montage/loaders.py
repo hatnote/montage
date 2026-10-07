@@ -182,7 +182,10 @@ def get_entries_from_gsheet(raw_url, source='local'):
         ret, warnings = load_full_csv(BytesIO(resp.content), source=source)
     except ValueError:
         try:
-            ret, warnings = load_partial_csv(resp)  # TODO: load_partial_csv expects a dictreader, did this ever work?
+            # load_partial_csv expects a DictReader, not a raw Response -- wrap it properly
+            from unicodecsv import DictReader as UDictReader
+            dr = UDictReader(BytesIO(resp.content))
+            ret, warnings = load_partial_csv(dr, source=source)
         except (ValueError, TypeError):
             resp_content = resp.content.decode('utf8')
             file_names = [fn.strip('\"') for fn in resp_content.split('\n')]
