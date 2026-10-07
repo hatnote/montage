@@ -124,6 +124,7 @@
 	"montage-round-source-selected-help": "Help text explaining the selected file list source option.",
 	"montage-round-category-placeholder": "Placeholder text for the category input field.",
 	"montage-round-category-label": "Label for the category input field.",
+	"montage-round-category-file-count": "Label showing the number of files in the selected category.",
 	"montage-round-no-category": "Message displayed when no categories are found.",
 	"montage-round-file-url": "Label for the file URL input field.",
 	"montage-round-file-list": "Label for the file list input field.",
