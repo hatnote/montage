@@ -38,7 +38,7 @@
             <span v-for="(member, i) in group" :key="member.row">
               <template v-if="i > 0">
                 <span class="import-check-separator" aria-hidden="true"> ⟷ </span>
-                <span class="visually-hidden">{{ $t('montage-round-check-and') }}</span>
+                <span class="visually-hidden">{{ ' ' + $t('montage-round-check-and') + ' ' }}</span>
               </template>
               <span v-if="isCategory" class="import-check-name">{{ member.commons_name }}</span>
               <span v-else class="import-check-name">{{

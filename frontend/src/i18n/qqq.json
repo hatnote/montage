@@ -213,7 +213,7 @@
 	"montage-round-check-status-unknown-name": "Import check status: no file with this name exists on Commons; the row is left out.",
 	"montage-round-check-status-unknown-file-id": "Import check status: no file with this file ID exists on Commons; this blocks the import.",
 	"montage-round-check-status-malformed-file-id": "Import check status: the file ID is not a plain whole number (for example 1.49673E+08); this blocks the import.",
-	"montage-round-check-status-same-name": "Import check status: a different file has a name that the database treats as the same (for example differing only in case, accents or е/ё).",
+	"montage-round-check-status-same-name": "Import check status: a different file in the same import (not a file already in Montage) has a name that the database treats as the same (for example differing only in case, accents or е/ё).",
 	"montage-round-check-same-name-title": "Heading above pairs of file names that the database cannot tell apart.",
 	"montage-round-check-same-name-list": "Advice for same-name pairs in a CSV or file list (they block the import).",
 	"montage-round-check-same-name-category": "Explanation for same-name pairs in a category import (they do not block it).",
