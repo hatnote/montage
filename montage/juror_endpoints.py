@@ -182,10 +182,12 @@ def get_votes_stats_from_round(user_dao, round_id):
         # dict: raw value => number of stars
         vote_map = {0.0: 1, 0.25: 2, 0.5: 3, 0.75: 4, 1.0: 5}
         stats = _get_summarized_votes_stats(juror_dao, round_id, vote_map)
+    elif rnd.vote_method == 'ranking':
+        stats = {}
+    else:
+        stats = {}
 
-    result = None
-    if stats is not None:
-        result = {'method': rnd.vote_method, 'stats': stats}
+    result = {'method': rnd.vote_method, 'stats': stats}
 
     return result
 
