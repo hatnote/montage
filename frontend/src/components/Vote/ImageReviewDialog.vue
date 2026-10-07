@@ -1,13 +1,16 @@
 <template>
   <div class="vote-image-review-dialog">
     <div class="vote-image-review-dialog-image-container">
-      <CommonsImage :image="image" :width="800" image-class="vote-image-review-dialog-image" />
+      <ZoomImage :image="image" :base-width="800" image-class="vote-image-review-dialog-image" />
     </div>
     <div class="vote-image-review-dialog-review-section">
       <h3>{{ image.name.split('_').join(' ') }}</h3>
       <div class="vote-file-links">
-        <a :href="getCommonsImageUrl(image, null)" target="_blank">
-          <cdx-button> <image-icon class="icon-small" /> Show full-size </cdx-button>
+        <a :href="getCommonsImageUrl(image, null)" target="_blank" rel="noopener noreferrer">
+          <cdx-button> 
+            <image-icon class="icon-small" />
+            {{montage-vote-show-full-size}} 
+          </cdx-button>
         </a>
         <a
           :href="'https://commons.wikimedia.org/wiki/File:' + image.entry.name"
@@ -52,10 +55,10 @@
 
 <script setup>
 import { defineProps, defineExpose, ref, computed } from 'vue'
-// import { useI18n } from 'vue-i18n';
+import { useI18n } from 'vue-i18n';
 import { CdxTextArea, CdxButton } from '@wikimedia/codex'
 import { getCommonsImageUrl } from '@/utils'
-import CommonsImage from '@/components/CommonsImage.vue'
+import ZoomImage from '@/components/ZoomImage.vue'
 
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LinkIcon from 'vue-material-design-icons/Link.vue'
