@@ -211,14 +211,17 @@ def parse_source_rows(text):
     try:
         records = list(csv.reader(StringIO(text)))
     except csv.Error as e:
-        raise ImportSourceInvalid('cannot read the CSV: %s' % (e,))
+        raise ImportSourceInvalid('cannot read the CSV: %s' % (e,),
+                                  reason_code='csv-unreadable')
     if not records:
         return [], columns
     header = [_header_key(c) for c in records[0]]
     name_col = next((c for c in NAME_COLUMNS if c in header), None)
     if len(records) > MAX_SOURCE_ROWS + 1:
         raise ImportSourceInvalid('the source has %s rows; at most %s can be imported'
-                                  ' at once' % (len(records) - 1, MAX_SOURCE_ROWS))
+                                  ' at once' % (len(records) - 1, MAX_SOURCE_ROWS),
+                                  reason_code='too-many-rows',
+                                  reason_params=[len(records) - 1, MAX_SOURCE_ROWS])
     rows = []
     if name_col is not None or FILE_ID_COLUMN in header:
         name_idx = header.index(name_col) if name_col is not None else None
@@ -238,9 +241,9 @@ def parse_source_rows(text):
         lines = text.splitlines()
         if len(records[0]) > 1 and not _looks_like_file_name(lines[0]):
             raise ImportSourceInvalid(
-                'no filename or img_name column: the first row has %s columns'
-                ' but none is called "filename" or "img_name"'
-                % len(records[0]))
+                'no filename or file_id column: the first row has %s columns'
+                ' but none is called "filename" or "file_id"'
+                % len(records[0]), reason_code='no-name-column')
         for i, line in enumerate(lines):
             rows.append(_list_row(i + 1, _line_name(line)))
     return [r for r in rows if not _is_blank(r)], columns
@@ -276,17 +279,20 @@ def parse_name_list(file_names):
     one name per line; a line of digits only is a file_id; blank entries
     are skipped but keep their number."""
     if file_names is None:
-        raise ImportSourceInvalid('no file names given')
+        raise ImportSourceInvalid('no file names given', reason_code='no-file-names')
     if isinstance(file_names, bytes):
         file_names = file_names.decode('utf8')
     if isinstance(file_names, str):
         file_names = file_names.splitlines()
     if not isinstance(file_names, list) or not all(
             isinstance(n, (str, bytes)) or n is None for n in file_names):
-        raise ImportSourceInvalid('file_names must be a list of file names')
+        raise ImportSourceInvalid('file_names must be a list of file names',
+                                  reason_code='no-file-names')
     if len(file_names) > MAX_SOURCE_ROWS:
         raise ImportSourceInvalid('%s file names; at most %s can be imported at once'
-                                  % (len(file_names), MAX_SOURCE_ROWS))
+                                  % (len(file_names), MAX_SOURCE_ROWS),
+                                  reason_code='too-many-rows',
+                                  reason_params=[len(file_names), MAX_SOURCE_ROWS])
     rows = [_list_row(i + 1, name.decode('utf8') if isinstance(name, bytes) else (name or ''))
             for i, name in enumerate(file_names)]
     return [r for r in rows if not _is_blank(r)]
@@ -298,7 +304,7 @@ def source_url(raw_url):
         try:
             doc_id = parse_doc_id(raw_url)
         except ValueError as e:
-            raise ImportSourceInvalid(str(e))
+            raise ImportSourceInvalid(str(e), reason_code='sheet-link-invalid')
         return GSHEET_URL % doc_id, True
     if 'gist.github.com' in raw_url and 'githubusercontent' not in raw_url:
         # a gist's page -> its raw text; other links are fetched as given
@@ -320,14 +326,17 @@ def _check_public_url(url, raw_url):
     and show the result in the check."""
     parts = urlsplit(url)
     if parts.scheme != 'https' or not parts.hostname:
-        raise ImportSourceInvalid('only https:// links can be imported, not "%s"' % raw_url)
+        raise ImportSourceInvalid('only https:// links can be imported, not "%s"' % raw_url,
+                                  reason_code='https-only', reason_params=[raw_url])
     try:
         addresses = _host_addresses(parts.hostname)
     except (socket.gaierror, UnicodeError, OSError):
-        raise ImportSourceInvalid('cannot find the host of "%s"' % raw_url)
+        raise ImportSourceInvalid('cannot find the host of "%s"' % raw_url,
+                                  reason_code='cannot-load', reason_params=[raw_url])
     for address in addresses:
         if not ipaddress.ip_address(address.split('%')[0]).is_global:
-            raise ImportSourceInvalid('"%s" does not point to a public address' % raw_url)
+            raise ImportSourceInvalid('"%s" does not point to a public address' % raw_url,
+                                      reason_code='not-public', reason_params=[raw_url])
 
 
 def _get_public(url, raw_url):
@@ -346,7 +355,8 @@ def _get_public(url, raw_url):
             resp.close()
             continue
         return resp
-    raise ImportSourceInvalid('cannot load "%s" (too many redirects)' % raw_url)
+    raise ImportSourceInvalid('cannot load "%s" (too many redirects)' % raw_url,
+                              reason_code='cannot-load', reason_params=[raw_url])
 
 
 def _read_capped(resp, raw_url):
@@ -355,11 +365,14 @@ def _read_capped(resp, raw_url):
         for chunk in resp.iter_content(64 * 1024):
             size += len(chunk)
             if size > MAX_SOURCE_BYTES:
-                raise ImportSourceInvalid('"%s" is larger than %s MB'
-                                          % (raw_url, MAX_SOURCE_BYTES // (1024 * 1024)))
+                max_mb = MAX_SOURCE_BYTES // (1024 * 1024)
+                raise ImportSourceInvalid('"%s" is larger than %s MB' % (raw_url, max_mb),
+                                          reason_code='too-large',
+                                          reason_params=[raw_url, max_mb])
             chunks.append(chunk)
     except requests.RequestException as e:
-        raise ImportSourceInvalid('cannot load "%s" (%s)' % (raw_url, e.__class__.__name__))
+        raise ImportSourceInvalid('cannot load "%s" (%s)' % (raw_url, e.__class__.__name__),
+                                  reason_code='cannot-load', reason_params=[raw_url])
     finally:
         resp.close()
     return b''.join(chunks)
@@ -369,25 +382,28 @@ def fetch_source_text(raw_url):
     """The text of a gist / CSV link or a Google Sheet's CSV export. No
     Commons lookup happens here."""
     if raw_url is not None and not isinstance(raw_url, str):
-        raise ImportSourceInvalid('the link must be text')
+        raise ImportSourceInvalid('the link must be text', reason_code='no-link')
     raw_url = (raw_url or '').strip()
     if not raw_url:
-        raise ImportSourceInvalid('no link given')
+        raise ImportSourceInvalid('no link given', reason_code='no-link')
     url, is_sheet = source_url(raw_url)
     resp = _get_public(url, raw_url)
     if resp.status_code != 200:
         resp.close()
         raise ImportSourceInvalid('cannot load "%s" (HTTP status %s)'
-                                  % (raw_url, resp.status_code))
+                                  % (raw_url, resp.status_code),
+                                  reason_code='cannot-load', reason_params=[raw_url])
     if is_sheet and 'text/csv' not in resp.headers.get('content-type', ''):
         resp.close()
         raise ImportSourceInvalid('cannot load Google Sheet "%s" (is link sharing on?)'
-                                  % raw_url)
+                                  % raw_url, reason_code='sheet-not-shared',
+                                  reason_params=[raw_url])
     content = _read_capped(resp, raw_url)
     try:
         return content.decode('utf-8-sig')
     except UnicodeDecodeError:
-        raise ImportSourceInvalid('"%s" is not UTF-8 text' % raw_url)
+        raise ImportSourceInvalid('"%s" is not UTF-8 text' % raw_url,
+                                  reason_code='not-utf8', reason_params=[raw_url])
 
 
 def lookup_by_names(names, source='local'):
@@ -422,9 +438,9 @@ def lookup_other_ids(numbers):
 def category_records(category_name, source='local'):
     """Commons file infos of a category's files."""
     if category_name is not None and not isinstance(category_name, str):
-        raise ImportSourceInvalid('the category must be text')
+        raise ImportSourceInvalid('the category must be text', reason_code='no-category')
     if not (category_name or '').strip():
-        raise ImportSourceInvalid('no category given')
+        raise ImportSourceInvalid('no category given', reason_code='no-category')
     if source == 'remote':
         return get_from_category_remote(category_name)
     return get_files(category_name)

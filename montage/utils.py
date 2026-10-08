@@ -76,12 +76,22 @@ class NotImplementedResponse(MontageError, BadRequest, NotImplementedError):
 # Import check errors (hatnote/montage#510). They carry an error_type so the
 # frontend can tell them apart; subclasses of InvalidAction (400), not of
 # ValueError/TypeError, which older import code caught as "try another format".
+# The detail is English; reason_code / reason_params let the frontend show it
+# translated (montage-round-check-error-<reason_code> with the params).
 class _ImportProblem(InvalidAction):
     error_type = None
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('error_type', self.error_type)
+        self.reason_code = kwargs.pop('reason_code', None)
+        self.reason_params = [str(p) for p in kwargs.pop('reason_params', ())]
         super(_ImportProblem, self).__init__(*args, **kwargs)
+
+    def to_dict(self):
+        ret = super(_ImportProblem, self).to_dict()
+        ret['reason_code'] = self.reason_code
+        ret['reason_params'] = self.reason_params
+        return ret
 
 
 class ImportSourceInvalid(_ImportProblem):

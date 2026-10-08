@@ -116,7 +116,8 @@ def test_parse_headers_case_bom_and_preference():
 def test_parse_rejects_columns_without_a_name_column():
     with raises(ImportSourceInvalid) as exc:
         parse_source_rows('a,b\n1,2\n')
-    assert 'no filename or img_name column' in exc.value.detail
+    assert 'no filename or file_id column' in exc.value.detail
+    assert exc.value.reason_code == 'no-name-column'
 
 
 def test_parse_header_less_lists():

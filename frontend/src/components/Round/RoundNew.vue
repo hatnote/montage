@@ -1,5 +1,7 @@
 <template>
   <div class="juror-campaign-round-card">
+    <!-- announced to screen readers (outside the aria-busy container) -->
+    <p class="visually-hidden" role="status" aria-live="polite">{{ announcement }}</p>
     <div class="round-header">
       <thumbs-up-down
         v-if="formData.vote_method === 'yesno'"
@@ -137,6 +139,7 @@
                   :result="checkResult"
                   :error="checkError"
                   :error-detail="checkErrorDetail"
+                  :error-detail-english="checkErrorDetailEnglish"
                   :download-url="checkDownloadUrl"
                   :issues-url="checkIssuesUrl"
                 />
@@ -215,14 +218,20 @@
               </cdx-field>
             </div>
           </div>
-          <!-- announced to screen readers: check results, errors, changes -->
-          <p class="visually-hidden" role="status" aria-live="polite">{{ announcement }}</p>
-          <cdx-message v-if="saveError" type="error" class="save-error">
-            <p>{{ saveError }}</p>
-            <p v-if="saveErrorDetail" class="save-error-detail" lang="en" dir="ltr">
-              {{ saveErrorDetail }}
-            </p>
-          </cdx-message>
+          <!-- focused when a save fails, so the message is read out -->
+          <div v-if="saveError" ref="saveErrorBox" tabindex="-1" class="save-error">
+            <cdx-message type="error">
+              <p>{{ saveError }}</p>
+              <p
+                v-if="saveErrorDetail"
+                class="save-error-detail"
+                :lang="saveErrorDetailEnglish ? 'en' : undefined"
+                :dir="saveErrorDetailEnglish ? 'ltr' : undefined"
+              >
+                {{ saveErrorDetail }}
+              </p>
+            </cdx-message>
+          </div>
           <div class="button-group">
             <p v-if="saveHint" id="round-save-hint" class="help-text save-hint">{{ saveHint }}</p>
             <cdx-button
@@ -282,6 +291,7 @@ import {
 // Components
 import UserList from '@/components/UserList.vue'
 import ImportCheckResult from '@/components/Round/ImportCheckResult.vue'
+import { errorText as importErrorText, reasonText } from '@/components/Round/importCheckText'
 
 // Icons
 import ThumbsUpDown from 'vue-material-design-icons/ThumbsUpDown.vue'
@@ -289,7 +299,7 @@ import StarOutline from 'vue-material-design-icons/StarOutline.vue'
 import Sort from 'vue-material-design-icons/Sort.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
-const { t: $t } = useI18n()
+const { t: $t, te } = useI18n()
 
 const props = defineProps({
   showAddRoundForm: Boolean,
@@ -364,7 +374,8 @@ const importSourceValue = ref({
 // import then takes exactly the checked list (check_token).
 const checkResult = ref(null)
 const checkError = ref(null)
-const checkErrorDetail = ref(null) // server text (English), shown with the message
+const checkErrorDetail = ref(null) // shown with the message
+const checkErrorDetailEnglish = ref(false) // the detail is the server's English text
 const isChecking = ref(false)
 let checkRequestCount = 0
 const checkResultPanel = ref(null)
@@ -372,18 +383,22 @@ const categoryInput = ref('')
 // the round could not be saved (shown next to Save)
 const saveError = ref(null)
 const saveErrorDetail = ref(null)
+const saveErrorDetailEnglish = ref(false)
+const saveErrorBox = ref(null)
 const announcement = ref('')
 
 // the source cannot change while it is checked or saved: the save would
 // still send the old check
 const sourceLocked = computed(() => isChecking.value || isLoading.value)
 
-// why Save is disabled for a first round (also its aria-describedby)
+// why Save is disabled for a first round (also its aria-describedby); the
+// check result itself is shown above Save, under "Check source"
 const saveHint = computed(() => {
-  if (roundIndex !== 0 || isChecking.value) return null
-  if (!checkResult.value) return $t('montage-round-check-required')
-  if (checkResult.value.blocking) return $t('montage-round-check-blocking')
-  if (!checkResult.value.importable_count) return $t('montage-round-check-nothing-to-import')
+  if (roundIndex !== 0) return null
+  if (isChecking.value) return $t('montage-round-check-running')
+  if (!checkResult.value) return $t('montage-round-save-hint-unchecked')
+  if (checkResult.value.blocking) return $t('montage-round-save-hint-blocked')
+  if (!checkResult.value.importable_count) return $t('montage-round-save-hint-empty')
   return null
 })
 
@@ -416,6 +431,7 @@ const clearCheck = () => {
   checkResult.value = null
   checkError.value = null
   checkErrorDetail.value = null
+  checkErrorDetailEnglish.value = false
   saveError.value = null
   saveErrorDetail.value = null
   isChecking.value = false
@@ -438,15 +454,10 @@ const buildSourcePayload = () => {
   return payload
 }
 
-const errorText = (error) => {
-  const data = error?.response?.data
-  return data?.detail || data?.message || error?.message || $t('montage-something-went-wrong')
-}
-
-const checkSummary = (result) =>
-  result.import_method === 'category'
-    ? $t('montage-round-check-summary-category', [result.total_rows, result.importable_count])
-    : $t('montage-round-check-summary', [result.total_rows, result.importable_count])
+// focus moves to the check result (its name, the summary or the error, is
+// then read out), or to the save error
+const focusCheckResult = () => nextTick(() => checkResultPanel.value?.focus())
+const focusSaveError = () => nextTick(() => saveErrorBox.value?.focus())
 
 const runCheck = () => {
   checkRequestCount += 1
@@ -454,6 +465,7 @@ const runCheck = () => {
   checkResult.value = null
   checkError.value = null
   checkErrorDetail.value = null
+  checkErrorDetailEnglish.value = false
   saveError.value = null
   saveErrorDetail.value = null
   isChecking.value = true
@@ -462,19 +474,19 @@ const runCheck = () => {
     .then((response) => {
       if (requestNumber !== checkRequestCount) return
       checkResult.value = response.data
-      announce(checkSummary(response.data))
     })
     .catch((error) => {
       if (requestNumber !== checkRequestCount) return
       // shown in the panel (a toast disappears): source errors and others
+      const detail = importErrorText($t, te, error)
       checkError.value = $t('montage-round-check-failed-short')
-      checkErrorDetail.value = errorText(error)
-      announce(checkError.value)
+      checkErrorDetail.value = detail.text
+      checkErrorDetailEnglish.value = detail.english
     })
     .finally(() => {
       if (requestNumber === checkRequestCount) {
         isChecking.value = false
-        nextTick(() => checkResultPanel.value?.focus())
+        focusCheckResult()
       }
     })
 }
@@ -519,18 +531,15 @@ const submitRound = () => {
 
   // Check if the round is the first round
   if (roundIndex === 0) {
-    if (!checkResult.value || checkResult.value.blocking) {
-      alertService.error({ message: $t('montage-round-check-required') })
-      return
-    }
-    if (!checkResult.value.importable_count) {
-      alertService.error({ message: $t('montage-round-check-nothing-to-import') })
+    // Save is disabled with a hint in these cases; this is a safety net
+    if (saveHint.value) {
+      alertService.error({ message: saveHint.value })
       return
     }
     if (checkExpired(checkResult.value)) {
       checkResult.value = null
       checkError.value = $t('montage-round-check-expired')
-      announce(checkError.value)
+      focusCheckResult()
       return
     }
     const payload = {
@@ -552,12 +561,13 @@ const submitRound = () => {
     isLoading.value = true
     saveError.value = null
     saveErrorDetail.value = null
+    const checked = checkResult.value
     adminService
       .addRound(campaignId, payload)
       .then((resp) => {
         const imported = resp.data.import?.new_round_entry_count || 0
         alertService.success($t('montage-round-added-with-files', [imported]))
-        showImportResult(resp.data.import)
+        showImportResult(resp.data.import, checked)
       })
       .catch(showImportError)
       .finally(() => {
@@ -605,32 +615,57 @@ const closeForm = () => {
   emit('update:showAddRoundForm', false)
 }
 
-const showImportResult = (result) => {
-  if (result && result.warnings && result.warnings.length) {
-    const { warnings = [], disqualified = [] } = result
+// warnings of the import itself; the check's own warnings ('import issues',
+// 'renamed', 'same name') are shown from the check result, translated
+const CHECK_WARNINGS = ['import issues', 'renamed', 'same name']
+const LIST_SHOWN = 20
 
-    const warningsList = warnings.map((warning) => Object.values(warning).pop())
-    const filesList = disqualified
-      .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
-      .filter((value, index, array) => array.indexOf(value) === index)
-      .join('\n')
+const listed = (lines, total) => {
+  const shown = lines.slice(0, LIST_SHOWN).map((line) => '– ' + line)
+  if (total > LIST_SHOWN) shown.push($t('montage-round-import-more', [total - LIST_SHOWN]))
+  return shown.join('\n')
+}
 
-    const text = `${warningsList.join('\n\n')}\n\n${filesList}`
-
-    dialogService().show({
-      title: $t('montage-round-import-warning'),
-      content: text,
-      primaryAction: {
-        label: $t('montage-btn-ok'),
-        actionType: 'progressive'
-      },
-      onPrimary: closeForm,
-      // closed with the X or Escape: the round is saved all the same
-      onClose: closeForm
+// after a save: what was left out or changed, and what was disqualified
+const showImportResult = (result, checked) => {
+  const sections = []
+  const issues = checked?.issues || []
+  if (issues.length) {
+    const lines = issues.map((issue) => {
+      const name = issue.commons_name || issue.name_as_written || issue.file_id_as_written
+      return name + ': ' + reasonText($t, te, issue).text
     })
-  } else {
-    closeForm()
+    sections.push($t('montage-round-import-left-out') + '\n' + listed(lines, checked.issues_total))
   }
+  for (const warning of result?.warnings || []) {
+    const [key, text] = Object.entries(warning)[0] || []
+    if (!key || CHECK_WARNINGS.includes(key)) continue
+    sections.push(key === 'all disqualified' ? $t('montage-round-import-all-disqualified') : text)
+  }
+  const disqualified = (result?.disqualified || [])
+    .map((image) => `${image.entry.name} – ${image.dq_reason}`.trim())
+    .filter((value, index, array) => array.indexOf(value) === index)
+  if (disqualified.length) {
+    sections.push(
+      $t('montage-round-import-disqualified') + '\n' + listed(disqualified, disqualified.length)
+    )
+  }
+  if (!sections.length) {
+    closeForm()
+    return
+  }
+  const imported = result?.new_round_entry_count || 0
+  dialogService().show({
+    title: $t('montage-round-import-warning'),
+    content: [$t('montage-round-import-saved', [imported]), ...sections].join('\n\n'),
+    primaryAction: {
+      label: $t('montage-btn-ok'),
+      actionType: 'progressive'
+    },
+    onPrimary: closeForm,
+    // closed with the X or Escape: the round is saved all the same
+    onClose: closeForm
+  })
 }
 
 // The server refused or failed the save: nothing was saved, and the form
@@ -645,7 +680,6 @@ const showImportError = (error) => {
   } else if (errorType === 'import_check_blocked') {
     checkResult.value = null
     checkError.value = $t('montage-round-save-blocked-recheck')
-    checkErrorDetail.value = errorText(error)
   } else if (errorType === 'import_empty') {
     checkResult.value = null
     checkError.value = $t('montage-round-check-nothing-to-import')
@@ -656,10 +690,14 @@ const showImportError = (error) => {
     emit('reload-campaign-state')
     saveError.value = $t('montage-round-save-unknown')
   } else {
+    const detail = importErrorText($t, te, error)
     saveError.value = $t('montage-round-not-saved')
-    saveErrorDetail.value = errorText(error)
+    saveErrorDetail.value = detail.text
+    saveErrorDetailEnglish.value = detail.english
   }
-  announce(checkError.value || saveError.value)
+  // Save was disabled while saving and lost focus: move it to the message
+  if (checkError.value) focusCheckResult()
+  else focusSaveError()
 }
 
 watch(thresholds, (value) => {
@@ -729,10 +767,19 @@ onMounted(() => {
 
 .button-group {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: end;
   margin-top: 24px;
   margin-bottom: 12px;
+}
+
+/* long labels ("Saving the round and importing the files…") wrap instead
+   of being cut off on narrow screens */
+.button-group :deep(.cdx-button),
+.import-check :deep(.cdx-button) {
+  white-space: normal;
+  height: auto;
 }
 
 .information-card .cdx-card__text {
@@ -747,13 +794,19 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.save-error:focus-visible {
+  outline: 1px dotted #72777d;
+  outline-offset: 2px;
+}
+
 .save-error-detail {
   white-space: pre-line;
   font-size: 0.875em;
 }
 
 .save-hint {
-  margin: 0 auto 0 0;
+  flex: 1 1 16em;
+  margin: 0;
   align-self: center;
 }
 

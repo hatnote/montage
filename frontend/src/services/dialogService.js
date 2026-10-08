@@ -60,7 +60,11 @@ const dialogService = () => {
               // String content is rendered as text, never as HTML: callers pass
               // messages that can contain user-provided file names (import warnings).
               if (typeof dialogConfig.value.content === 'string') {
-                return h('div', { style: 'white-space: pre-line' }, dialogConfig.value.content)
+                return h(
+                  'div',
+                  { style: 'white-space: pre-line; overflow-wrap: anywhere' },
+                  dialogConfig.value.content
+                )
               } else if (dialogConfig.value.content) {
                 return h(dialogConfig.value.content, {
                   ...dialogConfig.value.props,

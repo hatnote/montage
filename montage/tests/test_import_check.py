@@ -108,7 +108,8 @@ def test_classify_every_status(monkeypatch, commons):
     renamed = result['rows'][1]
     assert renamed['commons_name'] == 'B_new.jpg' and renamed['file_id'] == 2
     assert u'B_old.jpg → B_new.jpg' in renamed['reason']
-    assert result['rows'][7]['reason'] == 'the same file as row 4'
+    assert result['rows'][7]['reason'] == 'the same file as row 4; imported once'
+    assert (result['rows'][7]['reason_code'], result['rows'][7]['reason_params']) == ('duplicate', ['4'])
     assert [r['commons_name'] for r in importable(result)] == ['A.jpg', 'B_new.jpg', 'C.jpg']
     assert [r['row'] for r in blocking_rows(result)] == [6, 7]
     assert counts(result)['duplicate'] == 2
@@ -141,8 +142,8 @@ def test_blocking_per_method(monkeypatch, commons):
     assert result['rows'][0]['status'] == 'unknown_file_id'
     with pytest.raises(ImportCheckBlocked) as exc:
         raise_if_blocked(result)
-    assert exc.value.detail.startswith('1 rows block this import (1 unknown file id)')
-    assert 'row 2: file_id 77 is not on Commons' in exc.value.detail
+    assert exc.value.detail.startswith('1 row blocks the import.')
+    assert 'row 2: no file on Commons has file ID 77' in exc.value.detail
 
 
 def test_unknown_names_do_not_block(monkeypatch, commons):
@@ -160,7 +161,7 @@ def test_blocked_detail_lists_ten_rows_count_first(monkeypatch, commons):
                        ''.join('F%d.jpg,%d\n' % (i, 500 + i) for i in range(30)))
     with pytest.raises(ImportCheckBlocked) as exc:
         raise_if_blocked(result)
-    assert exc.value.detail.startswith('30 rows block this import')
+    assert exc.value.detail.startswith('30 rows block the import.')
     assert '... and 20 more' in exc.value.detail
 
 
@@ -437,6 +438,36 @@ def test_named_rows_are_not_looked_up_as_page_ids(commons):
                        CAMPAIGN, source='local')
     assert statuses(result) == [(1, 'ok')]
     assert not any(c[0] == 'other_ids' for c in fake.calls)
+
+
+def test_rows_carry_a_reason_code_and_params_for_translation(commons):
+    """The frontend shows montage-round-check-reason-<code> with the params;
+    the English reason stays for API users."""
+    commons([info('A.jpg', 1), info('New.jpg', 2), info(VOLOCHEK, 3), info(VOLOCHYOK, 4)],
+            other_ids={1100000000: {'kind': 'revision_id', 'name': 'C.jpg'}})
+    result = run_check({'import_method': 'selected', 'file_names': [
+        'A.jpg', 'A.jpg', 'Gone.jpg', '99', '1100000000', VOLOCHEK, VOLOCHYOK]},
+        CAMPAIGN, source='local')
+    codes = [(r['row'], r['reason_code'], r['reason_params']) for r in result['rows']]
+    assert codes == [
+        (1, None, []),
+        (2, 'duplicate', ['1']),
+        (3, 'unknown-name', ['Gone.jpg']),
+        (4, 'unknown-file-id', ['99']),
+        (5, 'revision-id', ['1100000000', 'C.jpg']),
+        (6, 'same-name', [VOLOCHYOK, '7']),
+        (7, 'same-name', [VOLOCHEK, '6'])]
+    issue = summarize(result, 't' * 32)['issues'][0]
+    assert issue['reason_code'] == 'duplicate' and issue['reason_params'] == ['1']
+
+
+def test_source_errors_carry_a_reason_code():
+    """Source errors reach the client with reason_code / reason_params."""
+    from montage.utils import ImportSourceInvalid
+    err = ImportSourceInvalid('x', reason_code='https-only', reason_params=['http://a'])
+    assert err.to_dict()['reason_code'] == 'https-only'
+    assert err.to_dict()['reason_params'] == ['http://a']
+    assert err.to_dict()['error_type'] == 'import_source_invalid'
 
 # ---------------------------------------------------------------------------
 # Check files
@@ -732,7 +763,7 @@ def test_blocked_check_writes_nothing_and_retry_uses_the_same_round(
 
     resp = _import(coord_client, round_id, check['token'], error_code=400)
     assert 'import_check_blocked' in _body(resp)
-    assert 'row 52: file_id 9999 is not on Commons' in _body(resp)
+    assert 'row 52: no file on Commons has file ID 9999' in _body(resp)
     assert db_query(montage_app, 'SELECT id FROM entries') == []
     assert round_rows(montage_app, round_id) == []
 

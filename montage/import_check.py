@@ -168,7 +168,10 @@ def run_check(request_dict, campaign_id, source='local', rdb_session=None,
             'rows': rows}
 
 
-def _row(src, status, rec=None, reason='', file_id=None):
+def _row(src, status, rec=None, reason='', file_id=None, code=None, params=()):
+    """One checked row. `reason` is English (API users, logs); `reason_code`
+    and `reason_params` let the frontend show it translated
+    (montage-round-check-reason-<code> with the params)."""
     commons_name = rec['img_name'] if rec else None
     if rec and rec.get('file_id') is not None:
         file_id = int(rec['file_id'])
@@ -179,6 +182,8 @@ def _row(src, status, rec=None, reason='', file_id=None):
             'file_id': file_id,
             'status': status,
             'reason': reason,
+            'reason_code': code,
+            'reason_params': [str(p) for p in params],
             'group': None,
             'commons': rec}
 
@@ -205,32 +210,38 @@ def _classify_list(rows, source):
         if other and (rec is None or rec['img_name'] != other['name']):
             ret.append(_other_id_row(r, other, rec))
         elif r['malformed_file_id']:
+            cell = r['file_id_as_written'].strip()
             ret.append(_row(r, 'malformed_file_id',
-                            reason='file_id "%s" is not a plain whole number'
-                            % r['file_id_as_written'].strip()))
+                            reason='"%s" is not a file ID: a file ID is a whole'
+                            ' number, without dots, commas or E+' % cell,
+                            code='malformed-file-id', params=[cell]))
         elif r['file_id'] is not None and source == 'remote':
             rec = by_name.get(r['name'])
             if rec and rec.get('file_id') is not None and int(rec['file_id']) == r['file_id']:
                 ret.append(_row(r, 'ok', rec=rec))
             else:
                 ret.append(_row(r, 'unknown_file_id', file_id=r['file_id'],
-                                reason='dev: compared by name only; file_id %s'
-                                ' not confirmed' % r['file_id']))
+                                reason='dev: compared by name only; file ID %s'
+                                ' not confirmed' % r['file_id'],
+                                code='dev-name-only', params=[r['file_id']]))
         elif r['file_id'] is not None:
             rec = by_id.get(r['file_id'])
             if rec is None:
                 ret.append(_row(r, 'unknown_file_id', file_id=r['file_id'],
-                                reason='file_id %s is not on Commons (deleted,'
-                                ' or a wrong number)' % r['file_id']))
+                                reason='no file on Commons has file ID %s (deleted,'
+                                ' or a wrong number)' % r['file_id'],
+                                code='unknown-file-id', params=[r['file_id']]))
             elif not r['name']:
                 ret.append(_row(r, 'ok', rec=rec,
-                                reason='no name given; Commons name used'))
+                                reason='no name given; Commons name used',
+                                code='name-from-commons', params=[rec['img_name']]))
             elif rec['img_name'] == r['name']:
                 ret.append(_row(r, 'ok', rec=rec))
             else:
                 ret.append(_row(r, 'renamed', rec=rec,
                                 reason=u'renamed on Commons: %s → %s'
-                                % (r['name'], rec['img_name'])))
+                                % (r['name'], rec['img_name']),
+                                code='renamed', params=[r['name'], rec['img_name']]))
         else:
             rec = by_name.get(r['name'])
             if rec is not None:
@@ -238,7 +249,8 @@ def _classify_list(rows, source):
             else:
                 ret.append(_row(r, 'unknown_name',
                                 reason='"%s" is not on Commons: check the'
-                                ' spelling (renamed or deleted?)' % r['name']))
+                                ' spelling (renamed or deleted?)' % r['name'],
+                                code='unknown-name', params=[r['name']]))
     return ret
 
 
@@ -250,17 +262,18 @@ def _other_id_row(r, other, rec):
     num, page = r['file_id'], 'File:' + other['name']
     if rec is not None:
         return _row(r, 'ambiguous_id', file_id=num,
-                    reason='%s is the file_id of %s but also %s of %s; write'
+                    reason='%s is the file ID of %s but also %s of %s; write'
                     ' the file name instead, so it is clear which file is meant'
-                    % (num, rec['img_name'], _ID_KINDS[other['kind']], page))
+                    % (num, rec['img_name'], _ID_KINDS[other['kind']], page),
+                    code='ambiguous-id', params=[num, rec['img_name'], other['name']])
     if other['kind'] == 'revision_id':
-        reason = ('%s is a revision ID (one edit of the page %s), not a file_id;'
-                  ' Montage imports files, so write the file name instead: %s'
-                  % (num, page, other['name']))
+        reason = ('%s is a revision ID (one edit of the page %s), not a file ID;'
+                  ' write the file name instead: %s' % (num, page, other['name']))
     else:
-        reason = ('%s is the page ID of %s, not a file_id; write the file name'
+        reason = ('%s is the page ID of %s, not a file ID; write the file name'
                   ' instead: %s' % (num, page, other['name']))
-    return _row(r, other['kind'], file_id=num, reason=reason)
+    return _row(r, other['kind'], file_id=num, reason=reason,
+                code=other['kind'].replace('_', '-'), params=[num, other['name']])
 
 
 def _file_key(row):
@@ -279,7 +292,9 @@ def _mark_duplicates(rows):
         key = _file_key(r)
         if key in first_row:
             r['status'] = 'duplicate'
-            r['reason'] = 'the same file as row %s' % first_row[key]
+            r['reason'] = 'the same file as row %s; imported once' % first_row[key]
+            r['reason_code'] = 'duplicate'
+            r['reason_params'] = [str(first_row[key])]
             r['commons'] = None
         else:
             first_row[key] = r['row']
@@ -301,9 +316,13 @@ def _mark_same_names(rows, import_method, rdb_session):
                 others = [m for m in members if m is not r]
                 r['status'] = 'same_name'
                 r['group'] = group_id
-                r['reason'] = ('the database treats this name as equal to: %s'
-                               % ', '.join('row %s %s' % (m['row'], m['commons_name'])
+                r['reason'] = ('Montage cannot tell this name apart from: %s'
+                               % ', '.join('%s (row %s)' % (m['commons_name'], m['row'])
                                            for m in others))
+                # params: name, row, name, row, ... of the other files
+                r['reason_code'] = 'same-name'
+                r['reason_params'] = [str(v) for m in others
+                                      for v in (m['commons_name'], m['row'])]
                 r['commons'] = None
         else:
             # category: keep the first in binary name order, as before
@@ -313,8 +332,10 @@ def _mark_same_names(rows, import_method, rdb_session):
             for r in members[1:]:
                 r['status'] = 'same_name'
                 r['group'] = group_id
-                r['reason'] = ('left out: the database treats this name as'
-                               ' equal to %s (kept)' % kept['commons_name'])
+                r['reason'] = ('left out: Montage cannot tell this name apart'
+                               ' from %s, which is imported' % kept['commons_name'])
+                r['reason_code'] = 'same-name-category'
+                r['reason_params'] = [kept['commons_name']]
                 r['commons'] = None
 
 
@@ -390,10 +411,8 @@ def raise_if_blocked(result):
     blocked = blocking_rows(result)
     if not blocked:
         return
-    per_status = Counter(r['status'] for r in blocked)
-    detail = '%s rows block this import (%s). Fix them in the source and check again.' % (
-        len(blocked), ', '.join('%s %s' % (n, s.replace('_', ' '))
-                                for s, n in sorted(per_status.items())))
+    detail = ('%s %s the import. Fix the source, then check the source again.'
+              % (len(blocked), 'row blocks' if len(blocked) == 1 else 'rows block'))
     lines = ['row %s: %s' % (r['row'], r['reason']) for r in blocked[:BLOCKING_ROWS_SHOWN]]
     if len(blocked) > BLOCKING_ROWS_SHOWN:
         lines.append('... and %s more' % (len(blocked) - BLOCKING_ROWS_SHOWN))
@@ -407,24 +426,29 @@ def _listed(lines):
     return u'\n'.join(shown)
 
 
+def _files(n):
+    return '1 file' if n == 1 else '%s files' % n
+
+
 def import_warnings(result):
     """Warnings for the import response: a list of one-key dicts, like
-    the other import warnings."""
+    the other import warnings. (The round form shows the check's rows,
+    translated, instead.)"""
     ret = []
     rows = result['rows']
     unknown = [r['reason'] for r in rows if r['status'] == 'unknown_name']
     if unknown:
-        ret.append({'import issues': u'unable to load %s files:\n%s'
-                    % (len(unknown), _listed(unknown))})
+        ret.append({'import issues': u'%s not on Commons, left out:\n%s'
+                    % (_files(len(unknown)), _listed(unknown))})
     renamed = [r['reason'] for r in rows if r['status'] == 'renamed']
     if renamed:
-        ret.append({'renamed': u'%s files are imported under their current'
-                    u' name on Commons:\n%s' % (len(renamed), _listed(renamed))})
+        ret.append({'renamed': u'%s imported under their current name on'
+                    u' Commons:\n%s' % (_files(len(renamed)), _listed(renamed))})
     left_out = [u'%s (%s)' % (r['commons_name'], r['reason']) for r in rows
                 if r['status'] == 'same_name']
     if left_out:
-        ret.append({'same name': u'%s files left out:\n%s'
-                    % (len(left_out), _listed(left_out))})
+        ret.append({'same name': u'%s left out:\n%s'
+                    % (_files(len(left_out)), _listed(left_out))})
     return ret
 
 

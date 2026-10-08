@@ -265,9 +265,13 @@ its downloads stay at most 7 days. Writes nothing to the database.
     (per status: `ok`, `renamed`, `duplicate`, `unknown_name`, `unknown_file_id`,
     `malformed_file_id`, `page_id`, `revision_id`, `ambiguous_id`, `same_name`), `blocking`, `total_rows`, `importable_count`, `issues` (rows
     that are not ok, at most 1000), `issues_total`, `issues_truncated`, `same_name_groups`
+  - each issue has `reason` (English) and `reason_code` / `reason_params`, which the round form
+    shows translated as `montage-round-check-reason-<reason_code>`
 
 ### Errors
-  - 400 `import_source_invalid`: the source cannot be read (link, size, columns, ...)
+  - 400 `import_source_invalid`: the source cannot be read (link, size, columns, ...); with
+    `reason_code` / `reason_params` (shown translated as `montage-round-check-error-<reason_code>`)
+    next to the English `detail`
   - 403: not a coordinator on this campaign
 
 ## /v1/admin/campaign/`<campaign_id:int>`/import/check/`<token>`/download
