@@ -160,6 +160,7 @@
   "montage-vote-grid-size-large": "Large",
   "montage-vote-grid-size-medium": "Medium",
   "montage-vote-grid-size-small": "Small",
+  "montage-vote-my-stats": "My voting statistics",
   "montage-vote-image-review": "Image review #{0}",
   "montage-vote-ordinal-place": "{0} place",
   "montage-vote-order-by": "Order by:",
