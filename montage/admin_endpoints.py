@@ -99,16 +99,14 @@ def get_round_reviews(user_dao, round_id):
 
 def get_round_entries(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    entries = coord_dao.get_round_entries(round_id)
-    entry_infos = [e.to_export_dict() for e in entries]
+    entry_infos = coord_dao.get_round_entry_export_rows(round_id)
     return {'file_infos': entry_infos}
 
 
 def download_round_entries_csv(user_dao, round_id):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
     rnd = coord_dao.get_round(round_id)
-    entries = coord_dao.get_round_entries(round_id)
-    entry_infos = [e.to_export_dict() for e in entries]
+    entry_infos = coord_dao.get_round_entry_export_rows(round_id)
     if not entry_infos:
         raise InvalidAction('no entries in round, cannot export CSV')
     output_name = 'montage_entries-%s.csv' % slugify(rnd.name, ascii=True).decode('ascii')

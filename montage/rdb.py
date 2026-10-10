@@ -593,19 +593,6 @@ class Entry(Base):
             ret['upload_user_text'] = self.upload_user_text
         return ret
 
-    def to_export_dict(self):
-        ret = {'img_id': self.id,
-               'img_name': self.name,
-               'img_major_mime': self.mime_major,
-               'img_minor_mime': self.mime_minor,
-               'img_width': self.width,
-               'img_height': self.height,
-               'img_user': self.upload_user_id,
-               'img_user_text': self.upload_user_text,
-               'img_timestamp': format_date(self.upload_date),
-               'file_id': self.file_id}
-        return ret
-
 
 class RoundEntry(Base):
     __tablename__ = 'round_entries'
@@ -632,12 +619,6 @@ class RoundEntry(Base):
                'dq_reason': self.dq_reason,
                'dq_user_id': self.dq_user_id}
         return ret
-
-    def to_export_dict(self):
-        entry = self.entry.to_export_dict()
-        entry['source_method'] = self.round_source.method
-        entry['source_params'] = json.dumps(self.round_source.params)
-        return entry
 
 
 round_entries_t = RoundEntry.__table__
@@ -1229,12 +1210,44 @@ class CoordinatorDAO(UserDAO):
         users = [rj.user for rj in rjs]
         return users
 
-    def get_round_entries(self, round_id):
-        round_entries = (self.query(RoundEntry)
-                         .filter_by(round_id=round_id,
-                                    dq_reason=None)
-                         .all())
-        return round_entries
+    def get_round_entry_export_rows(self, round_id):
+        """Export dicts for a round's non-disqualified entries, in two
+        queries total rather than lazy-loading each row's Entry and
+        RoundSource (#640)."""
+        rows = (self.query(RoundEntry.round_source_id,
+                           Entry.id, Entry.name,
+                           Entry.mime_major, Entry.mime_minor,
+                           Entry.width, Entry.height,
+                           Entry.upload_user_id, Entry.upload_user_text,
+                           Entry.upload_date, Entry.file_id)
+                .join(Entry, RoundEntry.entry_id == Entry.id)
+                .filter(RoundEntry.round_id == round_id,
+                        RoundEntry.dq_reason == None)
+                .order_by(RoundEntry.id)
+                .all())
+        source_ids = {r.round_source_id for r in rows} - {None}
+        sources = {}
+        if source_ids:
+            for src in (self.query(RoundSource)
+                        .filter(RoundSource.id.in_(source_ids))):
+                # serialize each source's params once, not once per row
+                sources[src.id] = (src.method, json.dumps(src.params))
+        ret = []
+        for r in rows:
+            method, params = sources.get(r.round_source_id, (None, 'null'))
+            ret.append({'img_id': r.id,
+                        'img_name': r.name,
+                        'img_major_mime': r.mime_major,
+                        'img_minor_mime': r.mime_minor,
+                        'img_width': r.width,
+                        'img_height': r.height,
+                        'img_user': r.upload_user_id,
+                        'img_user_text': r.upload_user_text,
+                        'img_timestamp': format_date(r.upload_date),
+                        'file_id': r.file_id,
+                        'source_method': method,
+                        'source_params': params})
+        return ret
 
     def get_round_task_counts(self, round_id):
         # the fact that these are identical for two DAOs shows it

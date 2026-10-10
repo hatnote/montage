@@ -1074,6 +1074,97 @@ def test_category_import_batches_inserts(api_client, mock_external_apis):
         sorted(fi['img_name'] for fi in file_infos)
 
 
+def test_round_entries_export_query_count(api_client, mock_external_apis):
+    """Listing and downloading a round's entries takes a fixed number of
+    queries, not two lazy loads (Entry, RoundSource) per round entry.
+
+    Regression for hatnote/montage#640: per-row lazy loads made the
+    entries list and CSV download on large rounds outlast the gunicorn
+    worker timeout.
+    """
+    import csv
+    import datetime
+
+    import responses as responses_lib
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    from montage.rdb import IMPORT_CHUNK_SIZE
+    from montage.tests.conftest import (TOOLFORGE_CATEGORY_URL,
+                                        _generate_file_infos)
+
+    n = 2 * IMPORT_CHUNK_SIZE + 50
+    gen_infos = _generate_file_infos(n)
+    base_date = datetime.datetime(2015, 9, 6)
+    for i, info in enumerate(gen_infos):
+        info['img_name'] = 'Batch_import_%04d.jpg' % i
+        # _generate_file_infos overflows the seconds field past 40 files
+        info['img_timestamp'] = (base_date + datetime.timedelta(seconds=i)
+                                 ).strftime('%Y%m%d%H%M%S')
+    mock_external_apis.replace(responses_lib.POST, TOOLFORGE_CATEGORY_URL,
+                               json={'file_infos': gen_infos, 'no_info': []},
+                               status=200)
+
+    api_client.fetch('maintainer: add organizer', '/admin/add_organizer',
+                     {'username': 'Yarl'})
+    series_id = api_client.fetch('get default series', '/series')['data'][0]['id']
+    campaign_id = api_client.fetch(
+        'organizer: create campaign', '/admin/add_campaign',
+        {'name': 'export query test',
+         'coordinators': ['Yarl'],
+         'open_date': '2015-01-01T00:00:00',
+         'close_date': '2016-01-01T00:00:00',
+         'url': 'http://hatnote.com',
+         'series_id': series_id},
+        as_user='Yarl')['data']['id']
+    round_id = api_client.fetch(
+        'coordinator: create round',
+        '/admin/campaign/%s/add_round' % campaign_id,
+        {'name': 'Test round',
+         'vote_method': 'yesno',
+         'deadline_date': '2016-10-15T00:00:00',
+         'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
+        as_user='Yarl')['data']['id']
+    api_client.fetch(
+        'coordinator: import entries via category',
+        '/admin/round/%s/import' % round_id,
+        {'import_method': 'category', 'category': 'Batch_import'},
+        as_user='Yarl')
+
+    selects = {'list': 0, 'download': 0}
+    current = []
+
+    def count_selects(conn, cursor, statement, params, context, executemany):
+        if statement.strip().upper().startswith('SELECT'):
+            selects[current[0]] += 1
+
+    event.listen(Engine, 'before_cursor_execute', count_selects)
+    try:
+        current[:] = ['list']
+        file_infos = api_client.fetch('coordinator: get round entries',
+                                      '/admin/round/%s/entries' % round_id,
+                                      as_user='Yarl')['file_infos']
+        current[:] = ['download']
+        resp = api_client.fetch('coordinator: download round entries',
+                                '/admin/round/%s/entries/download' % round_id,
+                                as_user='Yarl')
+    finally:
+        event.remove(Engine, 'before_cursor_execute', count_selects)
+
+    print('SELECTs per request at n=%s: %r' % (n, selects))
+    assert len(file_infos) == n
+    reader = csv.DictReader(resp.get_data(as_text=True).splitlines())
+    rows = list(reader)
+    assert len(rows) == n
+    assert sorted(reader.fieldnames) == sorted(file_infos[0].keys())
+    assert all(r['source_method'] == 'category' for r in rows)
+    assert all(json.loads(r['source_params']) == {'category': 'Batch_import'}
+               for r in rows)
+
+    assert selects['list'] < 20, selects
+    assert selects['download'] < 20, selects
+
+
 @script_log.wrap('critical', verbose=True)
 def submit_ratings(client, round_id, coord_user='Yarl'):
     """
