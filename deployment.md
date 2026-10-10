@@ -41,6 +41,26 @@ toolforge envvars create MONTAGE_DB_URL         # mysql+pymysql://<user>:<pass>@
 toolforge envvars create MONTAGE_SUPERUSERS     # OPTIONAL — enables su-impersonation only, NOT admin access (see "Maintainer vs superuser" below)
 toolforge envvars create MONTAGE_API_LOG_PATH   # e.g. /data/project/montage-beta/montage_api.log
 toolforge envvars create MONTAGE_REPLAY_LOG_PATH
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH  # the tool's own folder, e.g. /data/project/montage-beta/import_checks (see below)
+```
+
+`MONTAGE_IMPORT_CHECK_PATH` is required everywhere except local development: Montage refuses to
+start without it. It is the folder for import checks (hatnote/montage#510): each check of a
+first-round import source is written there as a JSON file (mode 0600). A check can be used to
+save a round for 1 hour. The file is deleted after at most 7 days: every check, import, download
+and app start deletes older files, and at most 5,000 are kept. The files hold the source link,
+the rows and Commons' data per file, including Commons uploader names.
+
+- It must be a folder **of its own**: Montage refuses to start if it holds other files, because
+  the cleanup deletes old check files there.
+- It must be absolute and on the tool's NFS share (`/data/project/<tool>/...`, mounted with
+  `--mount all`), so that every pod and a restarted pod see the same files.
+
+Create the folder first, in the tool's home (`$HOME` is `/data/project/<tool>`), and print the
+value to enter at the `envvars create` prompt:
+
+```bash
+mkdir -m 700 "$HOME/import_checks" && ls -ld "$HOME/import_checks" && echo "$HOME/import_checks"
 ```
 
 Optional env vars (all have sensible defaults):
@@ -191,7 +211,25 @@ git -C ~/www/python/src checkout master
 git -C ~/www/python/src pull --ff-only
 ```
 
-#### 4. Run the deploy script
+#### 4. Check new required settings
+
+A release can add a required environment variable; the app then refuses to start until it is
+set. Since hatnote/montage#510 that is `MONTAGE_IMPORT_CHECK_PATH` (see Fresh install, step 3).
+`deploy.sh` checks the required variables before it builds, and stops if one is missing.
+Before the first deploy that includes it, create the folder and set the variable on that tool
+(as the tool, after `become`):
+
+```bash
+mkdir -m 700 "$HOME/import_checks" && ls -ld "$HOME/import_checks" && echo "$HOME/import_checks"
+```
+
+```bash
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH
+```
+
+Enter the path the first command printed (e.g. `/data/project/montage-beta/import_checks`).
+
+#### 5. Run the deploy script
 
 Which ref to deploy depends on the tool (see [Multi-environment setup](#multi-environment-setup)):
 
@@ -232,6 +270,24 @@ The legacy webservice reads its config from a YAML file on NFS, whereas the buil
 from `toolforge envvars`. A tool that worked on the legacy service can therefore still fail on the
 buildservice if the `MONTAGE_*` env vars (Fresh install step 3) are not set — and its database may
 need migrating (see "Startup crash: missing column" below).
+
+#### Import checks: troubleshooting and rollback
+
+- **The pod does not start and its log says `MONTAGE_IMPORT_CHECK_PATH ...`:** create the folder
+  and the variable (step 4), then `toolforge webservice buildservice restart --mount all`. No
+  rebuild and no rollback are needed.
+- **A check of a large source fails with a server error after about 30 s:** the request hit gunicorn's
+  worker timeout. Nothing was saved; try a smaller source (split a list, or a sub-category).
+- **Old check files:** every use of the folder (and every app start) deletes files older than
+  7 days. To delete them by hand:
+
+```bash
+find "$HOME/import_checks" -name '*.json' -mtime +7 -delete
+```
+
+- **Rolling back to a version before #510:** the variable and the folder can stay (older
+  versions ignore them). Delete the check files (`rm "$HOME"/import_checks/*.json`): they hold
+  Commons uploader names that nothing reads any more. Entries already imported stay.
 
 ---
 

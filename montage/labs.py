@@ -150,10 +150,11 @@ def get_files_by_name(file_names):
         return _files_by_name(fetchall, file_names)
 
 
-def _files_by_name(fetchall, file_names):
-    if not file_names:
-        return []
-    query = '''
+def _files_query(column, count):
+    """The file details query for `count` values of file.<column>; one
+    query text for lookups by name and by file_id."""
+    assert column in ('file_name', 'file_id')
+    return '''
         SELECT DISTINCT {cols}
         FROM commonswiki_p.file AS file
         JOIN commonswiki_p.filerevision AS fr ON fr.fr_id = file.file_latest
@@ -161,12 +162,26 @@ def _files_by_name(fetchall, file_names):
         LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
         LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
         {earliest_rev}
-        WHERE file.file_name IN ({names})
+        WHERE file.{column} IN ({values})
           AND file.file_deleted = 0
     '''.format(cols=', '.join(FILE_COLS),
                earliest_rev=_EARLIEST_REVISION_SUBQUERY,
-               names=', '.join(['%s'] * len(file_names)))
+               column=column,
+               values=', '.join(['%s'] * count))
+
+
+def _files_by_name(fetchall, file_names):
+    if not file_names:
+        return []
+    query = _files_query('file_name', len(file_names))
     return fetchall(query, tuple(file_names))
+
+
+def _files_by_id(fetchall, file_ids):
+    if not file_ids:
+        return []
+    query = _files_query('file_id', len(file_ids))
+    return fetchall(query, tuple(file_ids))
 
 
 def get_files_info_by_names(file_names):
@@ -181,6 +196,48 @@ def get_files_info_by_names(file_names):
             chunk = names[i:i + FILE_LOOKUP_CHUNK_SIZE]
             for rec in _files_by_name(fetchall, chunk):
                 ret[rec['img_name']] = rec
+    return ret
+
+
+def get_files_info_by_ids(file_ids):
+    """{file_id: file info} for the file_ids of live files (Commons'
+    file.file_id), in chunks on one connection, like
+    get_files_info_by_names (hatnote/montage#510)."""
+    ids = sorted(set(int(i) for i in file_ids))
+    ret = {}
+    if not ids:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(ids), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = ids[i:i + FILE_LOOKUP_CHUNK_SIZE]
+            for rec in _files_by_id(fetchall, chunk):
+                ret[int(rec['file_id'])] = rec
+    return ret
+
+
+def get_file_pages_by_other_ids(numbers):
+    """{number: {'kind': 'page_id' | 'revision_id', 'name': file name}} for
+    the numbers that are the page ID, or a revision ID, of a File: page.
+    Those are the IDs people find on Commons and may take for a file_id
+    (hatnote/montage#510). A page ID wins over a revision ID."""
+    nums = sorted(set(int(n) for n in numbers))
+    ret = {}
+    if not nums:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(nums), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = tuple(nums[i:i + FILE_LOOKUP_CHUNK_SIZE])
+            marks = ', '.join(['%s'] * len(chunk))
+            revs = fetchall(
+                'SELECT rev_id AS num, page_title AS name FROM revision'
+                ' JOIN page ON rev_page = page_id'
+                ' WHERE page_namespace = 6 AND rev_id IN (%s)' % marks, chunk)
+            pages = fetchall(
+                'SELECT page_id AS num, page_title AS name FROM page'
+                ' WHERE page_namespace = 6 AND page_id IN (%s)' % marks, chunk)
+            for kind, rows in (('revision_id', revs), ('page_id', pages)):
+                for rec in rows:
+                    ret[int(rec['num'])] = {'kind': kind, 'name': rec['name']}
     return ret
 
 

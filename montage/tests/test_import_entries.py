@@ -189,11 +189,11 @@ def new_round(api_client, name, config=None, quorum=None, open_date=OPEN_DATE,
 
 
 def import_category(api_client, round_id, **kw):
-    return api_client.fetch('coordinator: import category',
-                            '/admin/round/%s/import' % round_id,
-                            {'import_method': 'category',
-                             'category': 'Synthetic_test_category'},
-                            as_user=COORD, **kw)
+    return api_client.fetch_checked_import('coordinator: import category',
+                                           round_id,
+                                           {'import_method': 'category',
+                                            'category': 'Synthetic_test_category'},
+                                           as_user=COORD, **kw)
 
 
 def _load_json(raw):
@@ -226,6 +226,8 @@ def round_rows(app, round_id, strip_prefix=''):
         row['flags'] = _load_json(row['flags'])
         row['re_flags'] = _load_json(row['re_flags'])
         row['source_params'] = _load_json(row['source_params'])
+        # random per check (#510); see test_round_source_records_a_check_fingerprint...
+        row['source_params'].pop('check_id', None)
         row['name'] = row['name'][len(strip_prefix):]
         if row['flags'].get('archive_name'):
             row['flags']['archive_name'] = row['flags']['archive_name'].replace(strip_prefix, '')
@@ -481,10 +483,11 @@ def test_mysql_driver_batches_the_inserts():
 
 
 # ---------------------------------------------------------------------------
-# Lookup by file_id for campaigns after the cutoff (#513)
+# Lookup by file_id (#513, #654); since #510 in every campaign, not only in
+# campaigns opened from 2026-06-01 (the former FILE_ID_LOOKUP_CUTOFF)
 # ---------------------------------------------------------------------------
 
-AFTER_CUTOFF = rdb.FILE_ID_LOOKUP_CUTOFF + datetime.timedelta(days=30)
+RECENT_OPEN_DATE = datetime.datetime(2026, 6, 1) + datetime.timedelta(days=30)
 
 
 def with_file_ids(infos):
@@ -495,8 +498,8 @@ def with_file_ids(infos):
             for info in infos]
 
 
-def new_round_after_cutoff(api_client, name):
-    return new_round(api_client, name, open_date=AFTER_CUTOFF,
+def new_recent_round(api_client, name):
+    return new_round(api_client, name, open_date=RECENT_OPEN_DATE,
                      close_date='2026-12-31T00:00:00')
 
 
@@ -508,11 +511,11 @@ def _no_file_id_lookup(*a, **kw):
     raise AssertionError('looked up entries by file_id')
 
 
-def test_file_id_lookup_after_cutoff(montage_app, coord_client,
+def test_file_id_lookup_for_a_recent_campaign(montage_app, coord_client,
                                      mock_external_apis, monkeypatch):
     first = with_file_ids(make_file_infos('fid', IMPORT_CHUNK_SIZE + 50))
     more = with_file_ids(make_file_infos('fid', 30, start=500))
-    round_id = new_round_after_cutoff(coord_client, 'fid')
+    round_id = new_recent_round(coord_client, 'fid')
     # production's indexes on entries: file_id yes, name no
     monkeypatch.setattr(rdb, '_entries_indexes', lambda session: (
         {'PRIMARY', 'ix_entries_file_id'}, {'id', 'file_id'}))
@@ -531,19 +534,22 @@ def test_file_id_lookup_after_cutoff(montage_app, coord_client,
     assert len(ids_after) == len(first) + 30
     assert {k: ids_after[k] for k in ids_before} == ids_before
 
-    # a second campaign after the cutoff reuses the same rows
-    other = new_round_after_cutoff(coord_client, 'fid other')
+    # a second campaign reuses the same rows
+    other = new_recent_round(coord_client, 'fid other')
     data = import_category(coord_client, other)['data']
     assert data['new_round_entry_count'] == len(first) + 30
     assert entry_ids(montage_app, 'fid') == ids_after
 
 
-def test_name_lookup_before_cutoff(montage_app, coord_client,
-                                   mock_external_apis, monkeypatch):
+def test_file_id_lookup_in_old_campaigns_too(montage_app, coord_client,
+                                            mock_external_apis, monkeypatch):
+    """#510: checked imports match by file_id whatever the campaign's open
+    date; #654 did so only from 2026-06-01."""
     infos = with_file_ids(make_file_infos('old', 40))
     round_id = new_round(coord_client, 'old')  # opens in 2015
-    monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
-                        _no_file_id_lookup)
+    monkeypatch.setattr(rdb, '_entries_indexes', lambda session: (
+        {'PRIMARY', 'ix_entries_file_id'}, {'id', 'file_id'}))
+    monkeypatch.setattr(CoordinatorDAO, 'get_entry_name_map', _no_name_lookup)
     mock_category(mock_external_apis, infos)
     import_category(coord_client, round_id)
     assert len(entry_ids(montage_app, 'old')) == 40
@@ -554,7 +560,7 @@ def test_name_lookup_when_a_file_id_is_missing(montage_app, coord_client,
                                                monkeypatch):
     infos = make_file_infos('nofid', 40)  # some have file_id None
     assert any(info['file_id'] is None for info in infos)
-    round_id = new_round_after_cutoff(coord_client, 'nofid')
+    round_id = new_recent_round(coord_client, 'nofid')
     monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
                         _no_file_id_lookup)
     mock_category(mock_external_apis, infos)
@@ -566,13 +572,13 @@ def test_file_id_lookup_keeps_the_row_of_a_renamed_file(montage_app,
                                                         coord_client,
                                                         mock_external_apis):
     infos = with_file_ids(make_file_infos('ren', 3))
-    round_a = new_round_after_cutoff(coord_client, 'ren a')
+    round_a = new_recent_round(coord_client, 'ren a')
     mock_category(mock_external_apis, infos)
     import_category(coord_client, round_a)
     ids = entry_ids(montage_app, 'ren')
 
     renamed = [dict(infos[0], img_name='ren_renamed.jpg')] + infos[1:]
-    round_b = new_round_after_cutoff(coord_client, 'ren b')
+    round_b = new_recent_round(coord_client, 'ren b')
     mock_category(mock_external_apis, renamed)
     data = import_category(coord_client, round_b)['data']
     assert data['new_round_entry_count'] == 3
@@ -581,7 +587,7 @@ def test_file_id_lookup_keeps_the_row_of_a_renamed_file(montage_app,
 
 def test_file_id_lookup_keeps_the_row_of_a_file_without_file_id(
         montage_app, coord_client, mock_external_apis):
-    # imported before the cutoff, so stored without a file_id
+    # imported before 2026-05-31, so stored without a file_id
     infos = with_file_ids(make_file_infos('pre', 5))
     old_round = new_round(coord_client, 'pre old')
     mock_category(mock_external_apis,
@@ -589,9 +595,9 @@ def test_file_id_lookup_keeps_the_row_of_a_file_without_file_id(
     import_category(coord_client, old_round)
     ids = entry_ids(montage_app, 'pre')
 
-    # the same files after the cutoff, now with a file_id: where entries.name
+    # the same files later, now with a file_id: where entries.name
     # is indexed (here unique, as on beta) they keep their rows
-    new = new_round_after_cutoff(coord_client, 'pre new')
+    new = new_recent_round(coord_client, 'pre new')
     mock_category(mock_external_apis, infos)
     data = import_category(coord_client, new)['data']
     assert data['new_round_entry_count'] == 5
@@ -625,7 +631,7 @@ def test_entries_indexes_reads_the_database():
     rdb.Base.metadata.create_all(engine)
     names, first_columns = rdb._entries_indexes(sessionmaker(bind=engine)())
     assert 'name' in first_columns          # the model's unique index
-    assert 'ix_entries_file_id' not in names  # only migrate_prod_db.sql adds it
+    assert 'ix_entries_file_id' in names  # declared in the model (#510); prod: migrate_prod_db.sql
 
 
 def test_file_id_lookups_stay_below_the_index_dive_limit(
@@ -643,9 +649,25 @@ def test_file_id_lookups_stay_below_the_index_dive_limit(
     monkeypatch.setattr(CoordinatorDAO, 'get_entry_file_id_map',
                         recording_lookup)
     infos = with_file_ids(make_file_infos('dive', 450))
-    round_id = new_round_after_cutoff(coord_client, 'dive')
+    round_id = new_recent_round(coord_client, 'dive')
     mock_category(mock_external_apis, infos)
     import_category(coord_client, round_id)
 
     assert len(entry_ids(montage_app, 'dive')) == 450
     assert sizes and max(sizes) <= rdb.FILE_ID_LOOKUP_CHUNK_SIZE
+
+
+def test_checked_import_keeps_two_files_whose_names_differ_in_case(
+        montage_app, coord_client, mock_external_apis, monkeypatch):
+    """Matched by file_id, two different files are two entries, also when
+    their names differ only in case (the import check, not add_entries,
+    decides about names the database treats as equal; here it is off)."""
+    from montage import import_check
+    monkeypatch.setattr(import_check, 'SAME_NAME_CHECK', False)
+    infos = [dict(i, img_name=n) for i, n in zip(
+        with_file_ids(make_file_infos('case', 2)), ['Case_Photo.JPG', 'Case_photo.jpg'])]
+    round_id = new_round(coord_client, 'case')
+    mock_category(mock_external_apis, infos)
+    data = import_category(coord_client, round_id)['data']
+    assert data['new_round_entry_count'] == 2
+    assert sorted(entry_ids(montage_app, 'Case_')) == ['Case_Photo.JPG', 'Case_photo.jpg']

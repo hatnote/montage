@@ -82,7 +82,7 @@ requests==2.32.4
     # via sentry-sdk
 secure-cookie==0.1.0
     # via clastic
-sentry-sdk==2.8.0
+sentry-sdk==2.71.0
     # via -r requirements.in
 six==1.16.0
     # via

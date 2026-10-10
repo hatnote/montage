@@ -96,6 +96,8 @@ Other frontend development commands:
 ### 6. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
+* (Optional) Set `debug: true` in `config.dev.yaml` to bypass OAuth entirely. This is the easiest way to get started locally without setting up OAuth. To log in, navigate to http://localhost:5001/complete_login directly — the "Login with Wikimedia" button still requires OAuth and won't work locally.
+* (Optional) Set `debug_userid: <your numeric Wikipedia CentralAuth ID>` and `debug_username: <your Wikipedia username>` to be auto-logged in as yourself in debug mode. Your CentralAuth ID can be found at https://en.wikipedia.org/wiki/Special:CentralAuth/YOUR_USERNAME.
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
 log in to the local app in your browser, and then copy the value from the
 `clastic_cookie` in the apps' cookies. This is your login cookie.
@@ -106,11 +108,17 @@ juror.)
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
+* Build the frontend for the backend (run from the `frontend/` directory):
+```bash
+npm run toolforge:build
+```
 * Start the montage backend
 ```bash
 make start
 ```
-This will build the docker image for the montage backend and start the container. Apart from `make start`, these are other commands:
+The backend is ready when you see `Debugger PIN` in the logs. It is available at http://localhost:5001.
+
+Apart from `make start`, these are other commands:
 * `make start-detached` : Start the backend container in detached mode
 * `make stop` : Stop the backend container
 * `make logs` : Stream the backend container logs in real-time.
@@ -195,8 +203,8 @@ npm run build
 
 ## Project structure
 ```bash
-├── DEV.md
-├── Dockerfile
+├── dev.md
+├── dockerfile
 ├── LICENSE
 ├── MANIFEST.in
 ├── Makefile
@@ -240,7 +248,6 @@ npm run build
 │   ├── templates
 │   ├── tests
 │   └── utils.py
-├── report.html
 ├── requirements-dev.txt
 ├── requirements.in
 ├── requirements.txt
@@ -304,5 +311,5 @@ These provides a detailed explanation of the main components in the **Montage Pr
 
 
 #### Docker Files
-- **`Dockerfile`**: Builds the backend container.
+- **`dockerfile`**: Builds the backend container.
 - **`docker-compose.yml`**: Orchestrates service for backend.

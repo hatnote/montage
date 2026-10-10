@@ -5,6 +5,7 @@ import os.path
 import logging
 
 from clastic import Application, StaticFileRoute, MetaApplication
+from clastic.meta import DEFAULT_PERIPHERALS, ResourcePeripheral
 
 from clastic.static import StaticApplication
 from clastic.middleware import HTTPCacheMiddleware
@@ -25,6 +26,7 @@ from .mw import (UserMiddleware,
                 SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
 from .utils import get_env_name, load_env_config
+from . import import_check
 from .check_rdb import get_schema_errors, ping_connection
 
 from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
@@ -44,6 +46,26 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
+
+
+class ResourceNamesPeripheral(ResourcePeripheral):
+    """/meta's resource section with names and types only. clastic's
+    default shows the first 70 characters of each resource's repr(),
+    which for 'config' showed config values to anyone."""
+
+    def get_context(self, _application):
+        resources = []
+        for key, val in _application.resources.items():
+            desc = type(val).__name__
+            if isinstance(val, (dict, list, tuple, set)):
+                desc += ' (%s items)' % len(val)
+            resources.append({'key': key, 'value': desc})
+        return {'resources': resources}
+
+
+META_PERIPHERALS = [ResourceNamesPeripheral()
+                    if isinstance(peri, ResourcePeripheral) else peri
+                    for peri in DEFAULT_PERIPHERALS]
 
 
 def set_mysql_session_charset_and_collation(connection, branch):
@@ -66,6 +88,16 @@ def create_app(env_name='prod', config=None):
     if config is None:
         config = load_env_config(env_name=env_name)
     print('==  loaded config file: %s' % (config['__file__'],))
+
+    # import check files (#510) must be on storage all pods share
+    check_dir_problem = import_check.check_dir_problem(config, env_name)
+    if check_dir_problem:
+        raise ValueError(check_dir_problem)
+    print('==  import check folder: %s' % (import_check.check_dir(config),))
+    import_check.cleanup(config)  # files older than 7 days, also after a quiet spell
+    check_dir_warning = import_check.check_dir_warning(config, env_name)
+    if check_dir_warning:
+        print('!!  %s' % (check_dir_warning,))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
@@ -193,11 +225,11 @@ def create_app(env_name='prod', config=None):
         root_mws.append(SentryMiddleware())
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
-                            StaticFileRoute('/a/', STATIC_PATH + '/a/index.html'),
+                            StaticFileRoute('/a/', STATIC_PATH + '/index.html'),
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
-                            ('/meta', MetaApplication())],
+                            ('/meta', MetaApplication(base_peripherals=META_PERIPHERALS))],
                            resources={'config': config},
                            middlewares=root_mws)
 

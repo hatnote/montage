@@ -11,7 +11,14 @@ series of photography competitions. Montage provides a configurable
 workflow that adapts to the conventions of all groups.
 
 - [montage on Wikimedia Commons](https://commons.wikimedia.org/wiki/Commons:Montage)
-- [montage on Phabricator](https://phabricator.wikimedia.org/project/view/2287/)
+- [montage on GitHub Issues](https://github.com/hatnote/montage/issues)
+- [montage on Phabricator](https://phabricator.wikimedia.org/project/view/2287/) (archived)
+
+## Running locally
+
+See [dev.md](dev.md) for full setup instructions.
+
+---
 
 ## Development
 
