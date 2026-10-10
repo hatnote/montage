@@ -9,6 +9,7 @@ import random
 import datetime
 import itertools
 from collections import Counter, defaultdict
+from contextlib import contextmanager
 from math import ceil
 from itertools import zip_longest
 
@@ -26,6 +27,7 @@ from sqlalchemy import (Text,
                         ForeignKey,
                         inspect)
 from sqlalchemy.sql import func, asc
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import relationship, joinedload
 from sqlalchemy.sql.expression import select
 from sqlalchemy.ext.declarative import declarative_base
@@ -89,6 +91,33 @@ VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
                 PRIVATE_STATUS]
 
+# MySQL/MariaDB lock errors: 1205 lock wait timeout, 1213 deadlock. The
+# statement's transaction is (or must be) rolled back; retrying is safe.
+MYSQL_LOCK_ERROR_CODES = (1205, 1213)
+
+
+def is_lock_error(exc):
+    """True for a SQLAlchemy DBAPIError wrapping a MySQL lock wait timeout
+    or deadlock (driver error args start with the error code)."""
+    if not isinstance(exc, DBAPIError):
+        return False
+    args = getattr(exc.orig, 'args', None) or ()
+    return bool(args) and args[0] in MYSQL_LOCK_ERROR_CODES
+
+
+@contextmanager
+def lock_errors_as_busy(action):
+    """Turn a MySQL lock wait timeout / deadlock into a 400 the user can
+    simply retry, instead of a 500. The request's transaction is rolled
+    back by DBSessionMiddleware either way (hatnote/montage#621)."""
+    try:
+        yield
+    except DBAPIError as e:
+        if not is_lock_error(e):
+            raise
+        raise InvalidAction('the server is busy, please retry (a database'
+                            ' lock wait timed out or deadlocked while'
+                            ' trying to %s)' % (action,))
 
 """
 Column ordering and groupings:
@@ -1648,31 +1677,68 @@ class CoordinatorDAO(UserDAO):
                 .populate_existing()
                 .one())
 
-    def activate_round(self, round_id):
+    def lock_round_for_import(self, round_id):
+        """Lock the round for the rest of an import, so a second import
+        (a retry or double click while the first is still running) waits
+        for the first instead of adding every file twice
+        (hatnote/montage#635).
+
+        The lock alone isn't enough on MySQL: under REPEATABLE READ this
+        request's snapshot was fixed at its first plain read, so after
+        waiting it would still see the round's entries as they were
+        before the other import committed, and add them again. So the
+        round's entry count in this request's snapshot is compared with
+        a fresh count from a separate connection, taken after the lock
+        is held; if they differ, another import committed meanwhile and
+        this one is refused.
+        """
         self.user_dao.get_round(round_id)  # permission check
-        # lock the round and re-read it, so that a second activation
-        # (double click) waits for the first and then sees it active,
-        # instead of creating a second set of tasks (hatnote/montage#334)
+        snapshot_count = (self.query(func.count(RoundEntry.id))
+                          .filter(RoundEntry.round_id == round_id)
+                          .scalar())
         rnd = self._lock_round(round_id)
-        if not rnd.entries:
-            raise InvalidAction('can not activate empty round, try importing'
-                                ' entries first')
-
         if rnd.status != PAUSED_STATUS:
-            raise InvalidAction('can only activate round in a paused state,'
-                                ' not %r' % (rnd.status,))
+            raise InvalidAction('round must be paused to add new entries')
+        with self.rdb_session.get_bind().connect() as conn:
+            fresh_count = conn.execute(
+                select([func.count()])
+                .select_from(round_entries_t)
+                .where(round_entries_t.c.round_id == round_id)).scalar()
+        if fresh_count != snapshot_count:
+            raise InvalidAction('another import into this round finished'
+                                ' while this one waited; refresh the round'
+                                ' to see its files, then import again if'
+                                ' any are missing')
+        return rnd
 
-        tasks = create_initial_tasks(self.rdb_session, rnd)
-        rnd.open_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    def activate_round(self, round_id):
+        with lock_errors_as_busy('activate the round'):
+            self.user_dao.get_round(round_id)  # permission check
+            # lock the round and re-read it, so that a second activation
+            # (double click) waits for the first and then sees it active,
+            # instead of creating a second set of tasks (hatnote/montage#334)
+            rnd = self._lock_round(round_id)
+            if not rnd.entries:
+                raise InvalidAction('can not activate empty round, try'
+                                    ' importing entries first')
 
-        msg = ('%s opened round %s with %s tasks'
-               % (self.user.username, rnd.name, len(tasks)))
-        self.log_action('open_round', round=rnd, message=msg)
+            if rnd.status != PAUSED_STATUS:
+                raise InvalidAction('can only activate round in a paused'
+                                    ' state, not %r' % (rnd.status,))
 
-        rnd.status = ACTIVE_STATUS
+            tasks = create_initial_tasks(self.rdb_session, rnd)
+            rnd.open_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
-        msg = '%s activated round "%s"' % (self.user.username, rnd.name)
-        self.log_action('activate_round', round=rnd, message=msg)
+            msg = ('%s opened round %s with %s tasks'
+                   % (self.user.username, rnd.name, len(tasks)))
+            self.log_action('open_round', round=rnd, message=msg)
+
+            rnd.status = ACTIVE_STATUS
+
+            msg = '%s activated round "%s"' % (self.user.username, rnd.name)
+            self.log_action('activate_round', round=rnd, message=msg)
+            # surface lock errors from the writes inside the guard
+            self.rdb_session.flush()
 
         return
 

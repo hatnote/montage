@@ -21,7 +21,8 @@ from .loaders import make_entry
 from .rdb import (FINALIZED_STATUS,
                  CoordinatorDAO,
                  MaintainerDAO,
-                 OrganizerDAO)
+                 OrganizerDAO,
+                 lock_errors_as_busy)
 
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
@@ -409,51 +410,62 @@ def _import_into_round(user_dao, coord_dao, round_id, request_dict, config):
     # loader warnings
     import_warnings = list()
 
-    if import_method == ROUND_METHOD:
-        threshold = request_dict['threshold']
-        prev_round_id = request_dict['previous_round_id']
-        entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
-        params = {'threshold': threshold,
-                  'round_id': prev_round_id}
-    elif import_method in import_check.CHECKED_METHODS:
-        token = request_dict.get('check_token')
-        if not token:
-            raise ImportCheckRequired(
-                'reload the page and check the source again: an import now'
-                ' needs a check first (POST the source to'
-                ' /admin/campaign/<campaign_id>/import/check, then import'
-                ' with the check_token it returns)')
-        result = import_check.load(token, config, coord_dao.campaign.id,
-                                   import_method)
-        import_check.raise_if_blocked(result)  # before anything is written
-        entries = [make_entry(row['commons'])
-                   for row in import_check.importable(result)]
-        entries = coord_dao.add_checked_entries(
-            round_id, entries, import_check.describe_source(result))
-        params = import_check.source_params(result, token)
-        import_warnings.extend(import_check.import_warnings(result))
-    else:
-        raise NotImplementedResponse()
+    # Hold the round's row lock for the whole import, so a second import
+    # of the same round (a retry while this one runs) waits, then is
+    # refused instead of adding every file again (hatnote/montage#635).
+    # Only this round's row is locked. add_round's first-round import
+    # goes through here too: the round is new, so the lock is on this
+    # request's own row and both counts are 0.
+    with lock_errors_as_busy('import into this round'):
+        coord_dao.lock_round_for_import(round_id)
 
-    new_entry_stats = coord_dao.add_round_entries(round_id, entries,
-                                                  method=import_method,
-                                                  params=params)
-    new_entry_stats['warnings'] = import_warnings
+        if import_method == ROUND_METHOD:
+            threshold = request_dict['threshold']
+            prev_round_id = request_dict['previous_round_id']
+            entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
+            params = {'threshold': threshold,
+                      'round_id': prev_round_id}
+        elif import_method in import_check.CHECKED_METHODS:
+            token = request_dict.get('check_token')
+            if not token:
+                raise ImportCheckRequired(
+                    'reload the page and check the source again: an import now'
+                    ' needs a check first (POST the source to'
+                    ' /admin/campaign/<campaign_id>/import/check, then import'
+                    ' with the check_token it returns)')
+            result = import_check.load(token, config, coord_dao.campaign.id,
+                                       import_method)
+            import_check.raise_if_blocked(result)  # before anything is written
+            entries = [make_entry(row['commons'])
+                       for row in import_check.importable(result)]
+            entries = coord_dao.add_checked_entries(
+                round_id, entries, import_check.describe_source(result))
+            params = import_check.source_params(result, token)
+            import_warnings.extend(import_check.import_warnings(result))
+        else:
+            raise NotImplementedResponse()
 
-    if not entries:
-        new_entry_stats['warnings'].append({'empty import':
-                                            'no entries imported'})
-    elif not new_entry_stats.get('new_entry_count'):
-        new_entry_stats['warnings'].append({'duplicate import':
-                                            'no new entries imported'})
+        new_entry_stats = coord_dao.add_round_entries(round_id, entries,
+                                                      method=import_method,
+                                                      params=params)
+        new_entry_stats['warnings'] = import_warnings
 
-    # automatically disqualify entries based on round config
-    auto_dq = autodisqualify(user_dao, round_id, request_dict={})
-    new_entry_stats['disqualified'] = auto_dq['data']
-    # (an empty import is not "all disqualified", #208)
-    if entries and len(new_entry_stats['disqualified']) >= len(entries):
-        new_entry_stats['warnings'].append({'all disqualified':
-                  'all entries disqualified by round settings'})
+        if not entries:
+            new_entry_stats['warnings'].append({'empty import':
+                                                'no entries imported'})
+        elif not new_entry_stats.get('new_entry_count'):
+            new_entry_stats['warnings'].append({'duplicate import':
+                                                'no new entries imported'})
+
+        # automatically disqualify entries based on round config
+        auto_dq = autodisqualify(user_dao, round_id, request_dict={})
+        new_entry_stats['disqualified'] = auto_dq['data']
+        # (an empty import is not "all disqualified", #208)
+        if entries and len(new_entry_stats['disqualified']) >= len(entries):
+            new_entry_stats['warnings'].append({'all disqualified':
+                      'all entries disqualified by round settings'})
+        # surface lock errors from the inserts inside the guard
+        coord_dao.rdb_session.flush()
 
     return entries, new_entry_stats
 
