@@ -22,7 +22,7 @@ from sqlalchemy import text
 
 from .mw import public
 from .rdb import User, PublicDAO
-from .labs import get_files, get_file_info
+from .labs import get_files, get_files_info_by_names
 
 from .utils import get_env_name, DoesNotExist, InvalidAction
 
@@ -145,8 +145,9 @@ def get_files_info_by_name(request_dict: dict[str, Any]) -> dict[str, list[Any]]
         raise InvalidAction('must provide a list of names')
     files = []
     no_info = []
+    found = get_files_info_by_names(file_names)
     for file_name in file_names:
-        file_info = get_file_info(file_name)
+        file_info = found.get(file_name.replace(' ', '_'))
         if not file_info:
             no_info.append(file_name)
         else:

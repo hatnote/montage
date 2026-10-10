@@ -109,7 +109,12 @@
     class="round__actions"
     style="display: flex; justify-content: end; gap: 16px; margin-top: 16px"
   >
-    <cdx-button v-if="round.status === 'paused'" @click="activateRound" action="progressive">
+    <cdx-button
+      v-if="round.status === 'paused'"
+      :disabled="activating"
+      @click="activateRound"
+      action="progressive"
+    >
       <play style="font-size: 6px" />{{ $t('montage-round-activate') }}
     </cdx-button>
 
@@ -164,7 +169,13 @@ const remainingDays = computed(() => {
   return diffDays
 })
 
+// true while an activation request runs: a second click would start a
+// second activation (duplicate juror tasks, hatnote/montage#334)
+const activating = ref(false)
+
 const activateRound = () => {
+  if (activating.value) return
+  activating.value = true
   adminService
     .activateRound(props.round.id)
     .then((data) => {
@@ -175,7 +186,10 @@ const activateRound = () => {
       // Refresh the page
       location.reload()
     })
-    .catch(alertService.error)
+    .catch((error) => {
+      activating.value = false
+      alertService.error(error)
+    })
 }
 
 const pauseRound = () => {

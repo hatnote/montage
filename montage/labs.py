@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import os
+from contextlib import contextmanager
 
 try:
     import pymysql
@@ -46,24 +47,41 @@ class MissingMySQLClient(RuntimeError):
     pass
 
 
-def fetchall_from_commonswiki(query, params):
+# Wikireplica hosts, both on the analytics replicas and both overridable,
+# e.g. when Wikimedia moves tables again. COMMONS_DB_HOST used to be the
+# legacy alias commonswiki.labsdb, which points to the same s4 analytics
+# replica.
+COMMONS_DB_HOST = os.environ.get(
+    'MONTAGE_COMMONS_DB_HOST',
+    'commonswiki.analytics.db.svc.wikimedia.cloud')
+# Since 2026-09-08 the Commons links tables (categorylinks, linktarget, ...)
+# live on their own cluster (x4); the copies on the main Commons replica are
+# no longer written, so category membership must be read from this replica.
+# See https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split
+COMMONS_LINKS_DB_HOST = os.environ.get(
+    'MONTAGE_COMMONS_LINKS_DB_HOST',
+    'links.commonswiki.analytics.db.svc.wikimedia.cloud')
+
+# file names per query when looking up a category's files on the main replica
+FILE_LOOKUP_CHUNK_SIZE = 500
+
+
+def _connect(db_host):
     if pymysql is None:
         raise MissingMySQLClient('could not import pymysql, check your'
                                  ' environment and restart the service')
-    db_title = 'commonswiki_p'
-    db_host = 'commonswiki.labsdb'
-    connection = pymysql.connect(db=db_title,
-                                 host=db_host,
-                                 read_default_file=DB_CONFIG,
-                                 charset='utf8')
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
-    cursor.execute(query, params)
-    res = cursor.fetchall()
+    return pymysql.connect(db='commonswiki_p',
+                           host=db_host,
+                           read_default_file=DB_CONFIG,
+                           charset='utf8',
+                           cursorclass=pymysql.cursors.DictCursor)
 
+
+def _decode_rows(rows):
     # looking at the schema on labs, it's all varbinary, not varchar,
     # so this block converts values
     ret = []
-    for rec in res:
+    for rec in rows:
         new_rec = {}
         for k, v in rec.items():
             if isinstance(v, bytes):
@@ -73,7 +91,68 @@ def fetchall_from_commonswiki(query, params):
     return ret
 
 
-def get_files(category_name):
+@contextmanager
+def commonswiki_connection(db_host=COMMONS_DB_HOST):
+    """One replica connection, closed on exit. Yields fetchall(query,
+    params), which runs a query on that connection and returns decoded
+    dict rows, so a multi-query lookup reuses one connection."""
+    connection = _connect(db_host)
+
+    def fetchall(query, params):
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query, params)
+            return _decode_rows(cursor.fetchall())
+        finally:
+            cursor.close()
+
+    try:
+        yield fetchall
+    finally:
+        connection.close()
+
+
+def fetchall_from_commonswiki(query, params, db_host=COMMONS_DB_HOST):
+    """Run one query on its own (closed afterwards) connection."""
+    with commonswiki_connection(db_host) as fetchall:
+        return fetchall(query, params)
+
+
+def get_category_file_names(category_name):
+    """Names of the files directly in a Commons category, read from the
+    links replica (page exists on both clusters, so this stays one query).
+    """
+    with commonswiki_connection(COMMONS_LINKS_DB_HOST) as fetchall:
+        return _category_file_names(fetchall, category_name)
+
+
+def _category_file_names(fetchall, category_name):
+    query = '''
+        SELECT DISTINCT page_title AS file_name
+        FROM categorylinks
+        JOIN linktarget ON cl_target_id = lt_id
+          AND lt_namespace = 14
+          AND lt_title = %s
+        JOIN page ON page_id = cl_from
+          AND page_namespace = 6
+        WHERE cl_type = 'file'
+    '''
+    params = (category_name.replace(' ', '_'),)
+    rows = fetchall(query, params)
+    return [row['file_name'] for row in rows]
+
+
+def get_files_by_name(file_names):
+    """File details for file names (underscored), from the main replica."""
+    if not file_names:
+        return []
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        return _files_by_name(fetchall, file_names)
+
+
+def _files_by_name(fetchall, file_names):
+    if not file_names:
+        return []
     query = '''
         SELECT DISTINCT {cols}
         FROM commonswiki_p.file AS file
@@ -82,20 +161,44 @@ def get_files(category_name):
         LEFT JOIN actor AS ci ON fr.fr_actor = ci.actor_id
         LEFT JOIN commonswiki_p.filetypes AS ft ON file.file_type = ft.ft_id
         {earliest_rev}
-        JOIN page ON page_namespace = 6
-          AND page_title = file.file_name
-        JOIN categorylinks ON cl_from = page_id
-          AND cl_type = 'file'
-        JOIN linktarget ON cl_target_id = lt_id
-          AND lt_namespace = 14
-          AND lt_title = %s
-        WHERE file.file_deleted = 0
-        ORDER BY file.file_name ASC
+        WHERE file.file_name IN ({names})
+          AND file.file_deleted = 0
     '''.format(cols=', '.join(FILE_COLS),
-               earliest_rev=_EARLIEST_REVISION_SUBQUERY)
-    params = (category_name.replace(' ', '_'),)
+               earliest_rev=_EARLIEST_REVISION_SUBQUERY,
+               names=', '.join(['%s'] * len(file_names)))
+    return fetchall(query, tuple(file_names))
 
-    return fetchall_from_commonswiki(query, params)
+
+def get_files_info_by_names(file_names):
+    """{underscored name: file info} for the names that exist, looked up in
+    chunks instead of one query per file, all on one connection."""
+    names = sorted(set(name.replace(' ', '_') for name in file_names))
+    ret = {}
+    if not names:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(names), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = names[i:i + FILE_LOOKUP_CHUNK_SIZE]
+            for rec in _files_by_name(fetchall, chunk):
+                ret[rec['img_name']] = rec
+    return ret
+
+
+def get_files(category_name):
+    # Two steps because category membership and file data now live on
+    # different database clusters, which cannot be joined in SQL.
+    # One connection per cluster for the whole lookup.
+    file_names = sorted(set(get_category_file_names(category_name)))
+    ret = []
+    if not file_names:
+        return ret
+    with commonswiki_connection(COMMONS_DB_HOST) as fetchall:
+        for i in range(0, len(file_names), FILE_LOOKUP_CHUNK_SIZE):
+            chunk = file_names[i:i + FILE_LOOKUP_CHUNK_SIZE]
+            ret.extend(_files_by_name(fetchall, chunk))
+    # same order as the old single query's ORDER BY file_name (binary)
+    ret.sort(key=lambda rec: rec['img_name'].encode('utf8'))
+    return ret
 
 
 def get_file_info(filename):
@@ -117,51 +220,6 @@ def get_file_info(filename):
         return results[0]
     else:
         return None
-
-
-def get_files_legacy(category_name):
-    """Verbatim copy of the original get_files() using image/oldimage tables.
-
-    Kept alive solely for the xfail parity test (test_get_files_parity).
-    Remove together with that test after 28 May 2026 once image/oldimage are
-    dropped from wikireplicas.
-    """
-    IMAGE_COLS = ['img_width',
-                  'img_height',
-                  'img_name',
-                  'img_major_mime',
-                  'img_minor_mime',
-                  'IFNULL(oi.actor_user, ci.actor_user) AS img_user',
-                  'IFNULL(oi.actor_name, ci.actor_name) AS img_user_text',
-                  'IFNULL(oi_timestamp, img_timestamp) AS img_timestamp',
-                  'img_timestamp AS rec_img_timestamp',
-                  'ci.actor_user AS rec_img_user',
-                  'ci.actor_name AS rec_img_text',
-                  'oi.oi_archive_name AS oi_archive_name']
-    query = '''
-        SELECT {cols}
-        FROM commonswiki_p.image AS i
-        LEFT JOIN actor AS ci ON img_actor=ci.actor_id
-        LEFT JOIN (SELECT oi_name,
-                          oi_actor,
-                          actor_user,
-                          actor_name,
-                          oi_timestamp,
-                          oi_archive_name
-                   FROM oldimage
-                   LEFT JOIN actor ON oi_actor=actor.actor_id) AS oi ON img_name=oi.oi_name
-        JOIN page ON page_namespace = 6
-        AND page_title = img_name
-        JOIN categorylinks ON cl_from = page_id
-        AND cl_type = 'file'
-        JOIN linktarget ON cl_target_id = lt_id
-        AND lt_namespace = 14
-        AND lt_title = %s
-        GROUP BY img_name
-        ORDER BY oi_timestamp ASC;
-    '''.format(cols=', '.join(IMAGE_COLS))
-    params = (category_name.replace(' ', '_'),)
-    return fetchall_from_commonswiki(query, params)
 
 
 if __name__ == '__main__':

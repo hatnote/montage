@@ -52,6 +52,8 @@ Optional env vars (all have sensible defaults):
 | `MONTAGE_ROOT_PATH` | `/` | URL root path |
 | `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
 | `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
+| `MONTAGE_COMMONS_DB_HOST` | `commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the other Commons tables (file, filerevision, actor, ...); before this was the legacy alias `commonswiki.labsdb`, which points to the same s4 analytics replica |
+| `MONTAGE_COMMONS_LINKS_DB_HOST` | `links.commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the Commons links tables (categorylinks, linktarget, page), on their own cluster since 2026-09-08 ([Wikitech](https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split)) |
 
 #### 4. Create the database
 
@@ -104,7 +106,12 @@ If upgrading an existing deployment, run the migration SQL instead (on the basti
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 ```
+
+`migrate_round_sources_params.sql` widens `round_sources.params` to MEDIUMTEXT. It can run before or
+after the deploy, but until it has run, file-list imports whose names pass 64 KB (roughly 1,000+
+names) still fail.
 
 #### 7. Start the service
 
@@ -172,21 +179,30 @@ become montage-beta
 Clone the repo so the deploy script is available on the bastion:
 
 ```bash
-git clone --branch tools/buildservice https://github.com/hatnote/montage.git ~/www/python/src
+git clone https://github.com/hatnote/montage.git ~/www/python/src
 ```
 
-If the repo is already cloned, make sure the branch tracks the right remote:
+If the repo is already cloned (for example an old checkout from before the buildservice, or one
+still on the deleted `tools/buildservice` branch), bring it to `master`:
 
 ```bash
 git -C ~/www/python/src fetch origin
-git -C ~/www/python/src checkout -b tools/buildservice origin/tools/buildservice
+git -C ~/www/python/src checkout master
+git -C ~/www/python/src pull --ff-only
 ```
 
 #### 4. Run the deploy script
 
+Which ref to deploy depends on the tool (see [Multi-environment setup](#multi-environment-setup)):
+
 ```bash
-bash ~/www/python/src/tools/deploy.sh --ref <branch>
+bash ~/www/python/src/tools/deploy.sh --ref master        # montage-beta
+bash ~/www/python/src/tools/deploy.sh --ref <release tag> # montage (production)
+bash ~/www/python/src/tools/deploy.sh --ref <branch>      # montage-dev: any branch under test
 ```
+
+Check the prompt (`tools.montage-beta@...` or `tools.montage@...`) before you run it: the ref
+decides what goes live, and production must only get a release tag.
 
 The script will: pull the latest version of itself, start the build, wait for
 completion, verify the SHA and port, warn if the running image already matches,
@@ -253,6 +269,7 @@ while). Run the migration — do **not** "recreate the database", which would wi
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 toolforge webservice buildservice restart --mount all
 ```
 
@@ -343,15 +360,78 @@ toolforge webservice buildservice restart --mount all
 
 ## Multi-environment setup
 
-Each tool account (`montage-dev`, `montage-beta`, `montage`) builds from its own branch and
-has its own `toolforge envvars` configuration. The build command is the only thing that
-differs:
+Each tool account has its own `toolforge envvars` configuration and deploys from a different
+kind of ref:
 
-| Account | Branch | URL |
-|---------|--------|-----|
-| `montage-dev` | `master` (or feature branch for testing) | https://montage-dev.toolforge.org |
-| `montage-beta` | `master` | https://montage-beta.toolforge.org |
-| `montage` | release tag | https://montage.toolforge.org |
+| Account | Deploys from | When | URL |
+|---------|--------------|------|-----|
+| `montage-dev` | any branch (a feature branch or PR under test) | by hand, for testing | https://montage-dev.toolforge.org |
+| `montage-beta` | `master` | after every merge into `master` | https://montage-beta.toolforge.org |
+| `montage` | a release tag (`vYYYY.MM.DD`, e.g. `v2026.10.10`; `.2` for a second release that day) | by hand, as a deliberate promotion | https://montage.toolforge.org |
+
+#### montage-dev's database: a shuffled copy of production
+
+Since 2026-10-05, montage-dev runs on a copy of production's database (backup of 2026-10-04),
+`s53126__montage_devcopy_20261004`, so that imports, migrations and slow queries can be tried at
+production scale (#652). The copy keeps production's schema, collation (`utf8mb4_unicode_ci`)
+and indexes (no index on `entries.name`, as on production, #650).
+
+What was changed in the copy (details and checks in #652):
+
+- **Recent campaigns are cut:** a campaign with activity in the last 12 months keeps only its first
+  round, and only if that round was imported from a category; other first rounds and all later
+  rounds are left out, so nothing shows which files advanced before results are announced.
+  Older campaigns are kept whole.
+- **Jury data is shuffled:** vote values (with their reviews) are shuffled within each round,
+  ranking ballots within each juror; reviews are replaced by random characters of the same length;
+  favorites are reassigned; the `flags` table is emptied; results summaries are randomised and
+  made private.
+- **Rights are reset:** campaign names get the prefix "[DEV COPY - shuffled]", production's
+  coordinators and organizers are removed, and montage-dev's own users and organizers are merged in.
+  A maintainer adds coordinators to the copied campaigns needed for a test.
+
+**Still real in the copy:** usernames (who was on which jury), coordinators' free text (audit
+messages, disqualification reasons), timestamps, and uploader data in `entries`. So the copy is
+for people who already have the same access on production, like montage-dev's maintainers:
+
+- Never set a fixed `userid` or the `devtest` environment on montage-dev: both log every request in
+  as a fixed user, which would be a real production user.
+- Do not copy, export or publish data from it, and do not make another copy without the shuffle
+  (the procedure and its checks are in #652; its script is not in this repository yet).
+
+**Rollback:** the previous test database, `s53126__montage_dev`, is kept for two weeks after the
+switch (until about 2026-10-19). Pointing `MONTAGE_DB_URL` back at it and restarting returns
+montage-dev to its old test data. After that it is dropped, and going back means a new copy.
+
+#### Rules
+
+1. **Changes reach `master` only through a pull request.** Nobody commits or force-pushes to
+   `master` directly.
+2. **Production only gets what montage-beta has run.** A release tag points to a commit on
+   `master` that has been deployed to montage-beta and checked there.
+3. **There are no environment branches.** The old `montage-dev`, `montage-beta` and
+   `montage-prod` branches were not used for deploys and still query the old database hosts;
+   they are kept as `archive/<branch>-<date>` tags only. Deploy a ref from the table above,
+   never one of those.
+4. **Rolling back production** is a deploy of the previous release tag.
+
+#### Releasing to production
+
+After the commit has run on montage-beta, tag it (on your own machine, not on the bastion):
+
+```bash
+git fetch origin
+git tag -a v2026.10.10 <commit> -m "Release 2026-10-10: <what changed, with issue numbers>"
+git push origin v2026.10.10
+```
+
+Then follow [Deploying new changes](#deploying-new-changes) as `montage`, with
+`--ref v2026.10.10`. The deploy script's `RESULT_SHA` must equal the tagged commit.
+
+#### Towards push-to-deploy
+
+These rules are what an automatic deploy will follow: a merge into `master` deploys montage-beta,
+a new release tag deploys production. Until that is set up, the same deploys are run by hand.
 
 ---
 

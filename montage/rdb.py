@@ -51,7 +51,7 @@ from .utils import (format_date,
 
 from .imgutils import make_mw_img_url
 from . import loaders
-from .simple_serdes import DictableBase, JSONEncodedDict
+from .simple_serdes import DictableBase, JSONEncodedDict, LongJSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
 
@@ -642,6 +642,79 @@ class RoundEntry(Base):
 
 
 round_entries_t = RoundEntry.__table__
+entries_t = Entry.__table__
+
+# columns a bulk entry insert supplies; id and create_date come from the DB
+_ENTRY_INSERT_COLS = [c.key for c in entries_t.columns
+                      if c.key not in ('id', 'create_date')]
+
+
+def _entry_insert_row(entry):
+    """Column values of a not-yet-saved Entry, for a core multi-row insert."""
+    return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
+
+
+# Imports have stored Commons' file_id since 2026-05-31: on production the
+# last category-imported entry without one dates from 2026-05-30 13:21, the
+# first with one from 2026-05-31 20:52. A file new to Montage after this date
+# therefore has its file_id stored (hatnote/montage#513).
+FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
+
+# Batch size for lookups by file_id: below 200 on purpose. MariaDB's
+# eq_range_index_dive_limit is 200 by default (ToolsDB too): with fewer
+# values in an IN (...) list the optimizer counts the matching rows in the
+# index and uses ix_entries_file_id; from 200 values on it estimates from
+# index statistics, misjudges this column and reads the whole table.
+# Measured on production on 2026-10-05 (#513): 199 ids took 2-7 ms with the
+# index, for existing and for new file_ids alike; 200 ids read the whole
+# table (0.56 s warm, 9.4 s cold). If a future server or setting changes
+# this (check with EXPLAIN), a fallback is
+# query.with_hint(Entry, 'FORCE INDEX (ix_entries_file_id)', 'mysql'):
+# 2 ms for 200 ids there, but only where that index exists, as the model
+# does not declare it (tools/migrate_prod_db.sql creates it).
+FILE_ID_LOOKUP_CHUNK_SIZE = 199
+
+
+def _use_file_id_lookup(rnd, entries):
+    """Whether add_entries looks entries up by file_id instead of by name
+    (#513): when the campaign opened after FILE_ID_LOOKUP_CUTOFF and every
+    entry has a file_id (wikireplica imports; CSV imports have none).
+    Production has no index on entries.name, so a lookup by name reads the
+    whole table; by file_id it uses ix_entries_file_id, in batches of
+    FILE_ID_LOOKUP_CHUNK_SIZE.
+
+    Files not found by file_id are looked up by name only where entries.name
+    is indexed (see _add_entries_by_file_id); elsewhere a file imported
+    before the cutoff, without a file_id, gets a second entries row.
+    Campaigns opening after the cutoff rarely contain such files."""
+    open_date = rnd.campaign.open_date if rnd.campaign else None
+    if open_date is None or open_date < FILE_ID_LOOKUP_CUTOFF:
+        return False
+    return bool(entries) and all(e.file_id is not None for e in entries)
+
+
+_ENTRIES_INDEX_CACHE = {}
+_ENTRIES_INDEX_TTL = 600  # seconds; a newly added index is used within this
+
+
+def _entries_indexes(rdb_session):
+    """(index names, first columns) of the entries table, as the database
+    has them: production's indexes differ from the model's (no index on
+    name, ix_entries_file_id only through tools/migrate_prod_db.sql)."""
+    # Reflect on the session's own connection: on the engine, SQLAlchemy
+    # uses a connection that closes after its first result, and the app's
+    # engine_connect listener (SET NAMES, app.py) uses up that result, so
+    # the reflection then fails with "This Connection is closed".
+    connection = rdb_session.connection()
+    engine = connection.engine
+    cached = _ENTRIES_INDEX_CACHE.get(id(engine))
+    if cached and time.time() - cached[0] < _ENTRIES_INDEX_TTL:
+        return cached[1]
+    indexes = inspect(connection).get_indexes('entries')
+    found = (set(i['name'] for i in indexes),
+             set(i['column_names'][0] for i in indexes if i['column_names']))
+    _ENTRIES_INDEX_CACHE[id(engine)] = (time.time(), found)
+    return found
 
 
 class RoundSource(Base):
@@ -652,7 +725,9 @@ class RoundSource(Base):
     user_id = Column(Integer, ForeignKey('users.id'), index=True)
 
     method = Column(String(255), index=True)
-    params = Column(JSONEncodedDict)
+    # MEDIUMTEXT on MySQL: a 'selected' import's file list can pass TEXT's
+    # 64 KB (tools/migrate_round_sources_params.sql, hatnote/montage#621)
+    params = Column(LongJSONEncodedDict)
     dq_params = Column(JSONEncodedDict)
 
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -1200,6 +1275,18 @@ class CoordinatorDAO(UserDAO):
             ret[name] = entry
         return ret
 
+    def get_entry_file_id_map(self, file_ids):
+        # Keep len(file_ids) below 200: see FILE_ID_LOOKUP_CHUNK_SIZE.
+        entries = (self.query(Entry)
+                       .filter(Entry.file_id.in_(file_ids))
+                       .order_by(Entry.id)
+                       .all())
+        ret = {}
+        for entry in entries:
+            # with duplicates, the oldest row wins, as a stable choice
+            ret.setdefault(entry.file_id, entry)
+        return ret
+
     def get_grouped_flags(self, round_id):
         flagged_entries = (self.query(RoundEntry)
                            .filter_by(round_id=round_id)
@@ -1536,8 +1623,22 @@ class CoordinatorDAO(UserDAO):
 
         return rnd
 
+    def _lock_round(self, round_id):
+        # FOR UPDATE on MySQL (sees the latest committed row, not the
+        # REPEATABLE READ snapshot); a plain read on SQLite.
+        # populate_existing: don't keep a stale copy from the session
+        return (self.query(Round)
+                .filter_by(id=round_id)
+                .with_for_update()
+                .populate_existing()
+                .one())
+
     def activate_round(self, round_id):
-        rnd = self.user_dao.get_round(round_id)
+        self.user_dao.get_round(round_id)  # permission check
+        # lock the round and re-read it, so that a second activation
+        # (double click) waits for the first and then sees it active,
+        # instead of creating a second set of tasks (hatnote/montage#334)
+        rnd = self._lock_round(round_id)
         if not rnd.entries:
             raise InvalidAction('can not activate empty round, try importing'
                                 ' entries first')
@@ -1652,6 +1753,9 @@ class CoordinatorDAO(UserDAO):
                 deduped.append(e)
         entries = deduped
 
+        if _use_file_id_lookup(rnd, entries):
+            return self._add_entries_by_file_id(entries)
+
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
         new_entry_count = 0
@@ -1660,15 +1764,60 @@ class CoordinatorDAO(UserDAO):
             entry_names = [to_unicode(e.name) for e in entry_chunk]
             db_entries = self.get_entry_name_map(entry_names)
 
-            for entry in entry_chunk:
-                db_entry = db_entries.get(to_unicode(entry.name))
-                if db_entry:
-                    entry = db_entry
-                else:
-                    new_entry_count += 1
-                    self.rdb_session.add(entry)
+            new_rows = [_entry_insert_row(e) for e in entry_chunk
+                        if to_unicode(e.name) not in db_entries]
+            if new_rows:
+                # One multi-row INSERT per chunk instead of one INSERT per
+                # entry; per-row inserts made large category imports outlast
+                # the request timeout (#618). Read the rows back to get ids.
+                self.rdb_session.execute(entries_t.insert(), new_rows)
+                new_entry_count += len(new_rows)
+                db_entries.update(
+                    self.get_entry_name_map([r['name'] for r in new_rows]))
 
-                ret.append(entry)
+            for entry in entry_chunk:
+                ret.append(db_entries[to_unicode(entry.name)])
+
+        return ret, new_entry_count
+
+    def _add_entries_by_file_id(self, entries):
+        """add_entries for imports where every entry has a file_id (see
+        _use_file_id_lookup): existing rows are found, and new rows read
+        back, by file_id instead of by name."""
+        seen = set()
+        deduped = []
+        for e in entries:
+            if e.file_id not in seen:
+                seen.add(e.file_id)
+                deduped.append(e)
+
+        # Files imported before the cutoff have no file_id; find them by name
+        # where that is cheap (an index on name), so they keep their row.
+        # Production has no such index: there they get a second row.
+        name_fallback = 'name' in _entries_indexes(self.rdb_session)[1]
+
+        ret = []
+        new_entry_count = 0
+        for entry_chunk in chunked(deduped, FILE_ID_LOOKUP_CHUNK_SIZE):
+            db_entries = self.get_entry_file_id_map(
+                [e.file_id for e in entry_chunk])
+            missing = [e for e in entry_chunk if e.file_id not in db_entries]
+            if missing and name_fallback:
+                by_name = self.get_entry_name_map(
+                    [to_unicode(e.name) for e in missing])
+                for e in missing:
+                    row = by_name.get(to_unicode(e.name))
+                    if row is not None and row.file_id is None:
+                        db_entries[e.file_id] = row
+            new_rows = [_entry_insert_row(e) for e in entry_chunk
+                        if e.file_id not in db_entries]
+            if new_rows:
+                self.rdb_session.execute(entries_t.insert(), new_rows)
+                new_entry_count += len(new_rows)
+                db_entries.update(
+                    self.get_entry_file_id_map([r['file_id'] for r in new_rows]))
+            for entry in entry_chunk:
+                ret.append(db_entries[entry.file_id])
 
         return ret, new_entry_count
 
@@ -1688,11 +1837,14 @@ class CoordinatorDAO(UserDAO):
             return dict()
         round_source = self.get_or_create_round_source(round_id, method, params)
         self.rdb_session.flush()
-        for new_entry in new_entries:
-            new_round_entry = RoundEntry(entry_id=new_entry.id,
-                                         round_id=round_id,
-                                         round_source_id=round_source.id)
-            self.rdb_session.add(new_round_entry)
+        # batched like add_entries (#618)
+        self.rdb_session.execute(
+            round_entries_t.insert(),
+            [{'entry_id': e.id,
+              'round_id': round_id,
+              'round_source_id': round_source.id} for e in new_entries])
+        # the core insert bypasses the session; reload on next access
+        self.rdb_session.expire(rnd, ['round_entries'])
         msg = ('%s added %s round entries, %s new'
                % (self.user.username, len(entries), len(new_entries)))
         if method:
@@ -3142,14 +3294,12 @@ def create_initial_tasks(rdb_session, rnd):
     return ret
 
 
-def create_ranking_tasks(rdb_session, rnd, jurors=None):
-    ret = []
+# tasks per INSERT statement when creating tasks (pymysql turns each
+# executemany into multi-row INSERTs)
+TASK_INSERT_CHUNK_SIZE = 5000
 
-    if jurors is None:
-        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
-    if not jurors:
-        raise InvalidAction('expected round with active jurors')
 
+def _shuffled_untasked_entry_ids(rdb_session, rnd):
     rdb_type = rdb_session.bind.dialect.name
 
     if rdb_type == 'mysql':
@@ -3157,27 +3307,57 @@ def create_ranking_tasks(rdb_session, rnd, jurors=None):
     else:
         rand_func = func.random()
 
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
-    if not shuffled_entries:
+    # this does the shuffling in the database. Only the ids: loading a
+    # RoundEntry object per entry does not fit in memory for large rounds
+    # (hatnote/montage#619)
+    rows = (rdb_session.query(RoundEntry.id)
+                       .filter(RoundEntry.round_id == rnd.id,
+                               RoundEntry.dq_user_id == None,
+                               RoundEntry.votes == None)
+                       .order_by(rand_func).all())
+    return [row[0] for row in rows]
+
+
+def _insert_tasks(rdb_session, tasks):
+    """Insert tasks ({'user_id', 'round_entry_id'} dicts) as active votes,
+    in batches, instead of one Vote object and one INSERT per task
+    (hatnote/montage#619). Returns the inserted rows."""
+    rows = [{'user_id': t['user_id'],
+             'round_entry_id': t['round_entry_id'],
+             'status': ACTIVE_STATUS,
+             'flags': {}} for t in tasks]
+    if not rows:
+        return rows
+    # write pending ORM changes first, so the inserts see them
+    rdb_session.flush()
+    for i in range(0, len(rows), TASK_INSERT_CHUNK_SIZE):
+        rdb_session.execute(votes_t.insert(),
+                            rows[i:i + TASK_INSERT_CHUNK_SIZE])
+    # relationships loaded before the inserts (e.g. RoundEntry.votes) are
+    # stale now; everything was flushed above, so expiring loses nothing
+    rdb_session.expire_all()
+    return rows
+
+
+def create_ranking_tasks(rdb_session, rnd, jurors=None):
+    if jurors is None:
+        jurors = [rj.user for rj in rnd.round_jurors if rj.is_active]
+    if not jurors:
+        raise InvalidAction('expected round with active jurors')
+
+    shuffled_entry_ids = _shuffled_untasked_entry_ids(rdb_session, rnd)
+    if not shuffled_entry_ids:
         return []
 
-    for juror in jurors:
-        for entry in shuffled_entries:
-            vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-            ret.append(vote)
+    tasks = [{'user_id': juror.id, 'round_entry_id': entry_id}
+             for juror in jurors
+             for entry_id in shuffled_entry_ids]
 
-    return ret
+    return _insert_tasks(rdb_session, tasks)
 
 
 def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
     # Creates a specified number of tasks per entry.
-
-    ret = []
 
     if not tasks_per_entry:
         tasks_per_entry = rnd.quorum
@@ -3191,19 +3371,7 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
 
     random.shuffle(jurors)
 
-    rdb_type = rdb_session.bind.dialect.name
-
-    if rdb_type == 'mysql':
-        rand_func = func.rand()
-    else:
-        rand_func = func.random()
-
-    # this does the shuffling in the database
-    shuffled_entries = (rdb_session.query(RoundEntry)
-                                   .filter(RoundEntry.round_id == rnd.id,
-                                           RoundEntry.dq_user_id == None,
-                                           RoundEntry.votes == None)
-                                   .order_by(rand_func).all())
+    shuffled_entries = _shuffled_untasked_entry_ids(rdb_session, rnd)
     if not shuffled_entries:
         return []
     # Note: It's only creating tasks for entries with no tasks. A
@@ -3221,15 +3389,14 @@ def create_initial_rating_tasks(rdb_session, rnd, tasks_per_entry=None):
 
     pairs = zip_longest(to_process, juror_iters, fillvalue=None)
 
-    for entry, juror in pairs:
+    tasks = []
+    for entry_id, juror in pairs:
         assert juror is not None, 'should never run out of jurors first'
-        if entry is None:
+        if entry_id is None:
             break
 
-        # TODO: bulk_save_objects
-        vote = Vote(user=juror, round_entry=entry, status=ACTIVE_STATUS)
-        ret.append(vote)
-    return ret
+        tasks.append({'user_id': juror.id, 'round_entry_id': entry_id})
+    return _insert_tasks(rdb_session, tasks)
 
 
 def create_rating_tasks_for_coverage(session, rnd, target_per_entry):
