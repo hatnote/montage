@@ -82,6 +82,7 @@
 	"montage-round-file-setting": "Label for the file settings in a round.",
 	"montage-round-delete": "Label for the action to delete a round.",
 	"montage-round-edit": "Label for the action to edit a round.",
+	"montage-round-edit-active-warning": "Tooltip shown on the disabled edit button explaining that an active round must be paused before it can be edited.",
 	"montage-round-save": "Label for the action to save changes to a round.",
 	"montage-round-delete-confirm": "Confirmation message for deleting a round.",
 	"montage-round-allowed-filetypes": "Label for the allowed file types setting in a round.",
