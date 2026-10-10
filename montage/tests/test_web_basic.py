@@ -1140,9 +1140,9 @@ def test_round_entries_export_query_count(api_client, mock_external_apis):
          'deadline_date': '2016-10-15T00:00:00',
          'jurors': ['Slaporte', 'MahmoudHashemi', 'Effeietsanders']},
         as_user='Yarl')['data']['id']
-    api_client.fetch(
+    api_client.fetch_checked_import(
         'coordinator: import entries via category',
-        '/admin/round/%s/import' % round_id,
+        round_id,
         {'import_method': 'category', 'category': 'Batch_import'},
         as_user='Yarl')
 
@@ -1173,8 +1173,10 @@ def test_round_entries_export_query_count(api_client, mock_external_apis):
     assert len(rows) == n
     assert sorted(reader.fieldnames) == sorted(file_infos[0].keys())
     assert all(r['source_method'] == 'category' for r in rows)
-    assert all(json.loads(r['source_params']) == {'category': 'Batch_import'}
+    # #656 adds the check's fingerprint to a checked import's params
+    assert all(json.loads(r['source_params'])['category'] == 'Batch_import'
                for r in rows)
+    assert len({r['source_params'] for r in rows}) == 1
 
     assert selects['list'] < 20, selects
     assert selects['download'] < 20, selects
