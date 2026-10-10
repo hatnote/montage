@@ -12,7 +12,7 @@ from clastic.render import render_basic
 from boltons.tbutils import ExceptionInfo
 
 from montage.rdb import User, UserDAO
-from montage.utils import MontageError, basestring
+from montage.utils import MontageError
 
 from .sqlprof import SQLProfilerMiddleware
 
@@ -235,7 +235,7 @@ class TimingMiddleware(Middleware):
             timings_dict['endpoint'] = round(time.time() - start_time, 3)
         if (isinstance(ret, BaseResponse)
             and getattr(ret, 'mimetype', '').startswith('text/html')
-            and isinstance(ret.data, basestring)):
+            and isinstance(ret.data, str)):
             ret.data += ('<!-- Timings: ' + json.dumps(timings_dict) + ' -->')
         return ret
 

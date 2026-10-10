@@ -19,7 +19,6 @@ from glom import glom, T
 from montage import utils
 from montage.log import script_log
 from montage.app import create_app, STATIC_PATH
-from montage.utils import unicode
 
 
 class ClasticTestClient(Client):
@@ -64,7 +63,7 @@ class MontageTestClient(object):
             # TODO: careful, werkzeug's pretty liberal with "data",
             # will take a dictionary and do weird stuff to it, turn it
             # into a formencoded mess.
-            if not isinstance(data, (bytes, unicode)):
+            if not isinstance(data, (bytes, str)):
                 data = json.dumps(data)
             res = c.post(url, data=data,
                          content_type=kw.get('content_type', 'application/json'))

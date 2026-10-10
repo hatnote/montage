@@ -39,7 +39,6 @@ from boltons.statsutils import mean
 from clastic.errors import Forbidden
 
 from .utils import (format_date,
-                    basestring,
                     to_unicode,
                     get_mw_userid,
                     weighted_choice,
@@ -1120,7 +1119,7 @@ class UserDAO(PublicDAO):
         # which is used in the audit log if the user is created
         if isinstance(user, User):
             return user
-        elif not isinstance(user, basestring):
+        elif not isinstance(user, str):
             raise TypeError('expected user or username, not %r' % user)
         username = user
         user = lookup_user(self.rdb_session, username=username)

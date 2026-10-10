@@ -11,7 +11,7 @@ from unicodecsv import DictReader
 
 import montage.rdb  # TODO: circular import
 from .labs import get_files, get_files_info_by_names
-from .utils import unicode, requests_get, requests_post
+from .utils import requests_get, requests_post
 
 REMOTE_UTILS_URL = 'https://montage.toolforge.org/v1/utils/'
 
@@ -107,7 +107,7 @@ def load_partial_csv(dr, source='remote'):
     ret = []
     warnings = []
     file_names = [r['filename'] for r in dr]
-    if not file_names or isinstance(file_names[0], unicode):
+    if not file_names or isinstance(file_names[0], str):
         file_names_obj = StringIO('\n'.join(file_names))
     else:
         file_names_obj = BytesIO(b'\n'.join(file_names))
