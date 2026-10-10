@@ -1,51 +1,43 @@
 # NB: code heavily modified from sentry's own flask integration
 
-from __future__ import absolute_import
-
 import weakref
 
-from sentry_sdk.hub import Hub, _should_send_default_pii
+import sentry_sdk
 from sentry_sdk.utils import capture_internal_exceptions, event_from_exception
-from sentry_sdk.integrations import Integration, DidNotEnable
 from sentry_sdk.integrations.wsgi import SentryWsgiMiddleware
 from sentry_sdk.integrations._wsgi_common import RequestExtractor
 
-from clastic import Middleware, Application, SubApplication
+from clastic import Middleware
 from clastic.errors import BadRequest
 
 
 class SentryMiddleware(Middleware):
-    provides = ('sentry_scope', 'sentry_hub')
+    provides = ('sentry_scope',)
 
     wsgi_wrapper = SentryWsgiMiddleware
 
     def request(self, next, request, _route):
-        hub = Hub.current
+        # SentryWsgiMiddleware wraps each request in its own isolation
+        # scope (and starts the trace), so this scope is per-request.
+        scope = sentry_sdk.get_isolation_scope()
+        # the transaction name lives on the current scope; setting it on
+        # the isolation scope loses to the WSGI middleware's default
+        sentry_sdk.get_current_scope().set_transaction_name(_route.pattern)
+        scope.add_event_processor(
+            _make_request_event_processor(weakref.ref(request)))
 
-        with hub.configure_scope() as scope:
-            # Rely on WSGI middleware to start a trace
-            scope.transaction = _route.pattern
-
-            weak_request = weakref.ref(request)
-            evt_processor = _make_request_event_processor(weak_request)
-            scope.add_event_processor(evt_processor)
-
-            try:
-                ret = next(sentry_scope=scope, sentry_hub=hub)
-            except BadRequest:
-                raise
-            except Exception as exc:
-                client = hub.client
-
-                event, hint = event_from_exception(
-                    exc,
-                    client_options=client.options,
-                    mechanism={"type": "clastic"},
-                )
-
-                hub.capture_event(event, hint=hint)
-                raise
-        return ret
+        try:
+            return next(sentry_scope=scope)
+        except BadRequest:
+            raise
+        except Exception as exc:
+            event, hint = event_from_exception(
+                exc,
+                client_options=sentry_sdk.get_client().options,
+                mechanism={'type': 'clastic', 'handled': False},
+            )
+            sentry_sdk.capture_event(event, hint=hint)
+            raise
 
 
 class ClasticRequestExtractor(RequestExtractor):
