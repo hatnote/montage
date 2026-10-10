@@ -17,7 +17,8 @@ from .utils import (format_date,
 from .rdb import (FINALIZED_STATUS,
                  CoordinatorDAO,
                  MaintainerDAO,
-                 OrganizerDAO)
+                 OrganizerDAO,
+                 lock_errors_as_busy)
 
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
@@ -339,61 +340,70 @@ def import_entries(user_dao, round_id, request_dict):
     # loader warnings
     import_warnings = list()
 
-    if import_method == 'csv' or import_method == 'gistcsv':
-        if import_method == 'gistcsv':
-            csv_url = request_dict['gist_url']
+    # Hold the round's row lock for the whole import, fetch included, so
+    # a second import of the same round (a retry while this one runs)
+    # waits, then is refused instead of adding every file again
+    # (hatnote/montage#635). Only this round's row is locked.
+    with lock_errors_as_busy('import into this round'):
+        coord_dao.lock_round_for_import(round_id)
+
+        if import_method == 'csv' or import_method == 'gistcsv':
+            if import_method == 'gistcsv':
+                csv_url = request_dict['gist_url']
+            else:
+                csv_url = request_dict['csv_url']
+
+            entries, warnings = coord_dao.add_entries_from_csv(round_id,
+                                                               csv_url)
+            params = {'csv_url': csv_url}
+            if warnings:
+                msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
+                # a dict like the other warnings: the frontend shows one value
+                # per warning, and showed only the last character of a string
+                import_warnings.append({'import issues': msg})
+        elif import_method == CATEGORY_METHOD:
+            cat_name = request_dict['category']
+            entries = coord_dao.add_entries_from_cat(round_id, cat_name)
+            params = {'category': cat_name}
+        elif import_method == ROUND_METHOD:
+            threshold = request_dict['threshold']
+            prev_round_id = request_dict['previous_round_id']
+            entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
+            params = {'threshold': threshold,
+                      'round_id': prev_round_id}
+        elif import_method == SELECTED_METHOD:
+            file_names = request_dict['file_names']
+            entries, warnings = coord_dao.add_entries_by_name(round_id, file_names)
+            if warnings:
+                formatted_warnings = u'\n'.join([
+                    u'- {}'.format(warning) for warning in warnings
+                ])
+                msg = u'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
+                import_warnings.append({'import issues': msg})
+            params = {'file_names': file_names}
         else:
-            csv_url = request_dict['csv_url']
+            raise NotImplementedResponse()
 
-        entries, warnings = coord_dao.add_entries_from_csv(round_id,
-                                                           csv_url)
-        params = {'csv_url': csv_url}
-        if warnings:
-            msg = u'unable to load {} files ({!r})'.format(len(warnings), warnings)
-            # a dict like the other warnings: the frontend shows one value
-            # per warning, and showed only the last character of a string
-            import_warnings.append({'import issues': msg})
-    elif import_method == CATEGORY_METHOD:
-        cat_name = request_dict['category']
-        entries = coord_dao.add_entries_from_cat(round_id, cat_name)
-        params = {'category': cat_name}
-    elif import_method == ROUND_METHOD:
-        threshold = request_dict['threshold']
-        prev_round_id = request_dict['previous_round_id']
-        entries = coord_dao.get_rating_advancing_group(prev_round_id, threshold)
-        params = {'threshold': threshold,
-                  'round_id': prev_round_id}
-    elif import_method == SELECTED_METHOD:
-        file_names = request_dict['file_names']
-        entries, warnings = coord_dao.add_entries_by_name(round_id, file_names)
-        if warnings:
-            formatted_warnings = u'\n'.join([
-                u'- {}'.format(warning) for warning in warnings
-            ])
-            msg = u'unable to load {} files:\n{}'.format(len(warnings), formatted_warnings)
-            import_warnings.append({'import issues': msg})
-        params = {'file_names': file_names}
-    else:
-        raise NotImplementedResponse()
+        new_entry_stats = coord_dao.add_round_entries(round_id, entries,
+                                                      method=import_method,
+                                                      params=params)
+        new_entry_stats['warnings'] = import_warnings
 
-    new_entry_stats = coord_dao.add_round_entries(round_id, entries,
-                                                  method=import_method,
-                                                  params=params)
-    new_entry_stats['warnings'] = import_warnings
+        if not entries:
+            new_entry_stats['warnings'].append({'empty import':
+                                                'no entries imported'})
+        elif not new_entry_stats.get('new_entry_count'):
+            new_entry_stats['warnings'].append({'duplicate import':
+                                                'no new entries imported'})
 
-    if not entries:
-        new_entry_stats['warnings'].append({'empty import':
-                                            'no entries imported'})
-    elif not new_entry_stats.get('new_entry_count'):
-        new_entry_stats['warnings'].append({'duplicate import':
-                                            'no new entries imported'})
-
-    # automatically disqualify entries based on round config
-    auto_dq = autodisqualify(user_dao, round_id, request_dict={})
-    new_entry_stats['disqualified'] = auto_dq['data']
-    if len(new_entry_stats['disqualified']) >= len(entries):
-        new_entry_stats['warnings'].append({'all disqualified':
-                  'all entries disqualified by round settings'})
+        # automatically disqualify entries based on round config
+        auto_dq = autodisqualify(user_dao, round_id, request_dict={})
+        new_entry_stats['disqualified'] = auto_dq['data']
+        if len(new_entry_stats['disqualified']) >= len(entries):
+            new_entry_stats['warnings'].append({'all disqualified':
+                      'all entries disqualified by round settings'})
+        # surface lock errors from the inserts inside the guard
+        coord_dao.rdb_session.flush()
 
     return {'data': new_entry_stats}
 

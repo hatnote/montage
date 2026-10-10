@@ -1313,6 +1313,104 @@ def test_concurrent_activation_creates_no_duplicate_tasks(montage_app, api_clien
                           ' already activated: %s tasks created' % n_tasks)
 
 
+def test_import_waiting_on_concurrent_import_is_refused(montage_app, api_client,
+                                                         mock_external_apis):
+    """
+    Regression test for double imports (hatnote/montage#635): a retry
+    of a slow import, sent while the first was still running, added
+    every file a second time, because neither request locked the round
+    and each only saw its own snapshot of the round's entries.
+
+    The other import is simulated by committing one more round entry
+    from another connection while this request takes the round lock
+    (on MySQL it would have been waiting on that lock). With the fix,
+    the import compares the round's entry count in its own snapshot
+    with a fresh one and refuses; without it, it imports.
+    """
+    from sqlalchemy import create_engine, text
+    from montage import rdb
+
+    fetch = api_client.fetch
+
+    resp = fetch('get default series', '/series')
+    series_id = resp['data'][0]['id']
+
+    fetch('organizer: create campaign for concurrent import test',
+          '/admin/add_campaign',
+          {'name': 'Concurrent Import Test',
+           'coordinators': [u'LilyOfTheWest', u'Slaporte', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+
+    resp = fetch('coordinator: get admin view', '/admin', as_user='LilyOfTheWest')
+    campaign_id = resp['data'][-1]['id']
+
+    resp = fetch('coordinator: add yesno round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 {'name': 'Concurrent Import Round',
+                  'vote_method': 'yesno',
+                  'quorum': 1,
+                  'deadline_date': '2025-10-20T00:00:00',
+                  'jurors': [u'Slaporte']},
+                 as_user='LilyOfTheWest')
+    round_id = resp['data']['id']
+
+    import_data = {'import_method': 'category',
+                   'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'}
+    fetch('coordinator: first import',
+          '/admin/round/%s/import' % round_id,
+          import_data, as_user='LilyOfTheWest')
+
+    other_engine = create_engine(montage_app.resources['config']['db_url'])
+
+    def count_round_entries():
+        with other_engine.connect() as conn:
+            return conn.execute(text(
+                'SELECT COUNT(*) FROM round_entries WHERE round_id = :rid'),
+                {'rid': round_id}).scalar()
+
+    first_count = count_round_entries()
+    assert first_count > 0
+
+    orig_lock_round = rdb.CoordinatorDAO._lock_round
+    raced = []
+
+    def lock_round_while_other_import_commits(self, rid):
+        rnd = orig_lock_round(self, rid)
+        if rid == round_id and not raced:
+            raced.append(rnd)
+            # the other import committed its round entries while this
+            # request waited on the round lock
+            with other_engine.begin() as conn:
+                conn.execute(text(
+                    'INSERT INTO round_entries (entry_id, round_id)'
+                    ' SELECT entry_id, round_id FROM round_entries'
+                    ' WHERE round_id = :rid LIMIT 1'), {'rid': rid})
+        return rnd
+
+    with patch.object(rdb.CoordinatorDAO, '_lock_round',
+                      lock_round_while_other_import_commits):
+        resp = fetch('coordinator: import while another import committed',
+                     '/admin/round/%s/import' % round_id,
+                     import_data, as_user='LilyOfTheWest', error_code=400)
+    assert raced
+    assert ('another import into this round finished'
+            in resp.get_data(as_text=True))
+    # the refused import added nothing
+    assert count_round_entries() == first_count + 1
+
+    # without a concurrent import, a repeat import is a plain duplicate
+    data = fetch('coordinator: import again, no race',
+                 '/admin/round/%s/import' % round_id,
+                 import_data, as_user='LilyOfTheWest')['data']
+    assert {'duplicate import': 'no new entries imported'} in data['warnings']
+    assert count_round_entries() == first_count + 1
+    other_engine.dispose()
+
+
 def test_activation_inserts_tasks_in_batches(montage_app, api_client,
                                              mock_external_apis):
     """
