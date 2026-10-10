@@ -688,6 +688,10 @@ def test_source_fields_must_be_text():
     ('_leading and trailing_ ', 'Leading_and_trailing'),
     (u'éclair.jpg', u'Éclair.jpg'),
     (b'Bytes.jpg', 'Bytes.jpg'),
+    # titlecase, like MediaWiki's Language::ucfirst (MB_CASE_TITLE):
+    # Georgian Mkhedruli has no titlecase form, so Commons keeps it lower
+    # case; str.upper() would turn it into Mtavruli, a different name
+    (u'ქართული.jpg', u'ქართული.jpg'),
 ])
 def test_names_are_canonical_like_mediawiki(written, canonical):
     """MediaWiki file titles: File:/Image: prefix in any case, runs of

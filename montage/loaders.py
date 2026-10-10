@@ -123,7 +123,7 @@ def normalise_name(name):
     """A file name as Montage and the replica store it, canonical like a
     MediaWiki File: title: no File:/Image: prefix (any case), runs of spaces
     and underscores as one underscore, none at the start or end, and the
-    first letter in upper case (Commons titles are case-sensitive after
+    first letter in title case (Commons titles are case-sensitive after
     the first letter only)."""
     if isinstance(name, bytes):
         name = name.decode('utf8')
@@ -135,8 +135,11 @@ def normalise_name(name):
     name = _FILE_PREFIX_RE.sub('', name)
     name = _SPACES_RE.sub('_', name).strip('_')
     if name:
-        first = name[0].upper()
-        if len(first) == 1:  # e.g. 'ß'.upper() is 'SS': leave it
+        # titlecase, not upper(), as MediaWiki's Language::ucfirst does
+        # (MB_CASE_TITLE): Georgian Mkhedruli stays as is, where upper()
+        # gives Mtavruli, a different Commons name
+        first = name[0].title()
+        if len(first) == 1:  # e.g. 'ß'.title() is 'Ss': leave it
             name = first + name[1:]
     return name
 
