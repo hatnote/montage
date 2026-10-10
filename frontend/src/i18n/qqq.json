@@ -240,7 +240,7 @@
 	"montage-round-save-unknown": "Shown when no answer came back while saving a first round (network or timeout).",
 	"montage-btn-ok": "Label of a button that closes a message dialog.",
 	"montage-round-check-download-partial-help": "Instructions shown after the link {{msg-wm|Montage-montage-round-check-download-partial}}. \"File List\" is the source option {{msg-wm|Montage-montage-round-source-filelist}} and should match its translation.",
-	"montage-round-check-warnings-only": "Shown after a check that found problems that do not block the import (for example files not on Commons, listed twice, or renamed).",
+	"montage-round-check-warnings-only": "Shown after a check that found rows to look at but nothing that blocks the import: rows left out (for example files not on Commons, or listed twice), changed (renamed on Commons), or found by file ID (a bare number that was taken as the file ID; the file name is shown so a wrong number can be spotted).",
 	"montage-round-save-hint-unchecked": "Shown next to the disabled Save button of a first round before the source has been checked.",
 	"montage-round-save-hint-blocked": "Shown next to the disabled Save button when the check found rows that block the import. The check result is shown higher up in the form.",
 	"montage-round-save-hint-empty": "Shown next to the disabled Save button when the check found no file that can be imported.",

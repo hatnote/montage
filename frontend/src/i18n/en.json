@@ -240,7 +240,7 @@
   "montage-round-save-unknown": "The connection was interrupted while saving. The round may have been created: look at the campaign page before you save again.",
   "montage-btn-ok": "OK",
   "montage-round-check-download-partial-help": "To import only these files: choose File List, paste the content of the downloaded file into the box, then check the source again.",
-  "montage-round-check-warnings-only": "You can save the round. Some rows are left out or changed; they are listed below.",
+  "montage-round-check-warnings-only": "You can save the round. Check the rows listed below: some are left out, changed, or found by file ID.",
   "montage-round-save-hint-unchecked": "You can save once the source has been checked.",
   "montage-round-save-hint-blocked": "You cannot save yet: some rows block the import. See the check result above.",
   "montage-round-save-hint-empty": "You cannot save: none of the files can be imported. See the check result above.",
