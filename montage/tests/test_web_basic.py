@@ -492,6 +492,14 @@ def test_home_client(base_client, api_client, mock_external_apis):
                                       u'Jimbo Wales']},
                  as_user='LilyOfTheWest')
 
+    # restore quorum 4 so every juror has a full queue for the juror
+    # endpoints below; at quorum 1 the reassignments can leave Jimbo
+    # Wales with fewer than the 3 open tasks the skip checks need
+    resp = fetch('coordinator: restore quorum before reactivating',
+                 '/admin/round/%s/edit' % round_id,
+                 {'quorum': 4},
+                 as_user='LilyOfTheWest')
+
     resp = fetch('coordinator: reactivate our round',
                  '/admin/round/%s/activate' % round_id,
                  {'post': True},
