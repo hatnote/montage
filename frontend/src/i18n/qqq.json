@@ -272,5 +272,8 @@
 	"montage-round-import-left-out": "Heading in the dialog after saving, above the rows of the check that were left out or changed (each with its details).",
 	"montage-round-import-more": "Last line of a shortened list in the dialog after saving. Parameters:\n* {0} - number of rows not shown",
 	"montage-round-import-disqualified": "Heading in the dialog after saving, above the files disqualified by the round's settings (for example too small).",
-	"montage-round-import-all-disqualified": "Shown in the dialog after saving when every file was disqualified by the round's settings."
+	"montage-round-import-all-disqualified": "Shown in the dialog after saving when every file was disqualified by the round's settings.",
+	"montage-round-check-status-same-name-existing": "Import check status: Montage already has a different file whose name it cannot tell apart from this one (differs only in case, accents or similar letters), so this file cannot be stored.",
+	"montage-round-check-reason-same-name-existing": "Details of a row in a CSV or file list that blocks the import: Montage already has another file whose name it cannot tell apart from this one. Parameters:\n* {0} - the name of the file already in Montage",
+	"montage-round-check-reason-same-name-existing-category": "Details of a file left out of a category import: Montage already has another file whose name it cannot tell apart from this one. Parameters:\n* {0} - the name of the file already in Montage"
 }

@@ -705,6 +705,24 @@ def _entries_indexes(rdb_session):
     return found
 
 
+_UNIQUE_NAME_CACHE = {}
+
+
+def entries_name_is_unique(rdb_session):
+    """True if entries.name has a unique index (beta, installs built from
+    the model); production has no index on it (#650). Cached like
+    _entries_indexes."""
+    connection = rdb_session.connection()
+    engine = connection.engine
+    cached = _UNIQUE_NAME_CACHE.get(id(engine))
+    if cached and time.time() - cached[0] < _ENTRIES_INDEX_TTL:
+        return cached[1]
+    unique = any(i.get('unique') and i.get('column_names') == ['name']
+                 for i in inspect(connection).get_indexes('entries'))
+    _UNIQUE_NAME_CACHE[id(engine)] = (time.time(), unique)
+    return unique
+
+
 class RoundSource(Base):
     __tablename__ = 'round_sources'
 

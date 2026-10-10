@@ -26,6 +26,11 @@ Row statuses:
                      as equal to another's (utf8mb4_unicode_ci): blocks a
                      list import (CSV, gist, Sheet, file list); in a category
                      the first file is kept and the others left out
+  same_name_existing a file whose name the database treats as equal to that
+                     of another file already in Montage, where entries.name
+                     has a unique index (beta, fresh installs; production
+                     has none, #650): blocks a list import; left out of a
+                     category
 
 The check file holds the campaign id, the source, each row as written and
 Commons' data per file (including Commons uploader names); no Montage user.
@@ -60,11 +65,12 @@ CHECKED_METHODS = ('csv', 'gistcsv', 'category', 'selected')
 LIST_METHODS = ('csv', 'gistcsv', 'selected')  # same-name pairs block these
 
 BLOCKING_STATUSES = ('unknown_file_id', 'malformed_file_id', 'page_id',
-                     'revision_id', 'ambiguous_id', 'same_name')
+                     'revision_id', 'ambiguous_id', 'same_name',
+                     'same_name_existing')
 IMPORTED_STATUSES = ('ok', 'renamed')
 ALL_STATUSES = ('ok', 'renamed', 'duplicate', 'unknown_name',
                 'unknown_file_id', 'malformed_file_id', 'page_id', 'revision_id',
-                'ambiguous_id', 'same_name')
+                'ambiguous_id', 'same_name', 'same_name_existing')
 
 # A check can be imported for an hour: files are renamed and deleted on
 # Commons all the time, and the check and the save happen in one sitting.
@@ -157,6 +163,8 @@ def run_check(request_dict, campaign_id, source='local', rdb_session=None,
     _mark_duplicates(rows)
     if SAME_NAME_CHECK:
         _mark_same_names(rows, import_method, rdb_session)
+        if rdb_session is not None and _name_must_be_unique(rdb_session):
+            _mark_names_taken(rows, import_method, rdb_session)
     now = now or _utcnow()
     return {'format': FORMAT,
             'checked_at': _iso(now),
@@ -339,6 +347,67 @@ def _mark_same_names(rows, import_method, rdb_session):
                 r['commons'] = None
 
 
+def _name_must_be_unique(rdb_session):
+    """True where entries.name has a unique index: there a name the
+    database treats as equal to an existing row's cannot be stored."""
+    from .rdb import entries_name_is_unique
+    return entries_name_is_unique(rdb_session)
+
+
+def _existing_entries(rdb_session, names):
+    """(name, file_id) of the entries rows the database matches for these
+    names, by its own comparison (utf8mb4_unicode_ci on MariaDB: case,
+    accents, е/ё); uses the unique index on entries.name."""
+    from .rdb import Entry
+    ret = []
+    names = sorted(set(names))
+    for i in range(0, len(names), SAME_NAME_CHUNK_SIZE):
+        chunk = names[i:i + SAME_NAME_CHUNK_SIZE]
+        ret.extend(rdb_session.query(Entry.name, Entry.file_id)
+                   .filter(Entry.name.in_(chunk)).all())
+    return [(name, file_id) for name, file_id in ret]
+
+
+def _mark_names_taken(rows, import_method, rdb_session):
+    """Rows whose name the database treats as equal to that of another file
+    already in Montage (#510; beta, 2026-10-10). The same file (same
+    file_id) is reused by the import, and so is an old row of exactly this
+    name without a file_id (rdb._add_entries_by_file_id); anything else
+    would fail on the unique index."""
+    candidates = [r for r in rows if r['status'] in IMPORTED_STATUSES]
+    if not candidates:
+        return
+    existing = _existing_entries(rdb_session, [r['commons_name'] for r in candidates])
+    if not existing:
+        return
+    keys = same_name_keys([r['commons_name'] for r in candidates]
+                          + [name for name, _ in existing], rdb_session)
+    by_key = {}
+    for name, file_id in existing:
+        by_key.setdefault(keys[name], []).append((name, file_id))
+    for r in candidates:
+        matches = by_key.get(keys[r['commons_name']], [])
+        if any(file_id == r['file_id']
+               or (file_id is None and name == r['commons_name'])
+               for name, file_id in matches):
+            continue  # reused by the import
+        if not matches:
+            continue
+        taken = matches[0][0]
+        r['status'] = 'same_name_existing'
+        r['commons'] = None
+        if import_method in LIST_METHODS:
+            r['reason'] = ('Montage already has a different file named %s and'
+                           ' cannot tell the two names apart; remove this row'
+                           % taken)
+            r['reason_code'] = 'same-name-existing'
+        else:
+            r['reason'] = ('left out: Montage already has a different file named'
+                           ' %s and cannot tell the two names apart' % taken)
+            r['reason_code'] = 'same-name-existing-category'
+        r['reason_params'] = [taken]
+
+
 def same_name_keys(names, rdb_session=None):
     """{name: comparison key}: two names with equal keys are the same name
     for Montage's database (entries.name, utf8mb4_unicode_ci).
@@ -444,8 +513,8 @@ def import_warnings(result):
     if renamed:
         ret.append({'renamed': u'%s imported under their current name on'
                     u' Commons:\n%s' % (_files(len(renamed)), _listed(renamed))})
-    left_out = [u'%s (%s)' % (r['commons_name'], r['reason']) for r in rows
-                if r['status'] == 'same_name']
+    left_out = [u'%s (%s)' % (r['commons_name'] or r['name_as_written'], r['reason'])
+                for r in rows if r['status'] in ('same_name', 'same_name_existing')]
     if left_out:
         ret.append({'same name': u'%s left out:\n%s'
                     % (_files(len(left_out)), _listed(left_out))})

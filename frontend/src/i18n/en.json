@@ -272,5 +272,8 @@
   "montage-round-import-left-out": "These rows were left out or changed:",
   "montage-round-import-more": "… and {0} more",
   "montage-round-import-disqualified": "Disqualified by the round settings:",
-  "montage-round-import-all-disqualified": "All files were disqualified by the round settings."
+  "montage-round-import-all-disqualified": "All files were disqualified by the round settings.",
+  "montage-round-check-status-same-name-existing": "Same name as a file already in Montage",
+  "montage-round-check-reason-same-name-existing": "Montage already has a different file named {0} and cannot tell the two names apart. Remove this row from the source.",
+  "montage-round-check-reason-same-name-existing-category": "Left out: Montage already has a different file named {0} and cannot tell the two names apart."
 }

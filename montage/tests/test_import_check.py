@@ -903,6 +903,69 @@ def test_category_same_name_pair_keeps_the_first(montage_app, coord_client,
     assert len(same) == 1 and VOLOCHEK in same[0] and VOLOCHYOK in same[0]
 
 
+def test_name_taken_by_another_file_in_montage_is_left_out(montage_app, coord_client,
+                                                          local_commons, monkeypatch):
+    """Where entries.name has a unique index (beta, fresh installs), a new
+    file whose name the database treats as equal to an existing row of
+    another file cannot be stored: the save failed with IntegrityError 1062
+    (beta, 2026-10-10). The check now finds it: a category leaves it out,
+    a list blocks. Here: the same name, a different file (re-uploaded)."""
+    local_commons([info('Photo.jpg', 1)])
+    _source(monkeypatch, 'filename,file_id\nPhoto.jpg,1\n')
+    round_a = new_round(coord_client, 'taken a')
+    token = _check(coord_client, _campaign_of(coord_client, round_a))['data']['token']
+    _import(coord_client, round_a, token)
+
+    local_commons([info('Photo.jpg', 2), info('Other.jpg', 3)])
+    round_b = new_round(coord_client, 'taken b')
+    check = _check(coord_client, _campaign_of(coord_client, round_b),
+                   import_method='category', category='Cat')['data']
+    assert check['counts']['same_name_existing'] == 1
+    assert not check['blocking'] and check['importable_count'] == 1
+    issue = check['issues'][0]
+    assert issue['reason_code'] == 'same-name-existing-category'
+    assert issue['reason_params'] == ['Photo.jpg']
+    data = _import(coord_client, round_b, check['token'], 'category')['data']
+    assert data['new_round_entry_count'] == 1
+
+    _source(monkeypatch, 'filename,file_id\nPhoto.jpg,2\nOther.jpg,3\n')
+    check = _check(coord_client, _campaign_of(coord_client, round_b))['data']
+    assert check['blocking'] and check['counts']['same_name_existing'] == 1
+    assert check['issues'][0]['reason_code'] == 'same-name-existing'
+
+
+def test_name_taken_check_follows_the_database_comparison(commons, monkeypatch):
+    """The existing rows are those the database matches (on MariaDB: case,
+    accents, е/ё); the same file (same file_id) or an old row of exactly
+    this name without a file_id is reused, not a clash."""
+    commons([info(u'Ленина_71А.jpg', 10), info('Same.jpg', 11), info('Legacy.jpg', 12),
+             info('Free.jpg', 13)])
+    monkeypatch.setattr(import_check, '_name_must_be_unique', lambda session: True)
+    monkeypatch.setattr(import_check, '_existing_entries', lambda session, names: [
+        (u'Ленина_71а.jpg', 9), ('same.jpg', 11), ('Legacy.jpg', None)])
+    monkeypatch.setattr(import_check, 'same_name_keys',
+                        lambda names, session=None: {n: n.lower() for n in names})
+    result = run_check({'import_method': 'selected', 'file_names': [
+        u'Ленина_71А.jpg', 'Same.jpg', 'Legacy.jpg', 'Free.jpg']},
+        CAMPAIGN, source='local', rdb_session=object())
+    assert statuses(result) == [(1, 'same_name_existing'), (2, 'ok'), (3, 'ok'), (4, 'ok')]
+    assert result['rows'][0]['reason_params'] == [u'Ленина_71а.jpg']
+    assert [r['row'] for r in blocking_rows(result)] == [1]
+
+
+def test_name_taken_check_is_skipped_without_a_unique_index(commons, monkeypatch):
+    """Production has no index on entries.name (#650): both rows are stored,
+    and looking names up there would scan the whole table."""
+    commons([info('A.jpg', 1)])
+    monkeypatch.setattr(import_check, '_name_must_be_unique', lambda session: False)
+    monkeypatch.setattr(import_check, '_existing_entries', lambda session, names: 1 / 0)
+    monkeypatch.setattr(import_check, 'same_name_keys',
+                        lambda names, session=None: {n: n for n in names})
+    result = run_check({'import_method': 'selected', 'file_names': ['A.jpg']},
+                       CAMPAIGN, source='local', rdb_session=object())
+    assert statuses(result) == [(1, 'ok')]
+
+
 def test_empty_import_is_not_reported_as_all_disqualified(montage_app, coord_client,
                                                          local_commons, monkeypatch):
     """#208: an import that brought no files also warned 'all entries
