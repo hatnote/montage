@@ -45,12 +45,10 @@ from .utils import (format_date,
                     weighted_choice,
                     PermissionDenied, InvalidAction, NotImplementedResponse,
                     DoesNotExist,
-                    get_env_name,
                     load_default_series,
                     js_isoparse)
 
 from .imgutils import make_mw_img_url
-from . import loaders
 from .simple_serdes import DictableBase, JSONEncodedDict, LongJSONEncodedDict
 
 Base = declarative_base(cls=DictableBase)
@@ -92,7 +90,6 @@ VALID_STATUS = [ACTIVE_STATUS, PAUSED_STATUS, CANCELLED_STATUS,
                 FINALIZED_STATUS, COMPLETED_STATUS, PUBLISHED_STATUS,
                 PRIVATE_STATUS]
 
-ENV_NAME = get_env_name()
 
 """
 Column ordering and groupings:
@@ -562,7 +559,8 @@ class Entry(Base):
     upload_user_id = Column(Integer, index=True)
     upload_user_text = Column(String(255), index=True)
     upload_date = Column(DateTime, index=True)
-    file_id = Column(BigInteger, nullable=True)
+    # ix_entries_file_id: production has it from tools/migrate_prod_db.sql
+    file_id = Column(BigInteger, nullable=True, index=True)
 
     # TODO: img_sha1/page_touched for updates?
     create_date = Column(TIMESTAMP, server_default=func.now())
@@ -654,12 +652,6 @@ def _entry_insert_row(entry):
     return {key: getattr(entry, key) for key in _ENTRY_INSERT_COLS}
 
 
-# Imports have stored Commons' file_id since 2026-05-31: on production the
-# last category-imported entry without one dates from 2026-05-30 13:21, the
-# first with one from 2026-05-31 20:52. A file new to Montage after this date
-# therefore has its file_id stored (hatnote/montage#513).
-FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
-
 # Batch size for lookups by file_id: below 200 on purpose. MariaDB's
 # eq_range_index_dive_limit is 200 by default (ToolsDB too): with fewer
 # values in an IN (...) list the optimizer counts the matching rows in the
@@ -675,21 +667,17 @@ FILE_ID_LOOKUP_CUTOFF = datetime.datetime(2026, 6, 1)
 FILE_ID_LOOKUP_CHUNK_SIZE = 199
 
 
-def _use_file_id_lookup(rnd, entries):
+def _use_file_id_lookup(entries):
     """Whether add_entries looks entries up by file_id instead of by name
-    (#513): when the campaign opened after FILE_ID_LOOKUP_CUTOFF and every
-    entry has a file_id (wikireplica imports; CSV imports have none).
-    Production has no index on entries.name, so a lookup by name reads the
-    whole table; by file_id it uses ix_entries_file_id, in batches of
-    FILE_ID_LOOKUP_CHUNK_SIZE.
+    (#513): when every entry has a file_id, which every checked import
+    gives (#510), in every campaign. Production has no index on
+    entries.name, so a lookup by name reads the whole table; by file_id it
+    uses ix_entries_file_id, in batches of FILE_ID_LOOKUP_CHUNK_SIZE.
 
     Files not found by file_id are looked up by name only where entries.name
     is indexed (see _add_entries_by_file_id); elsewhere a file imported
-    before the cutoff, without a file_id, gets a second entries row.
-    Campaigns opening after the cutoff rarely contain such files."""
-    open_date = rnd.campaign.open_date if rnd.campaign else None
-    if open_date is None or open_date < FILE_ID_LOOKUP_CUTOFF:
-        return False
+    before 2026-05-31, stored without a file_id, gets a second entries row
+    (accepted until the backfill, #513)."""
     return bool(entries) and all(e.file_id is not None for e in entries)
 
 
@@ -715,6 +703,24 @@ def _entries_indexes(rdb_session):
              set(i['column_names'][0] for i in indexes if i['column_names']))
     _ENTRIES_INDEX_CACHE[id(engine)] = (time.time(), found)
     return found
+
+
+_UNIQUE_NAME_CACHE = {}
+
+
+def entries_name_is_unique(rdb_session):
+    """True if entries.name has a unique index (beta, installs built from
+    the model); production has no index on it (#650). Cached like
+    _entries_indexes."""
+    connection = rdb_session.connection()
+    engine = connection.engine
+    cached = _UNIQUE_NAME_CACHE.get(id(engine))
+    if cached and time.time() - cached[0] < _ENTRIES_INDEX_TTL:
+        return cached[1]
+    unique = any(i.get('unique') and i.get('column_names') == ['name']
+                 for i in inspect(connection).get_indexes('entries'))
+    _UNIQUE_NAME_CACHE[id(engine)] = (time.time(), unique)
+    return unique
 
 
 class RoundSource(Base):
@@ -1658,57 +1664,18 @@ class CoordinatorDAO(UserDAO):
 
         return
 
-    def add_entries_from_cat(self, round_id, cat_name):
+    def add_checked_entries(self, round_id, entries, source_description):
+        """Store the entries of a checked import (import_check.py, #510);
+        returns the stored Entry rows, in the order given."""
         rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries = loaders.load_category(cat_name, source=source)
         entries, new_entry_count = self.add_entries(rnd, entries)
 
-        msg = ('%s loaded %s entries from category (%s), %s new entries added'
-               % (self.user.username, len(entries), cat_name, new_entry_count))
+        msg = ('%s loaded %s entries from %s, %s new entries added'
+               % (self.user.username, len(entries), source_description,
+                  new_entry_count))
         self.log_action('add_entries', message=msg, round=rnd)
 
         return entries
-
-    def add_entries_by_name(self, round_id, file_names):
-        rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        entries, warnings = loaders.load_by_filename(file_names, source=source)
-        entries, new_entry_count = self.add_entries(rnd, entries)
-
-        msg = ('%s loaded %s entries from filenames, %s new entries added'
-               % (self.user.username, len(entries), new_entry_count))
-        self.log_action('add_entries', message=msg, round=rnd)
-
-        return entries, warnings
-
-    def add_entries_from_csv(self, round_id, csv_url):
-        # NOTE: this no longer creates RoundEntries, use
-        # add_round_entries to do this.
-        rnd = self.user_dao.get_round(round_id)
-        if ENV_NAME == 'dev':
-            source = 'remote'
-        else:
-            source = 'local'
-        try:
-            entries, warnings = loaders.get_entries_from_csv(csv_url,
-                                                             source=source)
-        except ValueError:
-            raise InvalidAction('unable to load csv "%s"' % csv_url)
-
-        entries, new_entry_count = self.add_entries(rnd, entries)
-
-        msg = ('%s loaded %s entries from csv (%r), %s new entries added'
-               % (self.user.username, len(entries), csv_url, new_entry_count))
-        self.log_action('add_entries', message=msg, round=rnd)
-
-        return entries, warnings
 
     def get_round_sources(self, round_id, import_method):
         round_sources = (self.query(RoundSource)
@@ -1720,9 +1687,16 @@ class CoordinatorDAO(UserDAO):
     def get_or_create_round_source(self, round_id, import_method,
                                   params, dq_params=None):
         existing_sources = self.get_round_sources(round_id, import_method)
+
+        def same_source(a, b):
+            # a new check of the same source is the same round source; the
+            # check fingerprint (import_check.CHECK_ID_KEY) keeps the first
+            ignored = 'check_id'
+            return ({k: v for k, v in (a or {}).items() if k != ignored}
+                    == {k: v for k, v in (b or {}).items() if k != ignored})
         if existing_sources:
             for existing_source in existing_sources:
-                if existing_source.params == params:
+                if same_source(existing_source.params, params):
                     return existing_source
         round_source = RoundSource(method=import_method,
                                    params=params,
@@ -1737,6 +1711,12 @@ class CoordinatorDAO(UserDAO):
         # TODO: you shouldn't be able to use this method to add
         # entries to anything other than the first round in a campaign
 
+        # Checked imports (every entry has a file_id) are matched by file_id
+        # and deduplicated by it (_add_entries_by_file_id); names the database
+        # compares as equal were already handled by the import check.
+        if _use_file_id_lookup(entries):
+            return self._add_entries_by_file_id(entries)
+
         # Deduplicate case-insensitively before chunking. MySQL/MariaDB uses a
         # case-insensitive collation (utf8mb4_unicode_ci) on entries.name, so
         # two filenames differing only in case (e.g. Photo.JPG / photo.jpg)
@@ -1749,9 +1729,6 @@ class CoordinatorDAO(UserDAO):
                 seen_lower[key] = e.name
                 deduped.append(e)
         entries = deduped
-
-        if _use_file_id_lookup(rnd, entries):
-            return self._add_entries_by_file_id(entries)
 
         entry_chunks = chunked(entries, IMPORT_CHUNK_SIZE)
         ret = []
@@ -1788,7 +1765,7 @@ class CoordinatorDAO(UserDAO):
                 seen.add(e.file_id)
                 deduped.append(e)
 
-        # Files imported before the cutoff have no file_id; find them by name
+        # Files imported before 2026-05-31 have no file_id; find them by name
         # where that is cheap (an index on name), so they keep their row.
         # Production has no such index: there they get a second row.
         name_fallback = 'name' in _entries_indexes(self.rdb_session)[1]

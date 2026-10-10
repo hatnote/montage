@@ -31,7 +31,12 @@ const adminService = {
 
   pauseRound: (id) => apiBackend.post(`admin/round/${id}/pause`, { post: true }),
 
+  // no UI caller since #447 (a first round is saved with its import by
+  // addRound); kept for imports into an existing round
   populateRound: (id, data) => apiBackend.post(`admin/round/${id}/import`, data),
+
+  checkImport: (campaignId, data) =>
+    apiBackend.post(`admin/campaign/${campaignId}/import/check`, data),
 
   editCampaign: (id, data) => apiBackend.post(`admin/campaign/${id}/edit`, data),
 
@@ -54,7 +59,11 @@ const adminService = {
   // Direct download URLs (manual baseURL needed)
   downloadRound: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/results/download`,
   downloadEntries: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/entries/download`,
-  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`
+  downloadReviews: (id) => `${apiBackend.defaults.baseURL}admin/round/${id}/reviews`,
+  downloadImportCheck: (campaignId, token) =>
+    `${apiBackend.defaults.baseURL}admin/campaign/${campaignId}/import/check/${token}/download`,
+  downloadImportCheckIssues: (campaignId, token) =>
+    `${apiBackend.defaults.baseURL}admin/campaign/${campaignId}/import/check/${token}/issues`
 }
 
 export default adminService

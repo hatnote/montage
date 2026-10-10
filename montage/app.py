@@ -25,6 +25,7 @@ from .mw import (UserMiddleware,
                 SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
 from .utils import get_env_name, load_env_config
+from . import import_check
 from .check_rdb import get_schema_errors, ping_connection
 
 from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
@@ -66,6 +67,16 @@ def create_app(env_name='prod', config=None):
     if config is None:
         config = load_env_config(env_name=env_name)
     print('==  loaded config file: %s' % (config['__file__'],))
+
+    # import check files (#510) must be on storage all pods share
+    check_dir_problem = import_check.check_dir_problem(config, env_name)
+    if check_dir_problem:
+        raise ValueError(check_dir_problem)
+    print('==  import check folder: %s' % (import_check.check_dir(config),))
+    import_check.cleanup(config)  # files older than 7 days, also after a quiet spell
+    check_dir_warning = import_check.check_dir_warning(config, env_name)
+    if check_dir_warning:
+        print('!!  %s' % (check_dir_warning,))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()

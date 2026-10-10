@@ -1,3 +1,39 @@
+// #510: a clean check of one file, valid from now on
+const stubCheck = () => {
+  const now = Date.now()
+  cy.intercept('POST', '/v1/admin/campaign/*/import/check', {
+    body: {
+      status: 'success',
+      data: {
+        token: 'cypress-check-token-000000000000',
+        checked_at: new Date(now).toISOString().replace(/\.\d+Z$/, 'Z'),
+        expires_at: new Date(now + 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z'),
+        import_method: 'selected',
+        source: { file_names: ['Example.jpg'] },
+        columns: { name: null, file_id: null, ignored: [] },
+        counts: {
+          ok: 1, renamed: 0, duplicate: 0, unknown_name: 0,
+          unknown_file_id: 0, malformed_file_id: 0, same_name: 0
+        },
+        blocking: false,
+        total_rows: 1,
+        importable_count: 1,
+        issues: [],
+        issues_total: 0,
+        issues_truncated: false,
+        same_name_groups: []
+      }
+    }
+  }).as('checkImport')
+}
+
+const savedRound = () => ({
+  id: 999,
+  name: 'My Test Round',
+  import: { new_round_entry_count: 1, warnings: [], disqualified: [] }
+})
+
+
 describe('Campaign Details Page', () => {
   beforeEach(() => {
     cy.setCookie('clastic_cookie', '<cookie-validation-string>');
@@ -84,8 +120,53 @@ describe('Campaign Details Page', () => {
     .find('li')
     .first()
     .click();
-    cy.get('.button-group button').contains('Add Round').click().click();
-    cy.log(' Round created successfully');
+  // #510 / #447: the source is checked first; Save sends the round together
+  // with its checked import, once
+  stubCheck()
+  cy.intercept('POST', '/v1/admin/campaign/*/add_round', (req) => {
+    req.reply({ delay: 500, body: { status: 'success', data: savedRound() } })
+  }).as('addRound')
+  cy.get('.form-container').contains('label', 'File List').click()
+  cy.get('.form-container textarea').first().type('Example.jpg')
+  cy.get('[data-testid="add-round-button"]').should('be.disabled')
+  cy.get('[data-testid="check-source-button"]').click()
+  cy.wait('@checkImport')
+  cy.get('[data-testid="import-check-result"]').should('be.visible')
+  // a double click must not save twice
+  cy.get('[data-testid="add-round-button"]').click().click({ force: true })
+  cy.wait('@addRound').its('request.body').should((body) => {
+    expect(body.import).to.deep.equal({
+      import_method: 'selected',
+      check_token: 'cypress-check-token-000000000000'
+    })
+    expect(body).not.to.have.property('file_names')
+  })
+  cy.get('@addRound.all').should('have.length', 1)
+  cy.get('.juror-campaign-round-card').should('not.exist')
+})
+
+it('keeps the form open when the server refuses the import', () => {
+  cy.get('.add-round-button').click()
+  cy.get('.form-container input[type="text"]').first().clear().type('My Test Round')
+  cy.get('.form-container').within(() => {
+    cy.get('input[placeholder="YYYY-MM-DD"]').first().clear().type('2025-08-15')
+  })
+  cy.get('[data-testid="userlist-search"] input').type('AadarshM07')
+  cy.get('[data-testid="userlist-search"]').find('li').first().click()
+  stubCheck()
+  cy.intercept('POST', '/v1/admin/campaign/*/add_round', {
+    statusCode: 400,
+    body: { status: 'failure', error_type: 'import_check_expired', detail: 'check expired' }
+  }).as('addRound')
+  cy.get('.form-container').contains('label', 'File List').click()
+  cy.get('.form-container textarea').first().type('Example.jpg')
+  cy.get('[data-testid="check-source-button"]').click()
+  cy.wait('@checkImport')
+  cy.get('[data-testid="add-round-button"]').click()
+  cy.wait('@addRound')
+  cy.get('.juror-campaign-round-card').should('exist')
+  cy.get('[data-testid="import-check-result"]').should('contain', 'expired')
+  cy.get('[data-testid="add-round-button"]').should('be.disabled')
 })
 
 

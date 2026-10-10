@@ -73,6 +73,52 @@ class NotImplementedResponse(MontageError, BadRequest, NotImplementedError):
     "Raised when a feature hasn't yet been implemented"
 
 
+# Import check errors (hatnote/montage#510). They carry an error_type so the
+# frontend can tell them apart; subclasses of InvalidAction (400), not of
+# ValueError/TypeError, which older import code caught as "try another format".
+# The detail is English; reason_code / reason_params let the frontend show it
+# translated (montage-round-check-error-<reason_code> with the params).
+class _ImportProblem(InvalidAction):
+    error_type = None
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('error_type', self.error_type)
+        self.reason_code = kwargs.pop('reason_code', None)
+        self.reason_params = [str(p) for p in kwargs.pop('reason_params', ())]
+        super(_ImportProblem, self).__init__(*args, **kwargs)
+
+    def to_dict(self):
+        ret = super(_ImportProblem, self).to_dict()
+        ret['reason_code'] = self.reason_code
+        ret['reason_params'] = self.reason_params
+        return ret
+
+
+class ImportSourceInvalid(_ImportProblem):
+    "The import source cannot be read (bad link, no name column, ...)"
+    error_type = 'import_source_invalid'
+
+
+class ImportCheckBlocked(_ImportProblem):
+    "The checked list has rows that block the import"
+    error_type = 'import_check_blocked'
+
+
+class ImportCheckExpired(_ImportProblem):
+    "The check token is unknown, expired or for another campaign/source"
+    error_type = 'import_check_expired'
+
+
+class ImportCheckRequired(_ImportProblem):
+    "An import of a first-round source was sent without a check token"
+    error_type = 'import_check_required'
+
+
+class ImportEmpty(_ImportProblem):
+    "A new first round would get no files (#447)"
+    error_type = 'import_empty'
+
+
 DEFAULT_SERIES = {'name': 'Unofficial',
                   'description': 'For unofficial campaigns, whether for testing or just for fun!',
                   'url': 'TODO add docs url'}  # TODO: status is always active
@@ -159,6 +205,7 @@ DEVTEST_CONFIG = {'oauth_client_id': None,
                   'debug': True,
                   'superusers': ['Slaporte', 'MahmoudHashemi'],
                   'dev_local_cookie_value': '"W7XGXxmUjl4kbkE0TWaFo4Oth50=?userid=NjAyNDQ3NA==&username=IlNsYXBvcnRlIg=="',
+                  'import_check_path': None,
                   '__file__': 'devtest-builtin',
                   '__env__': 'devtest',
 }
@@ -203,6 +250,7 @@ def _load_config_from_env(env_name):
         'api_log_path': os.environ.get('MONTAGE_API_LOG_PATH', 'montage_api.log'),
         'replay_log_path': os.environ.get('MONTAGE_REPLAY_LOG_PATH'),
         'feel_log_path': os.environ.get('MONTAGE_FEEL_LOG_PATH'),
+        'import_check_path': os.environ.get('MONTAGE_IMPORT_CHECK_PATH'),
         '__env__': env_name,
         '__file__': 'environment',
     })
