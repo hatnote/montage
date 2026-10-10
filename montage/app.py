@@ -5,6 +5,7 @@ import os.path
 import logging
 
 from clastic import Application, StaticFileRoute, MetaApplication
+from clastic.meta import DEFAULT_PERIPHERALS, ResourcePeripheral
 
 from clastic.static import StaticApplication
 from clastic.middleware import HTTPCacheMiddleware
@@ -44,6 +45,26 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
+
+
+class ResourceNamesPeripheral(ResourcePeripheral):
+    """/meta's resource section with names and types only. clastic's
+    default shows the first 70 characters of each resource's repr(),
+    which for 'config' showed config values to anyone."""
+
+    def get_context(self, _application):
+        resources = []
+        for key, val in _application.resources.items():
+            desc = type(val).__name__
+            if isinstance(val, (dict, list, tuple, set)):
+                desc += ' (%s items)' % len(val)
+            resources.append({'key': key, 'value': desc})
+        return {'resources': resources}
+
+
+META_PERIPHERALS = [ResourceNamesPeripheral()
+                    if isinstance(peri, ResourcePeripheral) else peri
+                    for peri in DEFAULT_PERIPHERALS]
 
 
 def set_mysql_session_charset_and_collation(connection, branch):
@@ -197,7 +218,7 @@ def create_app(env_name='prod', config=None):
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
-                            ('/meta', MetaApplication())],
+                            ('/meta', MetaApplication(base_peripherals=META_PERIPHERALS))],
                            resources={'config': config},
                            middlewares=root_mws)
 
