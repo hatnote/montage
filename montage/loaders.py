@@ -135,12 +135,15 @@ def normalise_name(name):
     name = _FILE_PREFIX_RE.sub('', name)
     name = _SPACES_RE.sub('_', name).strip('_')
     if name:
-        # titlecase, not upper(), as MediaWiki's Language::ucfirst does
-        # (MB_CASE_TITLE): Georgian Mkhedruli stays as is, where upper()
-        # gives Mtavruli, a different Commons name
-        first = name[0].title()
-        if len(first) == 1:  # e.g. 'ß'.title() is 'Ss': leave it
-            name = first + name[1:]
+        # Full titlecase, not upper(), as MediaWiki's Language::ucfirst
+        # does (mb_convert_case MB_CASE_TITLE): Georgian Mkhedruli stays
+        # as is where upper() gives Mtavruli, and multi-character results
+        # are kept (ŉ -> ʼN, ﬁ -> Fi, և -> Եւ), as on Commons. The one
+        # exception is Wikimedia's $wgOverrideUcfirstCharacters
+        # (wmf-config/UcfirstOverrides.php), which pins ß (else 'Ss').
+        first = name[0]
+        if first != u'\xdf':
+            name = first.title() + name[1:]
     return name
 
 

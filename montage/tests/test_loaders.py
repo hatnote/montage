@@ -692,6 +692,14 @@ def test_source_fields_must_be_text():
     # Georgian Mkhedruli has no titlecase form, so Commons keeps it lower
     # case; str.upper() would turn it into Mtavruli, a different name
     (u'ქართული.jpg', u'ქართული.jpg'),
+    (u'Ქართული.jpg', u'Ქართული.jpg'),   # already-capital first letters stay
+    (u'ǆep.jpg', u'ǅep.jpg'),           # digraph: titlecase ǅ, not upper Ǆ
+    # SpecialCasing expansions, as Commons normalizes them (API-checked)
+    (u'ŉabc.jpg', u'\u02bcNabc.jpg'),
+    (u'ﬁle.jpg', u'File.jpg'),
+    (u'ևս.jpg', u'Եւս.jpg'),
+    # pinned by Wikimedia's $wgOverrideUcfirstCharacters
+    (u'ßt.jpg', u'ßt.jpg'),
 ])
 def test_names_are_canonical_like_mediawiki(written, canonical):
     """MediaWiki file titles: File:/Image: prefix in any case, runs of
