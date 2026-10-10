@@ -226,15 +226,61 @@ Create a new round within a campaign
   - `jurors` (list of juror usernames)
   - `deadline_date`
   - `config` (optional, default config provided TODO)
+  - `import` (optional, for a first round): `{"import_method": ..., "check_token": ...}` from
+    [import/check](#v1admincampaigncampaign_idintimportcheck). The round is created and its
+    files imported in one transaction: if the import is refused or fails, or brings no files,
+    nothing is saved (no round). Without `import` the round is created empty, as before (API
+    and scripts only; the round form always sends it).
 
 ### Response
-  - `data`: single [`round details`](#round-details) dictionary
+  - `data`: single [`round details`](#round-details) dictionary; with `import`, also `import`:
+    the import's result, as [round import](#v1adminroundround_idintimport) returns it
   - `status`: success or failure
   - `errors`: description of the failure (if any)
 
 ### Errors
+  - 400 `import_empty`: the checked source has no files to import (nothing saved)
+  - 400 `import_check_blocked` / `import_check_expired`: see round import (nothing saved)
+  - 400: `import` with an import method other than csv, gistcsv, category, selected
   - 403: not a coordinator for this campaign
   - 404: campaign does not exist
+
+## /v1/admin/campaign/`<campaign_id:int>`/import/check
+Check a first-round import source before importing it (hatnote/montage#510). Fetches the source,
+looks every row up on Commons (by `file_id` where the row has one, else by name), classifies the
+rows and stores the result as a check file. The check can be imported for 1 hour; the file and
+its downloads stay at most 7 days. Writes nothing to the database.
+
+  - Function: check_import (admin_endpoints.py)
+  - Method: POST
+
+### Parameters
+  - `campaign_id` (in path)
+  - `import_method`: `csv` / `gistcsv` (a CSV, gist or Google Sheet link, https only), `category`,
+    `selected` (a list of file names)
+  - `csv_url` / `gist_url`, `category` or `file_names`
+
+### Response
+  - `data`: `token`, `checked_at`, `expires_at`, `import_method`, `source`, `columns`, `counts`
+    (per status: `ok`, `renamed`, `by_file_id`, `duplicate`, `unknown_name`, `unknown_file_id`,
+    `malformed_file_id`, `page_id`, `revision_id`, `same_name`,
+    `same_name_existing`), `blocking`, `total_rows`, `importable_count`, `issues` (rows
+    that are not ok, at most 1000), `issues_total`, `issues_truncated`, `same_name_groups`
+  - each issue has `reason` (English) and `reason_code` / `reason_params`, which the round form
+    shows translated as `montage-round-check-reason-<reason_code>`
+
+### Errors
+  - 400 `import_source_invalid`: the source cannot be read (link, size, columns, ...); with
+    `reason_code` / `reason_params` (shown translated as `montage-round-check-error-<reason_code>`)
+    next to the English `detail`
+  - 403: not a coordinator on this campaign
+
+## /v1/admin/campaign/`<campaign_id:int>`/import/check/`<token>`/download
+The checked list as an upload file: `filename` (Commons' current name) and `file_id`, one row per
+file the import would take. Uploading it again passes the check unchanged.
+
+## /v1/admin/campaign/`<campaign_id:int>`/import/check/`<token>`/issues
+Every row of the check that is not ok, as CSV: `row, name, file_id, commons_name, status, reason`.
 
 ## /v1/admin/campaign/`<campaign_id:int>`/add_coordinator
 Add coordinator to a campaign
@@ -354,7 +400,9 @@ Get the audit log for a campaign
   - 404: campaign does not exist
 
 ## /v1/admin/round/`<round_id:int>`/import
-Load entries into a round via one of four import methods
+Load entries into a round via one of five import methods. Every method except `round` needs a
+`check_token` from [import/check](#v1admincampaigncampaign_idintimportcheck) (#510); the import
+takes exactly the checked list.
 
   - Function: [import_entries](https://github.com/hatnote/montage/blob/master/montage/admin_endpoints.py#L272) (admin_endpoints.py)
   - Method: POST
@@ -362,14 +410,12 @@ Load entries into a round via one of four import methods
 ### Parameters
   - `round_id` (in path)
   - `import_method`:
-    - `gistcsv`
+    - `csv` / `gistcsv`
     - `category`
     - `round`
     - `selected`
-  - `gist_url` (if `import_method=gistcsv`)
-  - `category` (if `import_method=category`)
-  - `threshold` (if `import_method=round`)
-  - `file_names` (if `import_method=selected`)
+  - `check_token` (all methods except `round`)
+  - `threshold`, `previous_round_id` (if `import_method=round`)
 
 ### Response
   - `data`:
@@ -379,6 +425,9 @@ Load entries into a round via one of four import methods
     - `total_entries`
     - `disqualified`: list of [`round entry details`](#round-entry-details) for disqualified files
     - `warnings`: possible problems to alert the user
+      - `import issues` (files not on Commons, left out)
+      - `renamed` (imported under their current Commons name)
+      - `same name` (category files left out: same name as another file)
       - `empty import` (no entries)
       - `duplicate import` (no new entries)
       - `all disqualified`
@@ -386,6 +435,10 @@ Load entries into a round via one of four import methods
   - `errors`: description of the failure (if any)
   
 ### Errors
+  - 400 `import_check_required`: no `check_token`
+  - 400 `import_check_blocked`: the check has rows that block the import
+  - 400 `import_check_expired`: unknown token, older than 1 hour, or for another campaign/source
+  - 400 `import_busy`: another import held a lock (after #635); nothing imported, try again
   - 403: not a coordinator for this campaign
   - 404: round does not exist
 

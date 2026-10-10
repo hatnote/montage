@@ -156,6 +156,27 @@ def _offline_mw_userid(username):
 def _no_live_mw_userid(monkeypatch):
     monkeypatch.setattr('montage.rdb.get_mw_userid', _offline_mw_userid)
 
+
+# ---------------------------------------------------------------------------
+# Import sources are fetched only from public addresses (loaders.py). Tests
+# never resolve real hostnames: every name resolves to a documentation-range
+# stand-in for a public address; IP literals resolve to themselves.
+# ---------------------------------------------------------------------------
+PUBLIC_TEST_ADDRESS = '93.184.216.34'
+
+
+def _offline_host_addresses(host):
+    import ipaddress
+    try:
+        return [str(ipaddress.ip_address(host.strip('[]')))]
+    except ValueError:
+        return [PUBLIC_TEST_ADDRESS]
+
+
+@pytest.fixture(autouse=True)
+def _offline_dns(monkeypatch):
+    monkeypatch.setattr('montage.loaders._host_addresses', _offline_host_addresses)
+
 # ---------------------------------------------------------------------------
 # Wikimedia API callback -- returns a plausible user record for any username
 # ---------------------------------------------------------------------------

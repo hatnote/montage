@@ -43,6 +43,22 @@ echo "    Ref:    $REF"
 echo "    URL:    $TOOL_URL"
 echo ""
 
+# ── 0b. Required settings ────────────────────────────────────────────────────
+# The app refuses to start without these (montage/app.py). Check them before
+# building, so that a missing one stops the deploy instead of the restarted
+# pod. See deployment.md, "Deploying new changes", step 4.
+# [unverified on Toolforge] that `toolforge envvars show NAME` exits non-zero
+# for a variable that is not set. The value is not printed.
+REQUIRED_ENVVARS=(MONTAGE_IMPORT_CHECK_PATH)
+for NAME in "${REQUIRED_ENVVARS[@]}"; do
+    if ! toolforge envvars show "$NAME" >/dev/null 2>&1; then
+        echo "!! $NAME is not set for $TOOL_NAME: the new version would not start."
+        echo "   Set it first (deployment.md, 'Deploying new changes', step 4)."
+        exit 1
+    fi
+done
+echo "==> Required settings present: ${REQUIRED_ENVVARS[*]}"
+
 # ── 1. Get expected SHA from GitHub ──────────────────────────────────────────
 
 echo "==> Resolving ref $REF ..."
