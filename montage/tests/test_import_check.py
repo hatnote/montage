@@ -121,11 +121,14 @@ def test_old_name_and_its_file_id_are_one_file(monkeypatch, commons):
     assert statuses(result) == [(2, 'ok'), (3, 'duplicate')]
 
 
-def test_no_name_with_a_known_file_id_is_ok(monkeypatch, commons):
+def test_no_name_with_a_known_file_id_is_imported_and_named(monkeypatch, commons):
+    """A row with only a file_id is imported; the result names the file it
+    found, so a wrong number is seen before saving."""
     commons([info('A.jpg', 1)])
     result = csv_check(monkeypatch, 'filename,file_id\n,1\n')
-    assert statuses(result) == [(2, 'ok')]
-    assert result['rows'][0]['reason'] == 'no name given; Commons name used'
+    assert statuses(result) == [(2, 'by_file_id')]
+    assert result['rows'][0]['reason_params'] == ['1', 'A.jpg']
+    assert importable(result)[0]['commons_name'] == 'A.jpg'
 
 
 def test_full_csv_metadata_is_ignored(monkeypatch, commons):
@@ -408,26 +411,25 @@ def test_file_list_of_bare_file_ids(commons):
     assert result['rows'][0]['commons_name'] == VOLOCHEK
 
 
-def test_bare_page_and_revision_ids_are_refused_with_a_reason(commons):
-    """People find page IDs and revision IDs on Commons, not file_ids. A
-    bare number that is one of those blocks, saying what it is and which
-    file it points to, instead of 'not on Commons' or, worse, importing
-    another file whose file_id happens to be that number."""
-    commons([info('A.jpg', 1), info('B.jpg', 2)],
-            other_ids={1: {'kind': 'page_id', 'name': 'A.jpg'},           # same file: fine
-                       2: {'kind': 'page_id', 'name': 'Other.jpg'},       # ambiguous
-                       1100000000: {'kind': 'revision_id', 'name': 'C.jpg'},
-                       170000000: {'kind': 'page_id', 'name': 'D.jpg'}})
+def test_a_number_is_a_file_id_page_and_revision_ids_only_explain_errors(commons):
+    """A bare number that is a file_id is taken as one, even though almost
+    every file_id is also some other file page's page ID (Commons,
+    2026-10-10: 4 of 4 tested). Only a number that is no file_id is looked
+    up as a page ID / revision ID, to say so in the error."""
+    fake = commons([info('A.jpg', 1), info('B.jpg', 2)],
+                   other_ids={2: {'kind': 'page_id', 'name': 'Other.jpg'},
+                              1100000000: {'kind': 'revision_id', 'name': 'C.jpg'},
+                              170000000: {'kind': 'page_id', 'name': 'D.jpg'}})
     result = run_check({'import_method': 'selected',
                         'file_names': ['1', '2', '1100000000', '170000000', '5', 'B.jpg']},
                        CAMPAIGN, source='local')
-    assert statuses(result) == [(1, 'ok'), (2, 'ambiguous_id'), (3, 'revision_id'),
-                                (4, 'page_id'), (5, 'unknown_file_id'), (6, 'ok')]
+    assert statuses(result) == [(1, 'by_file_id'), (2, 'by_file_id'), (3, 'revision_id'),
+                                (4, 'page_id'), (5, 'unknown_file_id'), (6, 'duplicate')]
     reasons = {r['row']: r['reason'] for r in result['rows']}
     assert 'revision ID' in reasons[3] and 'C.jpg' in reasons[3]
-    assert 'page ID' in reasons[4] and 'D.jpg' in reasons[4]
-    assert 'B.jpg' in reasons[2] and 'Other.jpg' in reasons[2]
-    assert [r['row'] for r in blocking_rows(result)] == [2, 3, 4, 5]
+    assert 'page ID' in reasons[4] and 'not its file ID' in reasons[4] and 'D.jpg' in reasons[4]
+    assert [r['row'] for r in blocking_rows(result)] == [3, 4, 5]
+    assert ('other_ids', [5, 170000000, 1100000000]) in fake.calls
 
 
 def test_named_rows_are_not_looked_up_as_page_ids(commons):

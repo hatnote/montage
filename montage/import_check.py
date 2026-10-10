@@ -10,6 +10,9 @@ exactly that list, without fetching the source or asking Commons again.
 Row statuses:
 
   ok                 found on Commons, imported
+  by_file_id         a row with a file_id and no name: found by its file_id,
+                     imported under Commons' name (information, so that a
+                     wrong number is seen before saving)
   renamed            found by file_id under another name: imported under
                      Commons' current name (information)
   duplicate          the same Commons file as an earlier row: imported once
@@ -17,11 +20,9 @@ Row statuses:
                      warning
   unknown_file_id    the file_id is not on Commons: blocks
   malformed_file_id  the file_id is not a plain whole number: blocks
-  page_id            a bare number (no name) that is a File: page's page ID,
-                     not a file_id: blocks
-  revision_id        a bare number that is a revision ID of a File: page: blocks
-  ambiguous_id       a bare number that is one file's file_id and another
-                     File: page's page or revision ID: blocks
+  page_id            a bare number (no name) that is no file's file_id but a
+                     File: page's page ID: blocks, saying so
+  revision_id        the same for a revision ID of a File: page: blocks
   same_name          a different Commons file whose name the database treats
                      as equal to another's (utf8mb4_unicode_ci): blocks a
                      list import (CSV, gist, Sheet, file list); in a category
@@ -65,12 +66,11 @@ CHECKED_METHODS = ('csv', 'gistcsv', 'category', 'selected')
 LIST_METHODS = ('csv', 'gistcsv', 'selected')  # same-name pairs block these
 
 BLOCKING_STATUSES = ('unknown_file_id', 'malformed_file_id', 'page_id',
-                     'revision_id', 'ambiguous_id', 'same_name',
-                     'same_name_existing')
-IMPORTED_STATUSES = ('ok', 'renamed')
-ALL_STATUSES = ('ok', 'renamed', 'duplicate', 'unknown_name',
+                     'revision_id', 'same_name', 'same_name_existing')
+IMPORTED_STATUSES = ('ok', 'renamed', 'by_file_id')
+ALL_STATUSES = ('ok', 'renamed', 'by_file_id', 'duplicate', 'unknown_name',
                 'unknown_file_id', 'malformed_file_id', 'page_id', 'revision_id',
-                'ambiguous_id', 'same_name', 'same_name_existing')
+                'same_name', 'same_name_existing')
 
 # A check can be imported for an hour: files are renamed and deleted on
 # Commons all the time, and the check and the save happen in one sitting.
@@ -206,17 +206,20 @@ def _classify_list(rows, source):
              if r['name'] and not r['malformed_file_id']
              and (r['file_id'] is None or source == 'remote')]
     by_name = lookup_by_names(names, source)
-    # a bare number (no name) may be a page ID or revision ID someone found
-    # on Commons; nothing confirms it is a file_id
-    bare = [r['file_id'] for r in rows if r['file_id'] is not None and not r['name']]
-    others = lookup_other_ids(bare) if bare and source != 'remote' else {}
+    # a bare number (no name) that is no file's file_id may be the page ID
+    # or a revision ID someone copied from Commons: say so. (A number that
+    # is a file_id is taken as one: almost every file_id is also some other
+    # file page's page ID, so that cannot be told apart.)
+    unknown_bare = [r['file_id'] for r in rows if r['file_id'] is not None
+                    and not r['name'] and r['file_id'] not in by_id]
+    others = (lookup_other_ids(unknown_bare)
+              if unknown_bare and source != 'remote' else {})
 
     ret = []
     for r in rows:
         other = others.get(r['file_id']) if not r['name'] else None
-        rec = by_id.get(r['file_id']) if other else None
-        if other and (rec is None or rec['img_name'] != other['name']):
-            ret.append(_other_id_row(r, other, rec))
+        if other:
+            ret.append(_other_id_row(r, other))
         elif r['malformed_file_id']:
             cell = r['file_id_as_written'].strip()
             ret.append(_row(r, 'malformed_file_id',
@@ -237,12 +240,14 @@ def _classify_list(rows, source):
             if rec is None:
                 ret.append(_row(r, 'unknown_file_id', file_id=r['file_id'],
                                 reason='no file on Commons has file ID %s (deleted,'
-                                ' or a wrong number)' % r['file_id'],
+                                ' or a wrong number; a file ID is not the page ID)'
+                                % r['file_id'],
                                 code='unknown-file-id', params=[r['file_id']]))
             elif not r['name']:
-                ret.append(_row(r, 'ok', rec=rec,
-                                reason='no name given; Commons name used',
-                                code='name-from-commons', params=[rec['img_name']]))
+                ret.append(_row(r, 'by_file_id', rec=rec,
+                                reason='found by file ID %s: %s'
+                                % (r['file_id'], rec['img_name']),
+                                code='by-file-id', params=[r['file_id'], rec['img_name']]))
             elif rec['img_name'] == r['name']:
                 ret.append(_row(r, 'ok', rec=rec))
             else:
@@ -262,23 +267,15 @@ def _classify_list(rows, source):
     return ret
 
 
-_ID_KINDS = {'page_id': 'the page ID', 'revision_id': 'a revision ID'}
-
-
-def _other_id_row(r, other, rec):
-    """A bare number that is a File: page's page ID or revision ID."""
+def _other_id_row(r, other):
+    """A bare number that is no file's file_id but a File: page's page ID
+    or a revision ID."""
     num, page = r['file_id'], 'File:' + other['name']
-    if rec is not None:
-        return _row(r, 'ambiguous_id', file_id=num,
-                    reason='%s is the file ID of %s but also %s of %s; write'
-                    ' the file name instead, so it is clear which file is meant'
-                    % (num, rec['img_name'], _ID_KINDS[other['kind']], page),
-                    code='ambiguous-id', params=[num, rec['img_name'], other['name']])
     if other['kind'] == 'revision_id':
         reason = ('%s is a revision ID (one edit of the page %s), not a file ID;'
                   ' write the file name instead: %s' % (num, page, other['name']))
     else:
-        reason = ('%s is the page ID of %s, not a file ID; write the file name'
+        reason = ('%s is the page ID of %s, not its file ID; write the file name'
                   ' instead: %s' % (num, page, other['name']))
     return _row(r, other['kind'], file_id=num, reason=reason,
                 code=other['kind'].replace('_', '-'), params=[num, other['name']])

@@ -262,8 +262,8 @@ its downloads stay at most 7 days. Writes nothing to the database.
 
 ### Response
   - `data`: `token`, `checked_at`, `expires_at`, `import_method`, `source`, `columns`, `counts`
-    (per status: `ok`, `renamed`, `duplicate`, `unknown_name`, `unknown_file_id`,
-    `malformed_file_id`, `page_id`, `revision_id`, `ambiguous_id`, `same_name`,
+    (per status: `ok`, `renamed`, `by_file_id`, `duplicate`, `unknown_name`, `unknown_file_id`,
+    `malformed_file_id`, `page_id`, `revision_id`, `same_name`,
     `same_name_existing`), `blocking`, `total_rows`, `importable_count`, `issues` (rows
     that are not ok, at most 1000), `issues_total`, `issues_truncated`, `same_name_groups`
   - each issue has `reason` (English) and `reason_code` / `reason_params`, which the round form

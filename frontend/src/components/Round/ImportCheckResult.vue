@@ -173,13 +173,13 @@ defineExpose({ focus: () => root.value?.focus() })
 const allStatuses = [
   'ok',
   'renamed',
+  'by_file_id',
   'duplicate',
   'unknown_name',
   'unknown_file_id',
   'malformed_file_id',
   'page_id',
   'revision_id',
-  'ambiguous_id',
   'same_name',
   'same_name_existing'
 ]
@@ -188,7 +188,6 @@ const blockingStatuses = [
   'malformed_file_id',
   'page_id',
   'revision_id',
-  'ambiguous_id',
   'same_name',
   'same_name_existing'
 ]
@@ -213,7 +212,7 @@ const blocks = (issue) => !!props.result?.blocking && blockingStatuses.includes(
 const reason = (issue) => reasonText($t, te, issue)
 
 // montage-round-check-status-ok, -renamed, -duplicate, -unknown-name,
-// -unknown-file-id, -malformed-file-id, -page-id, -revision-id, -ambiguous-id,
+// -unknown-file-id, -malformed-file-id, -page-id, -revision-id, -by-file-id,
 // -same-name, -same-name-existing
 const statusLabel = (status) => $t('montage-round-check-status-' + status.replaceAll('_', '-'))
 </script>
