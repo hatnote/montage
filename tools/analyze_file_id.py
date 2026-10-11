@@ -25,6 +25,9 @@ Categories (see .claude/features/file-id-backfill-513/ for the reasoning):
   deleted_no_row    no file row (deleted before the 2025 migration), only
                     archive entries
   moved_away        no live file under the name, a move away from it
+  moved_away_tier1/2a/2b/changed_after  the same, and the file page is found
+                    by its id under its new name with a clean history (its
+                    file_id is in the evidence as moved_to_file_id)
   name_reused       a whole-file deletion followed by a later upload, not
                     all before the first import
   reused_tier1/2a/2b  the name was deleted and used again, all before the
@@ -63,7 +66,7 @@ try:
 except ImportError:  # not on Windows
     resource = None
 
-VERSION = 'analyze_file_id v3'
+VERSION = 'analyze_file_id v4'
 TOOLSDB_HOST = 'tools.db.svc.wikimedia.cloud'
 COMMONS_DB_HOST = os.environ.get('MONTAGE_COMMONS_DB_HOST',
                                  'commonswiki.analytics.db.svc.wikimedia.cloud')
@@ -72,6 +75,8 @@ DEFAULTS_FILE = '~/replica.my.cnf'
 CATEGORIES = ('tier1', 'tier2a', 'tier2b',
               'reused_tier1', 'reused_tier2a', 'reused_tier2b',
               'moved_in_tier1', 'moved_in_tier2a', 'moved_in_tier2b',
+              'moved_away_tier1', 'moved_away_tier2a', 'moved_away_tier2b',
+              'moved_away_changed_after',
               'changed_after', 'deleted_settled', 'deleted_mixed', 'deleted_no_row',
               'moved_away', 'name_reused', 'restored', 'version_hidden', 'moved_in',
               'upload_after_import', 'not_found', 'other')
@@ -120,7 +125,7 @@ VERSIONS_QUERY = '''
 
 LOG_QUERY = '''
     SELECT log_title, log_type, log_action, log_timestamp, log_deleted,
-           log_actor, log_params
+           log_actor, log_params, log_page
     FROM logging_logindex
     WHERE log_namespace = 6 AND log_title IN ({names})
       AND log_type IN ('upload', 'delete', 'move', 'merge', 'import')
@@ -136,6 +141,12 @@ ARCHIVE_QUERY = '''
 PAGE_QUERY = '''
     SELECT page_id, page_title FROM page
     WHERE page_namespace = 6 AND page_title IN ({names})
+'''
+
+# Where a moved-away file page is now
+PAGE_BY_ID_QUERY = '''
+    SELECT page_id, page_title FROM page
+    WHERE page_namespace = 6 AND page_id IN ({ids})
 '''
 
 PAGE_LOG_QUERY = '''
@@ -265,7 +276,15 @@ def needs_page_history(file_row, versions, logs):
     return bool(match_history(uploads, versions)[0])
 
 
-def classify(row, file_row, versions, logs, archive, bots, page_logs=None):
+def moved_away_page(logs):
+    """The page id of the last move away from this title, or None."""
+    moves = sorted((l for l in logs if l['type'] == 'move' and l.get('page')),
+                   key=lambda l: l['ts'])
+    return moves[-1]['page'] if moves else None
+
+
+def classify(row, file_row, versions, logs, archive, bots, page_logs=None,
+             moved_to=None):
     """Decide one entries row.
 
     row:       {id, name, upload_date, width, height, first_seen, last_seen}
@@ -277,6 +296,8 @@ def classify(row, file_row, versions, logs, archive, bots, page_logs=None):
     bots:      {actor_id: True/False}
     page_logs: like logs, but for the file page's id (all titles it had);
                only for files moved in (needs_page_history)
+    moved_to:  for a name with no file but a move away: {file_row, versions,
+               page_logs} of the page where the file is now, or None
 
     Returns (category, flags, evidence) where flags is a sorted list of
     strings and evidence a dict of small values for the TSV.
@@ -310,6 +331,29 @@ def classify(row, file_row, versions, logs, archive, bots, page_logs=None):
     # -- no live file ------------------------------------------------------
     if file_row is None:
         if moves:
+            target = (moved_to or {}).get('file_row')
+            if target and not target['file_deleted']:
+                t_versions = moved_to['versions']
+                t_logs = moved_to['page_logs'] or []
+                t_uploads = sorted((l for l in t_logs if l['type'] == 'upload'),
+                                   key=lambda l: l['ts'])
+                evidence['moved_to_file_id'] = target['file_id']
+                evidence['last_move_ts'] = max(l['ts'] for l in moves)
+                if row['upload_date'] and row['upload_date'] in set(
+                        v['ts'] for v in t_versions):
+                    flags.add('date_matches_version')
+                vwu, uwv, mismatch = match_history(t_uploads, t_versions)
+                clean = (t_uploads and not (vwu or uwv or mismatch)
+                         and not any(v['deleted'] for v in t_versions)
+                         and not any(l['deleted'] for l in t_logs)
+                         and not any(l['type'] == 'delete' and l['action'] == 'delete'
+                                     for l in t_logs))
+                if clean:
+                    sub = history_tier(t_uploads, t_versions, first_seen, bots, flags,
+                                       evidence)
+                    if sub in ('tier1', 'tier2a', 'tier2b', 'changed_after'):
+                        return done('moved_away_' + sub)
+                flags.add('moved_to_found')
             return done('moved_away')
         if archive:
             return done('deleted_no_row')
@@ -490,7 +534,8 @@ class Replica(object):
         return {'type': text(r[1]), 'action': text(r[2]), 'ts': ts(r[3]),
                 'deleted': int(r[4]),
                 'actor': int(r[5]) if r[5] is not None else None,
-                'sha1': sha1, 'img_ts': img_ts}
+                'sha1': sha1, 'img_ts': img_ts,
+                'page': int(r[7]) if len(r) > 7 and r[7] else None}
 
     def page_history(self, names):
         """{name: log entries of the file page, under any title it had}."""
@@ -507,6 +552,25 @@ class Replica(object):
         self._load_bots(set(l['actor'] for ls in ret.values() for l in ls
                             if l['actor'] is not None))
         self.c.commit()
+        return ret
+
+    def moved_files(self, page_ids):
+        """{page_id: {file_row, versions, page_logs}} for file pages that were
+        moved away from a name Montage has."""
+        ids = sorted(set(page_ids))
+        if not ids:
+            return {}
+        titles = dict((int(r[0]), text(r[1])) for r in
+                      self._fetch(PAGE_BY_ID_QUERY.format(ids=_in(len(ids))), ids))
+        if not titles:
+            return {}
+        files, versions, _, _ = self.lookup(titles.values())
+        by_title = self.page_history(titles.values())
+        ret = {}
+        for page_id, title in titles.items():
+            f = files.get(title)
+            ret[page_id] = {'file_row': f, 'page_logs': by_title.get(title, []),
+                            'versions': versions.get(f['file_id'], []) if f else []}
         return ret
 
     def _load_bots(self, actors):
@@ -581,6 +645,14 @@ def analyze(montage, replica, out_dir, every=200, after_id=0, batch_size=500,
                                       logs.get(name, [])):
                     moved_in.append(name)
             page_logs = replica.page_history(moved_in)
+            away = {}
+            for r in rows:
+                name = replica_name(r['name'])
+                if name not in files:
+                    page = moved_away_page(logs.get(name, []))
+                    if page:
+                        away[name] = page
+            moved = replica.moved_files(away.values())
             t2 = time.time()
             for r in rows:
                 r['last_seen'], n_rounds, n_open = seen.get(r['id'], (None, 0, 0))
@@ -589,7 +661,7 @@ def analyze(montage, replica, out_dir, every=200, after_id=0, batch_size=500,
                 cat, flags, ev = classify(
                     r, f, versions.get(f['file_id'], []) if f else [],
                     logs.get(name, []), archive.get(name, []), replica.bot_cache,
-                    page_logs.get(name))
+                    page_logs.get(name), moved.get(away.get(name)))
                 if n_open:
                     flags = sorted(set(flags) | {'round_not_closed'})
                 counts[cat] += 1

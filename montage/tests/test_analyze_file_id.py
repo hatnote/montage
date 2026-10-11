@@ -43,9 +43,9 @@ def log(type_, action, stamp):
 LIVE = {'file_id': 500, 'file_deleted': 0, 'file_latest': 1}
 
 
-def decide(r, file_row, versions, logs, archive=(), page_logs=None):
+def decide(r, file_row, versions, logs, archive=(), page_logs=None, moved_to=None):
     return af.classify(r, file_row, list(versions), list(logs), list(archive), BOTS,
-                       page_logs)
+                       page_logs, moved_to)
 
 
 # -- helpers ------------------------------------------------------------------
@@ -71,7 +71,7 @@ def test_ts_and_canonical_names():
 
 def test_every_query_is_a_select():
     queries = {k: v for k, v in vars(af).items() if k.endswith('_QUERY')}
-    assert len(queries) == 9
+    assert len(queries) == 10
     for name, sql in queries.items():
         assert sql.strip().upper().startswith('SELECT'), name
         for word in ('UPDATE ', 'INSERT ', 'DELETE ', 'REPLACE ', 'ALTER ', 'DROP '):
@@ -224,6 +224,36 @@ def test_moved_away_no_file_under_the_name():
     assert decide(row(), None, [], logs)[0] == 'moved_away'
 
 
+def moved(page=176941699, stamp='20261010185936'):
+    return dict(log('move', 'move', stamp), page=page)
+
+
+def test_moved_away_page_is_the_last_move():
+    logs = [up('20200101120000'), moved(1, '20200301000000'), moved(2, '20210301000000')]
+    assert af.moved_away_page(logs) == 2
+    assert af.moved_away_page([up('20200101120000')]) is None
+
+
+def test_moved_away_found_under_its_new_name():
+    # imported 2020 under its upload name, renamed after the contest
+    logs = [up('20200101120000'), moved()]
+    target = {'file_row': dict(LIVE, file_id=777), 'versions': [ver('20200101120000')],
+              'page_logs': [up('20200101120000'), moved()]}
+    cat, flags, ev = decide(row(), None, [], logs, moved_to=target)
+    assert cat == 'moved_away_tier1' and ev['moved_to_file_id'] == 777
+    assert 'date_matches_version' in flags
+
+
+def test_moved_away_target_deleted_or_unclear_stays_open():
+    logs = [up('20200101120000'), moved()]
+    deleted = {'file_row': dict(DELETED), 'versions': [], 'page_logs': []}
+    assert decide(row(), None, [], logs, moved_to=deleted)[0] == 'moved_away'
+    hidden = {'file_row': dict(LIVE), 'versions': [ver('20200101120000', deleted=1)],
+              'page_logs': [up('20200101120000'), moved()]}
+    cat, flags, _ = decide(row(), None, [], logs, moved_to=hidden)
+    assert cat == 'moved_away' and 'moved_to_found' in flags
+
+
 def test_moved_in_without_page_history():
     assert decide(row(), LIVE, [ver('20200101120000')], [])[0] == 'moved_in'
 
@@ -281,6 +311,9 @@ class FakeReplica(object):
     bots_ok = True
 
     def page_history(self, names):
+        return {}
+
+    def moved_files(self, page_ids):
         return {}
 
     def __init__(self):
