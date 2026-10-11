@@ -70,6 +70,20 @@
         </span>
       </div>
 
+      <template v-if="round.show_stats && votesStats?.stats">
+        <h3 class="vote-section-title">{{ $t('montage-vote-my-stats') }}</h3>
+        <div class="vote-stats">
+          <div
+            v-for="(count, label) in votesStats.stats"
+            :key="label"
+            class="vote-stats-item"
+          >
+            <span class="vote-stats-label">{{ label }} <star class="icon-small" /></span>
+            <span class="vote-stats-count">{{ count }}</span>
+          </div>
+        </div>
+      </template>
+
       <h3 class="vote-section-title">{{ $t('montage-vote-actions') }}</h3>
       <div class="vote-actions">
         <div>
@@ -166,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import jurorService from '@/services/jurorService'
 import { useRouter } from 'vue-router'
@@ -200,6 +214,8 @@ const voteContainer = ref(null)
 const showSidebar = ref(true)
 const imageCache = new Map()
 const isLoading = ref(false)
+const votesStats = ref(null)
+let votesStatsRequestId = 0
 
 const props = defineProps({
   round: Object,
@@ -263,6 +279,22 @@ function getTasks() {
   })
 }
 
+function fetchVotesStats() {
+  const requestId = ++votesStatsRequestId
+  jurorService
+    .getRoundVotesStats(props.round.id)
+    .then((response) => {
+      if (requestId === votesStatsRequestId) {
+        votesStats.value = response
+      }
+    })
+    .catch((error) => {
+      if (requestId === votesStatsRequestId) {
+        alertService.error(error)
+      }
+    })
+}
+
 function setRate(rate) {
   if (imageLoading.value) return
   if (isLoading.value) return
@@ -279,6 +311,7 @@ function setRate(rate) {
         if (stats.value.total_open_tasks <= 10) {
           skips.value = 0
         }
+        if (props.round.show_stats) fetchVotesStats()
         if (counter.value === 4 || !stats.value.total_open_tasks) {
           counter.value = 0
           getTasks()
@@ -415,6 +448,12 @@ watch(images, (imgs) => {
 watch(voteContainer, () => {
   if (voteContainer.value) {
     voteContainer.value.focus()
+  }
+})
+
+onMounted(() => {
+  if (props.round.show_stats) {
+    fetchVotesStats()
   }
 })
 </script>
@@ -604,5 +643,35 @@ watch(voteContainer, () => {
 .edit-voting-btn {
   margin-top: 24px;
   width: 232px;
+}
+
+.vote-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.vote-stats-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.vote-stats-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.vote-stats-count {
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.87);
 }
 </style>
