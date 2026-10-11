@@ -43,8 +43,9 @@ def log(type_, action, stamp):
 LIVE = {'file_id': 500, 'file_deleted': 0, 'file_latest': 1}
 
 
-def decide(r, file_row, versions, logs, archive=()):
-    return af.classify(r, file_row, list(versions), list(logs), list(archive), BOTS)
+def decide(r, file_row, versions, logs, archive=(), page_logs=None):
+    return af.classify(r, file_row, list(versions), list(logs), list(archive), BOTS,
+                       page_logs)
 
 
 # -- helpers ------------------------------------------------------------------
@@ -70,7 +71,7 @@ def test_ts_and_canonical_names():
 
 def test_every_query_is_a_select():
     queries = {k: v for k, v in vars(af).items() if k.endswith('_QUERY')}
-    assert len(queries) == 7
+    assert len(queries) == 9
     for name, sql in queries.items():
         assert sql.strip().upper().startswith('SELECT'), name
         for word in ('UPDATE ', 'INSERT ', 'DELETE ', 'REPLACE ', 'ALTER ', 'DROP '):
@@ -119,10 +120,21 @@ def test_tier2b_other_person_overwrote_before_import():
     assert decide(row(), LIVE, versions, logs)[0] == 'tier2b'
 
 
-def test_new_version_after_first_import():
-    versions = [ver('20200101120000'), ver('20201001120000', 'c' * 31)]
-    logs = [up('20200101120000'), up('20201001120000', 'c' * 31, 'overwrite')]
-    assert decide(row(), LIVE, versions, logs)[0] == 'changed_after'
+def test_new_version_after_first_import_says_who():
+    versions = [ver('20200101120000'), ver('20201001120000', 'c' * 31, actor=BOT),
+                ver('20201002120000', 'd' * 31, actor=OTHER)]
+    logs = [up('20200101120000'), up('20201001120000', 'c' * 31, 'overwrite', BOT),
+            up('20201002120000', 'd' * 31, 'overwrite', OTHER)]
+    cat, flags, _ = decide(row(), LIVE, versions, logs)
+    assert cat == 'changed_after'
+    assert 'later_by_bot' in flags and 'later_by_other' in flags
+    assert 'later_by_uploader' not in flags
+
+
+def test_size_mismatch_is_flagged():
+    _, flags, _ = decide(row(width=100), LIVE, [ver('20200101120000')],
+                         [up('20200101120000')])
+    assert 'size_mismatch_at_import' in flags and 'size_matches_at_import' not in flags
 
 
 # -- whole file deleted (D1) ---------------------------------------------------
@@ -156,12 +168,21 @@ def test_deleted_before_migration_has_no_row():
     assert cat == 'deleted_no_row'
 
 
-def test_deleted_and_name_reused():
-    # Bajo_cero.jpg: uploaded 2012, deleted 2012, new upload 2022
+def test_name_reused_before_the_import_is_judged_by_the_current_file():
+    # Bajo_cero.jpg: uploaded 2012, deleted 2012, new upload 2022, imported 2023
     logs = [up('20120629202534', params=False), log('delete', 'delete', '20120629224347'),
             up('20220909054242', 'n' * 31)]
-    cat, _, _ = decide(row(first_seen='20230101000000', last_seen='20230301000000'),
-                       LIVE, [ver('20220909054242', 'n' * 31)], logs)
+    cat, flags, _ = decide(row(first_seen='20230101000000', last_seen='20230301000000',
+                               upload_date='20220909054242'),
+                           LIVE, [ver('20220909054242', 'n' * 31)], logs)
+    assert cat == 'reused_tier1' and 'upload_without_version' in flags
+
+
+def test_name_reused_after_the_import():
+    # imported 2020, deleted 2021, another image uploaded under the name 2022
+    logs = [up('20200101120000'), log('delete', 'delete', '20210101000000'),
+            up('20220101000000', 'n' * 31)]
+    cat, _, _ = decide(row(), LIVE, [ver('20220101000000', 'n' * 31)], logs)
     assert cat == 'name_reused'
 
 
@@ -203,8 +224,27 @@ def test_moved_away_no_file_under_the_name():
     assert decide(row(), None, [], logs)[0] == 'moved_away'
 
 
-def test_moved_in_version_has_no_upload_entry_here():
+def test_moved_in_without_page_history():
     assert decide(row(), LIVE, [ver('20200101120000')], [])[0] == 'moved_in'
+
+
+def test_moved_in_before_the_import_is_judged_by_the_page_history():
+    page = [up('20200101120000'), log('move', 'move', '20200201000000')]
+    cat, _, ev = decide(row(), LIVE, [ver('20200101120000')], [], page_logs=page)
+    assert cat == 'moved_in_tier1' and ev['last_move_ts'] == '20200201000000'
+
+
+def test_moved_in_after_the_import_stays_open():
+    page = [up('20200101120000'), log('move', 'move', '20201001000000')]
+    cat, flags, _ = decide(row(), LIVE, [ver('20200101120000')], [], page_logs=page)
+    assert cat == 'moved_in' and 'page_history_read' in flags
+
+
+def test_needs_page_history_only_for_versions_without_upload_here():
+    assert af.needs_page_history(LIVE, [ver('20200101120000')], [])
+    assert not af.needs_page_history(LIVE, [ver('20200101120000')], [up('20200101120000')])
+    assert not af.needs_page_history(None, [], [])
+    assert not af.needs_page_history(DELETED, [], [])
 
 
 def test_not_found():
@@ -240,6 +280,9 @@ class FakeMontage(object):
 class FakeReplica(object):
     bots_ok = True
 
+    def page_history(self, names):
+        return {}
+
     def __init__(self):
         self.bot_cache = dict(BOTS)
         self.bot_names = {BOT: 'ExampleBot'}
@@ -264,6 +307,8 @@ def test_analyze_writes_rows_and_summary(tmp_path):
     lines = (tmp_path / 'rows.tsv').read_text(encoding='utf-8').splitlines()
     assert lines[0].startswith('#analyze_file_id') and len(lines) == 2 + 4
     assert 'Gone' not in '\n'.join(lines)          # no names in the output
+    inspect = (tmp_path / 'inspect.tsv').read_text(encoding='utf-8').splitlines()
+    assert len(inspect) == 1 and inspect[0].split('\t')[1:3] == ['not_found', 'Gone.jpg']
     saved = json.loads((tmp_path / 'summary-8.json').read_text(encoding='utf-8'))
     assert saved['categories'] == summary['categories']
 
