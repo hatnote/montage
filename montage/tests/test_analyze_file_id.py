@@ -274,7 +274,7 @@ class FakeMontage(object):
         return [r for r in self.rows if r['id'] > after_id and r['id'] % every == 0][:limit]
 
     def last_seen(self, ids):
-        return {i: ('20201031000000', 2) for i in ids}
+        return {i: ('20201031000000', 2, 1 if i == 2 else 0) for i in ids}
 
 
 class FakeReplica(object):
@@ -304,6 +304,7 @@ def test_analyze_writes_rows_and_summary(tmp_path):
                          batch_size=2, sleep=0, out=out)
     assert summary['rows'] == 4 and summary['batches'] == 2 and summary['last_id'] == 8
     assert summary['categories'] == {'tier1': 3, 'not_found': 1}
+    assert summary['flags'].get('tier1 round_not_closed') == 1
     lines = (tmp_path / 'rows.tsv').read_text(encoding='utf-8').splitlines()
     assert lines[0].startswith('#analyze_file_id') and len(lines) == 2 + 4
     assert 'Gone' not in '\n'.join(lines)          # no names in the output

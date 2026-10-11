@@ -63,7 +63,7 @@ try:
 except ImportError:  # not on Windows
     resource = None
 
-VERSION = 'analyze_file_id v2'
+VERSION = 'analyze_file_id v3'
 TOOLSDB_HOST = 'tools.db.svc.wikimedia.cloud'
 COMMONS_DB_HOST = os.environ.get('MONTAGE_COMMONS_DB_HOST',
                                  'commonswiki.analytics.db.svc.wikimedia.cloud')
@@ -92,13 +92,15 @@ ENTRIES_QUERY = '''
     LIMIT %s
 '''
 
-# The last moment jurors could look at a row: the end of its latest round,
-# or now while a round is still open.
+# The last moment jurors could look at a row: the end of its latest round
+# (close date, else deadline, else creation). Many old rounds were never
+# finalized and are still 'active' or 'paused'; they are counted, not
+# treated as open until now.
 LAST_SEEN_QUERY = '''
     SELECT re.entry_id,
-           MAX(CASE WHEN r.status IN ('active', 'paused') THEN UTC_TIMESTAMP()
-                    ELSE COALESCE(r.close_date, r.deadline_date, r.create_date) END),
-           COUNT(DISTINCT re.round_id)
+           MAX(COALESCE(r.close_date, r.deadline_date, r.create_date)),
+           COUNT(DISTINCT re.round_id),
+           SUM(r.status IN ('active', 'paused'))
     FROM round_entries re
     JOIN rounds r ON r.id = re.round_id
     WHERE re.entry_id IN ({ids})
@@ -429,7 +431,7 @@ class Montage(object):
         finally:
             cur.close()
         self.c.commit()
-        return {r[0]: (ts(r[1]), r[2]) for r in rows}
+        return {r[0]: (ts(r[1]), r[2], int(r[3] or 0)) for r in rows}
 
 
 class Replica(object):
@@ -581,13 +583,15 @@ def analyze(montage, replica, out_dir, every=200, after_id=0, batch_size=500,
             page_logs = replica.page_history(moved_in)
             t2 = time.time()
             for r in rows:
-                r['last_seen'], n_rounds = seen.get(r['id'], (None, 0))
+                r['last_seen'], n_rounds, n_open = seen.get(r['id'], (None, 0, 0))
                 name = replica_name(r['name'])
                 f = files.get(name)
                 cat, flags, ev = classify(
                     r, f, versions.get(f['file_id'], []) if f else [],
                     logs.get(name, []), archive.get(name, []), replica.bot_cache,
                     page_logs.get(name))
+                if n_open:
+                    flags = sorted(set(flags) | {'round_not_closed'})
                 counts[cat] += 1
                 by_year[(cat, (r['first_seen'] or '????')[:4])] += 1
                 flag_counts.update((cat, fl) for fl in flags)
