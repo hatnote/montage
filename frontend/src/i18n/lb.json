@@ -52,5 +52,7 @@
 	"montage-round-files": "Fichieren",
 	"montage-round-tasks": "Aufgaben",
 	"permission-denied-message": "Dir hutt net déi néideg Rechter, fir op dës Säit zouzegräifen.",
-	"permission-denied-home": "Zeréck op d'Haaptsäit"
+	"permission-denied-home": "Zeréck op d'Haaptsäit",
+	"montage-round-check-col-reason": "Detailer",
+	"montage-round-check-status-unknown-name": "Net op Commons"
 }
