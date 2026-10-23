@@ -18,7 +18,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # the root package.json's engines.node, which the Toolforge
+          # buildpack (heroku/nodejs) uses too: one place for the version
+          node-version-file: package.json
+
+      - name: Node version used
+        run: node --version
 
       - name: Cache npm dependencies
         uses: actions/cache@v4

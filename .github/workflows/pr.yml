@@ -35,6 +35,8 @@ jobs:
               - 'dockerfile'
             frontend:
               - 'frontend/**'
+              - 'package.json'
+              - '.github/workflows/**'
 
   test-backend:
     name: Test Backend (Python)
