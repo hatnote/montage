@@ -20,10 +20,14 @@ jobs:
         with:
           # the root package.json's engines.node, which the Toolforge
           # buildpack (heroku/nodejs) uses too: one place for the version
+          # range (each side picks its own patch release within it)
           node-version-file: package.json
 
-      - name: Node version used
-        run: node --version
+      - name: Node version used, and within engines.node
+        run: |
+          RANGE=$(node -p "require('../package.json').engines.node")
+          echo "node $(node --version), engines.node $RANGE"
+          npx --yes semver@7.6.3 -r "$RANGE" "$(node --version)"
 
       - name: Cache npm dependencies
         uses: actions/cache@v4
@@ -32,8 +36,9 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
+      # npm ci and toolforge:build: the same commands as the Toolforge build
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Check formatting (Prettier)
         run: npx prettier --check src/
@@ -42,4 +47,4 @@ jobs:
         run: npx eslint src/ --ext .vue,.js,.jsx,.cjs,.mjs
 
       - name: Build
-        run: npm run build
+        run: npm run toolforge:build
