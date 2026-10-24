@@ -605,4 +605,30 @@ watch(voteContainer, () => {
   margin-top: 24px;
   width: 232px;
 }
+
+/* Narrow screens (e.g. a phone held upright): stack the image above the panel */
+@media (max-width: 700px) {
+  .vote-container {
+    flex-direction: column;
+    justify-content: flex-start;
+    height: auto;
+    min-height: calc(100vh - 156.5px);
+  }
+
+  .vote-image-container {
+    flex-shrink: 0;
+    height: 60vh;
+  }
+
+  .with-sidebar {
+    width: 100%;
+  }
+
+  .vote-description-container {
+    margin: 0;
+    padding: 0 16px;
+    width: auto;
+    overflow: visible;
+  }
+}
 </style>
