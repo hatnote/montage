@@ -254,7 +254,7 @@ const validateCampaignEditForm = () => {
 
   const result = schema.safeParse(campaignFormField.value)
   if (!result.success) {
-    result.error.errors.forEach((error) => {
+    result.error.issues.forEach((error) => {
       errors.value[error.path[0]] = error.message
     })
     return false
