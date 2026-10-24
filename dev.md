@@ -27,7 +27,7 @@ The **Montage Project** is a web application with two main components:
 
 Ensure the following are installed:
 - **Docker** and **Docker Compose**: [Install Docker](https://www.docker.com/products/docker-desktop).
-- **Node.js** (v20 or above): [Install Node.js](https://nodejs.org).
+- **Node.js** in the range of `engines.node` in the root `package.json` (now Node 24, 24.22.1 or later); the Toolforge build and CI use the same range: [Install Node.js](https://nodejs.org). Node 24 is supported until 2028-04-30: raise `engines.node` to the next LTS line before then.
 - **Make**: Available on most Unix-based systems.
 
 ---

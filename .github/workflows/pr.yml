@@ -33,8 +33,12 @@ jobs:
               - 'requirements.in'
               - 'setup.py'
               - 'dockerfile'
+              - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/**'
 
   test-backend:
     name: Test Backend (Python)
