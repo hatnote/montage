@@ -43,16 +43,17 @@ def file_ids(conn):
     return dict(conn.execute('SELECT id, file_id FROM entries').fetchall())
 
 
-def decided(tmp_path, rows, **kw):
-    out = str(tmp_path / 'decisions.tsv')
-    bf.decide(rows_tsv(tmp_path, rows), out, **kw)
+def decided(tmp_path, rows, round_no=1, name='decisions.tsv'):
+    out = str(tmp_path / name)
+    bf.decide(rows_tsv(tmp_path, rows), out, round_no)
     return out
 
 
+# round 1 sets tier1 only; the others are set in later rounds
 SAMPLE = [
     (1, 'tier1', 101, {}),
-    (2, 'tier2a', 102, {}),
-    (3, 'changed_after', 103, {}),
+    (2, 'tier1', 102, {}),
+    (3, 'tier1', 103, {}),
     (4, 'deleted_settled', '', {}),
     (5, 'deleted_mixed', 105, {}),
     (6, 'moved_away_tier1', '', {'moved_to_file_id': 106}),
@@ -70,10 +71,42 @@ def test_decide_rules(tmp_path):
                          (6, 'hold', None), (7, 'hold', None)]
 
 
-def test_decide_moved_away_only_when_asked(tmp_path):
-    out = decided(tmp_path, SAMPLE, include_moved_away=True)
+def test_rounds_are_disjoint_and_safest_first():
+    assert bf.ROUNDS[1] == ('tier1',)
+    cats = [c for r in sorted(bf.ROUNDS) for c in bf.ROUNDS[r]]
+    assert len(cats) == len(set(cats))
+    assert not set(cats) & bf.NULL
+
+
+def test_decide_each_category_is_set_in_exactly_one_round(tmp_path):
+    rows = [(i, c, 100 + i, {'moved_to_file_id': 100 + i})
+            for i, c in enumerate(sorted(c for r in bf.ROUNDS.values() for c in r), 1)]
+    sets = {}
+    for r in bf.ROUNDS:
+        out = decided(tmp_path, rows, round_no=r, name='d%d.tsv' % r)
+        for row_id, decision, _ in bf.read_decisions(out)[0]:
+            if decision == 'set':
+                assert row_id not in sets
+                sets[row_id] = r
+    assert len(sets) == len(rows)
+
+
+def test_decide_round_4_uses_moved_to_file_id(tmp_path):
+    out = decided(tmp_path, SAMPLE, round_no=4)
     decisions, _ = bf.read_decisions(out)
     assert (6, 'set', 106) in decisions
+    assert (1, 'hold', None) in decisions
+
+
+def test_decide_other_round_rows_are_held(tmp_path):
+    rows = [(1, 'tier1', 101, {}), (2, 'tier2a', 102, {}), (3, 'tier2b', 103, {})]
+    decisions, _ = bf.read_decisions(decided(tmp_path, rows, round_no=2))
+    assert decisions == [(1, 'hold', None), (2, 'set', 102), (3, 'hold', None)]
+
+
+def test_decide_invalid_round(tmp_path):
+    with pytest.raises(bf.BackfillError, match='round'):
+        decided(tmp_path, SAMPLE, round_no=9)
 
 
 def test_decide_unknown_category_is_held(tmp_path):
@@ -196,6 +229,76 @@ def test_journal_content(conn, tmp_path):
         (1, None, 101), (2, None, 102), (3, None, 103)]
 
 
+# --- rounds: the second round waits for the first ---------------------------
+
+ROUND_ROWS = [(1, 'tier1', 101, {}), (2, 'tier1', 102, {}), (3, 'tier2a', 103, {})]
+
+
+def apply_round(conn, tmp_path, n, previous=None, execute=True):
+    out = decided(tmp_path, ROUND_ROWS, round_no=n, name='decisions-%d.tsv' % n)
+    return bf.apply_decisions(conn, out, str(tmp_path / ('journal-%d.tsv' % n)),
+                              execute=execute, sleep=0, out=io.StringIO(),
+                              previous_journal=previous)
+
+
+def test_round_2_needs_previous_journal(conn, tmp_path):
+    with pytest.raises(bf.BackfillError, match='--previous-journal'):
+        apply_round(conn, tmp_path, 2)
+    assert file_ids(conn)[3] is None
+
+
+def test_round_2_refuses_wrong_or_empty_previous_journal(conn, tmp_path):
+    with pytest.raises(bf.BackfillError, match='does not exist'):
+        apply_round(conn, tmp_path, 2, previous=str(tmp_path / 'nope.tsv'))
+    apply_round(conn, tmp_path, 1)
+    # the journal of round 1 is not the journal of round 2's predecessor 2
+    with pytest.raises(bf.BackfillError, match='not the journal of round 3'):
+        apply_round(conn, tmp_path, 4, previous=str(tmp_path / 'journal-1.tsv'))
+
+
+def test_round_2_after_round_1(conn, tmp_path):
+    apply_round(conn, tmp_path, 1)
+    assert file_ids(conn)[3] is None
+    counts = apply_round(conn, tmp_path, 2, previous=str(tmp_path / 'journal-1.tsv'))
+    assert counts['to_set'] == 1 and file_ids(conn)[3] == 103
+    assert file_ids(conn)[1] == 101
+
+
+def test_round_2_dry_run_needs_no_previous_journal(conn, tmp_path):
+    assert apply_round(conn, tmp_path, 2, execute=False)['to_set'] == 1
+
+
+def test_rounds_roll_back_separately(conn, tmp_path):
+    apply_round(conn, tmp_path, 1)
+    apply_round(conn, tmp_path, 2, previous=str(tmp_path / 'journal-1.tsv'))
+    bf.rollback(conn, str(tmp_path / 'journal-2.tsv'), execute=True, sleep=0,
+                out=io.StringIO())
+    ids = file_ids(conn)
+    assert ids[3] is None and ids[1] == 101 and ids[2] == 102
+
+
+# --- verify ----------------------------------------------------------------
+
+def test_verify_counts_and_is_read_only(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    run_apply(conn, tmp_path, out, execute=True)
+    conn.execute('UPDATE entries SET file_id = 777 WHERE id = 2')
+    conn.execute('UPDATE entries SET file_id = 555 WHERE id = 5')   # a hold row
+    conn.execute('DELETE FROM entries WHERE id = 3')
+    conn.commit()
+    before = file_ids(conn)
+    counts = bf.verify(conn, out, out=io.StringIO())
+    assert counts['has_value'] == 1 and counts['other_value'] == 1
+    assert counts['missing'] == 1
+    assert counts['has_file_id'] == 1 and counts['not_touched'] == 3
+    assert file_ids(conn) == before
+
+
+def test_verify_before_apply(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    assert bf.verify(conn, out, out=io.StringIO())['still_null'] == 3
+
+
 # --- rollback --------------------------------------------------------------
 
 def run_rollback(conn, tmp_path, execute):
@@ -249,6 +352,6 @@ def test_rollback_without_journal_fails(conn, tmp_path):
 def test_cli_decide(tmp_path, capsys):
     rows = rows_tsv(tmp_path, SAMPLE)
     out = str(tmp_path / 'd.tsv')
-    assert bf.main(['decide', '--rows', rows, '--out', out]) == 0
+    assert bf.main(['decide', '--round', '1', '--rows', rows, '--out', out]) == 0
     assert json.loads(capsys.readouterr().out)['decisions'] == {
         'set': 3, 'null': 1, 'hold': 3}
