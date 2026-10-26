@@ -618,6 +618,7 @@ watch(voteContainer, () => {
   .vote-image-container {
     flex-shrink: 0;
     height: 60vh;
+    height: 50svh;
   }
 
   .with-sidebar {
@@ -629,6 +630,11 @@ watch(voteContainer, () => {
     padding: 0 16px;
     width: auto;
     overflow: visible;
+  }
+
+  .vote-file-links,
+  .vote-actions div {
+    flex-wrap: wrap;
   }
 }
 </style>
