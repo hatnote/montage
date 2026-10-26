@@ -32,9 +32,12 @@ def rows_tsv(tmp_path, rows):
 @pytest.fixture
 def conn():
     c = sqlite3.connect(':memory:')
-    c.execute('CREATE TABLE entries (id INTEGER PRIMARY KEY, name TEXT, file_id BIGINT NULL)')
-    c.executemany('INSERT INTO entries (id, name, file_id) VALUES (?, ?, ?)',
-                  [(i, 'F%d.jpg' % i, None) for i in range(1, 11)])
+    c.execute('CREATE TABLE entries (id INTEGER PRIMARY KEY, name TEXT, '
+              'create_date TIMESTAMP, file_id BIGINT NULL)')
+    c.executemany('INSERT INTO entries (id, name, create_date, file_id) '
+                  'VALUES (?, ?, ?, ?)',
+                  [(i, 'F%d.jpg' % i, '2020-01-01 00:00:00', None)
+                   for i in range(1, 11)])
     c.commit()
     return c
 
@@ -43,9 +46,9 @@ def file_ids(conn):
     return dict(conn.execute('SELECT id, file_id FROM entries').fetchall())
 
 
-def decided(tmp_path, rows, round_no=1, name='decisions.tsv'):
+def decided(tmp_path, rows, round_no=1, name='decisions.tsv', **kw):
     out = str(tmp_path / name)
-    bf.decide(rows_tsv(tmp_path, rows), out, round_no)
+    bf.decide(rows_tsv(tmp_path, rows), out, round_no, **kw)
     return out
 
 
@@ -215,7 +218,7 @@ def test_journal_of_a_different_decisions_file_is_refused(conn, tmp_path):
     out = decided(tmp_path, SAMPLE)
     run_apply(conn, tmp_path, out, execute=True)
     other = decided(tmp_path, SAMPLE + [(8, 'tier1', 108, {})])
-    with pytest.raises(bf.BackfillError, match='different decisions file'):
+    with pytest.raises(bf.BackfillError, match='Use a new journal'):
         run_apply(conn, tmp_path, other, execute=True)
     assert file_ids(conn)[8] is None
 
@@ -339,7 +342,7 @@ def test_rollback_is_idempotent(conn, tmp_path):
     run_apply(conn, tmp_path, out, execute=True)
     run_rollback(conn, tmp_path, execute=True)
     counts = run_rollback(conn, tmp_path, execute=True)
-    assert counts['restored'] == 0 and counts['changed_since'] == 3
+    assert counts['restored'] == 0 and counts['already_old'] == 3
 
 
 def test_rollback_without_journal_fails(conn, tmp_path):
@@ -355,3 +358,239 @@ def test_cli_decide(tmp_path, capsys):
     assert bf.main(['decide', '--round', '1', '--rows', rows, '--out', out]) == 0
     assert json.loads(capsys.readouterr().out)['decisions'] == {
         'set': 3, 'null': 1, 'hold': 3}
+
+
+# --- findings of pr-check (A-F) --------------------------------------------
+
+def jpath(tmp_path, name='journal.tsv'):
+    return str(tmp_path / name)
+
+
+# A. a killed run leaves a half-written journal line
+
+def test_torn_journal_tail_is_ignored_and_trimmed(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    run_apply(conn, tmp_path, out, execute=True)
+    with open(jpath(tmp_path), 'a') as f:
+        f.write('abc\t2026-10-26T00:00:00Z\t9\t\t10')     # no newline: torn
+    assert len(bf.read_journal(jpath(tmp_path), err=io.StringIO())[1]) == 3
+    # resume appends cleanly (the torn line is cut first), then rollback works
+    run_apply(conn, tmp_path, out, execute=True)
+    assert len(bf.read_journal(jpath(tmp_path))[1]) == 3
+    assert run_rollback(conn, tmp_path, execute=True)['restored'] == 3
+
+
+def test_rollback_with_torn_tail_does_not_crash(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    run_apply(conn, tmp_path, out, execute=True)
+    with open(jpath(tmp_path), 'a') as f:
+        f.write('abc\tt\t9\t')
+    assert run_rollback(conn, tmp_path, execute=True)['restored'] == 3
+
+
+def test_malformed_journal_line_is_a_clean_error(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    run_apply(conn, tmp_path, out, execute=True)
+    text = open(jpath(tmp_path)).read()
+    open(jpath(tmp_path), 'w').write(text + 'garbage line\n')
+    with pytest.raises(bf.BackfillError, match='malformed'):
+        bf.read_journal(jpath(tmp_path))
+
+
+# B. a journal belongs to one database
+
+def apply_on(conn, tmp_path, target, n=1, journal='journal.tsv', previous=None,
+             execute=True, rows=ROUND_ROWS):
+    out = decided(tmp_path, rows, round_no=n, name='decisions-%d.tsv' % n)
+    return bf.apply_decisions(conn, out, jpath(tmp_path, journal), execute=execute,
+                              sleep=0, out=io.StringIO(), previous_journal=previous,
+                              target=target)
+
+
+def test_previous_journal_of_another_database_is_refused(conn, tmp_path):
+    apply_on(conn, tmp_path, 'host/copy', n=1, journal='copy-1.tsv')
+    with pytest.raises(bf.BackfillError, match='written on database host/copy'):
+        apply_on(conn, tmp_path, 'host/prod', n=2, journal='prod-2.tsv',
+                 previous=jpath(tmp_path, 'copy-1.tsv'))
+    assert file_ids(conn)[3] is None
+
+
+def test_same_journal_path_on_another_database_is_refused(conn, tmp_path):
+    apply_on(conn, tmp_path, 'host/copy', n=1)
+    with pytest.raises(bf.BackfillError, match='Use a new journal'):
+        apply_on(conn, tmp_path, 'host/prod', n=1)
+
+
+def test_rollback_on_another_database_is_refused(conn, tmp_path):
+    apply_on(conn, tmp_path, 'host/copy', n=1)
+    with pytest.raises(bf.BackfillError, match='written on database host/copy'):
+        bf.rollback(conn, jpath(tmp_path), execute=True, sleep=0, out=io.StringIO(),
+                    target='host/prod')
+    assert file_ids(conn)[1] == 101
+
+
+def test_header_only_journal_still_binds_to_its_decisions(conn, tmp_path):
+    # a journal whose run found nothing to write has a header and no entries
+    apply_on(conn, tmp_path, 'host/copy', n=1, rows=[(1, 'tier2a', 101, {})])
+    assert bf.read_journal(jpath(tmp_path))[1] == []
+    with pytest.raises(bf.BackfillError, match='Use a new journal'):
+        apply_on(conn, tmp_path, 'host/copy', n=1)
+
+
+def test_dry_run_names_the_target(conn, tmp_path):
+    out = io.StringIO()
+    decisions = decided(tmp_path, SAMPLE)
+    bf.apply_decisions(conn, decisions, jpath(tmp_path), execute=False, sleep=0,
+                       out=out, target='host/copy')
+    assert 'target host/copy: entries max id 10, 10 rows' in out.getvalue()
+
+
+def test_cli_execute_needs_confirm_db(tmp_path, capsys):
+    argv = ['apply', '--db', 'prod', '--decisions', 'd.tsv', '--journal', 'j.tsv',
+            '--execute']
+    assert bf.main(argv) == 1
+    assert '--confirm-db prod' in capsys.readouterr().err
+    assert bf.main(argv + ['--confirm-db', 'copy']) == 1
+
+
+# C. the round gate looks at every row, not just the header
+
+def test_row_that_does_not_belong_to_the_round_is_refused(tmp_path):
+    out = decided(tmp_path, [(1, 'tier1', 101, {}), (7, 'tier2b', 107, {})])
+    text = open(out).read()
+    assert '7\thold\t\t' in text
+    open(out, 'w').write(text.replace('7\thold\t\t', '7\tset\t107\t'))
+    with pytest.raises(bf.BackfillError, match='not what round 1 decides'):
+        bf.read_decisions(out)
+
+
+def test_hand_edited_round_header_is_refused(conn, tmp_path):
+    out = decided(tmp_path, [(1, 'tier1', 101, {}), (2, 'tier2a', 102, {})], round_no=2)
+    text = open(out).read().replace('#round=2', '#round=1')
+    open(out, 'w').write(text)
+    with pytest.raises(bf.BackfillError):
+        bf.read_decisions(out)
+
+
+# D. duplicate file_ids
+
+def test_file_id_already_on_another_row_is_held(conn, tmp_path):
+    conn.execute('UPDATE entries SET file_id = 101 WHERE id = 9')
+    conn.commit()
+    out = decided(tmp_path, SAMPLE)
+    counts = run_apply(conn, tmp_path, out, execute=True)
+    assert counts['file_id_elsewhere'] == 1 and counts['to_set'] == 2
+    assert file_ids(conn)[1] is None
+
+
+def test_allow_duplicates_writes_them(conn, tmp_path):
+    conn.execute('UPDATE entries SET file_id = 101 WHERE id = 9')
+    conn.commit()
+    out = decided(tmp_path, SAMPLE)
+    counts = bf.apply_decisions(conn, out, jpath(tmp_path), execute=True, sleep=0,
+                                out=io.StringIO(), allow_duplicates=True)
+    assert counts['to_set'] == 3 and file_ids(conn)[1] == 101
+
+
+def test_same_file_id_twice_in_file_writes_only_the_lowest_id(conn, tmp_path):
+    rows = [(1, 'tier1', 101, {}), (2, 'tier1', 101, {}), (3, 'tier1', 103, {})]
+    out = decided(tmp_path, rows)
+    counts = run_apply(conn, tmp_path, out, execute=True)
+    assert counts['duplicate_in_file'] == 1 and counts['to_set'] == 2
+    assert file_ids(conn)[2] is None
+    # a rerun keeps holding it
+    counts = run_apply(conn, tmp_path, out, execute=True)
+    assert counts['file_id_elsewhere'] == 1 and counts['to_set'] == 0
+
+
+def test_duplicate_in_file_across_batches(conn, tmp_path):
+    rows = [(1, 'tier1', 101, {}), (2, 'tier1', 101, {})]
+    out = decided(tmp_path, rows)
+    counts = run_apply(conn, tmp_path, out, execute=True, batch_size=1)
+    assert counts['to_set'] == 1 and file_ids(conn)[2] is None
+
+
+def test_verify_reports_shared_file_ids(conn, tmp_path):
+    out = decided(tmp_path, SAMPLE)
+    run_apply(conn, tmp_path, out, execute=True)
+    conn.execute('UPDATE entries SET file_id = 101 WHERE id = 9')
+    conn.commit()
+    counts = bf.verify(conn, out, out=io.StringIO())
+    assert counts['shared_file_id'] == 1
+    assert counts['entries_with_duplicate_file_id'] == 1
+
+
+# E. a sampled analysis is not the full one
+
+def sampled_rows(tmp_path, every):
+    path = rows_tsv(tmp_path, SAMPLE)
+    text = open(path).read().replace('every=1', 'every=%d' % every, 1)
+    open(path, 'w').write(text)
+    return path
+
+
+def test_decide_refuses_a_sample(tmp_path):
+    with pytest.raises(bf.BackfillError, match='sample'):
+        bf.decide(sampled_rows(tmp_path, 200), str(tmp_path / 'd.tsv'), 1)
+
+
+def test_decide_refuses_rows_without_every_header(tmp_path):
+    path = rows_tsv(tmp_path, SAMPLE)
+    open(path, 'w').write(open(path).read().replace('#analyze_file_id v4 every=1\n', ''))
+    with pytest.raises(bf.BackfillError, match='every='):
+        bf.decide(path, str(tmp_path / 'd.tsv'), 1)
+
+
+def test_sample_decisions_cannot_be_executed(conn, tmp_path):
+    out = str(tmp_path / 'd.tsv')
+    _, _, coverage = bf.decide(sampled_rows(tmp_path, 200), out, 1, allow_sample=True)
+    assert coverage['sample'] is True
+    assert run_apply(conn, tmp_path, out, execute=False)['to_set'] == 3
+    with pytest.raises(bf.BackfillError, match='sampled'):
+        run_apply(conn, tmp_path, out, execute=True)
+
+
+def test_decide_reports_coverage(tmp_path):
+    _, _, coverage = bf.decide(rows_tsv(tmp_path, SAMPLE), str(tmp_path / 'd.tsv'), 1)
+    assert coverage == {'rows': 7, 'min_id': 1, 'max_id': 7, 'sample': False}
+
+
+# F. an id must still be the same row
+
+def test_row_with_another_create_date_is_held(conn, tmp_path):
+    conn.execute("UPDATE entries SET create_date = '2024-05-05 05:05:05' WHERE id = 2")
+    conn.commit()
+    out = decided(tmp_path, SAMPLE)
+    counts = run_apply(conn, tmp_path, out, execute=True)
+    assert counts['identity_mismatch'] == 1 and counts['to_set'] == 2
+    assert file_ids(conn)[2] is None
+    assert bf.verify(conn, out, out=io.StringIO())['identity_mismatch'] == 1
+
+
+def test_row_without_a_create_date_in_the_analysis_is_not_checked(conn, tmp_path):
+    path = rows_tsv(tmp_path, [(1, 'tier1', 101, {})])
+    text = open(path).read().replace('20200101000000', '', 1)
+    open(path, 'w').write(text)
+    out = str(tmp_path / 'd.tsv')
+    bf.decide(path, out, 1)
+    assert run_apply(conn, tmp_path, out, execute=True)['to_set'] == 1
+
+
+def test_norm_ts():
+    import datetime
+    assert bf.norm_ts(datetime.datetime(2020, 1, 2, 3, 4, 5)) == '20200102030405'
+    assert bf.norm_ts('2020-01-02 03:04:05') == '20200102030405'
+    assert bf.norm_ts(None) == '' and bf.norm_ts('0000-00-00 00:00:00') == ''
+
+
+# should-fix
+
+def test_max_batches_advances_across_runs(conn, tmp_path):
+    rows = [(i, 'tier1', 100 + i, {}) for i in range(1, 7)]
+    out = decided(tmp_path, rows)
+    total = 0
+    for _ in range(3):
+        counts = run_apply(conn, tmp_path, out, execute=True, batch_size=2,
+                           max_batches=1)
+        total += counts['to_set']
+    assert total == 6 and all(v is not None for i, v in file_ids(conn).items() if i <= 6)
