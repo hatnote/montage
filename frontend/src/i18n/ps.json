@@ -106,7 +106,7 @@
 	"montage-round-source-category": "ويکي‌رسنۍ خونديځ کې وېشنيزه",
 	"montage-round-source-csv": "د دوتنو لړليک وېبتړ",
 	"montage-round-source-filelist": "د دوتنې لړليک",
-	"montage-round-source-category-help": "په ويکي‌خونديځ کې هغه وېشنيزې چې د سيالۍ ټول انځورونه راټولوي. بېلگه: په گانا کې د ويکي‌مينې يادگارونه ۲۰۱۷ انځورونه.",
+	"montage-round-source-category-help": "په ويکي‌خونديځ کې هغه وېشنيزې چې د سيالۍ ټول انځورونه راټولوي. بېلگه: په گانا کې د ويکي‌مينې يادگارونه ۲۰۲۶ انځورونه.",
 	"montage-round-source-csv-help": "د هغه دوتنو لړليک چې د CSV په توگه خوندي شوي او د Google Sheet يا Gist په توگه راپورته شوي دي.",
 	"montage-round-category-placeholder": "وېشنيزه وردننه‌کول",
 	"montage-round-category-label": "وېشنيزه وردننه‌کول",
@@ -173,5 +173,8 @@
 	"montage-required-voting-deadline": "د رايې ورکولو باوري نېټه وټاکئ",
 	"montage-required-fill-inputs": "مهرباني وکړئ ټول بکسونه ډک کړئ",
 	"unsaved-changes-confirmation": "بدلونونونه خوندي‌شوې نه دي. ايا تاسو ډاډه ياست چې دا پرېښودل غواړئ؟",
-	"back-to-round": "بیرته پړاو ته"
+	"back-to-round": "بیرته پړاو ته",
+	"montage-round-import-more": "...او {0} نور",
+	"montage-round-check-status-by-file-id": "د دوتنې پېژند له مخې موندل شوی",
+	"montage-round-check-reason-by-file-id": "د دوتنې پېژند {0} {1} دی."
 }
