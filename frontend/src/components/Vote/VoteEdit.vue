@@ -16,12 +16,12 @@
         <h2
           v-html="$t('montage-vote-edit-for', [`<a href='#/vote/${round.link}'>${round.name}</a>`])"
         ></h2>
-        <p style="color: gray">
+        <p class="greyed">
           {{ $t('montage-vote-round-part-of-campaign', [round.campaign.name]) }}
         </p>
       </div>
       <div class="order-by" v-if="!isVoting('ranking')">
-        <p style="font-size: 16px; color: gray">{{ $t('montage-vote-order-by') }}</p>
+        <p style="font-size: 16px" class="greyed">{{ $t('montage-vote-order-by') }}</p>
         <cdx-select
           v-model:selected="sort.order_by"
           :menu-items="menuItemsOrder"
@@ -35,7 +35,7 @@
         />
       </div>
       <div class="grid-size-controls" style="margin-left: 60px">
-        <p style="font-size: 16px; color: gray; margin-left: 11px">
+        <p style="font-size: 16px; margin-left: 11px" class="greyed">
           {{ $t('montage-vote-gallery-size') }}
         </p>
         <cdx-button
@@ -103,7 +103,7 @@
         <div class="gallery-image-container">
           <CommonsImage :image="image" :width="640" />
         </div>
-        <div style="font-size: 14px; color: gray">
+        <div style="font-size: 14px" class="greyed">
           <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
           <p>{{ dayjs.utc(image.date).format('D MMM YYYY [at] H:mm [UTC]') }}</p>
         </div>
@@ -158,7 +158,7 @@
               </div>
             </h3>
           </div>
-          <div style="font-size: 14px; color: gray; margin-top: 8px">
+          <div style="font-size: 14px; margin-top: 8px" class="greyed">
             <p>{{ $t('montage-voted-time', [dayjs.utc(image.date).fromNow()]) }}</p>
             <p>{{ dayjs.utc(image.date).format('D MMM YYYY [at] H:mm [UTC]') }}</p>
           </div>
@@ -505,7 +505,7 @@ onUnmounted(() => {
 .gallery-image {
   display: inline-block;
   position: relative;
-  background: #ccc;
+  background: var(--bg-gallery-image);
   width: calc((100% - 100px) / 5);
   height: 15vw;
   margin: 10px 10px 100px;
@@ -515,7 +515,7 @@ onUnmounted(() => {
 .gallery-image-fav {
   position: absolute;
   right: 0;
-  color: red;
+  color: var(--color-fave);
 }
 
 .gallery-image-ranking {
@@ -525,7 +525,7 @@ onUnmounted(() => {
 .vote-gallery-expand-icon {
   cursor: pointer;
   position: absolute;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-overlay);
   top: 6px;
   left: 6px;
   padding: 4px;
@@ -583,7 +583,7 @@ onUnmounted(() => {
   width: 100%;
   height: 26px;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-overlay);
   color: white;
   text-align: center;
   padding-top: 5px;
@@ -599,7 +599,7 @@ onUnmounted(() => {
 
 .gallery-footer:hover {
   height: 50%;
-  background: #e0e0e0;
+  background: var(--bg-gallery-hover);
 }
 
 .gallery-footer-name:hover {

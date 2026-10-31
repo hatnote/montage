@@ -77,14 +77,14 @@ if (props.campaign.rounds && props.campaign.rounds.length) {
 }
 
 .coordinator-campaign-dates {
-  color: #666;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .coordinator-campaign-card-info-label {
   font-weight: bold;
   margin-bottom: 4px;
-  color: black;
+  color: var(--text-card-label);
 }
 
 .coordinator-campaign-card-latest-round {

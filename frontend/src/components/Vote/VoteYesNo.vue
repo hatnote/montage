@@ -443,7 +443,7 @@ watch(voteContainer, () => {
   justify-content: center;
   align-items: center;
   position: relative;
-  background: #e6e6e6;
+  background: var(--bg-image-panel);
 }
 
 .vote-image-progress-bar {
@@ -504,7 +504,7 @@ watch(voteContainer, () => {
 }
 
 .vote-commons-button {
-  color: rgb(51, 102, 204);
+  color: var(--link-color);
 }
 
 .vote-section-title {
@@ -568,7 +568,7 @@ watch(voteContainer, () => {
 }
 
 .vote-details-list-item-text h3 {
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -585,7 +585,7 @@ watch(voteContainer, () => {
   letter-spacing: 0.01em;
   margin: 0 0 0 0;
   line-height: 1.6em;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--text-secondary);
 }
 
 .vote-details-icon {
