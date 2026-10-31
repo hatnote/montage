@@ -1458,6 +1458,44 @@ def test_finalize_round_sets_close_date_and_logs_action(api_client,
                  as_user='LilyOfTheWest')
     matching_logs = [log for log in resp['data'] if log['round_id'] == round_id]
     assert len(matching_logs) == 1
+    resp = fetch('coordinator: get round details',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    close_date = resp['data']['close_date']
+
+    # finalizing again is refused and changes nothing
+    fetch('coordinator: finalize round again',
+          '/admin/round/%s/finalize' % round_id,
+          {'post': True},
+          as_user='LilyOfTheWest', error_code=400)
+    resp = fetch('coordinator: get round details',
+                 '/admin/round/%s' % round_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['close_date'] == close_date
+    resp = fetch('coordinator: get finalize_round audit logs',
+                 '/admin/campaign/%s/audit?action=finalize_round' % campaign_id,
+                 as_user='LilyOfTheWest')
+    assert len([log for log in resp['data'] if log['round_id'] == round_id]) == 1
+
+    # a cancelled round can't be finalized either
+    rnd_data['name'] = 'Finalize Endpoint Round 2'
+    resp = fetch('coordinator: add second round',
+                 '/admin/campaign/%s/add_round' % campaign_id,
+                 rnd_data,
+                 as_user='LilyOfTheWest')
+    round_2_id = resp['data']['id']
+    fetch('coordinator: cancel second round',
+          '/admin/round/%s/cancel' % round_2_id,
+          {'post': True},
+          as_user='LilyOfTheWest')
+    fetch('coordinator: finalize cancelled round',
+          '/admin/round/%s/finalize' % round_2_id,
+          {'post': True},
+          as_user='LilyOfTheWest', error_code=400)
+    resp = fetch('coordinator: get second round details',
+                 '/admin/round/%s' % round_2_id,
+                 as_user='LilyOfTheWest')
+    assert resp['data']['status'] == 'cancelled'
 
 
 @script_log.wrap('critical', verbose=True)

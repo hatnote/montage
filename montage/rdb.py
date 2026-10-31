@@ -1746,7 +1746,16 @@ class CoordinatorDAO(UserDAO):
         return
 
     def finalize_round(self, round_id):
+        """Close a round by hand (the round's Finalize button, #462).
+
+        Sets close_date and status and writes an audit entry. It
+        deliberately does not compute a threshold or a results summary:
+        those belong to advance_round and finalize_campaign.
+        """
         rnd = self.get_round(round_id)
+        if rnd.status not in (ACTIVE_STATUS, PAUSED_STATUS):
+            raise InvalidAction('can only finalize an active or paused round,'
+                                ' not a %s one' % rnd.status)
         rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rnd.status = FINALIZED_STATUS
 
