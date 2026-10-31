@@ -2052,8 +2052,9 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
 
 @pytest.fixture
-def debug_app(tmpdir):
+def debug_app(tmpdir, monkeypatch):
     """App as run for local development: debug mode, and no user row for the sentinel id."""
+    monkeypatch.setenv('MONTAGE_PDB', '1')  # no Sentry from tests
     config = utils.load_env_config(env_name='devtest')
     config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
     # devtest supplies a fixture user to requests without a cookie, which would hide this
