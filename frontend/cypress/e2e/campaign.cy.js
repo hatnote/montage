@@ -75,7 +75,7 @@ describe('Campaign Details Page', () => {
   })
 
   it('should enter campaign edit mode and show editable fields', () => {
-    cy.get('[datatest="editbutton"]').click()
+    cy.get('[data-testid="editbutton"]').click()
     cy.get('.campaign-name-input').should('be.visible')
     cy.get('.date-time-inputs').should('be.visible')
   })
@@ -88,7 +88,7 @@ describe('Campaign Details Page', () => {
   })
 
   it('should cancel editing campaign details', () => {
-    cy.get('[datatest="editbutton"]').click()
+    cy.get('[data-testid="editbutton"]').click()
     cy.get('.cancel-button').click()
     cy.get('.campaign-name-input').should('not.exist')
     cy.get('.campaign-title').should('be.visible')
