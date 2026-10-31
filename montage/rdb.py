@@ -1931,6 +1931,47 @@ class CoordinatorDAO(UserDAO):
         self.log_action('cancel_round', round=rnd, message=msg)
         return rnd
 
+    def cancel_campaign(self, discard_completed=False):
+        """Cancel this campaign, its rounds and their open tasks.
+
+        A campaign with a finalized round can't be cancelled: it has results,
+        so it is closed instead (finalized with a report, or archived).
+        Rounds that are already cancelled are left as they are. If the rounds
+        to cancel have completed votes, which would no longer count, the
+        caller must confirm with *discard_completed*.
+        """
+        campaign = self.campaign
+        statuses = [rnd.status for rnd in campaign.rounds]
+        if campaign.status == FINALIZED_STATUS or FINALIZED_STATUS in statuses:
+            raise InvalidAction('campaign %s has a finalized round, so it cannot'
+                                ' be cancelled; close it instead (finalize it'
+                                ' for a report, or archive it)' % campaign.id)
+        rounds = (self.query(Round)
+                  .filter(Round.campaign_id == campaign.id,
+                          Round.status != CANCELLED_STATUS)
+                  .all())
+        completed = 0
+        if rounds:
+            completed = (self.query(Vote)
+                         .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                         .filter(RoundEntry.round_id.in_([r.id for r in rounds]),
+                                 Vote.status == COMPLETED_STATUS)
+                         .count())
+        if completed and not discard_completed:
+            raise InvalidAction('the rounds of campaign %s have %s completed votes,'
+                                ' which will no longer count if it is cancelled;'
+                                ' send discard_completed=true to cancel anyway'
+                                % (campaign.id, completed))
+        campaign.status = CANCELLED_STATUS
+        for rnd in rounds:
+            self.cancel_round(rnd.id)
+        msg = '%s cancelled campaign "%s" and %s rounds' %\
+              (self.user.username, campaign.name, len(rounds))
+        self.log_action('cancel_campaign', campaign=campaign, message=msg)
+        return {'id': campaign.id,
+                'status': campaign.status,
+                'cancelled_rounds': len(rounds)}
+
     def get_reviews_table(self, round_id):
         rnd = self.get_round(round_id)
         votes = self.get_all_reviews(round_id)
@@ -2714,18 +2755,10 @@ class OrganizerDAO(object):
                         role='organizer')
         return campaign
 
-    def cancel_campaign(self, campaign_id):
+    def cancel_campaign(self, campaign_id, discard_completed=False):
         campaign = self.user_dao.get_campaign(campaign_id)
         coord_dao = CoordinatorDAO(self.user_dao, campaign)
-        rounds = (self.query(Round)
-                  .filter(Round.campaign_id == campaign_id)
-                  .all())
-        campaign.status = CANCELLED_STATUS
-        for rnd in rounds:
-            coord_dao.cancel_round(rnd.id)
-        msg = '%s cancelled campaign "%s" and %s rounds' %\
-              (self.user.username, campaign.name, len(rounds))
-        self.log_action('cancel_campaign', campaign=campaign, message=msg)
+        return coord_dao.cancel_campaign(discard_completed=discard_completed)
 
     def get_user_list(self):
         all_camps = self.query(Campaign).all()
