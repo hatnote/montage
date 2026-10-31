@@ -606,8 +606,10 @@ watch(voteContainer, () => {
   width: 232px;
 }
 
-/* Narrow screens (e.g. a phone held upright): stack the image above the panel */
-@media (max-width: 700px) {
+/* Narrow screens: stack the image above the panel. Up to 700 px always (a phone held
+   upright); up to 820 px in portrait too (a tablet held upright), where the image beside
+   the 350 px panel would be narrower than the panel. Phones held sideways stay side by side. */
+@media (max-width: 700px), (max-width: 820px) and (orientation: portrait) {
   .vote-container {
     flex-direction: column;
     justify-content: flex-start;
@@ -617,8 +619,14 @@ watch(voteContainer, () => {
 
   .vote-image-container {
     flex-shrink: 0;
-    height: 60vh;
+    height: 50vh;
     height: 50svh;
+  }
+
+  /* With the panel hidden, the image can use the whole screen */
+  .vote-image-container:not(.with-sidebar) {
+    height: calc(100vh - 156.5px);
+    height: calc(100svh - 156.5px);
   }
 
   .with-sidebar {
