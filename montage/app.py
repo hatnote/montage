@@ -195,7 +195,9 @@ def create_app(env_name='prod', config=None):
 
     debug_errors = bool(os.getenv('MONTAGE_PDB', False)) or config['__env__'] == 'devtest'
     api_app = Application(api_routes, resources,
-                          middlewares=[MessageMiddleware(debug_errors=debug_errors)] + middlewares,
+                          middlewares=[MessageMiddleware(debug_errors=debug_errors,
+                                                         env_name=config['__env__'])]
+                                       + middlewares,
                           render_factory=render_basic)
     ui_app = Application(ui_routes, resources,
                          middlewares=[MessageMiddleware(debug_errors=debug_errors, use_ashes=True)] + middlewares,

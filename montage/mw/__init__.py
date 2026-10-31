@@ -36,13 +36,19 @@ class MessageMiddleware(Middleware):
     """
     provides = ('response_dict', 'request_dict')
 
-    def __init__(self, raise_errors=True, use_ashes=False, debug_errors=False):
+    def __init__(self, raise_errors=True, use_ashes=False, debug_errors=False,
+                 env_name=None):
         self.raise_errors = raise_errors
         self.use_ashes = use_ashes
         self.debug_errors = debug_errors
+        self.env_name = env_name
 
     def request(self, next, request):
         response_dict = {'errors': [], 'status': 'success'}
+        if self.env_name:
+            # which deployment this is (prod, beta, devlabs, ...), for the
+            # footer's environment label
+            response_dict['env'] = self.env_name
 
         try:
             request_data = request.get_data()

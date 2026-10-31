@@ -1039,6 +1039,15 @@ def test_home_client(base_client, api_client, mock_external_apis):
     #resp = base_client.fetch('public: logout', '/logout')
 
 
+def test_api_responses_name_the_environment(base_client):
+    """Every API response says which deployment it comes from (the footer's
+    DEV/BETA/PROD label), also when nobody is logged in."""
+    c = base_client._test_client
+    for url in ('/v1/series', '/v1/admin/user'):
+        resp = c.get(url)
+        assert json.loads(resp.get_data())['env'] == 'devtest'
+
+
 def test_meta_shows_no_config_values(montage_app, base_client):
     """/meta and /meta/json/ are public; they list the app's resources by
     name, but must not show config values (clastic's default showed the

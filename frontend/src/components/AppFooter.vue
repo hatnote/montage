@@ -20,7 +20,19 @@
 </template>
 
 <script setup>
-const envName = import.meta.env.DEV ? 'DEV' : 'PROD'
+import { computed } from 'vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// The backend's MONTAGE_ENV, not Vite's build mode: every deployed tool is a
+// production build, so import.meta.env.DEV alone said "PROD" everywhere.
+const ENV_LABELS = { prod: 'PROD', beta: 'BETA', devlabs: 'DEV', dev: 'LOCAL' }
+const envName = computed(() => {
+  const env = userStore.env
+  if (env) return ENV_LABELS[env] || env.toUpperCase()
+  return import.meta.env.DEV ? 'LOCAL' : ''
+})
 </script>
 
 <style scoped>

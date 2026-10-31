@@ -6,6 +6,8 @@ export const useUserStore = defineStore('user-store', () => {
   const user = ref(null)
   const isAuthenticated = ref(false)
   const authChecked = ref(false)
+  // which deployment the backend is (prod, beta, devlabs, ...), from the API envelope
+  const env = ref(null)
 
   function login(userObj) {
     if (!userObj) {
@@ -25,6 +27,7 @@ export const useUserStore = defineStore('user-store', () => {
   async function checkAuth() {
     if (!authChecked.value) {
       const res = await adminService.getUser()
+      env.value = res.env || null
       if (res.status === 'success' && res.user) {
         login(res.user)
       }
@@ -32,5 +35,5 @@ export const useUserStore = defineStore('user-store', () => {
     }
   }
 
-  return { user, login, logout, checkAuth, isAuthenticated, authChecked }
+  return { user, env, login, logout, checkAuth, isAuthenticated, authChecked }
 })
