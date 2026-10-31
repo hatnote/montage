@@ -18,7 +18,8 @@ from .utils import (format_date,
 from . import import_check
 from .loaders import make_entry
 
-from .rdb import (CoordinatorDAO,
+from .rdb import (FINALIZED_STATUS,
+                 CoordinatorDAO,
                  MaintainerDAO,
                  OrganizerDAO,
                  lock_errors_as_busy)
