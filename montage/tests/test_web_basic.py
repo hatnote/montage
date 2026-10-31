@@ -1431,11 +1431,11 @@ def test_finalize_round_sets_close_date_and_logs_action(api_client,
                  as_user='LilyOfTheWest')
     round_id = resp['data']['id']
 
-    resp = fetch('coordinator: import entries',
-                 '/admin/round/%s/import' % round_id,
-                 {'import_method': 'category',
-                  'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
-                 as_user='LilyOfTheWest')
+    resp = api_client.fetch_checked_import('coordinator: import entries',
+                                           round_id,
+                                           {'import_method': 'category',
+                                            'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                                           as_user='LilyOfTheWest')
 
     resp = fetch('coordinator: activate round',
                  '/admin/round/%s/activate' % round_id,

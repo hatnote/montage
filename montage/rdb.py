@@ -1747,7 +1747,7 @@ class CoordinatorDAO(UserDAO):
 
     def finalize_round(self, round_id):
         rnd = self.get_round(round_id)
-        rnd.close_date = datetime.datetime.utcnow()
+        rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         rnd.status = FINALIZED_STATUS
 
         msg = '%s finalized round "%s" (#%s)' % (self.user.username,
