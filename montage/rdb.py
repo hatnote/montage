@@ -3234,15 +3234,18 @@ class JurorDAO(object):
         )
 
         if not vote:
-            return InvalidAction('vote %s does not exist for this user' % vote_id)
+            raise InvalidAction('vote %s does not exist for this user' % vote_id)
 
+        vote_round_id = vote.round_entry.round_id
         if not round_id:
-            round_id = vote.round_entry.round_id
+            round_id = vote_round_id
+        elif round_id != vote_round_id:
+            raise InvalidAction('vote %s is not in round %s' % (vote_id, round_id))
 
         round_juror = self._get_round_juror(round_id)
 
         if not round_juror:
-            return InvalidAction('round_juror not found')
+            raise InvalidAction('round_juror not found')
 
         if round_juror.flags is None:
             round_juror.flags = {}

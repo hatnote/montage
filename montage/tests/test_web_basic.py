@@ -2049,3 +2049,72 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
+
+
+def test_skip_refuses_votes_of_other_users(api_client, mock_external_apis):
+    """Skipping a task that isn't the juror's own is refused, not reported as a success.
+
+    skip_voting() returned InvalidAction instead of raising it, so the endpoint
+    answered {"success": true} without doing anything.
+    """
+    fetch = api_client.fetch
+    series_id = fetch('get default series', '/series')['data'][0]['id']
+    fetch('organizer: create campaign for skip test', '/admin/add_campaign',
+          {'name': 'Skip Refusal Test',
+           'coordinators': [u'LilyOfTheWest', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+    campaign_id = fetch('coordinator: get admin view', '/admin',
+                        as_user='LilyOfTheWest')['data'][-1]['id']
+    round_id = fetch('coordinator: add yesno round',
+                     '/admin/campaign/%s/add_round' % campaign_id,
+                     {'name': 'Skip Refusal Round',
+                      'vote_method': 'yesno',
+                      'quorum': 1,
+                      'deadline_date': '2025-10-20T00:00:00',
+                      'jurors': [u'Slaporte', u'MahmoudHashemi']},
+                     as_user='LilyOfTheWest')['data']['id']
+    api_client.fetch_checked_import('coordinator: import entries', round_id,
+                                    {'import_method': 'category',
+                                     'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                                    as_user='LilyOfTheWest')
+    fetch('coordinator: activate round', '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+
+    other_task_id = fetch('juror: get tasks', '/juror/round/%s/tasks' % round_id,
+                          as_user='MahmoudHashemi')['data']['tasks'][0]['id']
+
+    fetch('juror: skip another juror\'s task',
+          '/juror/round/%s/tasks/skip' % round_id,
+          {'vote_id': other_task_id},
+          as_user='Slaporte', error_code=400)
+    fetch('juror: skip a task that does not exist',
+          '/juror/round/%s/tasks/skip' % round_id,
+          {'vote_id': 999999999},
+          as_user='Slaporte', error_code=400)
+
+    own_task_id = fetch('juror: get own tasks', '/juror/round/%s/tasks' % round_id,
+                        as_user='Slaporte')['data']['tasks'][0]['id']
+    resp = fetch('juror: skip own task through another round\'s url',
+                 '/juror/round/%s/tasks/skip' % 999999,
+                 {'vote_id': own_task_id},
+                 as_user='Slaporte', error_code=400)
+    assert 'is not in round' in resp.get_data(as_text=True)
+
+    # the refused skips skipped nothing: the juror's own first task is unchanged
+    first_id = fetch('juror: get own tasks again', '/juror/round/%s/tasks' % round_id,
+                     as_user='Slaporte')['data']['tasks'][0]['id']
+    assert first_id == own_task_id
+
+    # a juror removed from the round can no longer skip their old task
+    # (removal reassigns it, so it is no longer theirs)
+    fetch('coordinator: pause round', '/admin/round/%s/pause' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    fetch('coordinator: remove juror', '/admin/round/%s/edit' % round_id,
+          {'new_jurors': [u'MahmoudHashemi']}, as_user='LilyOfTheWest')
+    resp = fetch('juror: skip after removal', '/juror/round/%s/tasks/skip' % round_id,
+                 {'vote_id': own_task_id}, as_user='Slaporte', error_code=400)
+    assert 'does not exist for this user' in resp.get_data(as_text=True)
