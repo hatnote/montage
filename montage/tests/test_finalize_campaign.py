@@ -24,8 +24,8 @@ def _campaign_status(app, cid):
     return _one(app, 'SELECT status FROM campaigns WHERE id = :cid', cid=cid)['status']
 
 
-def _ranking_campaign(client, mock_external_apis, name):
-    """A campaign with one active ranking round of 3 files and one ballot in."""
+def _ranking_campaign(client, mock_external_apis, name, ballots=1):
+    """A campaign with one active ranking round of 3 files and `ballots` ballots in."""
     series_id = client.fetch('get default series', '/series')['data'][0]['id']
     cid = client.fetch('organizer: create campaign', '/admin/add_campaign',
                        {'name': name, 'coordinators': [COORD],
@@ -41,12 +41,13 @@ def _ranking_campaign(client, mock_external_apis, name):
     mock_category(mock_external_apis, make_file_infos(name, 3))
     import_category(client, rid)
     _post(client, 'coordinator: activate round', '/admin/round/%s/activate' % rid)
-    tasks = client.fetch('juror: tasks', '/juror/round/%s/tasks' % rid,
-                         as_user=JURORS[0])['data']['tasks']
-    client.fetch('juror: submit ballot', '/juror/round/%s/tasks/submit' % rid,
-                 {'ratings': [{'task_id': t['id'], 'value': i}
-                              for i, t in enumerate(tasks)]},
-                 as_user=JURORS[0])
+    for juror in JURORS[:ballots]:
+        tasks = client.fetch('juror: tasks', '/juror/round/%s/tasks' % rid,
+                             as_user=juror)['data']['tasks']
+        client.fetch('juror: submit ballot', '/juror/round/%s/tasks/submit' % rid,
+                     {'ratings': [{'task_id': t['id'], 'value': i}
+                                  for i, t in enumerate(tasks)]},
+                     as_user=juror)
     return cid, rid
 
 
@@ -114,3 +115,28 @@ def test_finalize_refused_when_last_round_is_yesno(
     assert b'archive it instead' in resp.get_data()
     assert _campaign_status(montage_app, cid) == 'active'
     assert _summaries(montage_app, cid) == 0
+
+
+def test_finalize_refused_before_any_ballot(montage_app, coord_client, mock_external_apis):
+    # used to fail with a 500 (RecursionError in SchulzeNPR on no ballots)
+    cid, rid = _ranking_campaign(coord_client, mock_external_apis, 'f0', ballots=0)
+
+    resp = _post(coord_client, 'coordinator: finalize campaign',
+                 '/admin/campaign/%s/finalize' % cid, error_code=400)
+    assert b'no ranking ballots' in resp.get_data()
+    assert _campaign_status(montage_app, cid) == 'active'
+    assert _summaries(montage_app, cid) == 0
+    # the refusal rolls back finalize_ranking_round's status change
+    assert _one(montage_app, 'SELECT status FROM rounds WHERE id = :rid',
+                rid=rid)['status'] == 'active'
+
+
+def test_finalize_refused_before_any_ballot_after_round_button(
+        montage_app, coord_client, mock_external_apis):
+    cid, rid = _ranking_campaign(coord_client, mock_external_apis, 'f0b', ballots=0)
+    _post(coord_client, 'coordinator: finalize ranking round', '/admin/round/%s/finalize' % rid)
+
+    resp = _post(coord_client, 'coordinator: finalize campaign',
+                 '/admin/campaign/%s/finalize' % cid, error_code=400)
+    assert b'no ranking ballots' in resp.get_data()
+    assert _campaign_status(montage_app, cid) == 'active'

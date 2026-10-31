@@ -2033,7 +2033,18 @@ class CoordinatorDAO(UserDAO):
         A campaign has one results summary, so an existing one is
         updated rather than a second one added (for example when a
         reopened campaign is finalized again).
+
+        Refuses a ranking round without any submitted ballot: there is
+        nothing to rank, and the report would be empty.
         """
+        ballot_count = (self.query(Vote)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == rnd.id,
+                                Vote.status == COMPLETED_STATUS)
+                        .count())
+        if not ballot_count:
+            raise InvalidAction('no ranking ballots have been submitted'
+                                ' yet in round "%s"' % rnd.name)
         summary = self.build_campaign_report()
         result_summary = (self.query(RoundResultsSummary)
                               .filter_by(campaign_id=rnd.campaign.id)
@@ -2209,6 +2220,10 @@ class CoordinatorDAO(UserDAO):
         # of python-vote-core. make sure you have the github version
         # installed, referenced in the requirements.txt.
         # # pip install -r requirements.txt
+        if not all_inputs:
+            # No ballots: SchulzeNPR recurses without end on an empty input.
+            return []
+
         notation_style = SchulzeNPR.BALLOT_NOTATION_GROUPING  # see note above
         snpr = SchulzeNPR(all_inputs, ballot_notation=notation_style)
 
