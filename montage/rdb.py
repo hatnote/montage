@@ -25,7 +25,8 @@ from sqlalchemy import (Text,
                         DateTime,
                         TIMESTAMP,
                         ForeignKey,
-                        inspect)
+                        inspect,
+                        UniqueConstraint)
 from sqlalchemy.sql import func, asc
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import relationship, joinedload
@@ -779,6 +780,7 @@ class Flag(Base):
 
 class Favorite(Base):
     __tablename__ = 'favorites'
+    __table_args__ = (UniqueConstraint('user_id', 'entry_id', 'campaign_id'),)
 
     id = Column(Integer, primary_key=True)
     entry_id = Column(Integer, ForeignKey('entries.id'), index=True)
