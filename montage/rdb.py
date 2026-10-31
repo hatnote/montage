@@ -1935,7 +1935,7 @@ class CoordinatorDAO(UserDAO):
         """Cancel this campaign, its rounds and their open tasks.
 
         A campaign with a finalized round can't be cancelled: it has results,
-        so it is closed instead (finalized with a report, or archived).
+        so it is closed instead, with or without a report.
         Rounds that are already cancelled are left as they are. If the rounds
         to cancel have completed votes, which would no longer count, the
         caller must confirm with *discard_completed*.
@@ -1944,8 +1944,9 @@ class CoordinatorDAO(UserDAO):
         statuses = [rnd.status for rnd in campaign.rounds]
         if campaign.status == FINALIZED_STATUS or FINALIZED_STATUS in statuses:
             raise InvalidAction('campaign %s has a finalized round, so it cannot'
-                                ' be cancelled; close it instead (finalize it'
-                                ' for a report, or archive it)' % campaign.id)
+                                ' be cancelled; close it instead: with a report'
+                                ' (needs a ranking round as the last round) or'
+                                ' without a report' % campaign.id)
         rounds = (self.query(Round)
                   .filter(Round.campaign_id == campaign.id,
                           Round.status != CANCELLED_STATUS)
