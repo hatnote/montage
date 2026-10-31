@@ -44,8 +44,29 @@ DEFAULT_DB_URL = 'sqlite:///tmp_montage.db'
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
+
 TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
+
+
+class IndexFileRoute(StaticFileRoute):
+    """Serve index.html so that browsers always fetch it again (#643).
+
+    index.html names the hashed JS/CSS bundles of the current build, so a
+    stale copy points at files a deploy removed and shows a blank page. The
+    build gives every file the same 1980 modification time, so the default
+    "not modified since" check always answered 304. With cache_timeout=0
+    clastic skips that check and sends the file; no-cache makes browsers ask
+    each time. The hashed bundles stay cacheable.
+    """
+    def __init__(self, pattern, file_path, **kw):
+        kw['cache_timeout'] = 0
+        super().__init__(pattern, file_path, **kw)
+
+    def get_file_response(self, request):
+        resp = super().get_file_response(request)
+        resp.cache_control.no_cache = True
+        return resp
 
 
 class ResourceNamesPeripheral(ResourcePeripheral):
@@ -224,8 +245,9 @@ def create_app(env_name='prod', config=None):
                         dsn="https://5738a89dcd5e4b599f7a801fd63bc217@sentry.io/3532775")
         root_mws.append(SentryMiddleware())
 
-    root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
-                            StaticFileRoute('/a/', STATIC_PATH + '/index.html'),
+    index_path = STATIC_PATH + '/index.html'
+    root_app = Application([IndexFileRoute('/', index_path),
+                            IndexFileRoute('/a/', index_path),
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
