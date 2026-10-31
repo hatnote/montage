@@ -252,15 +252,18 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
 def cancel_campaign(user_dao, org_dao, campaign_id, force=False):
     "cancel the specified campaign"
     campaign = user_dao.get_campaign(campaign_id)
-    msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks.'
-           % (campaign_id, campaign.name, len(campaign.rounds)))
+    open_rounds = [r for r in campaign.rounds
+                   if r.status != 'cancelled']
+    msg = ('this will cancel campaign %s (%r) and %s rounds, including tasks;'
+           ' their completed votes will no longer count.'
+           % (campaign_id, campaign.name, len(open_rounds)))
 
     warn(msg, force)
 
-    org_dao.cancel_campaign(campaign)
+    res = org_dao.cancel_campaign(campaign_id, discard_completed=True)
 
     print(('++ cancelled campaign %s (%r) and %s rounds'
-           % (campaign_id, campaign.name, len(campaign.rounds))))
+           % (campaign_id, campaign.name, res['cancelled_rounds'])))
 
 
 
