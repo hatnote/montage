@@ -34,13 +34,13 @@
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.8.0",
-    "@vitejs/plugin-vue": "^5.2.3",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vue/eslint-config-prettier": "^9.0.0",
     "chokidar-cli": "^3.0.0",
     "cypress": "^14.5.3",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.23.0",
     "prettier": "^3.2.5",
-    "vite": "^6.4.2"
+    "vite": "^8.0.16"
   }
 }
