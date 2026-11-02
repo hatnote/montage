@@ -2012,6 +2012,17 @@ class CoordinatorDAO(UserDAO):
         
         return rnd
 
+    def finalize_round(self, round_id):
+        rnd = self.get_round(round_id)
+        if rnd.vote_method == 'ranking':
+            return self.finalize_ranking_round(round_id)
+        else:
+            rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            rnd.status = FINALIZED_STATUS
+            msg = '%s finalized round "%s"' % (self.user.username, rnd.name)
+            self.log_action('finalize_round', round=rnd, message=msg)
+            return rnd
+
     def finalize_ranking_round(self, round_id):
         rnd = self.get_round(round_id)
         assert rnd.vote_method == 'ranking'
@@ -2022,10 +2033,18 @@ class CoordinatorDAO(UserDAO):
 
         summary = self.build_campaign_report()
 
-        result_summary = RoundResultsSummary(round_id=round_id,
-                                             campaign_id=rnd.campaign.id,
-                                             summary=summary)
-        self.rdb_session.add(result_summary)
+        result_summary = (self.query(RoundResultsSummary)
+                              .filter_by(campaign_id=rnd.campaign.id)
+                              .one_or_none())
+        if result_summary:
+            result_summary.round_id = round_id
+            result_summary.summary = summary
+            result_summary.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        else:
+            result_summary = RoundResultsSummary(round_id=round_id,
+                                                 campaign_id=rnd.campaign.id,
+                                                 summary=summary)
+            self.rdb_session.add(result_summary)
         self.rdb_session.flush()
         msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
                (self.user.username, rnd.name, rnd.id, result_summary.id))

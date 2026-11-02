@@ -974,9 +974,21 @@ def test_home_client(base_client, api_client, mock_external_apis):
 
     ### END ARCHIVING (2020-09)
 
+    # Finalize the ranking round with the round's own button first (#644)
+    resp = fetch('coordinator: finalize ranking round directly',
+                 '/admin/round/%s/finalize' % rnd_3_id,
+                 {'post': True}, as_user='LilyOfTheWest')
+    assert resp['status'] == 'success'
+
     resp = fetch('coordinator: finalize campaign',
                  '/admin/campaign/%s/finalize' % campaign_id,
                  {'post': True}, as_user='LilyOfTheWest')
+
+    # Re-finalizing an already finalized campaign should fail with 400
+    resp = fetch('coordinator: re-finalize already finalized campaign fails',
+                 '/admin/campaign/%s/finalize' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest', error_code=400)
+    assert b'already finalized' in resp.get_data()
 
     # view the final campaign report (note: fetch_url, as this is an html page)
     resp = base_client.fetch('coordinator: view final report',
