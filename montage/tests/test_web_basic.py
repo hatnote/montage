@@ -1039,6 +1039,18 @@ def test_home_client(base_client, api_client, mock_external_apis):
     #resp = base_client.fetch('public: logout', '/logout')
 
 
+def test_index_html_is_never_stale(base_client):
+    """index.html is sent in full with no-cache, even to a browser that
+    claims a recent copy, so a deploy can't leave it on old bundles (#643)."""
+    c = base_client._test_client
+    for url in ('/', '/a/'):
+        resp = c.get(url, headers={'If-Modified-Since': 'Fri, 01 Jan 2100 00:00:00 GMT'})
+        assert resp.status_code == 200
+        assert b'<html' in resp.get_data()
+        assert 'no-cache' in resp.headers.get('Cache-Control', '')
+        assert 'max-age=360' not in resp.headers.get('Cache-Control', '')
+
+
 def test_meta_shows_no_config_values(montage_app, base_client):
     """/meta and /meta/json/ are public; they list the app's resources by
     name, but must not show config values (clastic's default showed the
