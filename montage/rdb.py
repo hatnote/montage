@@ -1745,6 +1745,26 @@ class CoordinatorDAO(UserDAO):
 
         return
 
+    def finalize_round(self, round_id):
+        """Close a round by hand (the round's Finalize button, #462).
+
+        Sets close_date and status and writes an audit entry. It
+        deliberately does not compute a threshold or a results summary:
+        those belong to advance_round and finalize_campaign.
+        """
+        rnd = self.get_round(round_id)
+        if rnd.status not in (ACTIVE_STATUS, PAUSED_STATUS):
+            raise InvalidAction('can only finalize an active or paused round,'
+                                ' not a %s one' % rnd.status)
+        rnd.close_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        rnd.status = FINALIZED_STATUS
+
+        msg = '%s finalized round "%s" (#%s)' % (self.user.username,
+                                                 rnd.name,
+                                                 rnd.id)
+        self.log_action('finalize_round', round=rnd, message=msg)
+        return rnd
+
     def add_checked_entries(self, round_id, entries, source_description):
         """Store the entries of a checked import (import_check.py, #510);
         returns the stored Entry rows, in the order given."""
