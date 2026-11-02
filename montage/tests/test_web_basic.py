@@ -2049,3 +2049,65 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
+
+
+def test_ranking_ballot_with_completed_and_open_tasks(api_client, mock_external_apis):
+    """A ranking ballot may mix completed and open tasks; all end up completed.
+
+    That happens when an entry is requalified after the juror ranked (its task
+    is reopened). The old 'all tasks must be complete or incomplete' check
+    compared against 'complete' instead of 'completed', so it never ran, and
+    accepting the ballot is the behaviour production has always had.
+    """
+    fetch = api_client.fetch
+    series_id = fetch('get default series', '/series')['data'][0]['id']
+    fetch('organizer: create campaign for ranking test', '/admin/add_campaign',
+          {'name': 'Mixed Ranking Ballot Test',
+           'coordinators': [u'LilyOfTheWest', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+    campaign_id = fetch('coordinator: get admin view', '/admin',
+                        as_user='LilyOfTheWest')['data'][-1]['id']
+    round_id = fetch('coordinator: add ranking round',
+                     '/admin/campaign/%s/add_round' % campaign_id,
+                     {'name': 'Mixed ballot round',
+                      'vote_method': 'ranking',
+                      'deadline_date': '2025-10-20T00:00:00',
+                      'jurors': [u'Jimbo Wales']},
+                     as_user='LilyOfTheWest')['data']['id']
+    api_client.fetch_checked_import('coordinator: import entries', round_id,
+                                    {'import_method': 'category',
+                                     'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                                    as_user='LilyOfTheWest')
+    fetch('coordinator: activate round', '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+
+    tasks = fetch('juror: get ranking tasks', '/juror/round/%s/tasks' % round_id,
+                  as_user='Jimbo Wales')['data']['tasks']
+    assert len(tasks) >= 2
+    ballot = {'ratings': [{'vote_id': t['id'], 'value': i} for i, t in enumerate(tasks)]}
+    fetch('juror: submit ranking', '/juror/round/%s/tasks/submit' % round_id,
+          ballot, as_user='Jimbo Wales')
+
+    # reopen the last task of the ballot: disqualify and requalify its entry
+    entry_id = tasks[-1]['entry']['id']
+    fetch('coordinator: pause', '/admin/round/%s/pause' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    fetch('coordinator: disqualify', '/admin/round/%s/%s/disqualify' % (round_id, entry_id),
+          {'post': True}, as_user='LilyOfTheWest')
+    fetch('coordinator: requalify', '/admin/round/%s/%s/requalify' % (round_id, entry_id),
+          {'post': True}, as_user='LilyOfTheWest')
+    fetch('coordinator: reactivate', '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    reopened = fetch('juror: reopened task', '/juror/round/%s/tasks' % round_id,
+                     as_user='Jimbo Wales')['data']['tasks']
+    assert [t['id'] for t in reopened] == [tasks[-1]['id']]
+
+    # the same full ballot again, now one open task and the rest completed
+    fetch('juror: resubmit ranking', '/juror/round/%s/tasks/submit' % round_id,
+          ballot, as_user='Jimbo Wales')
+    assert not fetch('juror: no open tasks left', '/juror/round/%s/tasks' % round_id,
+                     as_user='Jimbo Wales')['data']['tasks']
