@@ -2049,3 +2049,44 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
+
+
+@pytest.fixture
+def debug_app(tmpdir, monkeypatch):
+    """App as run for local development: debug mode, and no user row for the sentinel id."""
+    monkeypatch.setenv('MONTAGE_PDB', '1')  # no Sentry from tests
+    config = utils.load_env_config(env_name='devtest')
+    config['db_url'] = config['db_url'].replace('///', '///' + str(tmpdir) + '/')
+    # devtest supplies a fixture user to requests without a cookie, which would hide this
+    config['__env__'] = 'dev'
+    config['debug'] = True
+    config['debug_userid'] = 6024474
+    config['debug_username'] = 'Slaporte'
+    config['superuser'] = 'Slaporte'
+    _create_schema(db_url=config['db_url'])
+
+    index_path = STATIC_PATH + '/index.html'
+    if not os.path.exists(index_path):
+        mkdir_p(STATIC_PATH)
+        with open(index_path, 'w') as f:
+            f.write('<html><body>just for tests</body></html>')
+
+    return create_app('dev', config=config)
+
+
+def test_debug_complete_login_works_before_first_login(debug_app):
+    """Visiting /complete_login in debug mode without a session logs in, as dev.md says."""
+    client = ClasticTestClient(debug_app)
+    resp = client.get('/complete_login')
+    assert resp.status_code == 302
+    data = _get_cookie_data(client, debug_app.resources['config']['cookie_secret'])
+    assert data['userid'] == 6024474
+
+
+def test_debug_without_login_still_refuses_protected_endpoints(debug_app):
+    """The sentinel user is only accepted by public endpoints."""
+    client = ClasticTestClient(debug_app)
+    resp = client.get('/v1/admin', headers={'Accept': 'application/json'})
+    data = json.loads(resp.get_data(as_text=True))
+    assert data['status'] == 'failure'
+    assert data['errors']
