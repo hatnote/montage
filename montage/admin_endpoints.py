@@ -760,17 +760,35 @@ def advance_round(user_dao, round_id, request_dict):
 
 
 def finalize_campaign(user_dao, campaign_id):
-    # TODO: add some docs
+    """Finalize a campaign: store its results summary and close it.
+
+    A finalized campaign has its final results stored, and those come
+    from its last round, which must be a ranking round. A campaign that
+    ends on a yes/no or rating round can be archived instead.
+    """
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    last_rnd = coord_dao.campaign.active_round
+    campaign = coord_dao.campaign
+    if campaign.status == FINALIZED_STATUS:
+        raise InvalidAction('campaign is already finalized')
 
-    if not last_rnd:
-        raise InvalidAction('no active rounds')
+    last_rnd = campaign.active_round
+    if last_rnd:
+        if last_rnd.vote_method != 'ranking':
+            raise InvalidAction('only ranking rounds can be finalized')
+        campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
+    else:
+        # The ranking round may already have been finalized with its
+        # own button (#644): store the summary without touching it.
+        rnds = coord_dao.get_campaign_rounds(campaign)
+        last_rnd = rnds[-1] if rnds else None
+        if not last_rnd or last_rnd.status != FINALIZED_STATUS:
+            raise InvalidAction('no active rounds')
+        if last_rnd.vote_method != 'ranking':
+            raise InvalidAction('only a campaign that ends on a ranking'
+                                ' round can be finalized; archive it'
+                                ' instead')
+        campaign_summary = coord_dao.save_results_summary(last_rnd)
 
-    if last_rnd.vote_method != 'ranking':
-        raise InvalidAction('only ranking rounds can be finalized')
-
-    campaign_summary = coord_dao.finalize_ranking_round(last_rnd.id)
     coord_dao.finalize_campaign()
     return campaign_summary
 

@@ -2020,16 +2020,45 @@ class CoordinatorDAO(UserDAO):
         rnd.status = FINALIZED_STATUS
         # rnd.config['ranking_method'] = method
 
-        summary = self.build_campaign_report()
-
-        result_summary = RoundResultsSummary(round_id=round_id,
-                                             campaign_id=rnd.campaign.id,
-                                             summary=summary)
-        self.rdb_session.add(result_summary)
-        self.rdb_session.flush()
+        result_summary = self.save_results_summary(rnd)
         msg = ('%s finalized round "%s" (#%s) and created round results summary %s' %
                (self.user.username, rnd.name, rnd.id, result_summary.id))
         self.log_action('finalize_ranking_round', round=rnd, message=msg)
+        return result_summary
+
+    def save_results_summary(self, rnd):
+        """Build the campaign report from its final ranking round and
+        store it as the campaign's results summary.
+
+        A campaign has one results summary, so an existing one is
+        updated rather than a second one added (for example when a
+        reopened campaign is finalized again).
+
+        Refuses a ranking round without any submitted ballot: there is
+        nothing to rank, and the report would be empty.
+        """
+        ballot_count = (self.query(Vote)
+                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)
+                        .filter(RoundEntry.round_id == rnd.id,
+                                Vote.status == COMPLETED_STATUS)
+                        .count())
+        if not ballot_count:
+            raise InvalidAction('no ranking ballots have been submitted'
+                                ' yet in round "%s"' % rnd.name)
+        summary = self.build_campaign_report()
+        result_summary = (self.query(RoundResultsSummary)
+                              .filter_by(campaign_id=rnd.campaign.id)
+                              .one_or_none())
+        if result_summary:
+            result_summary.round_id = rnd.id
+            result_summary.summary = summary
+            result_summary.modified_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        else:
+            result_summary = RoundResultsSummary(round_id=rnd.id,
+                                                 campaign_id=rnd.campaign.id,
+                                                 summary=summary)
+            self.rdb_session.add(result_summary)
+        self.rdb_session.flush()
         return result_summary
 
     def finalize_campaign(self):
@@ -2191,6 +2220,10 @@ class CoordinatorDAO(UserDAO):
         # of python-vote-core. make sure you have the github version
         # installed, referenced in the requirements.txt.
         # # pip install -r requirements.txt
+        if not all_inputs:
+            # No ballots: SchulzeNPR recurses without end on an empty input.
+            return []
+
         notation_style = SchulzeNPR.BALLOT_NOTATION_GROUPING  # see note above
         snpr = SchulzeNPR(all_inputs, ballot_notation=notation_style)
 

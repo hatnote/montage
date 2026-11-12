@@ -4,14 +4,23 @@
       <div class="campaign-header">
         <p class="campaign-title">{{ campaign.name }}</p>
         <div class="campaign-button-group">
-          <cdx-button action="destructive" weight="primary" @click="closeCampaign">
-            <clipboard-check class="icon-small" /> {{ $t('montage-close-campaign') }}
+          <cdx-button
+            v-if="canCloseCampaign && !campaign.is_archived && lastRoundIsRanking"
+            action="destructive"
+            weight="primary"
+            @click="closeCampaign"
+          >
+            <clipboard-check class="icon-small" /> {{ $t('montage-close-campaign-with-report') }}
           </cdx-button>
           <cdx-button action="destructive" @click="archiveCampaign" v-if="!campaign.is_archived">
-            <package-down class="icon-small" /> {{ $t('montage-archive') }}
+            <package-down class="icon-small" />
+            {{
+              canCloseCampaign ? $t('montage-close-campaign-without-report') : $t('montage-archive')
+            }}
           </cdx-button>
           <cdx-button action="progressive" @click="unarchiveCampaign" v-else>
-            <inbox-arrow-up class="icon-small" /> {{ $t('montage-unarchive') }}
+            <inbox-arrow-up class="icon-small" />
+            {{ canCloseCampaign ? $t('montage-reopen-campaign') : $t('montage-unarchive') }}
           </cdx-button>
           <cdx-button
             action="progressive"
@@ -26,6 +35,14 @@
       <div class="campaign-dates">
         <span>{{ formatDate(campaign.open_date) }} - {{ formatDate(campaign.close_date) }}</span>
       </div>
+      <p
+        v-if="
+          canCloseCampaign && !campaign.is_archived && campaignRounds.length && !lastRoundIsRanking
+        "
+        class="campaign-close-help"
+      >
+        {{ $t('montage-close-campaign-report-help') }}
+      </p>
       <div class="campaign-coordinators">
         <UserAvatarWithName :coordinators="campaign.coordinators" />
       </div>
@@ -161,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/utils'
@@ -198,6 +215,13 @@ const ActiveGoalAlert = ref(false)
 
 const campaign = ref({})
 const campaignRounds = ref([])
+
+// A report is built from the campaign's last round, which must be a
+// ranking round (see finalize_campaign in admin_endpoints.py).
+const lastRoundIsRanking = computed(() => {
+  const rounds = [...campaignRounds.value].sort((a, b) => a.id - b.id)
+  return rounds.length > 0 && rounds[rounds.length - 1].vote_method === 'ranking'
+})
 const campaignFormField = ref({
   name: null,
   openDate: null,
@@ -368,6 +392,12 @@ onMounted(() => {
 <style scoped>
 .campaign-container {
   padding: 40px;
+}
+
+.campaign-close-help {
+  margin: 8px 0;
+  color: #54595d;
+  font-size: 14px;
 }
 
 .campaign-header {
