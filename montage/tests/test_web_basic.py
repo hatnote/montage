@@ -978,6 +978,10 @@ def test_home_client(base_client, api_client, mock_external_apis):
                  '/admin/campaign/%s/finalize' % campaign_id,
                  {'post': True}, as_user='LilyOfTheWest')
 
+    fetch('coordinator: a finalized campaign cannot be cancelled',
+          '/admin/campaign/%s/cancel' % campaign_id,
+          {'post': True}, as_user='LilyOfTheWest', error_code=400)
+
     # view the final campaign report (note: fetch_url, as this is an html page)
     resp = base_client.fetch('coordinator: view final report',
                              '/admin/campaign/%s/report' % campaign_id,
@@ -1035,6 +1039,18 @@ def test_home_client(base_client, api_client, mock_external_apis):
     resp = base_client.fetch('public: view report', '/campaign/1')
 
     resp = base_client.fetch('meta: view base meta', '/meta/')
+
+    # a reopened campaign still has finalized rounds, so it is closed, not cancelled
+    fetch('coordinator: reopen campaign',
+          '/admin/campaign/%s/reopen' % campaign_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    resp = fetch('coordinator: cannot cancel a campaign with finalized rounds',
+                 '/admin/campaign/%s/cancel' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest', error_code=400)
+    assert 'close it instead' in resp.get_data(as_text=True)
+    resp = fetch('coordinator: round 3 stays finalized',
+                 '/admin/round/%s' % rnd_3_id, as_user='LilyOfTheWest')
+    assert resp['data']['status'] == 'finalized'
 
     #resp = base_client.fetch('public: logout', '/logout')
 
@@ -2049,3 +2065,86 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
+
+
+def test_coordinator_cancels_campaign(api_client, mock_external_apis):
+    """A campaign's coordinator can cancel it: the campaign, its rounds and open tasks.
+
+    The endpoint called CoordinatorDAO.cancel_campaign(), which did not exist
+    (only OrganizerDAO had it), so every call was a 500.
+    """
+    fetch = api_client.fetch
+    series_id = fetch('get default series', '/series')['data'][0]['id']
+    fetch('organizer: create campaign to cancel', '/admin/add_campaign',
+          {'name': 'Cancel Campaign Test',
+           'coordinators': [u'LilyOfTheWest', u'Yarl'],
+           'open_date': '2015-09-01 17:00:00',
+           'close_date': '2015-10-01 17:00:00',
+           'url': 'http://hatnote.com',
+           'series_id': series_id},
+          as_user='Yarl')
+    campaign_id = fetch('coordinator: get admin view', '/admin',
+                        as_user='LilyOfTheWest')['data'][-1]['id']
+    old_round_id = fetch('coordinator: add a round that gets cancelled first',
+                         '/admin/campaign/%s/add_round' % campaign_id,
+                         {'name': 'Cancelled earlier',
+                          'vote_method': 'yesno',
+                          'quorum': 1,
+                          'deadline_date': '2025-10-20T00:00:00',
+                          'jurors': [u'Jimbo Wales']},
+                         as_user='LilyOfTheWest')['data']['id']
+    fetch('coordinator: cancel that round', '/admin/round/%s/cancel' % old_round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    old_close_date = fetch('coordinator: cancelled round', '/admin/round/%s' % old_round_id,
+                           as_user='LilyOfTheWest')['data']['close_date']
+    assert old_close_date
+    round_id = fetch('coordinator: add yesno round',
+                     '/admin/campaign/%s/add_round' % campaign_id,
+                     {'name': 'Round to cancel',
+                      'vote_method': 'yesno',
+                      'quorum': 1,
+                      'deadline_date': '2025-10-20T00:00:00',
+                      'jurors': [u'Jimbo Wales']},
+                     as_user='LilyOfTheWest')['data']['id']
+    api_client.fetch_checked_import('coordinator: import entries', round_id,
+                                    {'import_method': 'category',
+                                     'category': 'Images_from_Wiki_Loves_Monuments_2015_in_Albania'},
+                                    as_user='LilyOfTheWest')
+    fetch('coordinator: activate round', '/admin/round/%s/activate' % round_id,
+          {'post': True}, as_user='LilyOfTheWest')
+    assert fetch('juror: has open tasks', '/juror/round/%s/tasks' % round_id,
+                 as_user='Jimbo Wales')['data']['tasks']
+
+    fetch('juror: cannot cancel the campaign',
+          '/admin/campaign/%s/cancel' % campaign_id,
+          {'post': True}, as_user='Jimbo Wales', error_code=403)
+
+    vote_id = fetch('juror: get a task', '/juror/round/%s/tasks' % round_id,
+                    as_user='Jimbo Wales')['data']['tasks'][0]['id']
+    fetch('juror: vote', '/juror/round/%s/tasks/submit' % round_id,
+          {'ratings': [{'vote_id': vote_id, 'value': 1.0}]}, as_user='Jimbo Wales')
+
+    resp = fetch('coordinator: cancel warns about completed votes',
+                 '/admin/campaign/%s/cancel' % campaign_id,
+                 {'post': True}, as_user='LilyOfTheWest', error_code=400)
+    assert '1 completed votes' in resp.get_data(as_text=True)
+    rnd = fetch('coordinator: round still active', '/admin/round/%s' % round_id,
+                as_user='LilyOfTheWest')['data']
+    assert rnd['status'] == 'active'
+
+    resp = fetch('coordinator: cancel campaign anyway',
+                 '/admin/campaign/%s/cancel' % campaign_id,
+                 {'discard_completed': True}, as_user='LilyOfTheWest')
+    assert resp['data']['status'] == 'cancelled'
+    assert resp['data']['cancelled_rounds'] == 1
+
+    rnd = fetch('coordinator: round after cancel', '/admin/round/%s' % round_id,
+                as_user='LilyOfTheWest')['data']
+    assert rnd['status'] == 'cancelled'
+    assert rnd['total_open_tasks'] == 0
+
+    # a round that was already cancelled is left as it was
+    old_rnd = fetch('coordinator: earlier round after cancel',
+                    '/admin/round/%s' % old_round_id, as_user='LilyOfTheWest')['data']
+    assert old_rnd['status'] == 'cancelled'
+    assert old_rnd['close_date'] == old_close_date
