@@ -494,8 +494,7 @@ def pause_round(user_dao, round_id, request_dict):
 
 def finalize_round(user_dao, round_id, request_dict):
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    rnd = coord_dao.get_round(round_id)
-    rnd.status = FINALIZED_STATUS
+    coord_dao.finalize_round(round_id)
 
     return {'status': 'success'}
 
@@ -762,7 +761,14 @@ def advance_round(user_dao, round_id, request_dict):
 def finalize_campaign(user_dao, campaign_id):
     # TODO: add some docs
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
+    if coord_dao.campaign.status == FINALIZED_STATUS:
+        raise InvalidAction('campaign is already finalized')
+
     last_rnd = coord_dao.campaign.active_round
+    if not last_rnd and coord_dao.campaign.rounds:
+        candidate_rnd = coord_dao.campaign.rounds[-1]
+        if candidate_rnd.status == FINALIZED_STATUS:
+            last_rnd = candidate_rnd
 
     if not last_rnd:
         raise InvalidAction('no active rounds')
