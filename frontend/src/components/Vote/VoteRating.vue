@@ -88,9 +88,11 @@
           <cdx-button weight="quiet" @click="setRate()">
             <arrow-right class="icon-small" /> {{ $t('montage-vote-skip') }}
           </cdx-button>
-          <cdx-button weight="quiet" @click="goPrevVoteEditing">
-            <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
-          </cdx-button>
+          <a :href="router.resolve({ name: 'vote-edit', params: { id: roundLink } }).href">
+            <cdx-button weight="quiet" @click="goPrevVoteEditing">
+              <pencil class="icon-small" /> {{ $t('montage-edit-previous-vote') }}
+            </cdx-button>
+          </a>
         </div>
       </div>
 
@@ -153,10 +155,12 @@
       <p class="greyed">
         {{ $t('montage-vote-no-images-warning') }}
       </p>
-      <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
-        <pencil class="icon-small" />
-        {{ $t('montage-edit-previous-vote') }}
-      </cdx-button>
+      <a :href="router.resolve({ name: 'vote-edit', params: { id: roundLink } }).href">
+        <cdx-button class="edit-voting-btn" @click="goPrevVoteEditing">
+          <pencil class="icon-small" />
+          {{ $t('montage-edit-previous-vote') }}
+        </cdx-button>
+      </a>
     </div>
   </div>
   <div v-if="round.status !== 'active'">
@@ -229,6 +233,7 @@ function goPrevVoteEditing() {
 function handleImageLoad() {
   imageLoading.value = false
 }
+
 
 const formattedDate = (timestamp) => {
   if (!timestamp) return ''
