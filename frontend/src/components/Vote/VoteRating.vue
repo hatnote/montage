@@ -8,12 +8,13 @@
   >
     <div class="vote-image-container" :class="showSidebar ? 'with-sidebar' : ''">
       <cdx-progress-bar class="vote-image-progress-bar" v-if="imageLoading" />
-      <CommonsImage
+      <ZoomImage
         :image="rating.current"
-        :width="1280"
+        :base-width="1280"
         :image-class="`vote-image ${imageLoading ? 'vote-image-hide' : ''}`"
         @load="handleImageLoad"
         @error="handleImageLoad"
+        @zoom-state-change="onZoomStateChange"
       />
       <cdx-button
         @click="toggleSidebar"
@@ -38,7 +39,12 @@
         <p class="greyed">{{ $t('montage-vote-image-remains', [stats.total_open_tasks]) }}</p>
       </div>
       <div class="vote-file-links">
-        <a :href="getCommonsImageUrl(rating.current, null)" target="_blank">
+        <a
+          v-if="!zoomActive"
+          :href="getCommonsImageUrl(rating.current, null)"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <cdx-button weight="quiet">
             <image-icon class="icon-small" /> {{ $t('montage-vote-show-full-size') }}
           </cdx-button>
@@ -46,6 +52,7 @@
         <a
           :href="'https://commons.wikimedia.org/wiki/File:' + rating.current.entry.name"
           target="_blank"
+          rel="noopener noreferrer"
         >
           <cdx-button weight="quiet" class="vote-commons-button">
             <link-icon class="icon-small" /> {{ $t('montage-vote-commons-page') }}
@@ -173,7 +180,7 @@ import { useRouter } from 'vue-router'
 import alertService from '@/services/alertService'
 import { getCommonsImageUrl } from '@/utils'
 
-import CommonsImage from '@/components/CommonsImage.vue'
+import ZoomImage from '@/components/ZoomImage.vue'
 import { CdxButton, CdxProgressBar } from '@wikimedia/codex'
 
 import ImageIcon from 'vue-material-design-icons/Image.vue'
@@ -191,6 +198,15 @@ import Star from 'vue-material-design-icons/Star.vue'
 // Hooks
 const { t: $t } = useI18n()
 const router = useRouter()
+
+const zoomActive = ref(false)
+
+function onZoomStateChange(isActive) {
+  zoomActive.value = isActive
+  if (!isActive && voteContainer.value) {
+    voteContainer.value.focus()
+  }
+}
 
 // States variables
 const counter = ref(0)
@@ -342,6 +358,7 @@ function handleFav() {
 
 const handleKeyDown = (event) => {
   if (isLoading.value) return
+  if (zoomActive.value) return
 
   if (props.round.vote_method === 'rating') {
     const value = parseInt(event.key, 10)
