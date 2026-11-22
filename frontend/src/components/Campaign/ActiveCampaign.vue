@@ -169,11 +169,20 @@ onMounted(() => {
 .dashboard-info {
   margin-top: 8px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-muted);
+}
+
+.dashboard-info a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+.dashboard-info a:hover {
+  text-decoration: underline;
 }
 
 .dashboard-link {
-  color: #006cb6;
+  color: var(--link-color);
   text-decoration: none;
 }
 
@@ -197,5 +206,9 @@ onMounted(() => {
 
 .juror-campaigns {
   margin-top: 40px;
+}
+
+.juror-campaigns h2 {
+  margin-bottom: 16px;
 }
 </style>

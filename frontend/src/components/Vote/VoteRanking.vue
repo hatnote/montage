@@ -226,7 +226,7 @@ watch(
 }
 
 .vote-campaign-part {
-  color: gray;
+  color: var(--text-muted);
 }
 
 .vote-grid-size-controls {
@@ -242,7 +242,7 @@ watch(
   position: absolute;
   top: 6px;
   right: 6px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-overlay);
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -258,7 +258,7 @@ watch(
 }
 
 .vote-gallery-fav-icon .is-fave {
-  color: #e53935;
+  color: var(--color-fave);
 }
 
 .vote-gallery {
@@ -269,7 +269,7 @@ watch(
 .vote-gallery-image {
   display: inline-block;
   position: relative;
-  background: #ccc;
+  background: var(--bg-gallery-image);
   width: calc((100% - 100px) / 5);
   height: 15vw;
   margin: 10px 10px 60px;
@@ -305,7 +305,7 @@ watch(
 .vote-gallery-expand-icon {
   cursor: pointer;
   position: absolute;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-overlay);
   top: 6px;
   left: 6px;
   padding: 4px;
@@ -323,7 +323,7 @@ watch(
   width: 100%;
   height: 26px;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-overlay);
   color: white;
   text-align: center;
   padding-top: 5px;
@@ -339,7 +339,7 @@ watch(
 
 .vote-gallery-footer:hover {
   height: 50%;
-  background: #e0e0e0;
+  background: var(--bg-gallery-hover);
 }
 
 .vote-gallery-footer-name:hover {

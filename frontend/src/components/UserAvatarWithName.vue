@@ -37,7 +37,8 @@ const sortedCoordinators = computed(() => {
 .user-avatar-item {
   display: flex;
   align-items: center;
-  background-color: #e0e0e0;
+  background-color: var(--bg-surface-alt);
+  color: var(--text-primary);
   padding: 0;
   padding-right: 12px;
   border-radius: 24px;
