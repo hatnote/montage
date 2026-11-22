@@ -2871,7 +2871,7 @@ class JurorDAO(object):
             return self.user_dao._get_any_campaign(campaign_id)
         campaign = self.query(Campaign)\
                        .filter(Campaign.rounds.any(
-                           Round.jurors.any(username=self.user.username)))\
+                           Round.jurors.any(id=self.user.id)))\
                        .filter_by(id=campaign_id)\
                        .one_or_none()
         if not campaign:
@@ -2883,7 +2883,7 @@ class JurorDAO(object):
             return self.user_dao._get_any_round(round_id)
         rnd = self.query(Round)\
                   .filter(
-                      Round.jurors.any(username=self.user.username),
+                      Round.jurors.any(id=self.user.id),
                       Round.id == round_id)\
                   .one_or_none()
         if not rnd:
