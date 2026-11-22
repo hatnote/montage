@@ -143,10 +143,14 @@ class UserMiddleware(Middleware):
 
         user = rdb_session.query(User).filter(User.id == userid).first()
 
-        if user is None and not ep_is_public:
-            err = 'unknown cookie userid, try logging in again'
-            response_dict['errors'].append(err)
-            return {}
+        if user is None:
+            if not ep_is_public:
+                err = 'unknown cookie userid, try logging in again'
+                response_dict['errors'].append(err)
+                return {}
+            # A public endpoint without a known user, e.g. /complete_login in debug mode
+            # before the first login, when the sentinel userid 0 has no row.
+            return next(user=None, user_dao=None)
 
         superuser = config.get('superuser')
         superusers = config.get('superusers', [superuser] if superuser else [])
