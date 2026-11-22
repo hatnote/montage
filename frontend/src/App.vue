@@ -1,15 +1,30 @@
 <template>
   <app-header />
   <main class="main-container">
-    <router-view />
+     <div v-if="loading" class="loading-container">
+      <div class="loading-bar">
+        Loading...
+      </div>
+    </div>
+    <router-view  v-else />
   </main>
   <app-footer />
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+ const loading = ref(true)
+
+onMounted(() => {
+  // simulate loading delay or wait for data fetch
+  setTimeout(() => {
+    loading.value = false
+  }, 300)
+})
+  
 </script>
 
 <style scoped>
