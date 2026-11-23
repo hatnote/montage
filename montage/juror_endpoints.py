@@ -325,18 +325,15 @@ def submit_ratings(user_dao, request_dict):
           "value": 0,
           "review": "The light dances across the image."}]
         """
+        # A ballot may mix completed and open tasks (e.g. an entry that was
+        # requalified after the ballot was cast); apply_ranking completes them all.
         ballot = []
-        is_edit = False
         for rd in r_dicts:
             cur = dict(rd)
             vote_id = rd.get('vote_id')
             if not vote_id:
                 vote_id = rd.get('task_id')  # fallback for old versions of the client
             cur['vote'] = task_map[vote_id]
-            if cur['vote'].status == 'complete':
-                is_edit = True
-            elif is_edit:
-                raise InvalidAction('all tasks must be complete or incomplete')
             ballot.append(cur)
 
         juror_dao.apply_ranking(ballot)
