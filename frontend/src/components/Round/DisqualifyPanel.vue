@@ -3,7 +3,7 @@
     <div class="disqualify-panel-controls">
       <div class="disqualify-grid-size-controls">
         <cdx-button
-          :action="gridSize === 3 ? 'progressive' : ''"
+          :action="gridSize === 3 ? 'progressive' : 'default'"
           weight="quiet"
           @click="setGridSize(3)"
         >
@@ -11,7 +11,7 @@
           {{ $t('montage-vote-grid-size-large') }}
         </cdx-button>
         <cdx-button
-          :action="gridSize === 2 ? 'progressive' : ''"
+          :action="gridSize === 2 ? 'progressive' : 'default'"
           weight="quiet"
           @click="setGridSize(2)"
         >
@@ -19,7 +19,7 @@
           {{ $t('montage-vote-grid-size-medium') }}
         </cdx-button>
         <cdx-button
-          :action="gridSize === 1 ? 'progressive' : ''"
+          :action="gridSize === 1 ? 'progressive' : 'default'"
           weight="quiet"
           @click="setGridSize(1)"
         >
@@ -39,7 +39,7 @@
         <div class="disqualify-entry-image">
           <CommonsImage :image="entry" :width="640" image-class="disqualify-entry-thumbnail" />
           <div v-if="entry.dq_user_id" class="disqualify-entry-overlay">
-            <span>DQ</span>
+            <span>{{ $t('montage-disqualify-badge') }}</span>
           </div>
         </div>
 
@@ -85,14 +85,16 @@
     </div>
     <cdx-dialog
       v-model:open="requalifyDialogOpen"
-      title="Requalify image?"
-      :primary-action="{ label: 'Requalify', actionType: 'progressive' }"
-      :default-action="{ label: 'Cancel' }"
+      :title="$t('montage-requalify-confirm-title')"
+      :primary-action="{ label: $t('montage-requalify-action'), actionType: 'progressive' }"
+      :default-action="{ label: $t('montage-btn-cancel') }"
       @primary="confirmRequalify"
       @default="requalifyDialogOpen = false"
     >
       <p>
-        Are you sure you want to requalify "{{ pendingRequalifyEntry?.name.split('_').join(' ') }}"?
+        {{
+          $t('montage-requalify-confirm-text', [pendingRequalifyEntry?.name.split('_').join(' ')])
+        }}
       </p>
     </cdx-dialog>
   </div>

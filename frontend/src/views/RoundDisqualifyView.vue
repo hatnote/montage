@@ -34,21 +34,21 @@
       </div>
       <div class="disqualify-filters">
         <cdx-button
-          :action="currentFilter === 'all' ? 'progressive' : ''"
+          :action="currentFilter === 'all' ? 'progressive' : 'default'"
           :weight="currentFilter === 'all' ? 'primary' : 'normal'"
           @click="setFilter('all')"
         >
           {{ $t('montage-filter-all') }} ({{ allEntries.length }})
         </cdx-button>
         <cdx-button
-          :action="currentFilter === 'qualified' ? 'progressive' : ''"
+          :action="currentFilter === 'qualified' ? 'progressive' : 'default'"
           :weight="currentFilter === 'qualified' ? 'primary' : 'normal'"
           @click="setFilter('qualified')"
         >
           {{ $t('montage-filter-qualified') }} ({{ qualifiedEntries.length }})
         </cdx-button>
         <cdx-button
-          :action="currentFilter === 'disqualified' ? 'progressive' : ''"
+          :action="currentFilter === 'disqualified' ? 'progressive' : 'default'"
           :weight="currentFilter === 'disqualified' ? 'primary' : 'normal'"
           @click="setFilter('disqualified')"
         >
@@ -75,11 +75,13 @@
       <div v-if="totalPages > 1" class="disqualify-pagination">
         <cdx-button :disabled="currentPage === 1" @click="prevPage">
           <chevron-left class="icon-small" />
-          Previous
+          {{ $t('montage-pagination-previous') }}
         </cdx-button>
-        <span class="disqualify-page-info"> Page {{ currentPage }} of {{ totalPages }} </span>
+        <span class="disqualify-page-info">
+          {{ $t('montage-pagination-page-info', [currentPage, totalPages]) }}
+        </span>
         <cdx-button :disabled="currentPage === totalPages" @click="nextPage">
-          Next
+          {{ $t('montage-pagination-next') }}
           <chevron-right class="icon-small" />
         </cdx-button>
       </div>
@@ -173,42 +175,73 @@ const nextPage = () => {
     currentPage.value++
   }
 }
+// `/entries` only returns entries that are not disqualified in this round,
+// and uses `img_*` field names.
+const fromExportRow = (entry) => ({
+  id: entry.img_id,
+  name: entry.img_name,
+  width: entry.img_width,
+  height: entry.img_height,
+  mime_major: entry.img_major_mime,
+  mime_minor: entry.img_minor_mime,
+  upload_user_text: entry.img_user_text,
+  dq_user_id: null,
+  dq_reason: null
+})
+
+// `/disqualified` returns the entries disqualified in this round, with the
+// full entry nested under `entry`.
+const fromDqRow = (dq) => ({
+  id: dq.entry.id,
+  name: dq.entry.name,
+  width: dq.entry.width,
+  height: dq.entry.height,
+  mime_major: dq.entry.mime_major,
+  mime_minor: dq.entry.mime_minor,
+  upload_user_text: dq.entry.upload_user_text,
+  dq_user_id: dq.dq_user_id,
+  dq_reason: dq.dq_reason
+})
+
+// Apply the server's list of disqualified entries: entries in it get the
+// stored dq fields, entries no longer in it are cleared, new ones are added.
+const applyDisqualified = (disqualifiedData) => {
+  const dqById = new Map(disqualifiedData.map((dq) => [dq.entry.id, dq]))
+  const seen = new Set()
+  const merged = allEntries.value.map((entry) => {
+    seen.add(entry.id)
+    const dq = dqById.get(entry.id)
+    return {
+      ...entry,
+      dq_user_id: dq ? dq.dq_user_id : null,
+      dq_reason: dq ? dq.dq_reason : null
+    }
+  })
+  disqualifiedData.forEach((dq) => {
+    if (!seen.has(dq.entry.id)) {
+      merged.push(fromDqRow(dq))
+    }
+  })
+  allEntries.value = merged
+}
+
+const refreshDisqualified = async () => {
+  const disqualifiedResponse = await adminService.getDisqualified(route.params.roundId)
+  applyDisqualified(disqualifiedResponse.data || [])
+}
+
 const fetchData = async () => {
   const roundId = route.params.roundId
   loading.value = true
   try {
-    const roundResponse = await adminService.getRound(roundId)
+    const [roundResponse, entriesResponse, disqualifiedResponse] = await Promise.all([
+      adminService.getRound(roundId),
+      adminService.getRoundEntries(roundId),
+      adminService.getDisqualified(roundId)
+    ])
     round.value = roundResponse.data
-
-    const entriesResponse = await adminService.getRoundEntries(roundId)
-    const rawEntries = entriesResponse.file_infos || []
-
-    const disqualifiedResponse = await adminService.getDisqualified(roundId)
-    const disqualifiedData = disqualifiedResponse.data || []
-
-    const dqMap = new Map()
-    disqualifiedData.forEach((dq) => {
-      dqMap.set(dq.entry.id, {
-        dq_user_id: dq.dq_user_id,
-        dq_reason: dq.dq_reason
-      })
-    })
-
-    allEntries.value = rawEntries.map((entry) => {
-      const entryId = entry.img_id
-      const dqInfo = dqMap.get(entryId)
-      return {
-        id: entry.img_id,
-        name: entry.img_name,
-        width: entry.img_width,
-        height: entry.img_height,
-        mime_major: entry.img_major_mime,
-        mime_minor: entry.img_minor_mime,
-        upload_user_text: entry.img_user_text,
-        dq_user_id: dqInfo?.dq_user_id || null,
-        dq_reason: dqInfo?.dq_reason || null
-      }
-    })
+    allEntries.value = (entriesResponse.file_infos || []).map(fromExportRow)
+    applyDisqualified(disqualifiedResponse.data || [])
   } catch (error) {
     alertService.error(error)
   } finally {
@@ -242,12 +275,7 @@ const handleDisqualify = async (entry, reason) => {
   try {
     await adminService.disqualifyEntry(roundId, entry.id, reason)
     alertService.success($t('montage-disqualify-success'))
-
-    const index = allEntries.value.findIndex((e) => e.id === entry.id)
-    if (index !== -1) {
-      allEntries.value[index].dq_user_id = 1
-      allEntries.value[index].dq_reason = reason
-    }
+    await refreshDisqualified()
   } catch (error) {
     alertService.error(error)
   }
@@ -257,11 +285,7 @@ const handleRequalify = async (entry) => {
   try {
     await adminService.requalifyEntry(roundId, entry.id)
     alertService.success($t('montage-requalify-success'))
-    const index = allEntries.value.findIndex((e) => e.id === entry.id)
-    if (index !== -1) {
-      allEntries.value[index].dq_user_id = null
-      allEntries.value[index].dq_reason = null
-    }
+    await refreshDisqualified()
   } catch (error) {
     alertService.error(error)
   }

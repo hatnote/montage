@@ -6,11 +6,11 @@
     <div class="disqualify-dialog-content">
       <h4>{{ entry.name }}</h4>
       <div class="disqualify-dialog-form">
-        <label for="dq-reason">Reason for disqualification *</label>
+        <label for="dq-reason">{{ $t('montage-disqualify-reason') }} *</label>
         <cdx-select
           :selected="selectedReason"
-          :menu-items="reasonOptions"
-          default-label="Select a reason"
+          :menu-items="menuItems"
+          :default-label="$t('montage-disqualify-select-reason')"
           :status="reasonError ? 'error' : 'default'"
           @update:selected="selectedReason = $event"
         />
@@ -18,20 +18,26 @@
           v-if="selectedReason === 'other'"
           v-model="otherReason"
           id="dq-reason"
-          placeholder="Enter custom reason"
+          :placeholder="$t('montage-disqualify-reason-placeholder')"
           :status="reasonError ? 'error' : 'default'"
         />
         <p v-if="reasonError" class="disqualify-dialog-error">
-          Please provide a reason for disqualification
+          {{ $t('montage-disqualify-reason-required') }}
         </p>
       </div>
     </div>
   </div>
 </template>
 <script setup>
-import { ref, defineProps, defineExpose } from 'vue'
+import { ref, computed, defineProps, defineExpose } from 'vue'
 import { CdxTextArea, CdxSelect } from '@wikimedia/codex'
 import CommonsImage from '@/components/CommonsImage.vue'
+import { i18n } from '@/i18n'
+import en from '@/i18n/en.json'
+
+// dialogService renders this component outside the app context, so
+// useI18n() is not available here; use the global instance instead.
+const $t = i18n.global.t
 
 const props = defineProps({
   entry: {
@@ -49,13 +55,14 @@ const otherReason = ref('')
 const reasonError = ref(false)
 
 const reasonOptions = [
-  { label: 'Wrong country', value: 'wrong_country' },
-  { label: 'Photo not in the correct country', value: 'incorrect_country' },
-  { label: 'Photo does not indicate building number', value: 'no_building_number' },
-  { label: 'Copyright infringement', value: 'copyright' },
-  { label: 'Photo taken by employee of local chapter or sponsor', value: 'employee_photo' },
-  { label: 'Other', value: 'other' }
+  { value: 'not_eligible', key: 'montage-disqualify-reason-not-eligible' },
+  { value: 'monument_id', key: 'montage-disqualify-reason-monument-id' },
+  { value: 'copyright', key: 'montage-disqualify-reason-copyright' },
+  { value: 'photographer_not_eligible', key: 'montage-disqualify-reason-photographer' },
+  { value: 'other', key: 'montage-disqualify-reason-other' }
 ]
+
+const menuItems = computed(() => reasonOptions.map((o) => ({ value: o.value, label: $t(o.key) })))
 
 const saveImageData = () => {
   let finalReason = ''
@@ -64,7 +71,9 @@ const saveImageData = () => {
     finalReason = otherReason.value.trim()
   } else {
     const option = reasonOptions.find((o) => o.value === selectedReason.value)
-    finalReason = option ? option.label : ''
+    // Send the English text, not the translation, so the stored reason and
+    // the audit log read the same whatever language the coordinator uses.
+    finalReason = option ? en[option.key] : ''
   }
 
   reasonError.value = !finalReason

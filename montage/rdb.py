@@ -642,7 +642,7 @@ class RoundEntry(Base):
     flaggings = relationship('Flag')
 
     def to_dq_details(self):
-        ret = {'entry': self.entry.to_details_dict(),
+        ret = {'entry': self.entry.to_details_dict(with_uploader=True),
                'dq_reason': self.dq_reason,
                'dq_user_id': self.dq_user_id}
         return ret
