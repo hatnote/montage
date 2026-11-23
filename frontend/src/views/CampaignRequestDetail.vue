@@ -27,6 +27,10 @@
             {{ $t('campaign-request-detail-submitted-by') }}
             <strong>{{ req.submitter_username }}</strong>
             · {{ formatRelative(req.create_date) }}
+            <template v-if="req.is_resubmission">
+              · {{ $t('campaign-requests-resubmitted') }}
+              {{ formatRelative(req.submit_date) }}
+            </template>
           </p>
         </div>
         <StatusBadge :status="req.status" size="lg" />
@@ -37,7 +41,6 @@
         class="clarification-banner"
         role="note"
       >
-        <!--add !isSuperUser on v-if lster-->
         <p class="banner-title">
           <i class="ti ti-message-circle" aria-hidden="true"></i>
           <strong>{{ $t('campaign-request-clarification-note') }}</strong>
@@ -65,26 +68,38 @@
 
       <div class="detail-card">
         <p class="card-label">{{ $t('campaign-request-field-coordinator') }}</p>
-        <ul class="juror-list">
-          <li v-for="juror in jurorList" :key="juror" class="juror-item">
-            <i class="ti ti-user" aria-hidden="true"></i>
-            {{ juror }}
-            <a
-              :href="`https://commons.wikimedia.org/wiki/User:${juror}`"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="ext-link"
-              :aria-label="`View ${juror} on Wikimedia Commons`"
-            >
-              <i class="ti ti-external-link" aria-hidden="true"></i>
-            </a>
-          </li>
-        </ul>
+        <div class="juror-chips">
+          <a
+            v-for="juror in jurorList"
+            :key="juror"
+            :href="commonsUserUrl(juror)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="juror-chip"
+            :title="$t('campaign-request-view-on-commons')"
+          >
+            <span class="juror-avatar" :style="{ backgroundColor: getAvatarColor(juror) }">
+              {{ juror[0].toUpperCase() }}
+            </span>
+            <span class="juror-name">{{ juror }}</span>
+            <i class="ti ti-external-link" aria-hidden="true"></i>
+          </a>
+        </div>
       </div>
 
       <div class="detail-card">
         <p class="card-label">{{ $t('campaign-request-field-commons') }}</p>
-        <p class="card-value text-wrap">{{ req.commons_category }}</p>
+        <a
+          v-if="commonsUrl"
+          :href="commonsUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="card-value commons-link"
+        >
+          <span class="text-wrap">{{ req.commons_category }}</span>
+          <i class="ti ti-external-link" aria-hidden="true"></i>
+        </a>
+        <p v-else class="card-value text-wrap">{{ req.commons_category }}</p>
       </div>
 
       <div class="detail-card timeline-card">
@@ -144,99 +159,92 @@
         <p class="card-value text-wrap">{{ req.purpose }}</p>
       </div>
 
-      <div v-if="isMaintainer" class="action-section">
+      <div v-if="isMaintainer && req.status !== 'approved'" class="action-section">
         <h2>{{ $t('campaign-request-actions-title') }}</h2>
 
-        <div class="action-tabs" role="tablist">
-          <cdx-button
-            :action="activeAction === 'approve' ? 'progressive' : 'default'"
-            :weight="activeAction === 'approve' ? 'primary' : 'normal'"
-            @click="activeAction = 'approve'"
-          >
-            <i class="ti ti-circle-check" aria-hidden="true"></i>
-            {{ $t('campaign-request-action-approve') }}
-          </cdx-button>
-          <cdx-button
-            :action="activeAction === 'advise' ? 'progressive' : 'default'"
-            :weight="activeAction === 'advise' ? 'primary' : 'normal'"
-            @click="activeAction = 'advise'"
-          >
-            <i class="ti ti-message-circle" aria-hidden="true"></i>
-            {{ $t('campaign-request-action-advise') }}
-          </cdx-button>
-        </div>
+        <cdx-tabs v-model:active="activeAction" :framed="true">
+          <cdx-tab name="approve" :label="$t('campaign-request-action-approve')">
+            <div class="action-panel">
+              <cdx-message
+                v-if="req.estimated_image_volume < 30"
+                type="warning"
+                style="margin-bottom: 1rem"
+              >
+                <strong>{{ $t('campaign-request-low-volume-header') }}</strong>
+                <p style="margin: 4px 0 0; font-size: 13px">
+                  {{ $t('campaign-request-low-volume-advice') }}
+                </p>
+              </cdx-message>
+              <p class="action-description">{{ $t('campaign-request-approve-description') }}</p>
 
-        <div v-if="activeAction === 'approve'" class="action-panel" role="tabpanel">
-          <cdx-message
-            v-if="req.estimated_image_volume < 30"
-            type="warning"
-            style="margin-bottom: 1rem"
-          >
-            <strong>{{ $t('campaign-request-low-volume-header') }}</strong>
-            <p style="margin: 4px 0 0; font-size: 13px">
-              {{ $t('campaign-request-low-volume-advice') }}
-            </p>
-          </cdx-message>
-          <p class="action-description">{{ $t('campaign-request-approve-description') }}</p>
-          <div class="action-row">
-            <cdx-button
-              action="progressive"
-              weight="primary"
-              :disabled="approving"
-              @click="approveRequest"
-            >
-              <i v-if="approving" class="ti ti-loader-2 spin" aria-hidden="true"></i>
-              <i v-else class="ti ti-circle-check" aria-hidden="true"></i>
-              {{
-                approving ? $t('campaign-request-approving') : $t('campaign-request-action-approve')
-              }}
-            </cdx-button>
-          </div>
-          <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
-        </div>
+              <div class="action-footer">
+                <cdx-message v-if="actionError" type="error" inline>{{ actionError }}</cdx-message>
+                <cdx-button
+                  action="progressive"
+                  weight="primary"
+                  size="large"
+                  :disabled="approving"
+                  @click="approveRequest"
+                >
+                  <i v-if="approving" class="ti ti-loader-2 spin" aria-hidden="true"></i>
+                  <i v-else class="ti ti-circle-check" aria-hidden="true"></i>
+                  {{
+                    approving
+                      ? $t('campaign-request-approving')
+                      : $t('campaign-request-approve-submit')
+                  }}
+                </cdx-button>
+              </div>
+            </div>
+          </cdx-tab>
 
-        <div v-if="activeAction === 'advise'" class="action-panel" role="tabpanel">
-          <p class="action-description">{{ $t('campaign-request-advise-description') }}</p>
+          <cdx-tab name="advise" :label="$t('campaign-request-action-advise')">
+            <div class="action-panel">
+              <p class="action-description">{{ $t('campaign-request-advise-description') }}</p>
 
-          <div class="template-chips">
-            <span class="template-label">{{ $t('campaign-request-templates') }}</span>
-            <button
-              v-for="tpl in NOTE_TEMPLATES"
-              :key="tpl.key"
-              class="chip"
-              @click="adviseNote = $t(tpl.key)"
-            >
-              {{ $t(tpl.labelKey) }}
-            </button>
-          </div>
+              <div class="template-chips">
+                <span class="template-label">{{ $t('campaign-request-templates') }}</span>
+                <button
+                  v-for="tpl in NOTE_TEMPLATES"
+                  :key="tpl.key"
+                  type="button"
+                  class="chip"
+                  @click="adviseNote = $t(tpl.key)"
+                >
+                  {{ $t(tpl.labelKey) }}
+                </button>
+              </div>
 
-          <cdx-field style="margin-bottom: 0.75rem">
-            <cdx-text-area
-              v-model="adviseNote"
-              :placeholder="$t('campaign-request-advise-placeholder')"
-              :autosize="true"
-            />
-            <template #help-text>{{ $t('campaign-request-advise-hint') }}</template>
-          </cdx-field>
+              <cdx-field>
+                <cdx-text-area
+                  v-model="adviseNote"
+                  :placeholder="$t('campaign-request-advise-placeholder')"
+                  :autosize="true"
+                />
+                <template #help-text>{{ $t('campaign-request-advise-hint') }}</template>
+              </cdx-field>
 
-          <div class="action-row">
-            <cdx-button
-              action="progressive"
-              weight="normal"
-              :disabled="advising || !adviseNote.trim()"
-              @click="sendAdvice"
-            >
-              <i v-if="advising" class="ti ti-loader-2 spin" aria-hidden="true"></i>
-              <i v-else class="ti ti-send" aria-hidden="true"></i>
-              {{
-                advising ? $t('campaign-request-sending') : $t('campaign-request-action-send-note')
-              }}
-            </cdx-button>
-          </div>
-          <cdx-message v-if="actionError" type="error" inline style="margin-top: 8px">{{
-            actionError
-          }}</cdx-message>
-        </div>
+              <div class="action-footer">
+                <cdx-message v-if="actionError" type="error" inline>{{ actionError }}</cdx-message>
+                <cdx-button
+                  action="progressive"
+                  weight="primary"
+                  size="large"
+                  :disabled="advising || !adviseNote.trim()"
+                  @click="sendAdvice"
+                >
+                  <i v-if="advising" class="ti ti-loader-2 spin" aria-hidden="true"></i>
+                  <i v-else class="ti ti-send" aria-hidden="true"></i>
+                  {{
+                    advising
+                      ? $t('campaign-request-sending')
+                      : $t('campaign-request-action-send-note')
+                  }}
+                </cdx-button>
+              </div>
+            </div>
+          </cdx-tab>
+        </cdx-tabs>
       </div>
 
       <cdx-message v-if="actionSuccess" type="success" style="margin-top: 1rem">
@@ -247,10 +255,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CdxButton, CdxMessage, CdxTextArea, CdxField, CdxIcon } from '@wikimedia/codex'
+import {
+  CdxButton,
+  CdxMessage,
+  CdxTextArea,
+  CdxField,
+  CdxIcon,
+  CdxTabs,
+  CdxTab
+} from '@wikimedia/codex'
 import { cdxIconArrowPrevious } from '@wikimedia/codex-icons'
 import ClipLoader from 'vue-spinner/src/ClipLoader.vue'
 import dayjs from 'dayjs'
@@ -258,7 +274,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
 import StatusBadge from '@/views/StatusBadge.vue'
 import { useUserStore } from '@/stores/user'
-import { COMMON_TIMEZONES, formatInTz, parseUtc } from '@/utils'
+import { COMMON_TIMEZONES, formatInTz, getAvatarColor, parseUtc } from '@/utils'
 
 dayjs.extend(relativeTime)
 
@@ -292,6 +308,22 @@ const approving = ref(false)
 const advising = ref(false)
 const actionError = ref('')
 const actionSuccess = ref('')
+
+watch(activeAction, () => {
+  actionError.value = ''
+})
+
+const commonsUrl = computed(() => {
+  const value = req.value?.commons_category?.trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return ''
+  return `https://commons.wikimedia.org/wiki/${encodeURIComponent(value.replace(/ /g, '_')).replace(/%3A/gi, ':')}`
+})
+
+function commonsUserUrl(username) {
+  return `https://commons.wikimedia.org/wiki/User:${encodeURIComponent(username.replace(/ /g, '_'))}`
+}
 
 const jurorList = computed(() => {
   const jurors = req.value?.jury_coordinator_username
@@ -493,9 +525,60 @@ onMounted(loadRequest)
   gap: 5px;
 }
 
-.ext-link {
-  color: var(--color-text-secondary);
+.juror-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.juror-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid #c8ccd1;
+  border-radius: 999px;
+  background: #f8f9fa;
+  color: #202122;
   font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.juror-chip:hover,
+.juror-chip:focus-visible {
+  border-color: #36c;
+  background: #eaf3ff;
+}
+
+.juror-chip .ti-external-link {
+  color: #72777d;
+  font-size: 13px;
+}
+
+.juror-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.commons-link {
+  color: #36c;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.commons-link:hover {
+  text-decoration: underline;
 }
 
 .utc-pill {
@@ -578,14 +661,8 @@ onMounted(loadRequest)
   margin: 0 0 1rem;
 }
 
-.action-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1.25rem;
-}
-
 .action-panel {
-  padding: 0;
+  padding: 1.25rem 0.25rem 0.25rem;
 }
 
 .action-description {
@@ -623,10 +700,15 @@ onMounted(loadRequest)
   border-color: var(--color-border-secondary);
 }
 
-.action-row {
+.action-footer {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eaecf0;
 }
 
 .state-placeholder {

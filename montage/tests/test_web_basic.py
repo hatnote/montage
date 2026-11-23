@@ -2129,6 +2129,13 @@ def test_campaign_requests(api_client, monkeypatch):
                  {'note': 'Please double-check the dates.'})
     assert resp['data']['status'] == 'needs_clarification'
 
+    resp = fetch('user: submit a second campaign request',
+                 '/admin/campaign_requests/submit',
+                 dict(req_data, campaign_name='Second request'))
+    second_id = resp['data']['request_id']
+    resp = fetch('user: list campaign requests', '/admin/campaign_requests')
+    assert [r['request_id'] for r in resp['data']][:2] == [second_id, request_id]
+
     fetch('user: resubmit with close before open',
           '/admin/campaign_requests/%s/resubmit' % request_id,
           {'close_date': '2026-08-01 00:00'}, error_code=400)
@@ -2140,6 +2147,10 @@ def test_campaign_requests(api_client, monkeypatch):
     assert resp['data']['is_resubmission'] is True
     assert resp['data']['clarification_note'] is None
     assert resp['data']['estimated_image_volume'] == 800
+
+    resp = fetch('user: resubmitted request moves to the top',
+                 '/admin/campaign_requests')
+    assert [r['request_id'] for r in resp['data']][:2] == [request_id, second_id]
 
     resp = fetch('maintainer: approve campaign request',
                  '/admin/campaign_requests/%s/approve' % request_id, {})

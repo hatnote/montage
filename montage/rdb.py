@@ -149,7 +149,7 @@ flags attribute.
 
 MAINTAINERS = [
     'MahmoudHashemi', 'Slaporte', 'Yarl', 'LilyOfTheWest',
-    'Jayprakash12345', 'Ciell', 'Effeietsanders'
+    'Jayprakash12345', 'Ciell', 'Effeietsanders', 'Abhinavmohandas'
 ]
 
 """
@@ -327,6 +327,7 @@ class CampaignRequest(Base):
     create_date               = Column(TIMESTAMP,    server_default=func.now())
     last_updated              = Column(TIMESTAMP,    server_default=func.now(),
                                        onupdate=func.now())
+    submit_date               = Column(TIMESTAMP,    server_default=func.now(), index=True)
     # Set once the request is approved and the real campaign is created
     campaign_id               = Column(Integer, ForeignKey('campaigns.id'), nullable=True)
     # Coordinator's note sent back to the requester
@@ -350,6 +351,7 @@ class CampaignRequest(Base):
             'status':                    self.status,
             'create_date':               self.create_date.isoformat() if self.create_date else None,
             'last_updated':              self.last_updated.isoformat() if self.last_updated else None,
+            'submit_date':               self.submit_date.isoformat() if self.submit_date else None,
             'campaign_id':               self.campaign_id,
             'clarification_note':        self.clarification_note,
             'is_resubmission':           self.is_resubmission,
@@ -2882,6 +2884,9 @@ class MaintainerDAO(object):
         qs = qs.order_by(Campaign.id)
         return qs.first()
     
+_REQUEST_ORDER = (CampaignRequest.submit_date.desc(), CampaignRequest.id.desc())
+
+
 class CampaignRequestDAO(object):
     """
     Data access object for CampaignRequest records.
@@ -2899,7 +2904,7 @@ class CampaignRequestDAO(object):
         q = self.query(CampaignRequest)
         if status:
             q = q.filter(CampaignRequest.status == status)
-        return q.order_by(CampaignRequest.create_date.desc()).all()
+        return q.order_by(*_REQUEST_ORDER).all()
  
     def get_by_request_id(self, request_id):
         return (self.query(CampaignRequest)
@@ -2909,7 +2914,7 @@ class CampaignRequestDAO(object):
     def get_by_submitter(self, username):
         return (self.query(CampaignRequest)
                     .filter(CampaignRequest.submitter_username == username)
-                    .order_by(CampaignRequest.create_date.desc())
+                    .order_by(*_REQUEST_ORDER)
                     .all())
     
 
@@ -2929,6 +2934,7 @@ class CampaignRequestDAO(object):
             purpose                    = data['purpose'],
             status                     = CAMPAIGN_REQUEST_PENDING,
             is_resubmission            = False,
+            submit_date                = _utcnow(),
         )
         self.rdb_session.add(req)
         self.rdb_session.flush()
@@ -2996,6 +3002,7 @@ class CampaignRequestDAO(object):
         req.status             = CAMPAIGN_REQUEST_PENDING
         req.clarification_note = None
         req.is_resubmission    = True
+        req.submit_date        = _utcnow()
         self.rdb_session.flush()
         return req
 
@@ -3514,6 +3521,10 @@ def _serialize_jurors(value):
     if isinstance(value, str):
         value = [value]
     return json.dumps(list(value))
+
+
+def _utcnow():
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
 
 def _parse_utc(value, field):

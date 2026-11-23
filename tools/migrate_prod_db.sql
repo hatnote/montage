@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS campaign_requests (
     status VARCHAR(32) NOT NULL,
     create_date TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     last_updated TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    submit_date TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     campaign_id INTEGER NULL,
     clarification_note TEXT NULL,
     is_resubmission BOOL NULL,
@@ -38,3 +39,4 @@ CREATE TABLE IF NOT EXISTS campaign_requests (
 CREATE UNIQUE INDEX IF NOT EXISTS ix_campaign_requests_request_id ON campaign_requests (request_id);
 CREATE INDEX IF NOT EXISTS ix_campaign_requests_submitter_username ON campaign_requests (submitter_username);
 CREATE INDEX IF NOT EXISTS ix_campaign_requests_status ON campaign_requests (status);
+CREATE INDEX IF NOT EXISTS ix_campaign_requests_submit_date ON campaign_requests (submit_date);

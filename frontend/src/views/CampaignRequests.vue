@@ -13,6 +13,13 @@
       </router-link>
     </div>
 
+    <cdx-search-input
+      v-model="searchQuery"
+      class="request-search"
+      :placeholder="$t('campaign-requests-search-placeholder')"
+      :aria-label="$t('campaign-requests-search-placeholder')"
+    />
+
     <div class="filters" role="group" aria-label="Filter by status">
       <cdx-button
         v-for="f in STATUS_FILTERS"
@@ -35,6 +42,10 @@
         <cdx-icon :icon="cdxIconError" />
         {{ loadError }}
       </cdx-message>
+    </div>
+
+    <div v-else-if="filteredRequests.length === 0 && searchTerm" class="state-placeholder">
+      <p>{{ $t('campaign-requests-no-match', [searchQuery.trim()]) }}</p>
     </div>
 
     <div v-else-if="filteredRequests.length === 0" class="state-placeholder">
@@ -91,7 +102,12 @@
             </span>
           </div>
           <span class="submit-date">
-            {{ $t('campaign-requests-submitted') }} {{ formatRelative(req.create_date) }}
+            {{
+              req.is_resubmission
+                ? $t('campaign-requests-resubmitted')
+                : $t('campaign-requests-submitted')
+            }}
+            {{ formatRelative(req.submit_date || req.create_date) }}
           </span>
         </div>
       </li>
@@ -103,7 +119,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CdxButton, CdxMessage, CdxIcon } from '@wikimedia/codex'
+import { CdxButton, CdxMessage, CdxIcon, CdxSearchInput } from '@wikimedia/codex'
 import {
   cdxIconAdd,
   cdxIconUserAvatar,
@@ -134,6 +150,8 @@ const requests = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const activeFilter = ref(null)
+const searchQuery = ref('')
+const searchTerm = computed(() => searchQuery.value.trim().toLowerCase())
 
 const counts = computed(() => {
   const c = { null: requests.value.length }
@@ -143,10 +161,16 @@ const counts = computed(() => {
   return c
 })
 
-const filteredRequests = computed(() => {
-  if (!activeFilter.value) return requests.value
-  return requests.value.filter((r) => r.status === activeFilter.value)
-})
+const filteredRequests = computed(() =>
+  requests.value.filter((r) => {
+    if (activeFilter.value && r.status !== activeFilter.value) return false
+    if (!searchTerm.value) return true
+    return (
+      r.request_id.toLowerCase().includes(searchTerm.value) ||
+      r.campaign_name.toLowerCase().includes(searchTerm.value)
+    )
+  })
+)
 
 function setFilter(val) {
   activeFilter.value = val
@@ -189,6 +213,11 @@ onMounted(loadRequests)
   margin: 0 auto;
   padding: 2rem 1.5rem;
   box-sizing: border-box;
+}
+
+.request-search {
+  max-width: 480px;
+  margin-bottom: 1rem;
 }
 
 .page-header {
