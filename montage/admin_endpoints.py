@@ -529,9 +529,10 @@ def edit_campaign(user_dao, campaign_id, request_dict):
     return {'data': edit_dict}
 
 
-def cancel_campaign(user_dao, campaign_id):
+def cancel_campaign(user_dao, campaign_id, request_dict):
     coord_dao = CoordinatorDAO.from_campaign(user_dao, campaign_id)
-    results = coord_dao.cancel_campaign()
+    discard_completed = bool(request_dict.get('discard_completed', False))
+    results = coord_dao.cancel_campaign(discard_completed=discard_completed)
     return {'data': results}
 
 
