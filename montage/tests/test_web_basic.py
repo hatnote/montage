@@ -2049,3 +2049,106 @@ def test_csv_import_warnings_are_dicts(montage_app, api_client, mock_external_ap
 
     assert data['warnings'] and all(isinstance(w, dict) for w in data['warnings'])
     assert any('Gone.jpg' in w.get('import issues', '') for w in data['warnings'])
+
+
+def test_campaign_requests(api_client, monkeypatch):
+    import re
+    import requests
+    from montage import rdb
+    fetch = api_client.fetch
+
+    req_data = {'campaign_name': 'WLM 2026 Testland',
+                'commons_category': 'Category:WLM 2026 Testland',
+                'purpose': 'Annual monuments contest.',
+                'jury_coordinator_username': ['LilyOfTheWest'],
+                'open_date': '2026-09-01 00:00',
+                'close_date': '2026-09-30T23:59:00Z',
+                'estimated_image_volume': 500,
+                'is_resubmission': True}
+
+    resp = fetch('user: submit campaign request',
+                 '/admin/campaign_requests/submit', req_data)
+    req = resp['data']
+    request_id = req['request_id']
+    assert re.match(r'^MNTG-\d{4,}$', request_id)
+    assert len(request_id) <= 16
+    assert req['status'] == 'pending'
+    assert req['is_resubmission'] is False
+    assert req['close_date'] == '2026-09-30T23:59:00'
+
+    resp = fetch('user: list campaign requests', '/admin/campaign_requests')
+    assert request_id in [r['request_id'] for r in resp['data']]
+    resp = fetch('user: get campaign request',
+                 '/admin/campaign_requests/%s' % request_id)
+    assert resp['data']['jury_coordinator_username'] == ['LilyOfTheWest']
+
+    fetch('user: get missing campaign request',
+          '/admin/campaign_requests/MNTG-9999', error_code=404)
+
+    for bad in ({'estimated_image_volume': 'lots'},
+                {'estimated_image_volume': -3},
+                {'close_date': '2026-08-01 00:00'},
+                {'open_date': 'not a date'}):
+        fetch('user: submit invalid campaign request',
+              '/admin/campaign_requests/submit',
+              dict(req_data, **bad), error_code=400)
+
+    def _missing_user(username):
+        raise utils.DoesNotExist(username)
+
+    def _commons_down(username):
+        raise requests.ConnectionError('down')
+
+    with monkeypatch.context() as m:
+        m.setattr(rdb, 'get_mw_userid', _missing_user)
+        fetch('user: submit with unknown coordinator',
+              '/admin/campaign_requests/submit', req_data, error_code=400)
+        m.setattr(rdb, 'get_mw_userid', _commons_down)
+        fetch('user: submit while Commons is unreachable',
+              '/admin/campaign_requests/submit', req_data, error_code=400)
+
+    with monkeypatch.context() as m:
+        m.setattr(rdb, 'MAINTAINERS',
+                  [u for u in rdb.MAINTAINERS if u != 'LilyOfTheWest'])
+        fetch('non-maintainer: approve campaign request',
+              '/admin/campaign_requests/%s/approve' % request_id, {},
+              as_user='LilyOfTheWest', error_code=403)
+        fetch('non-maintainer: advise campaign request',
+              '/admin/campaign_requests/%s/advise' % request_id, {'note': 'x'},
+              as_user='LilyOfTheWest', error_code=403)
+        fetch('non-submitter: view campaign request',
+              '/admin/campaign_requests/%s' % request_id,
+              as_user='LilyOfTheWest', error_code=403)
+
+    fetch('user: resubmit a pending request',
+          '/admin/campaign_requests/%s/resubmit' % request_id,
+          {'campaign_name': 'x'}, error_code=400)
+
+    resp = fetch('maintainer: advise campaign request',
+                 '/admin/campaign_requests/%s/advise' % request_id,
+                 {'note': 'Please double-check the dates.'})
+    assert resp['data']['status'] == 'needs_clarification'
+
+    fetch('user: resubmit with close before open',
+          '/admin/campaign_requests/%s/resubmit' % request_id,
+          {'close_date': '2026-08-01 00:00'}, error_code=400)
+
+    resp = fetch('user: resubmit campaign request',
+                 '/admin/campaign_requests/%s/resubmit' % request_id,
+                 {'close_date': '2026-10-15 12:00', 'estimated_image_volume': 800})
+    assert resp['data']['status'] == 'pending'
+    assert resp['data']['is_resubmission'] is True
+    assert resp['data']['clarification_note'] is None
+    assert resp['data']['estimated_image_volume'] == 800
+
+    resp = fetch('maintainer: approve campaign request',
+                 '/admin/campaign_requests/%s/approve' % request_id, {})
+    assert resp['data']['request']['status'] == 'approved'
+    campaign = resp['data']['campaign']
+    assert resp['data']['request']['campaign_id'] == campaign['id']
+    assert campaign['name'] == 'WLM 2026 Testland'
+    assert 'LilyOfTheWest' in [c['username'] for c in campaign['coordinators']]
+
+    fetch('maintainer: approve campaign request twice',
+          '/admin/campaign_requests/%s/approve' % request_id, {},
+          error_code=400)

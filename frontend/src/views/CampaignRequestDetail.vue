@@ -103,7 +103,6 @@
             <strong>{{ formatDateTime(req.close_date) }}</strong>
           </div>
         </div>
-        <!-- Maintainer or Superuser ? -->
         <div v-if="isMaintainer" class="tz-preview">
           <p class="tz-preview-label">
             <i class="ti ti-map-pin" aria-hidden="true"></i>
@@ -145,7 +144,6 @@
         <p class="card-value text-wrap">{{ req.purpose }}</p>
       </div>
 
-      <!-- Maintainers action, -->
       <div v-if="isMaintainer" class="action-section">
         <h2>{{ $t('campaign-request-actions-title') }}</h2>
 
@@ -260,6 +258,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
 import StatusBadge from '@/views/StatusBadge.vue'
 import { useUserStore } from '@/stores/user'
+import { COMMON_TIMEZONES, formatInTz, parseUtc } from '@/utils'
 
 dayjs.extend(relativeTime)
 
@@ -268,18 +267,6 @@ const route = useRoute()
 
 const userStore = useUserStore()
 const isMaintainer = computed(() => userStore.user?.is_maintainer == true)
-
-const COMMON_TIMEZONES = [
-  { id: 'America/New_York', label: 'ET (New York)' },
-  { id: 'Europe/London', label: 'BST/GMT (London)' },
-  { id: 'Europe/Paris', label: 'CET (Paris)' },
-  { id: 'Asia/Kolkata', label: 'IST (India)' },
-  { id: 'Asia/Tokyo', label: 'JST (Tokyo)' },
-  { id: 'Africa/Lagos', label: 'WAT (Lagos)' },
-  { id: 'Africa/Johannesburg', label: 'CAT (Johannesburg)' },
-  { id: 'Africa/Nairobi', label: 'EAT (Nairobi)' },
-  { id: 'Australia/Sydney', label: 'AEDT (Sydney)' }
-]
 
 const NOTE_TEMPLATES = [
   {
@@ -318,9 +305,9 @@ async function loadRequest() {
 
   try {
     const res = await adminService.getCampaignRequest(route.params.requestId)
-    req.value = res.data.data || res.data || null
+    req.value = res.data
   } catch (err) {
-    loadError.value = err?.response?.data?.description || t('load-error')
+    loadError.value = err?.response?.data?.detail || t('load-error')
   } finally {
     loading.value = false
   }
@@ -335,7 +322,7 @@ async function approveRequest() {
     actionSuccess.value = t('campaign-request-approve-success')
     await loadRequest()
   } catch (err) {
-    actionError.value = err?.response?.data?.description || t('action-error')
+    actionError.value = err?.response?.data?.detail || t('action-error')
   } finally {
     approving.value = false
   }
@@ -352,7 +339,7 @@ async function sendAdvice() {
     adviseNote.value = ''
     await loadRequest()
   } catch (err) {
-    actionError.value = err?.response?.data?.description || t('action-error')
+    actionError.value = err?.response?.data?.detail || t('action-error')
   } finally {
     advising.value = false
   }
@@ -360,24 +347,11 @@ async function sendAdvice() {
 
 function formatDateTime(iso) {
   if (!iso) return '—'
-  return dayjs(iso).format('D MMM YYYY, HH:mm') + ' UTC'
+  return dayjs(iso.slice(0, 16)).format('D MMM YYYY, HH:mm') + ' UTC'
 }
 
 function formatRelative(iso) {
-  return iso ? dayjs(iso).fromNow() : ''
-}
-
-function formatInTz(iso, tzId) {
-  if (!iso) return '—'
-  try {
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: tzId,
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    }).format(new Date(iso))
-  } catch {
-    return '—'
-  }
+  return iso ? dayjs(parseUtc(iso)).fromNow() : ''
 }
 
 onMounted(loadRequest)

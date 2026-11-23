@@ -5,9 +5,9 @@ import datetime
 
 
 from clastic import GET, POST, Response
-from clastic.errors import Forbidden, NotFound
+from clastic.errors import Forbidden
 from boltons.strutils import slugify
-import requests as http
+import requests
 
 from .utils import (format_date,
                    get_threshold_map,
@@ -26,7 +26,8 @@ from .rdb import (FINALIZED_STATUS,
                   MaintainerDAO,
                   OrganizerDAO,
                   CampaignRequestDAO,
-                  lock_errors_as_busy)
+                  lock_errors_as_busy,
+                  mw_user_exists)
 
 CATEGORY_METHOD = 'category'
 ROUND_METHOD = 'round'
@@ -362,7 +363,6 @@ def submit_campaign_request(user_dao, request_dict):
         close_date: ISO-8601 UTC datetime string  (required)
         estimated_image_volume: integer  (required)
         purpose: string  (required)
-        is_resubmission: bool    (optional, default false)
     Response model: CampaignRequest dict + message string
     """
     required_fields = [
@@ -377,24 +377,17 @@ def submit_campaign_request(user_dao, request_dict):
     missing = [f for f in required_fields if not request_dict.get(f)]
     if missing:
         raise InvalidAction('Missing required fields: %s' % ', '.join(missing))
- 
-    #Checker against the Wikimedia Commons API.
-    coord_usernames = request_dict['jury_coordinator_username']
-    if isinstance(coord_usernames, str):
-        coord_usernames = [coord_usernames]
 
-    invalid_usernames = [u for u in coord_usernames if not _wikimedia_user_exists(u)]
-    if invalid_usernames:
-        raise InvalidAction(
-            'Wikimedia account(s) %s were not found on Commons. '
-            'Please verify the username(s) and try again.' % ', '.join(repr(u) for u in invalid_usernames)
-        )
- 
+    _check_coordinator_usernames(request_dict['jury_coordinator_username'])
+
     cr_dao = CampaignRequestDAO(user_dao)
-    req = cr_dao.create(
-        submitter_username=user_dao.user.username,
-        data=request_dict,
-    )
+    try:
+        req = cr_dao.create(
+            submitter_username=user_dao.user.username,
+            data=request_dict,
+        )
+    except ValueError as exc:
+        raise InvalidAction(str(exc))
     return {
         'data': req.to_dict(),
         'message': 'Request submitted. Your tracking ID is %s.' % req.request_id,
@@ -406,10 +399,7 @@ def approve_campaign_request(user_dao, request_id, request_dict):
     Summary: Approve a request and automatically create the campaign.
     Response model: approved CampaignRequest dict + created Campaign dict
     """
-
-    # if request_dict is None:
-    #     request_dict = {}
-        
+    request_dict = request_dict or {}
     if not user_dao.user.is_maintainer:
         raise Forbidden('must have maintainer permissions')
  
@@ -472,6 +462,9 @@ def resubmit_campaign_request(user_dao, request_id, request_dict):
     Request model: same optional fields as submit_campaign_request
     Response model: updated CampaignRequest dict
     """
+    if request_dict.get('jury_coordinator_username'):
+        _check_coordinator_usernames(request_dict['jury_coordinator_username'])
+
     cr_dao = CampaignRequestDAO(user_dao)
     try:
         req = cr_dao.resubmit(
@@ -505,25 +498,22 @@ def validate_wikimedia_user(user_dao, request):
     return {'data': {'username': username, 'exists': _wikimedia_user_exists(username)}}
 
 def _wikimedia_user_exists(username):
-    """
-    Check the Wikimedia Commons API for a username.
-    """
-
     try:
-        resp = http.get(
-            'https://commons.wikimedia.org/w/api.php',
-            params={
-                'action': 'query',
-                'list':   'users',
-                'ususers': username,
-                'format': 'json',
-            },
-            timeout=4,
-        )
-        users = resp.json().get('query', {}).get('users', [])
-        return bool(users) and 'missing' not in users[0]
-    except http.exceptions.RequestException:
-        return True 
+        return mw_user_exists(username)
+    except (requests.RequestException, KeyError, ValueError):
+        raise InvalidAction('Could not verify Wikimedia usernames right now. '
+                            'Please try again later.')
+
+
+def _check_coordinator_usernames(usernames):
+    if isinstance(usernames, str):
+        usernames = [usernames]
+    invalid = [u for u in usernames if not _wikimedia_user_exists(u)]
+    if invalid:
+        raise InvalidAction(
+            'Wikimedia account(s) %s were not found on Commons. '
+            'Please verify the username(s) and try again.'
+            % ', '.join(repr(u) for u in invalid))
 
 
 def check_import(user_dao, campaign_id, request_dict, config):

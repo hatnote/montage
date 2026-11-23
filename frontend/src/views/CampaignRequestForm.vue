@@ -2,7 +2,7 @@
   <div class="request-form-page">
     <div v-if="isResubmission" class="resubmit-banner">
       <i class="ti ti-info-circle" aria-hidden="true"></i>
-      {{ $t('campaign-request-resubmitting-for') }} <strong>{{ prefillRequestId }}</strong
+      {{ $t('campaign-request-resubmitting-for') }} <strong>{{ requestId }}</strong
       >.
       {{ $t('campaign-request-address-clarification') }}
     </div>
@@ -138,13 +138,37 @@
               {{ $t('campaign-request-field-open-date') }}
               <span class="required" aria-hidden="true">*</span>
             </template>
-            <cdx-text-input
-              input-type="datetime-local"
-              v-model="form.open_date"
-              @blur="handleCloseDateBlur"
-            />
+            <date-picker
+              v-model:value="form.open_date"
+              type="date"
+              format="YYYY-MM-DD"
+              placeholder="YYYY-MM-DD"
+              value-type="format"
+              @change="validateDates"
+            ></date-picker>
           </cdx-field>
 
+          <cdx-field
+            :status="errors.open_time ? 'error' : 'default'"
+            :messages="{ error: errors.open_time }"
+          >
+            <template #label>
+              {{ $t('montage-label-open-time') }}
+              <span class="required" aria-hidden="true">*</span>
+            </template>
+            <date-picker
+              v-model:value="form.open_time"
+              type="time"
+              :use12h="false"
+              format="HH:mm"
+              placeholder="HH:mm"
+              value-type="format"
+              @change="validateDates"
+            ></date-picker>
+          </cdx-field>
+        </div>
+
+        <div class="field-row field-margin">
           <cdx-field
             :status="errors.close_date ? 'error' : 'default'"
             :messages="{ error: errors.close_date }"
@@ -153,15 +177,37 @@
               {{ $t('campaign-request-field-close-date') }}
               <span class="required" aria-hidden="true">*</span>
             </template>
-            <cdx-text-input
-              input-type="datetime-local"
-              v-model="form.close_date"
-              @blur="handleCloseDateBlur"
-            />
+            <date-picker
+              v-model:value="form.close_date"
+              type="date"
+              format="YYYY-MM-DD"
+              placeholder="YYYY-MM-DD"
+              value-type="format"
+              @change="validateDates"
+            ></date-picker>
+          </cdx-field>
+
+          <cdx-field
+            :status="errors.close_time ? 'error' : 'default'"
+            :messages="{ error: errors.close_time }"
+          >
+            <template #label>
+              {{ $t('montage-label-close-time') }}
+              <span class="required" aria-hidden="true">*</span>
+            </template>
+            <date-picker
+              v-model:value="form.close_time"
+              type="time"
+              :use12h="false"
+              format="HH:mm"
+              placeholder="HH:mm"
+              value-type="format"
+              @change="validateDates"
+            ></date-picker>
           </cdx-field>
         </div>
 
-        <div v-if="tzPreview.open || tzPreview.close" class="tz-assistant">
+        <div v-if="openUtc || closeUtc" class="tz-assistant">
           <p class="tz-assistant-title">
             <i class="ti ti-map-pin" aria-hidden="true"></i>
             {{ $t('campaign-request-tz-assistant-title') }}
@@ -179,8 +225,8 @@
                 <td>
                   <span class="tz-name">{{ tz.label }}</span>
                 </td>
-                <td>{{ tzPreview.open ? formatInTz(form.open_date, tz.id) : '—' }}</td>
-                <td>{{ tzPreview.close ? formatInTz(form.close_date, tz.id) : '—' }}</td>
+                <td>{{ formatInTz(openUtc, tz.id) }}</td>
+                <td>{{ formatInTz(closeUtc, tz.id) }}</td>
               </tr>
             </tbody>
           </table>
@@ -236,32 +282,17 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { CdxButton, CdxTextInput, CdxTextArea, CdxField, CdxMessage } from '@wikimedia/codex'
 import UserList from '@/components/UserList.vue'
 import adminService from '@/services/adminService'
-import { useRoute } from 'vue-router'
+import { COMMON_TIMEZONES, formatInTz } from '@/utils'
 
 const { t } = useI18n()
 const route = useRoute()
 
-const props = defineProps({
-  prefillData: { type: Object, default: null },
-  prefillRequestId: { type: String, default: null }
-})
-
-const isResubmission = computed(() => !!route.params.request_id)
-
-const COMMON_TIMEZONES = [
-  { id: 'America/New_York', label: 'ET (New York)' },
-  { id: 'Europe/London', label: 'BST/GMT (London)' },
-  { id: 'Europe/Paris', label: 'CET (Paris)' },
-  { id: 'Asia/Kolkata', label: 'IST (India)' },
-  { id: 'Asia/Tokyo', label: 'JST (Tokyo)' },
-  { id: 'Africa/Lagos', label: 'WAT (Lagos)' },
-  { id: 'Africa/Johannesburg', label: 'CAT (Johannesburg)' },
-  { id: 'Africa/Nairobi', label: 'EAT (Nairobi)' },
-  { id: 'Australia/Sydney', label: 'AEDT (Sydney)' }
-]
+const requestId = computed(() => route.params.requestId)
+const isResubmission = computed(() => !!requestId.value)
 
 const defaultForm = () => ({
   campaign_name: '',
@@ -269,7 +300,9 @@ const defaultForm = () => ({
   purpose: '',
   jury_coordinator_username: [],
   open_date: '',
+  open_time: '',
   close_date: '',
+  close_time: '',
   estimated_image_volume: null
 })
 
@@ -278,22 +311,27 @@ function normalizeJurors(value) {
   return value ? [value] : []
 }
 
-const form = reactive(
-  props.prefillData ? { ...defaultForm(), ...props.prefillData } : defaultForm()
-)
+const form = reactive(defaultForm())
 const errors = reactive({})
 const submitError = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
 const submittedRequestId = ref('')
-// const usernameStatus = ref('')
-const tzPreview = reactive({ open: false, close: false })
 const prefillLoaded = ref(!isResubmission.value)
+const coordinatorUsers = ref([])
 
-const coordinatorUsers = ref(normalizeJurors(form.jury_coordinator_username))
+const openUtc = computed(() =>
+  form.open_date && form.open_time ? `${form.open_date} ${form.open_time}` : ''
+)
+const closeUtc = computed(() =>
+  form.close_date && form.close_time ? `${form.close_date} ${form.close_time}` : ''
+)
+
+function errorMessage(err, fallbackKey) {
+  return err?.response?.data?.detail || t(fallbackKey)
+}
 
 function onCoordinatorSelect(selected) {
-  // const latest = selected.length ? [selected[selected.length - 1]] : []
   coordinatorUsers.value = selected
   form.jury_coordinator_username = selected
   validateField('jury_coordinator_username')
@@ -302,8 +340,8 @@ function onCoordinatorSelect(selected) {
 onMounted(async () => {
   if (!isResubmission.value) return
   try {
-    const res = await adminService.getCampaignRequest(route.params.request_id)
-    const existing = res.data.data
+    const res = await adminService.getCampaignRequest(requestId.value)
+    const existing = res.data
     const jurors = normalizeJurors(existing.jury_coordinator_username)
 
     Object.assign(form, {
@@ -311,14 +349,15 @@ onMounted(async () => {
       commons_category: existing.commons_category,
       purpose: existing.purpose,
       jury_coordinator_username: jurors,
-      open_date: existing.open_date ? existing.open_date.slice(0, 16) : '',
-      close_date: existing.close_date ? existing.close_date.slice(0, 16) : '',
+      open_date: existing.open_date ? existing.open_date.slice(0, 10) : '',
+      open_time: existing.open_date ? existing.open_date.slice(11, 16) : '',
+      close_date: existing.close_date ? existing.close_date.slice(0, 10) : '',
+      close_time: existing.close_date ? existing.close_date.slice(11, 16) : '',
       estimated_image_volume: existing.estimated_image_volume
     })
     coordinatorUsers.value = jurors
-    updateTzPreview()
-  } catch (error) {
-    console.log(error)
+  } catch (err) {
+    submitError.value = errorMessage(err, 'load-error')
   } finally {
     prefillLoaded.value = true
   }
@@ -341,13 +380,15 @@ function validateField(field) {
         errors.jury_coordinator_username = t('validation-required')
       break
     case 'open_date':
-      if (!form.open_date) errors.open_date = t('validation-required')
+    case 'open_time':
+      if (!form[field]) errors[field] = t('validation-required')
       break
     case 'close_date':
-      if (!form.close_date) {
-        errors.close_date = t('validation-required')
-      } else if (form.open_date && form.close_date <= form.open_date) {
-        errors.close_date = t('validation-close-after-open')
+    case 'close_time':
+      if (!form[field]) {
+        errors[field] = t('validation-required')
+      } else if (field === 'close_date' && openUtc.value && closeUtc.value) {
+        if (closeUtc.value <= openUtc.value) errors.close_date = t('validation-close-after-open')
       }
       break
     case 'estimated_image_volume':
@@ -357,6 +398,12 @@ function validateField(field) {
   }
 }
 
+function validateDates() {
+  ;['open_date', 'open_time', 'close_date', 'close_time'].forEach((field) => {
+    if (form[field] || errors[field]) validateField(field)
+  })
+}
+
 function validateAll() {
   const fields = [
     'campaign_name',
@@ -364,35 +411,13 @@ function validateAll() {
     'purpose',
     'jury_coordinator_username',
     'open_date',
+    'open_time',
     'close_date',
+    'close_time',
     'estimated_image_volume'
   ]
   fields.forEach(validateField)
   return !Object.values(errors).some(Boolean)
-}
-
-function formatInTz(isoLocal, tzId) {
-  if (!isoLocal) return '—'
-  try {
-    const dt = new Date(isoLocal + 'Z')
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: tzId,
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    }).format(dt)
-  } catch {
-    return '—'
-  }
-}
-
-function updateTzPreview() {
-  tzPreview.open = !!form.open_date
-  tzPreview.close = !!form.close_date
-}
-
-function handleCloseDateBlur() {
-  validateField('close_date')
-  updateTzPreview()
 }
 
 async function handleSubmit() {
@@ -402,23 +427,23 @@ async function handleSubmit() {
   submitting.value = true
   try {
     const payload = {
-      ...form,
-      open_date: form.open_date ? form.open_date + ':00Z' : null,
-      close_date: form.close_date ? form.close_date + ':00Z' : null,
-      is_resubmission: isResubmission.value
+      campaign_name: form.campaign_name,
+      commons_category: form.commons_category,
+      purpose: form.purpose,
+      jury_coordinator_username: form.jury_coordinator_username,
+      open_date: openUtc.value,
+      close_date: closeUtc.value,
+      estimated_image_volume: form.estimated_image_volume
     }
 
-    let res
-    if (isResubmission.value) {
-      res = await adminService.resubmitCampaignRequest(props.prefillRequestId, payload)
-    } else {
-      res = await adminService.submitCampaignRequest(payload)
-    }
+    const res = isResubmission.value
+      ? await adminService.resubmitCampaignRequest(requestId.value, payload)
+      : await adminService.submitCampaignRequest(payload)
 
-    submittedRequestId.value = res.data.request_id || res.data.data?.requestId
+    submittedRequestId.value = res.data.request_id
     submitted.value = true
   } catch (err) {
-    submitError.value = err?.response?.data?.description || t('campaign-request-submit-error')
+    submitError.value = errorMessage(err, 'campaign-request-submit-error')
   } finally {
     submitting.value = false
   }

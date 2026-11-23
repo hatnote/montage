@@ -7,7 +7,6 @@ import json
 import time
 import random
 import uuid
-import string
 import datetime
 import itertools
 from collections import Counter, defaultdict
@@ -2915,19 +2914,21 @@ class CampaignRequestDAO(object):
     
 
     def create(self, submitter_username, data):
-        
+        open_date = _parse_utc(data['open_date'], 'open_date')
+        close_date = _parse_utc(data['close_date'], 'close_date')
+        _check_date_order(open_date, close_date)
         req = CampaignRequest(
-            request_id                 =  "MNTG-PENDING-%s" % uuid.uuid4().hex[:12],
+            request_id                 = "PEND-%s" % uuid.uuid4().hex[:11],
             submitter_username         = submitter_username,
             jury_coordinator_username  = _serialize_jurors(data['jury_coordinator_username']),
             commons_category           = data['commons_category'],
             campaign_name              = data['campaign_name'],
-            open_date                  = js_isoparse(data['open_date']),
-            close_date                 = js_isoparse(data['close_date']),
-            estimated_image_volume     = int(data['estimated_image_volume']),
+            open_date                  = open_date,
+            close_date                 = close_date,
+            estimated_image_volume     = _parse_volume(data['estimated_image_volume']),
             purpose                    = data['purpose'],
             status                     = CAMPAIGN_REQUEST_PENDING,
-            is_resubmission            = bool(data.get('is_resubmission', False)),
+            is_resubmission            = False,
         )
         self.rdb_session.add(req)
         self.rdb_session.flush()
@@ -2970,22 +2971,28 @@ class CampaignRequestDAO(object):
                 'Only requests with status needs_clarification can be resubmitted.'
             )
  
-        # Update only the fields that were provided
+        open_date = req.open_date
+        close_date = req.close_date
+        if data.get('open_date'):
+            open_date = _parse_utc(data['open_date'], 'open_date')
+        if data.get('close_date'):
+            close_date = _parse_utc(data['close_date'], 'close_date')
+        _check_date_order(open_date, close_date)
+        volume = req.estimated_image_volume
+        if data.get('estimated_image_volume'):
+            volume = _parse_volume(data['estimated_image_volume'])
+
         if data.get('jury_coordinator_username'):
             req.jury_coordinator_username = _serialize_jurors(data['jury_coordinator_username'])
         if data.get('commons_category'):
             req.commons_category = data['commons_category']
         if data.get('campaign_name'):
             req.campaign_name = data['campaign_name']
-        if data.get('open_date'):
-            req.open_date = js_isoparse(data['open_date'])
-        if data.get('close_date'):
-            req.close_date = js_isoparse(data['close_date'])
-        if data.get('estimated_image_volume'):
-            req.estimated_image_volume = int(data['estimated_image_volume'])
         if data.get('purpose'):
             req.purpose = data['purpose']
- 
+        req.open_date = open_date
+        req.close_date = close_date
+        req.estimated_image_volume = volume
         req.status             = CAMPAIGN_REQUEST_PENDING
         req.clarification_note = None
         req.is_resubmission    = True
@@ -3507,6 +3514,40 @@ def _serialize_jurors(value):
     if isinstance(value, str):
         value = [value]
     return json.dumps(list(value))
+
+
+def _parse_utc(value, field):
+    try:
+        dt = js_isoparse(value)
+    except (TypeError, ValueError):
+        raise ValueError('%s is not a valid date: %r' % (field, value))
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def _check_date_order(open_date, close_date):
+    if close_date <= open_date:
+        raise ValueError('close_date must be after open_date.')
+
+
+def _parse_volume(value):
+    try:
+        volume = int(value)
+    except (TypeError, ValueError):
+        volume = 0
+    if volume < 1:
+        raise ValueError('estimated_image_volume must be a positive integer.')
+    return volume
+
+
+def mw_user_exists(username):
+    # network/API errors propagate so callers can fail closed
+    try:
+        get_mw_userid(username)
+    except (DoesNotExist, IndexError):
+        return False
+    return True
 
 def lookup_user(rdb_session, username):
     user = rdb_session.query(User).filter_by(username=username).one_or_none()

@@ -116,15 +116,12 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import adminService from '@/services/adminService'
 import StatusBadge from '@/views/StatusBadge.vue'
+import { parseUtc } from '@/utils'
 
 dayjs.extend(relativeTime)
 
 const { t } = useI18n()
 const router = useRouter()
-
-// const props = defineProps({
-//   isSuperuser: { type: Boolean, default: false }
-// })
 
 const STATUS_FILTERS = [
   { value: null, labelKey: 'status-all' },
@@ -160,9 +157,9 @@ async function loadRequests() {
   loadError.value = ''
   try {
     const res = await adminService.getCampaignRequests()
-    requests.value = res.data.data || res.data || []
+    requests.value = res.data || []
   } catch (err) {
-    loadError.value = err?.response?.data?.description || t('load-error')
+    loadError.value = err?.response?.data?.detail || t('load-error')
   } finally {
     loading.value = false
   }
@@ -179,7 +176,7 @@ function formatDate(iso) {
 
 function formatRelative(iso) {
   if (!iso) return ''
-  return dayjs(iso).fromNow()
+  return dayjs(parseUtc(iso)).fromNow()
 }
 
 onMounted(loadRequests)
