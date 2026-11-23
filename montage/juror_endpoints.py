@@ -83,7 +83,7 @@ def get_index(user_dao, only_active=True):
     Summary: Get juror-level index of active campaigns and rounds.
     """
     juror_dao = JurorDAO(user_dao)
-    counts = juror_dao.get_all_rounds_task_counts(only_active=True)
+    counts = juror_dao.get_all_rounds_task_counts(only_active=only_active)
     stats = [make_juror_round_details(rnd, rnd_stats, ballot)
              for rnd, rnd_stats, ballot in counts]
     return stats

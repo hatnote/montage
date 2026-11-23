@@ -92,6 +92,7 @@
 	"montage-round-dq-organizers": "取消籌辦者資格",
 	"montage-round-final-threshold": "最終門檻",
 	"montage-round-min-resolution": "最低解析度",
+	"montage-round-min-resolution-help": "圖片的最低解析度（以像素為單位）。低於此解析度的圖片會被自動取消資格。預設值為 2,000,000 像素（200 萬像素）。",
 	"montage-round-show-filename": "顯示檔案名稱",
 	"montage-round-show-link": "顯示連結",
 	"montage-round-show-resolution": "顯示解析度",
@@ -188,6 +189,7 @@
 	"permission-denied-home": "返回首頁",
 	"montage-required-voting-deadline": "選擇有效的投票截止期限",
 	"montage-required-fill-inputs": "請填寫所有方框",
+	"montage-required-threshold": "繼續前請先選擇門檻",
 	"unsaved-changes-confirmation": "有尚未儲存的更改，您確定要離開嗎？",
 	"back-to-round": "返回回合"
 }

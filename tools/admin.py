@@ -38,6 +38,10 @@ from montage.rdb import (make_rdb_session,
                          CoordinatorDAO,
                          reassign_rating_tasks,
                          lookup_user)
+from montage.import_check import (run_check, raise_if_blocked, importable,
+                                  import_warnings, describe_source,
+                                  source_params, lookup_source)
+from montage.loaders import make_entry
 from montage.utils import get_threshold_map
 
 
@@ -96,6 +100,7 @@ def main():
     rnd_cmd.add(pause_round, name='pause')
     rnd_cmd.add(advance_round, name='advance')
     rnd_cmd.add(edit_round_quorum, name='edit-quorum')
+    rnd_cmd.add(remove_juror, name='remove-juror')
     rnd_cmd.add(check_round_dupes, name='check-dupes')
     rnd_cmd.add(apply_round_ratings, name='apply-ratings')
     rnd_cmd.add(retask_duplicate_ratings, name='retask-dupes')
@@ -218,14 +223,13 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
     campaign = user_dao.get_campaign(campaign_id)
 
     if not advance:
-        entries = coord_dao.add_entries_from_cat(rnd.id, category_name)
+        request = {'import_method': 'category', 'category': category_name}
+        entries, params = _checked_entries(user_dao, coord_dao, rnd.id, request)
         source = category_name
-        # GIST_URL = 'https://gist.githubusercontent.com/slaporte/7433943491098d770a8e9c41252e5424/raw/ca394147a841ea5f238502ffd07cbba54b9b1a6a/wlm2015_fr_500.csv'
-        # entries = maint_dao.add_entries_from_csv_gist(rnd, GIST_URL)
-        # source = GIST_URL
         print(('++ prepared %s entries from %r' %
                (len(entries), source)))
-        coord_dao.add_round_entries(rnd.id, entries)
+        coord_dao.add_round_entries(rnd.id, entries, method='category',
+                                    params=params)
     else:
         final_rnds = [r for r in campaign.rounds if r.status == 'finalized']
         last_successful_rnd = final_rnds[-1]
@@ -237,7 +241,8 @@ def create_round(user_dao, campaign_id, advance=False, debug=False):
             raise UsageError('too many entries for ranking round')
 
         source = 'round(#%s)' % last_successful_rnd.id
-        coord_dao.add_round_entries(rnd.id, advancing_group, source)
+        coord_dao.add_round_entries(rnd.id, advancing_group, method='round',
+                                    params={'round_id': last_successful_rnd.id})
     print(('++ added entries from %s to round %s (%r)'
            % (source, rnd.id, rnd.name)))
 
@@ -466,36 +471,95 @@ def check_round_dupes(user_dao, round_id):
     return
 
 
+def _checked_entries(user_dao, coord_dao, round_id, request):
+    """Check an import source like the round form does (#510), stop on
+    blocking rows, and store the checked entries; returns (entries,
+    round source params). The check is not written to a file."""
+    result = run_check(request, coord_dao.campaign.id, source=lookup_source(),
+                       rdb_session=user_dao.rdb_session)
+    raise_if_blocked(result)
+    for warning in import_warnings(result):
+        print('!! %s' % (list(warning.values())[0],))
+    entries = [make_entry(row['commons']) for row in importable(result)]
+    entries = coord_dao.add_checked_entries(round_id, entries,
+                                            describe_source(result))
+    return entries, source_params(result)
+
+
 def import_gist(user_dao, round_id, url):
     "import round entries from a csv list"
     coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
-    entries, warnings = coord_dao.add_entries_from_csv(round_id, url)
+    request = {'import_method': 'gistcsv', 'gist_url': url}
+    entries, params = _checked_entries(user_dao, coord_dao, round_id, request)
     stats = coord_dao.add_round_entries(round_id, entries,
                                         method='gistcsv',
-                                        params={'gist_url': url})
+                                        params=params)
     print('++ added entries to round %s: %r' % (round_id, stats))
 
 
-def edit_round_quorum(maint_dao, round_id):
+def edit_round_quorum(user_dao, round_id):
     "change the quorum of a given round, assigning and reassigning tasks as need be"
-    rnd = maint_dao.get_round(round_id)
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
     old_quorum = rnd.quorum
     if rnd.status != 'paused':
         print('-- round must be paused to edit quorum, aborting')
         return
-    print(('!! new quorum cannot be lower than current quorum: %s' % old_quorum))
-    print(('!! new quorum cannot be higher than the number of jurors: %s' % len(rnd.jurors)))
+    active_juror_count = len([rj for rj in rnd.round_jurors if rj.is_active])
+    print(('-- round %s (%s) currently has quorum %s and %s active jurors'
+           % (rnd.id, rnd.name, old_quorum, active_juror_count)))
+    print('-- decreases cancel excess un-cast tasks; completed votes are always kept')
+    print('!! new quorum cannot be higher than the number of active jurors')
     new_quorum = int(input('?? New quorum: '))
-    new_juror_stats = maint_dao.modify_quorum(rnd, new_quorum)
+    stats = coord_dao.modify_quorum(rnd.id, new_quorum)
 
-    maint_dao.rdb_session.commit()
+    coord_dao.rdb_session.commit()
 
     print(('++ changed quorum in round %s (%s) from %s (old quorum) to %s (new quorum)'
            % (rnd.id, rnd.name, old_quorum, new_quorum)))
-    print(('++ reassigned %s tasks, with mean load of %s tasks per juror'
-           % (new_juror_stats['reassigned_task_count'], new_juror_stats['task_count_mean'])))
+    print(('++ created %s and cancelled %s tasks, reassigned %s, with mean load'
+           ' of %s tasks per juror'
+           % (stats['created_task_count'], stats['cancelled_task_count'],
+              stats['reassigned_task_count'], stats['task_count_mean'])))
 
-    return new_juror_stats
+    return stats
+
+
+def remove_juror(user_dao, round_id):
+    "remove a juror from a paused round, cancelling their open tasks"
+    coord_dao = CoordinatorDAO.from_round(user_dao, round_id)
+    rnd = coord_dao.get_round(round_id)
+    if rnd.status != 'paused':
+        print('-- round must be paused to remove a juror, aborting')
+        return
+    active_jurors = sorted([rj.user.username for rj in rnd.round_jurors
+                            if rj.is_active])
+    print(('-- round %s (%s) has quorum %s and active jurors: %s'
+           % (rnd.id, rnd.name, rnd.quorum, ', '.join(active_jurors))))
+    username = input('?? Username to remove: ')
+    if not username:
+        print('-- username required, aborting')
+        return
+    discard = input('?? Discard their completed votes as well? [y/N]: ')
+    discard_completed = discard.strip().lower() in ('y', 'yes')
+    summary = coord_dao.remove_juror(rnd.id, username,
+                                     discard_completed=discard_completed)
+
+    coord_dao.rdb_session.commit()
+
+    print(('++ removed juror %s from round %s (%s)'
+           % (summary['removed_juror'], rnd.id, rnd.name)))
+    print(('++ cancelled %s open tasks, discarded %s completed votes,'
+           ' created %s replacement tasks (%s entries uncoverable),'
+           ' quorum now %s, mean juror queue %s'
+           % (summary['cancelled_active_count'],
+              summary['discarded_completed_count'],
+              summary['created_task_count'],
+              summary['uncoverable_entry_count'],
+              summary['quorum'],
+              summary['task_count_mean'])))
+
+    return summary
 
 
 def advance_round(user_dao, round_id, debug):

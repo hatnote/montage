@@ -40,7 +40,13 @@ const dialogService = () => {
           {
             appContext: appContext,
             open: open.value,
-            'onUpdate:open': (value) => (open.value = value),
+            'onUpdate:open': (value) => {
+              open.value = value
+              // closed with the X or Escape (the buttons call their own handlers)
+              if (!value && dialogConfig.value.onClose) {
+                dialogConfig.value.onClose()
+              }
+            },
             title: dialogConfig.value.title,
             useCloseButton: true,
             primaryAction: dialogConfig.value.primaryAction,
@@ -51,8 +57,14 @@ const dialogService = () => {
           },
           {
             default: () => {
+              // String content is rendered as text, never as HTML: callers pass
+              // messages that can contain user-provided file names (import warnings).
               if (typeof dialogConfig.value.content === 'string') {
-                return h('div', { innerHTML: dialogConfig.value.content })
+                return h(
+                  'div',
+                  { style: 'white-space: pre-line; overflow-wrap: anywhere' },
+                  dialogConfig.value.content
+                )
               } else if (dialogConfig.value.content) {
                 return h(dialogConfig.value.content, {
                   ...dialogConfig.value.props,

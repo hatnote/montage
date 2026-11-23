@@ -94,7 +94,8 @@
 	"montage-round-dq-maintainers": "取消维护者资格",
 	"montage-round-dq-organizers": "取消组织者资格",
 	"montage-round-final-threshold": "最终阈值",
-	"montage-round-min-resolution": "最小分辨率",
+	"montage-round-min-resolution": "最低分辨率",
+	"montage-round-min-resolution-help": "图像的最低分辨率（以像素为单位）。低于此分辨率的图像会被自动取消资格。默认值为2,000,000像素（200万像素）。",
 	"montage-round-show-filename": "显示文件名",
 	"montage-round-show-link": "显示链接",
 	"montage-round-show-resolution": "显示分辨率",
@@ -191,6 +192,7 @@
 	"permission-denied-home": "回到主页",
 	"montage-required-voting-deadline": "选择有效的投票截止日期",
 	"montage-required-fill-inputs": "请填写所有方框",
+	"montage-required-threshold": "请先选择阈值再继续",
 	"unsaved-changes-confirmation": "您有尚未保存的更改。确定要离开吗？",
 	"back-to-round": "返回轮次"
 }

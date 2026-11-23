@@ -93,6 +93,7 @@
 	"montage-round-dq-organizers": "Дискваліфікувати організаторів",
 	"montage-round-final-threshold": "Фінальний поріг",
 	"montage-round-min-resolution": "Мін. роздільність",
+	"montage-round-min-resolution-help": "Мінімальна роздільна здатність зображення в пікселях. Зображення з роздільною здатністю нижче цієї будуть автоматично дискваліфіковані. Роздільна здатність за замовчуванням становить 2 000 000 пікселів (2 мегапікселі).",
 	"montage-round-show-filename": "Показати назву файлу",
 	"montage-round-show-link": "Показати посилання",
 	"montage-round-show-resolution": "Показати роздільність",
@@ -189,6 +190,7 @@
 	"permission-denied-home": "Перейти на головну сторінку",
 	"montage-required-voting-deadline": "Виберіть дійсний дедлайн для голосування",
 	"montage-required-fill-inputs": "Будь ласка, заповніть усі поля",
+	"montage-required-threshold": "Будь ласка, виберіть поріг, перш ніж продовжити",
 	"unsaved-changes-confirmation": "Є незбережені зміни. Ви впевнені, що хочете вийти?",
 	"back-to-round": "Назад до раунду"
 }

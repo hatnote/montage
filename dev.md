@@ -17,7 +17,7 @@ The **Montage Project** is a web application with two main components:
    - Built with **Clastic**, a Python framework.
    - Uses various Python libraries such as:
      - **SQLAlchemy**: Database interactions.
-     - **mwoauth**: Used for authentication with MediaWiki's OAuth.
+     - **OAuth 2.0 (PKCE)**: Authentication with MediaWiki via the OAuth 2.0 flow.
      - **pymysql**: MySQL driver.
    - Serves the frontend and exposes API endpoints for application functionality.
 
@@ -27,7 +27,7 @@ The **Montage Project** is a web application with two main components:
 
 Ensure the following are installed:
 - **Docker** and **Docker Compose**: [Install Docker](https://www.docker.com/products/docker-desktop).
-- **Node.js** (v20 or above): [Install Node.js](https://nodejs.org).
+- **Node.js** in the range of `engines.node` in the root `package.json` (now Node 24, 24.22.1 or later); the Toolforge build and CI use the same range: [Install Node.js](https://nodejs.org). Node 24 is supported until 2028-04-30: raise `engines.node` to the next LTS line before then.
 - **Make**: Available on most Unix-based systems.
 
 ---
@@ -58,7 +58,7 @@ Edit the `.env` file to match your development environment. By default, it's con
 Montage uses MediaWiki OAuth for authentication. There are two modes for local development:
 
 **Default (dev/debug mode) -- no setup required:**
-The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. You will be logged in as `Slaporte`. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
+The backend runs with `debug: True` (the default in `config.default.yaml`). In this mode, the OAuth handshake is bypassed entirely. To establish your session, navigate directly to `http://localhost:5001/complete_login` — this sets the session cookie and redirects you to the frontend. Set `debug_userid` and `debug_username` in `config.dev.yaml` to log in as a specific user; without those, the sentinel user (`__montage_debug__`, id 0) is used, which will fail most DB lookups. Do not use the login button on the frontend; it triggers the OAuth flow which does not work locally.
 
 **Real OAuth (optional) -- for testing the actual login flow:**
 If you need to test the real OAuth login/logout flow, you need to register an OAuth consumer:
@@ -68,12 +68,13 @@ If you need to test the real OAuth login/logout flow, you need to register an OA
    - **Application name**: Something like `Montage local dev (<your username>)`
    - **Callback URL**: `http://localhost:5001/complete_login`
    - **Applicable grants**: "Basic rights" is sufficient
-3. Save the **consumer token** and **consumer secret** you receive
+3. Save the **client ID** and **client secret** you receive
 4. Copy `config.default.yaml` to `config.dev.yaml` and set:
    ```yaml
    debug: False
-   oauth_consumer_token: "<your consumer token>"
-   oauth_secret_token: "<your consumer secret>"
+   oauth_client_id: "<your client ID>"
+   oauth_client_secret: "<your client secret>"
+   oauth_redirect_uri: "http://localhost:5001/complete_login"
    ```
 
 See the [MediaWiki OAuth developer guide](https://www.mediawiki.org/wiki/OAuth/For_Developers) for more details on the OAuth flow. For Toolforge-specific OAuth setup, see the [Toolforge documentation](https://wikitech.wikimedia.org/wiki/Help:Toolforge).
@@ -95,6 +96,8 @@ Other frontend development commands:
 ### 6. Use the Makefile to start the backend
 * Open a new terminal tab and change directory to root of repo
 * Copy and edit `config.dev.yaml` based on `config.default.yaml`
+* (Optional) Set `debug: true` in `config.dev.yaml` to bypass OAuth entirely. This is the easiest way to get started locally without setting up OAuth. To log in, navigate to http://localhost:5001/complete_login directly — the "Login with Wikimedia" button still requires OAuth and won't work locally.
+* (Optional) Set `debug_userid: <your numeric Wikipedia CentralAuth ID>` and `debug_username: <your Wikipedia username>` to be auto-logged in as yourself in debug mode. Your CentralAuth ID can be found at https://en.wikipedia.org/wiki/Special:CentralAuth/YOUR_USERNAME.
 * (Optional) In `config.dev.yaml` there is a line for `dev_local_cookie_value`. To get it,
 log in to the local app in your browser, and then copy the value from the
 `clastic_cookie` in the apps' cookies. This is your login cookie.
@@ -105,17 +108,43 @@ juror.)
 This will give your user top-level permissions in the full app, so you can view
 some logs (audit logs, active users), add/remove organizers, and get a
 coordinator view into all campaigns.
+* Build the frontend for the backend (run from the `frontend/` directory):
+```bash
+npm run toolforge:build
+```
 * Start the montage backend
 ```bash
 make start
 ```
-This will build the docker image for the montage backend and start the container. Apart from `make start`, these are other commands:
+The backend is ready when you see `Debugger PIN` in the logs. It is available at http://localhost:5001.
+
+Apart from `make start`, these are other commands:
 * `make start-detached` : Start the backend container in detached mode
 * `make stop` : Stop the backend container
 * `make logs` : Stream the backend container logs in real-time.
 * `make restart` : Restart the backend container
 
-### 7. Access the Application
+### 7. Logs
+
+When running locally (via `make start`), the backend writes log files to the repo root:
+
+| File | What it captures |
+|------|-----------------|
+| `montage_api.log` | Every API request — method, path, user, timing, result |
+| `montage_api.exc.log` | Full tracebacks for 5xx errors |
+| `montage_replay.log` | Raw request replay data |
+| `montage_feel.log` | Juror experience events |
+
+These paths come from the `DEVTEST_CONFIG` defaults in `montage/utils.py` and can be
+overridden in `config.dev.yaml` (keys `api_log_path`, `replay_log_path`, `feel_log_path`).
+
+To stream the Docker container's stdout/stderr in real-time instead:
+
+```bash
+make logs
+```
+
+### 8. Access the Application
 * With development server: Open http://localhost:5173 in your browser (frontend)
 * With backend serving frontend: Open http://localhost:5001 in your browser
 
@@ -174,16 +203,13 @@ npm run build
 
 ## Project structure
 ```bash
-├── DEV.md
-├── Dockerfile
+├── dev.md
+├── dockerfile
 ├── LICENSE
 ├── MANIFEST.in
 ├── Makefile
 ├── PROJECT_LOG.md
-├── config
-│   ├── beta-uwsgi.ini
-│   ├── dev-uwsgi.ini
-│   └── prod-uwsgi.ini
+├── Procfile
 ├── config.default.yaml
 ├── deployment.md
 ├── design.md
@@ -222,7 +248,6 @@ npm run build
 │   ├── templates
 │   ├── tests
 │   └── utils.py
-├── report.html
 ├── requirements-dev.txt
 ├── requirements.in
 ├── requirements.txt
@@ -286,5 +311,5 @@ These provides a detailed explanation of the main components in the **Montage Pr
 
 
 #### Docker Files
-- **`Dockerfile`**: Builds the backend container.
+- **`dockerfile`**: Builds the backend container.
 - **`docker-compose.yml`**: Orchestrates service for backend.
