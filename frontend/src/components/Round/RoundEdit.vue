@@ -114,7 +114,7 @@ const formData = ref({
   deadline_date: props.round.deadline_date.split('T')[0],
   config: props.round.config,
   show_stats: props.round.show_stats,
-  jurors: props.round.jurors.map((juror) => juror.username)
+  jurors: props.round.jurors.filter((juror) => juror.is_active).map((juror) => juror.username)
 })
 
 const showStatsOptions = ref([
@@ -169,6 +169,7 @@ const saveRound = () => {
     .editRound(round.id, round)
     .then(() => {
       emit('update:isRoundEditing', false)
+      window.location.reload()
     })
     .catch(alertService.error)
 }

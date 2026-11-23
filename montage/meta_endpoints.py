@@ -127,8 +127,10 @@ def post_frontend_error_log(user, config, request_dict):
     return
 
 
-def get_frontend_error_log(config, request_dict):
-    # TODO
+def get_frontend_error_log(config, user, request_dict):
+    # usernames and error payloads: maintainers only, like the other logs
+    if not user or not user.is_maintainer:
+        raise Forbidden()
     request_dict = request_dict or dict()
     count = int(request_dict.get('count', DEFAULT_LINE_COUNT))
     feel_path = config.get('feel_log_path', None)

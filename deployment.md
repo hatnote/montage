@@ -1,205 +1,504 @@
-# Montage Deployment
+# Montage Deployment (Wikimedia Toolforge)
 
-These are instructions for deploying Montage on Toolforge.
+This guide is **specific to the Wikimedia Toolforge environment**: it assumes the Toolforge
+Kubernetes buildservice, the `toolforge` CLI, Toolforge tool accounts, and Toolforge-managed
+NFS and databases. Every step and prerequisite below is Toolforge-specific — deploying Montage
+on a generic or self-hosted server is out of scope here.
 
-## Deploying on Toolforge from scratch
-These instructions is only first time when setuping project on Toolforge
+<!-- TODO (later): separate the prerequisites into "Wikimedia Toolforge-specific" vs
+     "any server" once a non-Toolforge deployment path is documented. -->
 
-##### 1. Get the OAuth credentials.
-[Register your app](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) and save your consumer token and secret token for later.
+---
 
-##### 2. SSH to Toolforge and then inside tool
+## Fresh install
+
+#### 1. Register OAuth 2.0 credentials
+
+[Register an OAuth 2.0 client](https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose) on Meta-Wiki: choose **OAuth 2.0**, set the **callback (redirect) URI** to `https://<tool>.toolforge.org/complete_login` (e.g. `https://montage-beta.toolforge.org/complete_login`), and grant the **basic** scope. Save the **client ID** and **client secret** — you will need them in step 3. Each tool account needs its own client, because the callback URI differs per environment.
+
+#### 2. SSH into the tool account
+
 ```bash
 ssh <shell-username>@login.toolforge.org
 become montage-beta
 ```
-Here, we are using `montage-beta` instance but it can be `montage` or `montage-dev` as well.
 
-##### 3. Clone the repo as src directory
+Replace `montage-beta` with `montage` or `montage-dev` as appropriate.
+
+#### 3. Set environment variables (one-time)
+
+Toolforge stores these as Kubernetes Secrets, injected into every pod on start. Use the
+**interactive prompt** for secret values — never pass them as command-line arguments (they
+would appear in `~/.bash_history` on the shared bastion).
+
 ```bash
-mkdir -p $HOME/www/python
-cd $HOME/www/python
-git clone https://github.com/hatnote/montage.git src
+toolforge envvars create MONTAGE_ENV            # enter: devlabs / beta / prod
+toolforge envvars create MONTAGE_OAUTH_CLIENT_ID      # OAuth 2.0 client ID from Special:OAuthConsumerRegistration
+toolforge envvars create MONTAGE_OAUTH_CLIENT_SECRET  # OAuth 2.0 client secret
+toolforge envvars create MONTAGE_OAUTH_REDIRECT_URI   # e.g. https://montage-beta.toolforge.org/complete_login
+toolforge envvars create MONTAGE_COOKIE_SECRET  # generate with: openssl rand -hex 32
+toolforge envvars create MONTAGE_DB_URL         # mysql+pymysql://<user>:<pass>@tools.db.svc.wikimedia.cloud/<db>?charset=utf8mb4
+toolforge envvars create MONTAGE_SUPERUSERS     # OPTIONAL — enables su-impersonation only, NOT admin access (see "Maintainer vs superuser" below)
+toolforge envvars create MONTAGE_API_LOG_PATH   # e.g. /data/project/montage-beta/montage_api.log
+toolforge envvars create MONTAGE_REPLAY_LOG_PATH
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH  # the tool's own folder, e.g. /data/project/montage-beta/import_checks (see below)
 ```
 
-##### 4. Make the frontend build
+`MONTAGE_IMPORT_CHECK_PATH` is required everywhere except local development: Montage refuses to
+start without it. It is the folder for import checks (hatnote/montage#510): each check of a
+first-round import source is written there as a JSON file (mode 0600). A check can be used to
+save a round for 1 hour. The file is deleted after at most 7 days: every check, import, download
+and app start deletes older files, and at most 5,000 are kept. The files hold the source link,
+the rows and Commons' data per file, including Commons uploader names.
+
+- It must be a folder **of its own**: Montage refuses to start if it holds other files, because
+  the cleanup deletes old check files there.
+- It must be absolute and on the tool's NFS share (`/data/project/<tool>/...`, mounted with
+  `--mount all`), so that every pod and a restarted pod see the same files.
+
+Create the folder first, in the tool's home (`$HOME` is `/data/project/<tool>`), and print the
+value to enter at the `envvars create` prompt:
+
 ```bash
-toolforge webservice node20 shell -m 2G
-cd $HOME/www/python/src/frontend
-npm install
-npm run toolforge:build
+mkdir -m 700 "$HOME/import_checks" && ls -ld "$HOME/import_checks" && echo "$HOME/import_checks"
+```
+
+Optional env vars (all have sensible defaults):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONTAGE_DB_ECHO` | `false` | Log all SQL queries |
+| `MONTAGE_DEBUG` | `false` | Enable debug mode |
+| `MONTAGE_ROOT_PATH` | `/` | URL root path |
+| `MONTAGE_LABS_DB` | `true` | Enable Wikireplica queries |
+| `MONTAGE_FEEL_LOG_PATH` | _(none)_ | Path for feel log |
+| `MONTAGE_COMMONS_DB_HOST` | `commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the other Commons tables (file, filerevision, actor, ...); before this was the legacy alias `commonswiki.labsdb`, which points to the same s4 analytics replica |
+| `MONTAGE_COMMONS_LINKS_DB_HOST` | `links.commonswiki.analytics.db.svc.wikimedia.cloud` | Wikireplica host for the Commons links tables (categorylinks, linktarget, page), on their own cluster since 2026-09-08 ([Wikitech](https://wikitech.wikimedia.org/wiki/News/2026_Commons_links_tables_database_split)) |
+
+#### 4. Create the database
+
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud
+```
+
+```sql
+CREATE DATABASE `<user>__<db name>` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+EXIT;
+```
+
+The `<user>` prefix must match the username in `~/replica.my.cnf`. See [Toolforge user databases](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases).
+
+The `MONTAGE_DB_URL` you set in step 3 should use this database name.
+
+#### 5. Build the container image
+
+```bash
+toolforge build start https://github.com/hatnote/montage.git --ref <branch>
+```
+
+This builds the Python app and Vue frontend together into a single container image. Monitor progress:
+
+```bash
+toolforge build logs
+```
+
+Wait until the build completes successfully before continuing.
+
+#### 6. Initialise the database schema
+
+Run inside the buildservice shell (uses the same image as the webservice):
+
+```bash
+toolforge webservice buildservice shell
+export USER=montage          # required — see note
+launcher python tools/create_schema.py
 exit
 ```
-This will build the vue prod bundle and put in backend's `template` and `static` directory.
 
-##### 5. Create your database
-* Get the username and password from `cat ~/replica.my.cnf`
-* Connect to MariaDB:
-  ```bash
-  mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud
-  ```
-* Create a [Toolforge user database](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database#User_databases) with `utf8mb4` charset, and remember the name for the config:
-  ```sql
-  CREATE DATABASE `<user>__<db name>` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
-  EXIT;
-  ```
+> **Why `export USER=montage`:** the buildservice **shell** does not run the app entrypoint, so
+> `USER` is unset and the container has no passwd entry. `pymysql` calls `getpass.getuser()` at
+> import time and raises `OSError: No username set in the environment`, which aborts any script
+> that imports `montage.rdb`/`labs`. The running webservice avoids this because `app.py` does
+> `os.environ.setdefault('USER', …)` before importing pymysql — but that only runs via the
+> Procfile (`gunicorn app:app`), not in an interactive shell. Set `USER` manually there.
 
-##### 6. Set up the montage config
-* Make a copy of `config.default.yaml` for your environment
-   * You may need to update `USER_ENV_MAP` in `montage/utils.py` if you need to add a new environment
-* Add the `oauth_consumer_token` and `oauth_secret_token` 
-* Add a `cookie_secret: <your random secret>`
-* Add the `db_url` with your user database name, and the password from `~/.replica.my.cnf`
-    * The format is: `mysql+pymysql://<user>:<password>@tools.db.svc.wikimedia.cloud/<db name>?charset=utf8mb4`
-* Create the log directory: `mkdir -p /data/project/<project>/logs`
-* Add `api_log_path: /data/project/<project>/logs/montage_api.log`
-* Add `replay_log_path: /data/project/<project>/logs/montage_replay.log`
-* Add `labs_db: True`
-* Add `db_echo: False`
-* Add `root_path: '/'`
- 
+If upgrading an existing deployment, run the migration SQL instead (on the bastion):
 
-##### 7. Creating a virtual environment
-```bash
-toolforge webservice python3.13 shell
-python3 -m venv $HOME/www/python/venv
-source $HOME/www/python/venv/bin/activate
-pip install --upgrade pip wheel
-pip install --prefer-binary -r $HOME/www/python/src/requirements.txt
-exit
-```
-
-##### 8. Initialise the database schema
-```bash
-cd $HOME/www/python/src
-source $HOME/www/python/venv/bin/activate
-python3 montage/create_schema.py
-```
-
-If this is an upgrade of an existing deployment (not a fresh install), run the migration SQL instead:
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
 ```
 
-##### 9. Start the backend service
+`migrate_round_sources_params.sql` widens `round_sources.params` to MEDIUMTEXT. It can run before or
+after the deploy, but until it has run, file-list imports whose names pass 64 KB (roughly 1,000+
+names) still fail.
+
+#### 7. Start the service
+
 ```bash
-toolforge webservice python3.11 start
+toolforge webservice buildservice start --mount all
 ```
 
-##### 10. Testing of deployment
-* Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
-* In the top section, you should see that the service was restarted in the last few seconds/minutes.
+`--mount all` is required — Montage writes logs to NFS (`/data/project/<toolname>/`), so shared
+storage must be mounted.
 
+#### 8. Verify
+
+Confirm the service is running:
+
+- `https://<tool>.toolforge.org/meta/` — should show a recent start time.
+- `https://<tool>.toolforge.org/v1/health` — should report `db: ok`, `status: healthy` (verifies database connectivity, not just that the app booted).
+
+#### Maintainer vs superuser (important)
+
+**Maintainer (admin) access is hardcoded in code, not configured.** The `MAINTAINERS` list in
+`montage/rdb.py` is the source of truth for who is an admin (`User.is_maintainer` checks
+membership in it). It is identical on every deployment (dev/beta/prod) and is **not** read from
+config or env vars. To grant or revoke maintainer access you must edit that list in `rdb.py` and
+redeploy — setting `MONTAGE_SUPERUSERS` does **not** do it. `ensure_series()` also indexes
+`MAINTAINERS[0]`, so the list must never be empty.
+
+**`MONTAGE_SUPERUSERS` is a separate, optional feature.** It enables *impersonation*: a listed
+user may pass `su_to=<username>` to act as another user (for support/debugging), gated on a valid
+signed cookie (`montage/mw/__init__.py`). Legacy YAML config called this `superuser` (singular);
+the env var is `MONTAGE_SUPERUSERS` (comma-separated). Leave it unset to disable impersonation
+entirely — it has no effect on who is an admin.
 
 ---
-
 
 ## Deploying new changes
 
-If montage is already deployed then you just need following to deploy new changes.
+#### 1. Check for active usage
 
-##### 1. Check the instance usage
-Login to the tool webapp. Make sure, you are maintainer on the webapp instance. Use the audit log endpoint to check that the instance isn't in active use. Example: https://montage-beta.toolforge.org/v1/logs/audit
+Before a deploy that restarts or stops the service, confirm nobody is mid-vote.
 
-This will tell latest usage of instance by audit `create_date`. You can continue if instance is not being used.
+The audit log records **admin** actions (round activate/finalize) but **not** juror voting:
+https://montage-beta.toolforge.org/v1/logs/audit
 
-Sometimes, instance can in use, but there can be important bugfix and we can push anyways.
+For juror voting, query the database directly (works on any deploy model). Get the `<db name>`
+from `config.<env>.yaml` (`db_url`) or `toolforge envvars`, then:
 
-##### 2. SSH to Toolforge and then inside tool
+```bash
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> -e "SELECT UTC_TIMESTAMP() AS now_utc, (SELECT COUNT(*) FROM votes WHERE modified_date >= UTC_TIMESTAMP() - INTERVAL 15 MINUTE) AS votes_15m, (SELECT MAX(modified_date) FROM votes) AS last_vote_utc, (SELECT COUNT(*) FROM rounds WHERE status='active') AS active_rounds\\G"
+```
+
+`votes.modified_date` is stored in UTC and stamped when a juror casts or edits a vote. If
+`active_rounds` is `0`, nothing is open for voting; if `votes_15m` is `0` and `last_vote_utc`
+is well in the past, it is safe to restart. A juror mid-round loses no data — each vote is
+committed on submission — they simply resume once the service is back.
+
+#### 2. SSH into the tool account
+
 ```bash
 ssh <shell-username>@login.toolforge.org
 become montage-beta
 ```
-Here, we are using `montage-beta` instance but it can be `montage` or `montage-dev` as well.
 
-##### 3. Get new changes from remote
+#### 3. One-time setup (first deploy only)
+
+Clone the repo so the deploy script is available on the bastion:
+
 ```bash
-cd $HOME/www/python/src
-git pull
+git clone https://github.com/hatnote/montage.git ~/www/python/src
 ```
 
-##### 4. Make the frontend build
+If the repo is already cloned (for example an old checkout from before the buildservice, or one
+still on the deleted `tools/buildservice` branch), bring it to `master`:
+
 ```bash
-toolforge webservice node20 shell -m 2G
-cd $HOME/www/python/src/frontend
-npm install
-npm run toolforge:build
-exit
+git -C ~/www/python/src fetch origin
+git -C ~/www/python/src checkout master
+git -C ~/www/python/src pull --ff-only
 ```
 
-##### 5. (Optional) Install python packages
-If you added new python packages in changes then you have to install them in pod.
+#### 4. Check new required settings
+
+A release can add a required environment variable; the app then refuses to start until it is
+set. Since hatnote/montage#510 that is `MONTAGE_IMPORT_CHECK_PATH` (see Fresh install, step 3).
+`deploy.sh` checks the required variables before it builds, and stops if one is missing.
+Before the first deploy that includes it, create the folder and set the variable on that tool
+(as the tool, after `become`):
+
 ```bash
-toolforge webservice python3.13 shell
-source $HOME/www/python/venv/bin/activate
-pip install -r $HOME/www/python/src/requirements.txt
-exit
+mkdir -m 700 "$HOME/import_checks" && ls -ld "$HOME/import_checks" && echo "$HOME/import_checks"
 ```
 
-##### 8. Restart the backend service
 ```bash
-toolforge webservice python3.13 restart
+toolforge envvars create MONTAGE_IMPORT_CHECK_PATH
 ```
 
-##### 9. Testing of deployment
-* Visit /meta to see the API. Example: https://montage-beta.toolforge.org/meta/
-* In the top section, you should see that the service was restarted in the last few seconds/minutes.
+Enter the path the first command printed (e.g. `/data/project/montage-beta/import_checks`).
 
+#### 5. Run the deploy script
+
+Which ref to deploy depends on the tool (see [Multi-environment setup](#multi-environment-setup)):
+
+```bash
+bash ~/www/python/src/tools/deploy.sh --ref master        # montage-beta
+bash ~/www/python/src/tools/deploy.sh --ref <release tag> # montage (production)
+bash ~/www/python/src/tools/deploy.sh --ref <branch>      # montage-dev: any branch under test
+```
+
+Check the prompt (`tools.montage-beta@...` or `tools.montage@...`) before you run it: the ref
+decides what goes live, and production must only get a release tag.
+
+The script will: pull the latest version of itself, start the build, wait for
+completion, verify the SHA and port, warn if the running image already matches,
+restart the service, and smoke-test `/meta/`.
 
 ---
 
+## Switching an existing legacy webservice to the buildservice
+
+If a tool is still running the old `python3.11`/`python3.13` NFS webservice — check with
+`toolforge webservice status` — the deploy script cannot be used yet: it issues a `restart`,
+which only applies to an already-running buildservice. Do the one-time switch manually:
+
+```bash
+whoami                                   # MUST be tools.<intended-tool> before any mutating command
+
+# Ensure env vars are set (Fresh install step 3) and the image is built (Fresh install step 5),
+# then swap the webservice type:
+toolforge webservice stop
+toolforge webservice buildservice start --mount all
+```
+
+`--mount all` is required; starting without it fails with
+`ERROR: --mount not explicitly specified on a build service based tool`.
+
+The legacy webservice reads its config from a YAML file on NFS, whereas the buildservice reads it
+from `toolforge envvars`. A tool that worked on the legacy service can therefore still fail on the
+buildservice if the `MONTAGE_*` env vars (Fresh install step 3) are not set — and its database may
+need migrating (see "Startup crash: missing column" below).
+
+#### Import checks: troubleshooting and rollback
+
+- **The pod does not start and its log says `MONTAGE_IMPORT_CHECK_PATH ...`:** create the folder
+  and the variable (step 4), then `toolforge webservice buildservice restart --mount all`. No
+  rebuild and no rollback are needed.
+- **A check of a large source fails with a server error after about 30 s:** the request hit gunicorn's
+  worker timeout. Nothing was saved; try a smaller source (split a list, or a sub-category).
+- **Old check files:** every use of the folder (and every app start) deletes files older than
+  7 days. To delete them by hand:
+
+```bash
+find "$HOME/import_checks" -name '*.json' -mtime +7 -delete
+```
+
+- **Rolling back to a version before #510:** the variable and the folder can stay (older
+  versions ignore them). Delete the check files (`rm "$HOME"/import_checks/*.json`): they hold
+  Commons uploader names that nothing reads any more. Entries already imported stay.
+
+---
 
 ## Debugging
 
-##### Viewing logs
+#### Confirming which commit was built
 
-The uwsgi log is at:
+Before restarting, verify the build used the expected commit and port:
+
 ```bash
-tail -50 /data/project/montage-beta/uwsgi.log
+toolforge build logs 2>&1 | grep -E "RESULT_SHA|gunicorn"
 ```
 
-Note: the log directory is `/data/project/<project>/logs/`, not inside `src/`.
+The `[step-clone]` line should show the expected `RESULT_SHA=<sha>` and the
+`[step-build]` line should show `gunicorn --bind=0.0.0.0:8000`. If the SHA is wrong,
+trigger a new build before restarting.
 
-##### Running Python / pip commands
+#### Diagnosing "no healthy upstream"
 
-Always run `pip install` and Python diagnostics inside the webservice shell, not the bastion shell. The two environments use different venvs:
+This means the pod never passed the Toolforge startup probe, which checks port 8000. Most
+common cause: the running image binds to the wrong port. Use the build log check above to
+confirm the built image uses port 8000, then restart.
+
+#### Startup crash: `missing column ... from database`
+
+If the pod logs (`toolforge webservice buildservice logs`) show:
+
+```
+!!  Model <class 'montage.rdb.Entry'> missing column file_id from database ...
+!!  recreate the database and update the code, then try again
+```
+
+the database schema is behind the code (common when a tool has been off the buildservice for a
+while). Run the migration — do **not** "recreate the database", which would wipe existing data:
 
 ```bash
-toolforge webservice python3.11 shell
-# venv is activated automatically
-pip install -r ~/www/python/src/requirements.txt
-python3 -c "import montage.app"
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_prod_db.sql
+mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name> < tools/migrate_round_sources_params.sql
+toolforge webservice buildservice restart --mount all
+```
+
+`tools/create_schema.py` only creates *missing tables* (`CREATE TABLE IF NOT EXISTS`); it does
+**not** `ALTER` existing tables, so it will not add a missing column. Use the migration SQL for
+schema changes to an existing database.
+
+#### Viewing logs
+
+Montage writes several log files to NFS (`/data/project/<project>/`). These are only
+available because the service is started with `--mount all`; the files persist across restarts.
+
+**Legacy (pre-buildservice) request log:** the old uWSGI webservice logs *every* request —
+method, path, status, timing — to `/data/project/<project>/uwsgi.log` (e.g.
+`/data/project/montage/uwsgi.log`). Health-check pings show up as frequent identical `GET /`
+lines; ignore those and `robots.txt` when gauging real activity. Under the buildservice this is
+replaced by `montage_api.log` (below) plus gunicorn stdout via `toolforge webservice buildservice logs`.
+
+| Log file | Set via | What it captures |
+|----------|---------|-----------------|
+| `montage_api.log` | `MONTAGE_API_LOG_PATH` | Every API request — method, path, user, timing, result |
+| `montage_api.exc.log` | _(derived — same path with `.exc` suffix)_ | Full tracebacks for 5xx errors |
+| `montage_replay.log` | `MONTAGE_REPLAY_LOG_PATH` | Raw request replay data (optional; used for debugging) |
+| `montage_feel.log` | `MONTAGE_FEEL_LOG_PATH` | Juror experience events (optional) |
+
+Tail the API log (most useful starting point):
+
+```bash
+tail -50 /data/project/<project>/montage_api.log
+```
+
+For 5xx tracebacks:
+
+```bash
+tail -50 /data/project/<project>/montage_api.exc.log
+```
+
+**Gunicorn / pod stdout** (replaces the old `uwsgi.log`): gunicorn writes its own startup
+messages and unhandled errors to stdout, which Kubernetes captures. To view it:
+
+```bash
+toolforge webservice buildservice logs
+```
+
+This is ephemeral — it reflects the current pod's output since the last restart and is not
+written to a file.
+
+#### Running Python commands
+
+Use the buildservice shell — prefix Python with `launcher`. Set `USER` first (the shell skips
+the app entrypoint that normally sets it — see the note under "Initialise the database schema"),
+and import the top-level `app` module (which sets `USER` and builds the real WSGI app) rather than
+`montage.app` directly:
+
+```bash
+toolforge webservice buildservice shell
+export USER=montage
+launcher python -c "import app; print('app build OK')"   # exercises full startup: config, cookie guard, OAuth
+launcher python tools/create_schema.py
 exit
 ```
 
-Running `pip` on the bastion shell installs to a different venv and will not affect the running service.
-
-##### Restarting the service
+#### Restarting the service
 
 ```bash
-toolforge webservice python3.11 restart
+toolforge webservice buildservice restart --mount all
 ```
 
-##### Inspecting the MariaDB database
-
-Always pass `-h tools.db.svc.wikimedia.cloud` explicitly — there is no local socket on the Toolforge bastion:
+#### Inspecting the database
 
 ```bash
 mariadb --defaults-file=~/replica.my.cnf -h tools.db.svc.wikimedia.cloud <db name>
 ```
 
-Example queries:
 ```sql
 SELECT COUNT(*) FROM entries;
 DESCRIBE entries;
 ```
 
-##### Inspecting the SQLite database (legacy / dev only)
-
-Note: montage-beta originally used SQLite and the file (`tmp_montage.db`) may still exist alongside the MariaDB setup. It is no longer used by the running service once the config switches to `mysql+pymysql://`.
-
-There is no `sqlite3` CLI on Toolforge. Use Python instead:
+#### Updating environment variables
 
 ```bash
-python3 -c 'import sqlite3; c=sqlite3.connect("/data/project/montage-beta/www/python/src/tmp_montage.db"); print(c.execute("SELECT COUNT(*) FROM entries").fetchone())'
+toolforge envvars create MONTAGE_SUPERUSERS  # overwrites existing value
+toolforge webservice buildservice restart --mount all
 ```
+
+---
+
+## Multi-environment setup
+
+Each tool account has its own `toolforge envvars` configuration and deploys from a different
+kind of ref:
+
+| Account | Deploys from | When | URL |
+|---------|--------------|------|-----|
+| `montage-dev` | any branch (a feature branch or PR under test) | by hand, for testing | https://montage-dev.toolforge.org |
+| `montage-beta` | `master` | after every merge into `master` | https://montage-beta.toolforge.org |
+| `montage` | a release tag (`vYYYY.MM.DD`, e.g. `v2026.10.10`; `.2` for a second release that day) | by hand, as a deliberate promotion | https://montage.toolforge.org |
+
+#### montage-dev's database: a shuffled copy of production
+
+Since 2026-10-05, montage-dev runs on a copy of production's database (backup of 2026-10-04),
+`s53126__montage_devcopy_20261004`, so that imports, migrations and slow queries can be tried at
+production scale (#652). The copy keeps production's schema, collation (`utf8mb4_unicode_ci`)
+and indexes (no index on `entries.name`, as on production, #650).
+
+What was changed in the copy (details and checks in #652):
+
+- **Recent campaigns are cut:** a campaign with activity in the last 12 months keeps only its first
+  round, and only if that round was imported from a category; other first rounds and all later
+  rounds are left out, so nothing shows which files advanced before results are announced.
+  Older campaigns are kept whole.
+- **Jury data is shuffled:** vote values (with their reviews) are shuffled within each round,
+  ranking ballots within each juror; reviews are replaced by random characters of the same length;
+  favorites are reassigned; the `flags` table is emptied; results summaries are randomised and
+  made private.
+- **Rights are reset:** campaign names get the prefix "[DEV COPY - shuffled]", production's
+  coordinators and organizers are removed, and montage-dev's own users and organizers are merged in.
+  A maintainer adds coordinators to the copied campaigns needed for a test.
+
+**Still real in the copy:** usernames (who was on which jury), coordinators' free text (audit
+messages, disqualification reasons), timestamps, and uploader data in `entries`. So the copy is
+for people who already have the same access on production, like montage-dev's maintainers:
+
+- Never set a fixed `userid` or the `devtest` environment on montage-dev: both log every request in
+  as a fixed user, which would be a real production user.
+- Do not copy, export or publish data from it, and do not make another copy without the shuffle
+  (the procedure and its checks are in #652; its script is not in this repository yet).
+
+**Rollback:** the previous test database, `s53126__montage_dev`, is kept for two weeks after the
+switch (until about 2026-10-19). Pointing `MONTAGE_DB_URL` back at it and restarting returns
+montage-dev to its old test data. After that it is dropped, and going back means a new copy.
+
+#### Rules
+
+1. **Changes reach `master` only through a pull request.** Nobody commits or force-pushes to
+   `master` directly.
+2. **Production only gets what montage-beta has run.** A release tag points to a commit on
+   `master` that has been deployed to montage-beta and checked there.
+3. **There are no environment branches.** The old `montage-dev`, `montage-beta` and
+   `montage-prod` branches were not used for deploys and still query the old database hosts;
+   they are kept as `archive/<branch>-<date>` tags only. Deploy a ref from the table above,
+   never one of those.
+4. **Rolling back production** is a deploy of the previous release tag.
+
+#### Releasing to production
+
+After the commit has run on montage-beta, tag it (on your own machine, not on the bastion):
+
+```bash
+git fetch origin
+git tag -a v2026.10.10 <commit> -m "Release 2026-10-10: <what changed, with issue numbers>"
+git push origin v2026.10.10
+```
+
+Then follow [Deploying new changes](#deploying-new-changes) as `montage`, with
+`--ref v2026.10.10`. The deploy script's `RESULT_SHA` must equal the tagged commit.
+
+#### Towards push-to-deploy
+
+These rules are what an automatic deploy will follow: a merge into `master` deploys montage-beta,
+a new release tag deploys production. Until that is set up, the same deploys are run by hand.
+
+---
+
+## Notes
+
+**`--forwarded-allow-ips=*` in the Procfile**: this tells Gunicorn to trust
+`X-Forwarded-For` headers from any IP. This is safe on Toolforge because pods are not
+directly reachable from the internet — traffic arrives exclusively through the
+HAProxy → nginx-ingress chain. Do not copy the Procfile verbatim to other deployment
+environments without understanding this dependency.
+
+**Secrets are never in git or config files**: all credentials are stored as `toolforge envvars`
+(Kubernetes Secrets). The config YAML files in the repo contain only non-secret defaults and
+should never hold real credentials.

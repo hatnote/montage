@@ -5,6 +5,7 @@ import os.path
 import logging
 
 from clastic import Application, StaticFileRoute, MetaApplication
+from clastic.meta import DEFAULT_PERIPHERALS, ResourcePeripheral
 
 from clastic.static import StaticApplication
 from clastic.middleware import HTTPCacheMiddleware
@@ -14,7 +15,6 @@ from clastic.render import AshesRenderFactory, render_basic
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from mwoauth import ConsumerToken
 
 from .mw import (UserMiddleware,
                 UserIPMiddleware,
@@ -26,6 +26,7 @@ from .mw import (UserMiddleware,
                 SQLProfilerMiddleware)
 from .rdb import Base, bootstrap_maintainers, ensure_series
 from .utils import get_env_name, load_env_config
+from . import import_check
 from .check_rdb import get_schema_errors, ping_connection
 
 from .meta_endpoints import META_API_ROUTES, META_UI_ROUTES
@@ -45,6 +46,26 @@ PROJ_PATH = os.path.dirname(CUR_PATH)
 STATIC_PATH = os.path.join(CUR_PATH, 'static')
 TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'templates')
+
+
+class ResourceNamesPeripheral(ResourcePeripheral):
+    """/meta's resource section with names and types only. clastic's
+    default shows the first 70 characters of each resource's repr(),
+    which for 'config' showed config values to anyone."""
+
+    def get_context(self, _application):
+        resources = []
+        for key, val in _application.resources.items():
+            desc = type(val).__name__
+            if isinstance(val, (dict, list, tuple, set)):
+                desc += ' (%s items)' % len(val)
+            resources.append({'key': key, 'value': desc})
+        return {'resources': resources}
+
+
+META_PERIPHERALS = [ResourceNamesPeripheral()
+                    if isinstance(peri, ResourcePeripheral) else peri
+                    for peri in DEFAULT_PERIPHERALS]
 
 
 def set_mysql_session_charset_and_collation(connection, branch):
@@ -67,6 +88,16 @@ def create_app(env_name='prod', config=None):
     if config is None:
         config = load_env_config(env_name=env_name)
     print('==  loaded config file: %s' % (config['__file__'],))
+
+    # import check files (#510) must be on storage all pods share
+    check_dir_problem = import_check.check_dir_problem(config, env_name)
+    if check_dir_problem:
+        raise ValueError(check_dir_problem)
+    print('==  import check folder: %s' % (import_check.check_dir(config),))
+    import_check.cleanup(config)  # files older than 7 days, also after a quiet spell
+    check_dir_warning = import_check.check_dir_warning(config, env_name)
+    if check_dir_warning:
+        print('!!  %s' % (check_dir_warning,))
 
     engine = create_engine(config.get('db_url', DEFAULT_DB_URL), pool_recycle=60)
     session_type = sessionmaker()
@@ -102,10 +133,16 @@ def create_app(env_name='prod', config=None):
 
     cookie_secret = config['cookie_secret']
     assert cookie_secret
+    if cookie_secret == 'ReplaceThisWithSomethingSomewhatSecret' or len(cookie_secret) < 32:  # pragma: allowlist secret
+        raise ValueError('cookie_secret is too weak or is the default placeholder — set a strong random value')
 
     root_path = config.get('root_path', '/')
 
-    scm_secure = env_name == 'prod'  # https only in prod
+    known_envs = {'dev', 'devtest', 'devlabs', 'beta', 'prod'}
+    if env_name not in known_envs:
+        raise ValueError('Unknown MONTAGE_ENV %r. Must be one of: %s' % (env_name, ', '.join(sorted(known_envs))))
+
+    scm_secure = env_name not in ('dev', 'devtest')  # Secure on for all deployed envs
     scm_mw = SignedCookieMiddleware(secret_key=cookie_secret,
                                     path=root_path,
                                     http_only=True,
@@ -145,11 +182,14 @@ def create_app(env_name='prod', config=None):
         replay_log_mw = ReplayLogMiddleware(replay_log_path)
         middlewares.append(replay_log_mw)
 
-    consumer_token = ConsumerToken(config['oauth_consumer_token'],
-                                   config['oauth_secret_token'])
+    oauth_config = {
+        'client_id': config.get('oauth_client_id'),
+        'client_secret': config.get('oauth_client_secret'),
+        'redirect_uri': config.get('oauth_redirect_uri'),
+    }
 
     resources = {'config': config,
-                 'consumer_token': consumer_token,
+                 'oauth_config': oauth_config,
                  'root_path': root_path,
                  'ashes_renderer': renderer}
 
@@ -185,11 +225,11 @@ def create_app(env_name='prod', config=None):
         root_mws.append(SentryMiddleware())
 
     root_app = Application([StaticFileRoute('/', STATIC_PATH + '/index.html'),
-                            StaticFileRoute('/a/', STATIC_PATH + '/a/index.html'),
+                            StaticFileRoute('/a/', STATIC_PATH + '/index.html'),
                             ('/', static_app),
                             ('/', ui_app),
                             ('/v1/', api_app),
-                            ('/meta', MetaApplication())],
+                            ('/meta', MetaApplication(base_peripherals=META_PERIPHERALS))],
                            resources={'config': config},
                            middlewares=root_mws)
 
