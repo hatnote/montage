@@ -63,7 +63,25 @@ const adminService = {
   downloadImportCheck: (campaignId, token) =>
     `${apiBackend.defaults.baseURL}admin/campaign/${campaignId}/import/check/${token}/download`,
   downloadImportCheckIssues: (campaignId, token) =>
-    `${apiBackend.defaults.baseURL}admin/campaign/${campaignId}/import/check/${token}/issues`
+    `${apiBackend.defaults.baseURL}admin/campaign/${campaignId}/import/check/${token}/issues`,
+  getCampaignRequests: (status) =>
+    apiBackend.get('admin/campaign_requests', { params: status ? { status } : {} }),
+
+  getCampaignRequest: (requestId) => apiBackend.get(`admin/campaign_requests/${requestId}`),
+
+  validateWikimediaUser: (username) =>
+    apiBackend.get('admin/campaign_requests/validate_user', { params: { username } }),
+
+  submitCampaignRequest: (data) => apiBackend.post('admin/campaign_requests/submit', data),
+
+  approveCampaignRequest: (requestId, data = {}) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/approve`, data),
+
+  adviseCampaignRequest: (requestId, note) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/advise`, { note }),
+
+  resubmitCampaignRequest: (requestId, data) =>
+    apiBackend.post(`admin/campaign_requests/${requestId}/resubmit`, data)
 }
 
 export default adminService

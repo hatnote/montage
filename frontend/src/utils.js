@@ -80,3 +80,34 @@ export function getCommonsImageUrl(image, width = 1280) {
     return `//commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodedName}`
   }
 }
+
+export const COMMON_TIMEZONES = [
+  { id: 'America/New_York', label: 'ET (New York)' },
+  { id: 'Europe/London', label: 'BST/GMT (London)' },
+  { id: 'Europe/Paris', label: 'CET (Paris)' },
+  { id: 'Asia/Kolkata', label: 'IST (India)' },
+  { id: 'Asia/Tokyo', label: 'JST (Tokyo)' },
+  { id: 'Africa/Lagos', label: 'WAT (Lagos)' },
+  { id: 'Africa/Johannesburg', label: 'CAT (Johannesburg)' },
+  { id: 'Africa/Nairobi', label: 'EAT (Nairobi)' },
+  { id: 'Australia/Sydney', label: 'AEDT (Sydney)' }
+]
+
+// Montage stores campaign dates as naive UTC ("YYYY-MM-DD HH:mm" or ISO without offset)
+export function parseUtc(value) {
+  if (!value) return null
+  let iso = value.trim().replace(' ', 'T')
+  if (!/(Z|[+-]\d\d:?\d\d)$/.test(iso)) iso += 'Z'
+  const date = new Date(iso)
+  return isNaN(date) ? null : date
+}
+
+export function formatInTz(value, timeZone) {
+  const date = parseUtc(value)
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date)
+}
