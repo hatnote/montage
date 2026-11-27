@@ -440,22 +440,6 @@ class Round(Base):
                          RoundEntry.dq_user_id == None))
         return [x[0] for x in query.all()]
 
-    def is_closeable(self):
-        rdb_session = inspect(self).session
-
-        if not rdb_session:
-            # TODO: see above
-            raise RuntimeError('cannot get counts for detached Round')
-
-        if self.entries and self.status == ACTIVE_STATUS or self.status == PAUSED_STATUS:
-            active_votes = rdb_session.query(Vote)\
-                                    .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
-                                    .filter(RoundEntry.round_id == self.id,
-                                            Vote.status == ACTIVE_STATUS)\
-                                    .first()
-            return not active_votes
-        return False
-
     def to_info_dict(self):
         ret = {'id': self.id,
                'name': self.name,
@@ -509,11 +493,6 @@ class RoundJuror(Base):
             self.round = round
         if user is not None:
             self.user = user
-
-    @property
-    def skip(self):
-        skip = self.flags.get('skip')
-        return skip
 
     def get_count_map(self):
         rdb_session = inspect(self).session
@@ -1283,34 +1262,6 @@ class CoordinatorDAO(UserDAO):
                         'source_method': method,
                         'source_params': params})
         return ret
-
-    def get_round_task_counts(self, round_id):
-        # the fact that these are identical for two DAOs shows it
-        # should be on the Round model or somewhere else shared
-        re_count = self.query(RoundEntry).filter_by(round_id=round_id).count()
-
-        total_tasks = self.query(Vote)\
-                        .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
-                        .filter(RoundEntry.round_id == round_id,
-                                Vote.user_id == self.user.id,
-                                Vote.status != CANCELLED_STATUS)\
-                        .count()
-
-        total_open_tasks = self.query(Vote)\
-                            .join(RoundEntry, RoundEntry.id == Vote.round_entry_id)\
-                            .filter(RoundEntry.round_id == round_id,
-                                    Vote.user_id == self.user.id,
-                                    Vote.status == ACTIVE_STATUS)\
-                            .count()
-
-        if total_tasks:
-            percent_open = round((100.0 * total_open_tasks) / total_tasks, 3)
-        else:
-            percent_open = 0.0
-        return {'total_round_entries': re_count,
-                'total_tasks': total_tasks,
-                'total_open_tasks': total_open_tasks,
-                'percent_tasks_open': percent_open}
 
     def get_entry_name_map(self, filenames):
         entries = self.query(Entry)\
@@ -2528,34 +2479,6 @@ class CoordinatorDAO(UserDAO):
         self.log_action('modify_quorum', round=rnd, message=msg)
         return ret
 
-    def create_ranking_tasks(self, rnd, round_entries):
-        jurors = rnd.jurors
-        ret = []
-        for juror in jurors:
-            ret.extend([Vote(user=juror, round_entry=re, status=ACTIVE_STATUS)
-                        for re in round_entries])
-        return ret
-
-    def create_ranking_round(self, campaign, name, jurors, deadline_date):
-        # TODO: there might be some cases where they want to jump straight to the final round?
-        # TODO: directions, other round params?
-        assert campaign.active_round is None
-        final_rnds = [r for r in campaign.rounds if r.status == FINALIZED_STATUS]
-        prev_finalized_rnd = final_rnds[-1]  # TODO: these are ordered by date?
-        assert prev_finalized_rnd.vote_method != 'ranking'
-
-        advancing_group = self.get_rating_advancing_group(prev_finalized_rnd.id)
-
-        assert 1 < len(advancing_group) <= 40  # TODO: configurable max
-
-        rnd = self.create_round(name=name,
-                                jurors=jurors,
-                                quorum=len(jurors),
-                                vote_method='ranking',
-                                deadline_date=deadline_date)
-        source = 'round(#%s)' % prev_finalized_rnd.id
-        self.add_round_entries(rnd, advancing_group, source=source)
-
     def build_campaign_report(self):
         campaign = self.campaign
         # assert campaign.status is FINALIZED_STATUS
@@ -2932,20 +2855,6 @@ class JurorDAO(object):
                 'total_open_tasks': total_open_tasks,
                 'percent_tasks_open': percent_open}
 
-    def get_task(self, vote_id):
-        task = self.query(Vote)\
-                   .filter_by(id=vote_id)\
-                   .filter(Vote.user == self.user)\
-                   .one_or_none()
-        return task
-
-    def get_total_tasks(self):
-        task_count = self.query(Vote)\
-                         .filter(Vote.user == self.user,
-                                 Vote.status == ACTIVE_STATUS)\
-                         .count()
-        return task_count
-
     def get_tasks_by_id(self, task_ids):
         if isinstance(task_ids, int):
             task_ids = [task_ids]
@@ -3061,18 +2970,6 @@ class JurorDAO(object):
                 'total_tasks': total_tasks,
                 'total_open_tasks': total_open_tasks,
                 'percent_tasks_open': percent_open}
-
-    def get_task_counts(self):
-        re_count = self.query(RoundEntry).count()
-        total_tasks = self.query(Vote)\
-                          .filter(Vote.user_id == self.user.id,
-                                  Vote.status != CANCELLED_STATUS)\
-                          .count()
-        total_open_tasks = self.query(Vote)\
-                               .filter(Vote.user_id == self.user.id,
-                                       Vote.status == ACTIVE_STATUS)\
-                               .count()
-        return self._build_round_stats(re_count, total_tasks, total_open_tasks)
 
     def get_all_rounds_task_counts(self, only_active=False):
         entry_count = 'entry_count'
@@ -3194,23 +3091,6 @@ class JurorDAO(object):
         rating_ctr = Counter([r[1] for r in results])
 
         return dict(rating_ctr)
-
-    def apply_rating(self, vote, value, review=''):
-        if not vote.user == self.user:
-            # belt and suspenders until server test covers the cross
-            # complete case
-            raise PermissionDenied()
-        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        review_stripped = review.strip()
-        if len(review_stripped) > 8192:
-            raise ValueError('review must be less than 8192 characters, not %r'
-                             % len(review_stripped))
-        if review_stripped:
-            vote['flags']['review'] = review_stripped
-        vote.complete_date = now
-        vote.status = COMPLETED_STATUS
-        self.rdb_session.add(vote)
-        return vote
 
     def edit_rating(self, task, value, review=''):
         if not task.user == self.user:

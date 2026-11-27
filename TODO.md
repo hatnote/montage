@@ -6,7 +6,7 @@ New TODOs
   units. For instance, on yesno rounds with quorum of 4, instead of
   >0.5, say "at least two yeses". Similarly, but not quite the same,
   instead of >=0.75, say "an average score of at least 4 stars."
-* Ranking round limit to 100 (`create_ranking_round` not used?)
+* Ranking round limit to 100
 * Eliminate task table, switch to status column
 * Be able to deactivate coordinators
 * friggin indexes
